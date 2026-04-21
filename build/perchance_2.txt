@@ -1113,20 +1113,35 @@ body.in-session .footer {
             <option value="rain">Rain — droplets, soft rumble</option>
             <option value="ocean">Ocean waves — slow, rhythmic surf</option>
             <option value="fire">Crackling fire — warmth, pops</option>
+            <option value="forest">Forest — birds, leaves, breeze</option>
+            <option value="stream">Stream — gentle flowing water</option>
+            <option value="wind">Wind — gusting through trees</option>
+            <option value="thunder">Distant thunder — deep, rolling</option>
           </optgroup>
           <optgroup label="Tonal">
             <option value="drone" selected>Engine drone — low hum, road-noise feel</option>
             <option value="bowls">Singing bowls — periodic resonant strikes</option>
             <option value="heartbeat">Heartbeat — steady lub-dub rhythm</option>
             <option value="binaural">Binaural beats (θ 6Hz) — requires headphones</option>
+            <option value="chimes">Wind chimes — random soft tones</option>
           </optgroup>
           <optgroup label="Noise">
             <option value="pink">Pink noise — soft, even hiss</option>
             <option value="brown">Brown noise — deep, warm rumble</option>
             <option value="white">White noise — full-spectrum static</option>
           </optgroup>
+          <optgroup label="Ambient">
+            <option value="cave">Cave — sparse drips, deep echo</option>
+            <option value="crickets">Night crickets — chirping insects</option>
+            <option value="temple">Temple — deep bell, tonal drones</option>
+            <option value="spaceship">Spaceship — low engine, subtle bleeps</option>
+          </optgroup>
         </select>
         <div class="sublabel" id="soundscapeHint">Procedurally generated — never loops. Use headphones for binaural.</div>
+        <div class="toggle-row" style="margin-top:8px;">
+          <label for="duckingToggle">Duck audio during narration<span class="hint">Lower soundscape volume while the voice speaks</span></label>
+          <input type="checkbox" id="duckingToggle" checked>
+        </div>
         <div class="preview-row">
           <button class="preview-btn" id="soundPreviewBtn">▶ preview</button>
           <button class="preview-btn stop" id="soundStopBtn" style="display:none;">⏹ stop</button>
@@ -1187,6 +1202,21 @@ body.in-session .footer {
           <button class="preview-btn" id="vizPreviewBtn">▶ preview</button>
           <button class="preview-btn stop" id="vizStopBtn" style="display:none;">⏹ stop</button>
           <span class="preview-hint">Live preview of the selected effect.</span>
+        </div>
+
+        <!-- Visual Effect Tuning -->
+        <div class="detail-panel" id="vizSettingsPanel" style="margin-top:10px;">
+          <div class="detail-title" style="font-size:0.8rem;">visual effect tuning</div>
+          <div class="toggle-row"><label for="vizSpeed">Speed</label><input type="range" id="vizSpeed" min="10" max="200" value="100"><span class="hint" id="vizSpeedVal" style="min-width:32px;text-align:right;">1.0×</span></div>
+          <div class="toggle-row"><label for="vizIntensity">Intensity</label><input type="range" id="vizIntensity" min="10" max="200" value="100"><span class="hint" id="vizIntensityVal" style="min-width:32px;text-align:right;">1.0×</span></div>
+          <div class="toggle-row"><label for="vizComplexity">Complexity</label><input type="range" id="vizComplexity" min="20" max="200" value="100"><span class="hint" id="vizComplexityVal" style="min-width:32px;text-align:right;">1.0×</span></div>
+          <div class="toggle-row"><label for="vizTrail">Trail / Fade</label><input type="range" id="vizTrail" min="1" max="50" value="12"><span class="hint" id="vizTrailVal" style="min-width:32px;text-align:right;">0.12</span></div>
+          <div class="sublabel">Adjustments apply live to the current effect and are saved between sessions.</div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="toggle-row"><label for="vizSpeedSlider">Effect speed</label><input type="range" id="vizSpeedSlider" min="20" max="200" value="100"><span class="hint" id="vizSpeedVal" style="min-width:32px;text-align:right;">1.0×</span></div>
+          <div class="toggle-row"><label for="vizBrightnessSlider">Effect brightness</label><input type="range" id="vizBrightnessSlider" min="20" max="100" value="100"><span class="hint" id="vizBrightnessVal" style="min-width:32px;text-align:right;">100%</span></div>
+          <div class="toggle-row"><label for="vizHueSlider">Hue shift</label><input type="range" id="vizHueSlider" min="0" max="360" value="0"><span class="hint" id="vizHueVal" style="min-width:32px;text-align:right;">0°</span></div>
         </div>
       </div>
 
@@ -1744,6 +1774,8 @@ body.in-session .footer {
     droneVolume: 0.35,
     vizOverride: 'auto',
     hud: { fixationDot: true, textDisplay: true, phaseDots: true, phaseLabel: true, progressBar: true, sessionTime: true, labels: true },
+    vizSettings: { speed: 1.0, intensity: 1.0, complexity: 1.0, trail: 0.12 },
+    duckingEnabled: true,
     paused: false,
     abortFlag: false,
     editingPersonaId: null,
@@ -1751,6 +1783,9 @@ body.in-session .footer {
     methodFilter: 'all',
     _preMood: 5,
     _skippedToScript: false,
+    vizSpeed: 1.0,
+    vizBrightness: 1.0,
+    vizHueShift: 0,
   };
  
   const PHASE_DURATIONS = {
@@ -1873,11 +1908,13 @@ body.in-session .footer {
           length: state.length,
           soundscape: state.soundscape,
           droneEnabled: state.droneEnabled,
+          duckingEnabled: state.duckingEnabled,
           speechRate: state.speechRate,
           voicePitch: state.voicePitch,
           voiceVolume: state.voiceVolume,
           droneVolume: state.droneVolume,
           vizOverride: state.vizOverride,
+          vizSettings: state.vizSettings,
           hud: state.hud,
           intentionInput: $('intentionInput')?.value || '',
           userAffirmations: $('userAffirmations')?.value || '',
@@ -1898,12 +1935,24 @@ body.in-session .footer {
       if (s.intentionType) { state.intentionType = s.intentionType; const el = $('intentionType'); if (el) el.value = s.intentionType; }
       if (s.length) { state.length = s.length; const el = $('lengthSelect'); if (el) el.value = s.length; }
       if (s.soundscape) { state.soundscape = s.soundscape; state.droneEnabled = s.soundscape !== 'none'; const el = $('soundscapeSelect'); if (el) el.value = s.soundscape; }
-      if (s.speechRate != null) { state.speechRate = s.speechRate; const el = $('speechRate'); if (el) el.value = Math.round(s.speechRate * 100); }
-      if (s.voicePitch != null) { state.voicePitch = s.voicePitch; const el = $('voicePitch'); if (el) el.value = Math.round(s.voicePitch * 100); }
-      if (s.voiceVolume != null) { state.voiceVolume = s.voiceVolume; const el = $('voiceVolume'); if (el) el.value = Math.round(s.voiceVolume * 100); }
-      if (s.droneVolume != null) { state.droneVolume = s.droneVolume; const el = $('droneVolume'); if (el) el.value = Math.round(s.droneVolume * 100); }
+      if (s.speechRate != null) { state.speechRate = s.speechRate; const el = $('speechRate'); if (el) el.value = Math.round(s.speechRate * 100); const v = $('speechRateVal'); if (v) v.textContent = s.speechRate.toFixed(2) + '×'; }
+      if (s.voicePitch != null) { state.voicePitch = s.voicePitch; const el = $('voicePitch'); if (el) el.value = Math.round(s.voicePitch * 100); const v = $('voicePitchVal'); if (v) v.textContent = s.voicePitch.toFixed(2); }
+      if (s.voiceVolume != null) { state.voiceVolume = s.voiceVolume; const el = $('voiceVolume'); if (el) el.value = Math.round(s.voiceVolume * 100); const v = $('voiceVolVal'); if (v) v.textContent = Math.round(s.voiceVolume * 100); }
+      if (s.droneVolume != null) { state.droneVolume = s.droneVolume; const el = $('droneVolume'); if (el) el.value = Math.round(s.droneVolume * 100); const v = $('droneVolVal'); if (v) v.textContent = Math.round(s.droneVolume * 100); }
       if (s.vizOverride) { state.vizOverride = s.vizOverride; const el = $('vizSelect'); if (el) el.value = s.vizOverride; }
       if (s.hud) state.hud = { ...state.hud, ...s.hud };
+      if (s.duckingEnabled != null) { state.duckingEnabled = s.duckingEnabled; const el = $('duckingToggle'); if (el) el.checked = s.duckingEnabled; }
+      if (s.vizSettings) {
+        state.vizSettings = { ...state.vizSettings, ...s.vizSettings };
+        const vs = state.vizSettings;
+        const speedEl = $('vizSpeed'); if (speedEl) { speedEl.value = Math.round(vs.speed * 100); const v = $('vizSpeedVal'); if (v) v.textContent = vs.speed.toFixed(1) + '×'; }
+        const intEl = $('vizIntensity'); if (intEl) { intEl.value = Math.round(vs.intensity * 100); const v = $('vizIntensityVal'); if (v) v.textContent = vs.intensity.toFixed(1) + '×'; }
+        const cmpEl = $('vizComplexity'); if (cmpEl) { cmpEl.value = Math.round(vs.complexity * 100); const v = $('vizComplexityVal'); if (v) v.textContent = vs.complexity.toFixed(1) + '×'; }
+        const trEl = $('vizTrail'); if (trEl) { trEl.value = Math.round(vs.trail * 100); const v = $('vizTrailVal'); if (v) v.textContent = vs.trail.toFixed(2); }
+      }
+      // Restore HUD toggle checkboxes
+      const hudMap = { fixationDot:'cfgFixationDot', textDisplay:'cfgTextDisplay', phaseDots:'cfgPhaseDots', phaseLabel:'cfgPhaseLabel', progressBar:'cfgProgressBar', sessionTime:'cfgSessionTime', labels:'cfgLabels' };
+      for (const [key, elId] of Object.entries(hudMap)) { const el = $(elId); if (el) el.checked = state.hud[key] !== false; }
       if (s.intentionInput) { const el = $('intentionInput'); if (el) el.value = s.intentionInput; }
       if (s.userAffirmations) { const el = $('userAffirmations'); if (el) el.value = s.userAffirmations; }
       if (s.voiceName) state._savedVoiceName = s.voiceName;
@@ -2391,6 +2440,125 @@ body.in-session .footer {
       } else if (type === 'pink' || type === 'brown' || type === 'white') {
         const noise = mkNoise(type === 'pink' ? 'lowpass' : type, type === 'pink' ? 800 : undefined);
         const ng = mkGain(type === 'white' ? 0.15 : 0.35); connect(noise, ng, m);
+      } else if (type === 'forest') {
+        // Layered: breeze (filtered brown), bird chirps (scheduled sine pips)
+        const breeze = mkNoise('lowpass', 500); const bg = mkGain(0.2); connect(breeze, bg, m);
+        const chirp = () => {
+          if (!this.running) return;
+          const o = c.createOscillator(); o.frequency.value = 2200 + Math.random() * 2000;
+          const g = c.createGain(); o.connect(g).connect(m);
+          const t = c.currentTime + Math.random() * 0.5;
+          g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.08, t + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08 + Math.random() * 0.1);
+          o.start(t); o.stop(t + 0.15);
+          setTimeout(chirp, 1500 + Math.random() * 4000);
+        };
+        chirp(); setTimeout(chirp, 800);
+      } else if (type === 'stream') {
+        // Gentle water: filtered white noise + subtle babble modulation
+        const water = mkNoise('bandpass', 1200, 0.5); const wg = mkGain(0.3); connect(water, wg, m);
+        const lfo = mkOsc(0.3); const lg = mkGain(100); lfo.connect(lg);
+        const wf = c.createBiquadFilter(); wf.type = 'bandpass'; wf.frequency.value = 1200; ns.push(wf);
+        lg.connect(wf.frequency); water.connect(wf).connect(wg);
+      } else if (type === 'wind') {
+        // Gusting wind: brown noise with slow LFO on gain
+        const wind = mkNoise('lowpass', 600); const wg = mkGain(0.35); connect(wind, wg, m);
+        const lfo = mkOsc(0.08 + Math.random() * 0.04); const lg = mkGain(0.2);
+        lfo.connect(lg); lg.connect(wg.gain);
+      } else if (type === 'thunder') {
+        // Deep rumble base + periodic thunder rolls
+        const rumble = mkNoise('lowpass', 120); const rg = mkGain(0.3); connect(rumble, rg, m);
+        const rain = mkNoise('highpass', 3000); const raing = mkGain(0.08); connect(rain, raing, m);
+        const roll = () => {
+          if (!this.running) return;
+          const o = mkNoise('lowpass', 80); const g = c.createGain(); o.connect(g).connect(m);
+          const t = c.currentTime;
+          g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.5, t + 0.3);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 3 + Math.random() * 2);
+          setTimeout(roll, 8000 + Math.random() * 15000);
+        };
+        setTimeout(roll, 3000 + Math.random() * 5000);
+      } else if (type === 'chimes') {
+        // Random tuned sine pips with long decay
+        const base = mkNoise('bandpass', 400, 0.3); const bg = mkGain(0.05); connect(base, bg, m);
+        const chime = () => {
+          if (!this.running) return;
+          const freqs = [523, 587, 659, 784, 880, 1047, 1175];
+          const f = freqs[Math.floor(Math.random() * freqs.length)];
+          const o = c.createOscillator(); o.frequency.value = f; o.type = 'sine';
+          const g = c.createGain(); o.connect(g).connect(m);
+          const t = c.currentTime;
+          g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 2 + Math.random() * 2);
+          o.start(t); o.stop(t + 4);
+          setTimeout(chime, 2000 + Math.random() * 5000);
+        };
+        chime(); setTimeout(chime, 1200);
+      } else if (type === 'cave') {
+        // Sparse drips with long reverb/echo
+        const bg = mkNoise('bandpass', 120, 0.3); const bgg = mkGain(0.03); connect(bg, bgg, m);
+        const drip = () => {
+          if (!this.running) return;
+          const o = c.createOscillator(); o.frequency.value = 2000 + Math.random() * 2000; o.type = 'sine';
+          const g = c.createGain(); o.connect(g).connect(m);
+          const t = c.currentTime;
+          g.gain.setValueAtTime(0.08, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.8 + Math.random());
+          o.start(t); o.stop(t + 2);
+          setTimeout(drip, 3000 + Math.random() * 8000);
+        };
+        drip(); setTimeout(drip, 1500); setTimeout(drip, 4500);
+      } else if (type === 'crickets') {
+        // Chirping insects — filtered noise bursts at cricket-like rates
+        const wind = mkNoise('lowpass', 300); const wg = mkGain(0.04); connect(wind, wg, m);
+        const chirp = () => {
+          if (!this.running) return;
+          const o = c.createOscillator(); o.frequency.value = 4000 + Math.random() * 2000; o.type = 'sine';
+          const g = c.createGain(); o.connect(g).connect(m);
+          const t = c.currentTime, dur = 0.04 + Math.random() * 0.02;
+          const reps = 3 + Math.floor(Math.random() * 4);
+          for (let i = 0; i < reps; i++) {
+            g.gain.setValueAtTime(0.06, t + i * dur * 2); g.gain.setValueAtTime(0, t + i * dur * 2 + dur);
+          }
+          o.start(t); o.stop(t + reps * dur * 2 + 0.1);
+          setTimeout(chirp, 1500 + Math.random() * 4000);
+        };
+        chirp(); setTimeout(chirp, 800); setTimeout(chirp, 2200);
+      } else if (type === 'temple') {
+        // Deep bell strikes + sustained tonal drone
+        const drone1 = c.createOscillator(); drone1.frequency.value = 110; drone1.type = 'sine';
+        const drone2 = c.createOscillator(); drone2.frequency.value = 165; drone2.type = 'triangle';
+        const dg1 = mkGain(0.12); const dg2 = mkGain(0.06);
+        connect(drone1, dg1, m); connect(drone2, dg2, m);
+        this.nodes.push(drone1, drone2);
+        const bell = () => {
+          if (!this.running) return;
+          const f = [220, 277, 330, 440][Math.floor(Math.random() * 4)];
+          const o = c.createOscillator(); o.frequency.value = f; o.type = 'sine';
+          const g = c.createGain(); o.connect(g).connect(m);
+          const t = c.currentTime;
+          g.gain.setValueAtTime(0.2, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 5 + Math.random() * 3);
+          o.start(t); o.stop(t + 8);
+          setTimeout(bell, 6000 + Math.random() * 10000);
+        };
+        bell(); setTimeout(bell, 3000);
+      } else if (type === 'spaceship') {
+        // Low engine hum + subtle sci-fi bleeps
+        const eng1 = c.createOscillator(); eng1.frequency.value = 42; eng1.type = 'sawtooth';
+        const eng2 = c.createOscillator(); eng2.frequency.value = 43.5; eng2.type = 'sawtooth';
+        const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 120;
+        const eg1 = mkGain(0.15); const eg2 = mkGain(0.12);
+        eng1.connect(eg1).connect(lp).connect(m); eng2.connect(eg2).connect(lp);
+        this.nodes.push(eng1, eng2);
+        const bleep = () => {
+          if (!this.running) return;
+          const f = [880, 1320, 1760, 2200][Math.floor(Math.random() * 4)];
+          const o = c.createOscillator(); o.frequency.value = f; o.type = 'sine';
+          const g = c.createGain(); o.connect(g).connect(m);
+          const t = c.currentTime;
+          g.gain.setValueAtTime(0.02, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+          o.start(t); o.stop(t + 0.2);
+          setTimeout(bleep, 4000 + Math.random() * 12000);
+        };
+        bleep(); setTimeout(bleep, 6000);
       }
 
       startAll();
@@ -2863,7 +3031,7 @@ body.in-session .footer {
     
 
     function frame() {
-      const t = (performance.now() - _vizPreviewStart) / 1000;
+      const t = ((performance.now() - _vizPreviewStart) / 1000) * (state.vizSettings.speed || 1.0);
       try { renderer(ctx, canvas.width, canvas.height, t, color); } catch(e) {}
       _vizPreviewRaf = requestAnimationFrame(frame);
     }
@@ -2906,7 +3074,7 @@ body.in-session .footer {
       stageResizeObs.observe(stage);
       (function draw(ts) {
         if (state.abortFlag) return;
-        const speed = PHASE_VIZ_SPEED[state._currentPhase] || 1.0;
+        const speed = (PHASE_VIZ_SPEED[state._currentPhase] || 1.0) * (state.vizSettings.speed || 1.0);
         renderer(ctx, canvas.width, canvas.height, (ts/1000)*speed, color);
         vizRAF = requestAnimationFrame(draw);
       })(0);
@@ -3841,7 +4009,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
           await sleep(350);
           display.textContent = chunk;
           display.style.opacity = 0.5;
-          if (drone.running) drone.duck();
+          if (drone.running && state.duckingEnabled) drone.duck();
           await speak(chunk);
           if (drone.running) drone.unduck();
         }
@@ -4244,6 +4412,34 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
   // Slider batch save — fires only on release (change), not every drag tick (input)
   ['speechRate', 'voicePitch', 'voiceVolume', 'droneVolume'].forEach(id => {
+    $(id)?.addEventListener('change', () => saveUserSettings());
+  });
+
+  // Ducking toggle
+  $('duckingToggle')?.addEventListener('change', e => {
+    state.duckingEnabled = e.target.checked;
+    saveUserSettings();
+  });
+
+  // Visual effect tuning sliders
+  $('vizSpeed')?.addEventListener('input', e => {
+    state.vizSettings.speed = parseInt(e.target.value, 10) / 100;
+    const v = $('vizSpeedVal'); if (v) v.textContent = state.vizSettings.speed.toFixed(1) + '×';
+  });
+  $('vizIntensity')?.addEventListener('input', e => {
+    state.vizSettings.intensity = parseInt(e.target.value, 10) / 100;
+    const v = $('vizIntensityVal'); if (v) v.textContent = state.vizSettings.intensity.toFixed(1) + '×';
+  });
+  $('vizComplexity')?.addEventListener('input', e => {
+    state.vizSettings.complexity = parseInt(e.target.value, 10) / 100;
+    const v = $('vizComplexityVal'); if (v) v.textContent = state.vizSettings.complexity.toFixed(1) + '×';
+  });
+  $('vizTrail')?.addEventListener('input', e => {
+    state.vizSettings.trail = parseInt(e.target.value, 10) / 100;
+    const v = $('vizTrailVal'); if (v) v.textContent = state.vizSettings.trail.toFixed(2);
+  });
+  // Viz sliders batch save on release
+  ['vizSpeed', 'vizIntensity', 'vizComplexity', 'vizTrail'].forEach(id => {
     $(id)?.addEventListener('change', () => saveUserSettings());
   });
   // Step 5
