@@ -745,45 +745,47 @@ body.in-session .footer {
   .history-list { margin-top: 10px; }
   .history-item {
     background: var(--glass); border: 1px solid var(--glass-border);
-    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
-    display: grid; grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto auto; gap: 4px 8px;
+    border-radius: 10px; padding: 10px 10px 10px 12px; margin-bottom: 8px;
+    display: grid; grid-template-columns: 1fr 36px;
+    grid-template-rows: auto auto 1fr; gap: 3px 6px;
     font-size: 0.72rem; color: var(--text-dim);
+    min-height: 80px;
   }
   .history-item .h-title {
     grid-column: 1; font-family: var(--font-display);
-    font-size: 0.82rem; font-weight: 600; color: var(--text);
+    font-size: 0.78rem; font-weight: 600; color: var(--text);
     letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .history-item .h-meta {
-    grid-column: 1; font-size: 0.68rem; color: var(--text-faint);
+    grid-column: 1; font-size: 0.64rem; color: var(--text-faint);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .history-item .h-preview {
     grid-column: 1; margin-top: 4px;
     border: 1px solid var(--glass-border); border-radius: 6px;
-    padding: 6px 8px; font-size: 0.62rem; line-height: 1.4;
+    padding: 5px 7px; font-size: 0.58rem; line-height: 1.35;
     color: var(--text-faint); font-style: italic;
-    max-height: 52px; overflow: hidden;
+    max-height: 62px; overflow: hidden;
     white-space: pre-wrap; word-break: break-word;
+  }
+  .history-item .h-no-script {
+    grid-column: 1; margin-top: 4px;
+    font-size: 0.58rem; color: var(--text-faint); font-style: italic; opacity: 0.4;
   }
   .history-item .h-actions {
     grid-column: 2; grid-row: 1 / -1;
-    display: flex; flex-direction: column; gap: 4px;
+    display: flex; flex-direction: column; gap: 3px;
     align-items: center; justify-content: center;
   }
-  .history-item .h-play {
-    background: none; border: 1px solid var(--glass-border); color: var(--text-dim);
-    border-radius: 8px; padding: 8px 10px; font-size: 1rem; cursor: pointer;
-    transition: all 0.2s; line-height: 1;
-  }
-  .history-item .h-delete {
+  .history-item .h-btn {
     background: none; border: 1px solid var(--glass-border); color: var(--text-faint);
-    border-radius: 6px; padding: 4px 7px; font-size: 0.6rem; cursor: pointer;
-    transition: all 0.2s; line-height: 1; opacity: 0.4;
+    border-radius: 5px; width: 30px; height: 26px; font-size: 0.7rem; cursor: pointer;
+    transition: all 0.2s; display: flex; align-items: center; justify-content: center;
   }
-  .history-item .h-play:hover { color: var(--neon-cyan); border-color: var(--neon-cyan); box-shadow: 0 0 8px rgba(0,229,255,0.25); }
-  .history-item .h-delete:hover { color: #ff3b3b; border-color: #ff3b3b; opacity: 1; }
+  .history-item .h-btn:disabled { opacity: 0.15; cursor: default; }
+  .history-item .h-btn.h-play:hover:not(:disabled) { color: var(--neon-cyan); border-color: var(--neon-cyan); box-shadow: 0 0 6px rgba(0,229,255,0.25); }
+  .history-item .h-btn.h-edit:hover:not(:disabled) { color: var(--neon-amber); border-color: var(--neon-amber); box-shadow: 0 0 6px rgba(255,179,0,0.2); }
+  .history-item .h-btn.h-delete:hover { color: #ff3b3b; border-color: #ff3b3b; }
 
   /* ============ KEYBOARD HINT ============ */
   .kb-hint {
@@ -3756,14 +3758,14 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
       const mins = Math.round((s.durationSec || 0) / 60);
       const hasScript = !!(s.script && s.script.length > 20);
-      const status = s.completed ? `${mins}m` : `${mins}m · incomplete`;
+      const status = s.completed ? `${mins}m` : `${mins}m · inc`;
 
-      // Script preview — first ~120 chars, strip markers
+      // Script preview — first ~150 chars, strip markers
       let preview = '';
       if (hasScript) {
         preview = s.script.replace(/===\s*\w+\s*===/gi, '').replace(/\[PAUSE\s+\d+\]/gi, '').trim();
-        preview = preview.substring(0, 120).replace(/\s+/g, ' ');
-        if (s.script.length > 120) preview += '…';
+        preview = preview.substring(0, 150).replace(/\s+/g, ' ');
+        if (s.script.length > 150) preview += '…';
       }
 
       const item = document.createElement('div');
@@ -3771,10 +3773,11 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       item.innerHTML = `
         <div class="h-title">${dateStr} ${timeStr} · ${status}</div>
         <div class="h-meta">${escapeHtml(s.guide || '—')} · ${escapeHtml(s.method || '—')}${s.intentionText ? ' · ' + escapeHtml(s.intentionText.substring(0, 30)) : ''}</div>
-        ${preview ? `<div class="h-preview">${escapeHtml(preview)}</div>` : ''}
+        ${preview ? `<div class="h-preview">${escapeHtml(preview)}</div>` : '<div class="h-no-script">no script stored</div>'}
         <div class="h-actions">
-          ${hasScript ? `<button class="h-play" data-idx="${idx}" title="Replay this session">▶</button>` : ''}
-          <button class="h-delete" data-idx="${idx}" title="Delete">✕</button>
+          <button class="h-btn h-play" data-idx="${idx}" title="Replay session" ${hasScript ? '' : 'disabled'}>▶</button>
+          <button class="h-btn h-edit" data-idx="${idx}" title="Edit script" ${hasScript ? '' : 'disabled'}>✎</button>
+          <button class="h-btn h-delete" data-idx="${idx}" title="Delete">✕</button>
         </div>`;
       list.appendChild(item);
     });
@@ -3782,17 +3785,27 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     // Wire play buttons
     list.querySelectorAll('.h-play').forEach(btn => {
       btn.addEventListener('click', async e => {
-        const idx = parseInt(e.target.dataset.idx, 10);
+        const idx = parseInt(e.target.closest('.h-btn').dataset.idx, 10);
         const entry = history[idx];
         if (!entry?.script) { notify.warn('No script stored for this session.'); return; }
         replayFromHistory(entry);
       });
     });
 
+    // Wire edit buttons — load script into editor without starting session
+    list.querySelectorAll('.h-edit').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        const idx = parseInt(e.target.closest('.h-btn').dataset.idx, 10);
+        const entry = history[idx];
+        if (!entry?.script) { notify.warn('No script stored for this session.'); return; }
+        editFromHistory(entry);
+      });
+    });
+
     // Wire delete buttons
     list.querySelectorAll('.h-delete').forEach(btn => {
       btn.addEventListener('click', async e => {
-        const idx = parseInt(e.target.dataset.idx, 10);
+        const idx = parseInt(e.target.closest('.h-btn').dataset.idx, 10);
         if (!confirm('Are you sure you want to delete this session?\n\nThis can\'t be undone.')) return;
         const h = (await idbGet('stillness_history_v1')) || [];
         h.splice(idx, 1);
@@ -3841,6 +3854,37 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     $('sidebar')?.classList.remove('open');
     $('sidebarOverlay')?.classList.remove('open');
     notify.success(`Session from ${new Date(entry.date).toLocaleDateString()} loaded — ready to replay.`);
+  }
+
+  /** Load a session from history into the script editor for editing */
+  function editFromHistory(entry) {
+    // Restore settings (same as replay)
+    if (entry.personaId) state.selectedPersonaId = entry.personaId;
+    if (entry.methodId) state.selectedMethodId = entry.methodId;
+    if (entry.intention) { state.intentionType = entry.intention; const el = $('intentionType'); if (el) el.value = entry.intention; }
+    if (entry.length) { state.length = entry.length; const el = $('lengthSelect'); if (el) el.value = entry.length; }
+    if (entry.soundscape) { state.soundscape = entry.soundscape; state.droneEnabled = entry.soundscape !== 'none'; const el = $('soundscapeSelect'); if (el) el.value = entry.soundscape; }
+    if (entry.intentionText) { const el = $('intentionInput'); if (el) el.value = entry.intentionText; }
+
+    // Load script
+    state.fullScript = entry.script;
+    state.parsedScript = parseScript(entry.script);
+
+    // Navigate to step 5 in edit mode
+    state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: false };
+    renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
+    updateIntentionHint();
+    showScript();
+    showEl('generateScriptBtn', true);
+    state.currentStep = 5;
+    updateStepUI();
+    switchScreen('setup-wizard');
+    goToStep(5);
+    $('sidebar')?.classList.remove('open');
+    $('sidebarOverlay')?.classList.remove('open');
+    // Focus the textarea for editing
+    setTimeout(() => $('scriptText')?.focus(), 300);
+    notify.info(`Script loaded for editing. Modify and press Begin when ready.`);
   }
 
   /** Populate sidebar stats and streak from session history */
