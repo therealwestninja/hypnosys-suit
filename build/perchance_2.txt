@@ -1017,7 +1017,7 @@ body.in-session .footer {
             <div id="hipResult" style="margin-top:6px;font-size:0.72rem;"></div>
           </div>
         </details>
-        <button class="sidebar-settings-btn" id="sidebarSettingsBtn">⚙ Settings</button>
+        <button class="sidebar-settings-btn" id="sidebarSettingsBtn"> &#8226; I NEED HELP &#8226;</button>
       </div>
     </aside>
     <div class="main-content">
