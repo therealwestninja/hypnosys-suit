@@ -134,7 +134,7 @@
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
   .card {
     background: var(--glass); border: 1px solid var(--glass-border);
-    border-radius: var(--radius); padding: 5px 15x; cursor: pointer;
+    border-radius: var(--radius); padding: 5px 15px; cursor: pointer;
     transition: all 0.25s ease; position: relative;
     display: flex; flex-direction: column; gap: 4px;
   }
@@ -642,7 +642,7 @@ body.in-session .footer {
   .preset-card {
     flex: 1; min-width: 85px; max-width: 150px;
     background: var(--glass); border: 1px solid var(--glass-border);
-    border-radius: var(--radius); padding: 5px 15x; cursor: pointer;
+    border-radius: var(--radius); padding: 5px 15px; cursor: pointer;
     transition: all 0.2s; text-align: center;
   }
   .preset-card:hover { border-color: var(--accent-soft); background: rgba(0,229,255,0.04); }
@@ -952,7 +952,7 @@ body.in-session .footer {
  
 <div class="container">
   <h1>· advanced hypnosis narration engine · </h1>
-    <p>"The" <i>single-most</i> dangerous hypnosys app on the planet, and it's free.<br>Generate scripts with automatically narrated voiceovers and fully guided sessions.</p>
+    <p>"The" <i>single-most</i> dangerous hypnosis app on the planet, and it's free.<br>Generate scripts with automatically narrated voiceovers and fully guided sessions.</p>
 
   <button class="sidebar-toggle" id="sidebarToggle">☰</button>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -1881,8 +1881,6 @@ body.in-session .footer {
     _preMood: 5,
     _skippedToScript: false,
     vizSpeed: 1.0,
-    vizBrightness: 1.0,
-    vizHueShift: 0,
   };
  
   const PHASE_DURATIONS = {
@@ -3970,22 +3968,23 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   }
 
   async function shareConfig() {
-    const config = {
-      p: state.selectedPersonaId, m: state.selectedMethodId,
-      i: state.intentionType, l: state.length, s: state.soundscape,
-      r: state.speechRate,
-      t: $('intentionInput')?.value?.trim() || '',
-    };
-    const json = JSON.stringify(config);
-    let encoded;
-    try {
-      const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
-      const compressed = await new Response(stream).arrayBuffer();
-      encoded = btoa(String.fromCharCode(...new Uint8Array(compressed)));
-    } catch(e) { encoded = btoa(json); }
-    const url = window.location.href.split('#')[0] + '#cfg=' + encoded;
+    // Compact URI-safe params — no gzip overhead for small payloads
+    const params = new URLSearchParams();
+    params.set('p', state.selectedPersonaId);
+    params.set('m', state.selectedMethodId);
+    params.set('i', state.intentionType);
+    params.set('l', state.length);
+    params.set('s', state.soundscape);
+    params.set('r', String(Math.round(state.speechRate * 100)));
+    params.set('v', state.vizOverride || 'auto');
+    const intentText = $('intentionInput')?.value?.trim();
+    if (intentText) params.set('t', intentText.slice(0, 200));
+    const aff = $('userAffirmations')?.value?.trim();
+    if (aff) params.set('a', aff.slice(0, 300));
+
+    const url = window.location.href.split('#')[0].split('?')[0] + '#cfg=' + params.toString();
     if (navigator.share && navigator.canShare?.({ url })) {
-      try { await navigator.share({ title: 'Hypnosis Session Config', url }); return; } catch(e) {}
+      try { await navigator.share({ title: 'Hypnosis Session Config', text: `Try this ${getMethod().name} session with ${getPersona().name}`, url }); return; } catch(e) {}
     }
     try { await navigator.clipboard.writeText(url); notify.success('Share link copied to clipboard.'); }
     catch(e) { prompt('Copy this share link:', url); }
@@ -3994,26 +3993,60 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   async function loadSharedConfig() {
     const hash = window.location.hash;
     if (!hash.startsWith('#cfg=')) return;
-    const encoded = hash.slice(5);
-    let json;
+    const paramStr = hash.slice(5);
     try {
-      const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
-      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-      json = await new Response(stream).text();
-    } catch(e) { try { json = atob(encoded); } catch(e2) { return; } }
-    try {
-      const cfg = JSON.parse(json);
-      if (cfg.p && state.personas.find(p => p.id === cfg.p)) state.selectedPersonaId = cfg.p;
-      if (cfg.m && METHODS.find(m => m.id === cfg.m)) state.selectedMethodId = cfg.m;
-      if (cfg.i && INTENTION_TYPES[cfg.i]) { state.intentionType = cfg.i; $('intentionType').value = cfg.i; }
-      if (cfg.l && PHASE_DURATIONS[cfg.l]) { state.length = cfg.l; $('lengthSelect').value = cfg.l; }
-      if (cfg.s) state.soundscape = cfg.s;
-      if (cfg.r) state.speechRate = Math.max(0.5, Math.min(1, cfg.r));
-      if (cfg.t) $('intentionInput').value = String(cfg.t).slice(0, 500);
-      renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail(); updateStepUI();
-      notify.info('Shared session config loaded. Review and adjust before starting.');
+      const params = new URLSearchParams(paramStr);
+      const personaId = params.get('p');
+      const methodId = params.get('m');
+      const intentType = params.get('i');
+      const length = params.get('l');
+      const soundscape = params.get('s');
+      const rate = params.get('r');
+      const viz = params.get('v');
+      const intentText = params.get('t');
+      const aff = params.get('a');
+
+      // Apply settings
+      if (personaId && state.personas.find(p => p.id === personaId)) state.selectedPersonaId = personaId;
+      if (methodId && METHODS.find(m => m.id === methodId)) state.selectedMethodId = methodId;
+      if (intentType && INTENTION_TYPES[intentType]) { state.intentionType = intentType; $('intentionType').value = intentType; }
+      if (length && PHASE_DURATIONS[length]) { state.length = length; $('lengthSelect').value = length; }
+      if (soundscape) { state.soundscape = soundscape; state.droneEnabled = soundscape !== 'none'; const el = $('soundscapeSelect'); if (el) el.value = soundscape; }
+      if (rate) state.speechRate = Math.max(0.5, Math.min(1, parseInt(rate, 10) / 100));
+      if (viz) { state.vizOverride = viz; const el = $('vizSelect'); if (el) el.value = viz; }
+      if (intentText) { const el = $('intentionInput'); if (el) el.value = decodeURIComponent(intentText).slice(0, 500); }
+      if (aff) { const el = $('userAffirmations'); if (el) el.value = decodeURIComponent(aff).slice(0, 500); }
+
+      renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
+      updateIntentionHint(); updateStepUI();
+
+      // Onboarding banner for the recipient
+      const persona = getPersona();
+      const method = getMethod();
+      notify.info(`Shared config loaded: ${persona.name} · ${method.name} · ${length || 'medium'}. Review settings and generate when ready.`, 8000);
+
+      // Mark steps as complete so they can jump to generate
+      state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: false };
+      goToStep(4); // Start at Configure so they can review
+
+      // Clean URL
       history.replaceState(null, '', window.location.pathname + window.location.search);
-    } catch(e) { console.error('Failed to parse shared config:', e); }
+    } catch(e) {
+      // Fallback: try old gzip+base64 format for backward compat
+      try {
+        const bytes = Uint8Array.from(atob(paramStr), c => c.charCodeAt(0));
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+        const json = await new Response(stream).text();
+        const cfg = JSON.parse(json);
+        if (cfg.p) state.selectedPersonaId = cfg.p;
+        if (cfg.m) state.selectedMethodId = cfg.m;
+        if (cfg.i) { state.intentionType = cfg.i; $('intentionType').value = cfg.i; }
+        if (cfg.l) { state.length = cfg.l; $('lengthSelect').value = cfg.l; }
+        renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail(); updateStepUI();
+        notify.info('Shared config loaded (legacy format). Review and generate.');
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      } catch(e2) { console.error('Failed to parse shared config:', e2); }
+    }
   }
 
   async function exportBackup() {
