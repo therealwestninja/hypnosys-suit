@@ -1,0 +1,691 @@
+loadDependencies = {import:ai-character-chat-dependencies-v1} // dexie.js, dompurify, etc.
+aiTextPlugin = {import:ai-text-plugin}
+textToImagePlugin = {import:text-to-image-plugin}
+commentsPlugin = {import:comments-plugin}
+tabbedCommentsPlugin = {import:tabbed-comments-plugin-v1}
+uploadPlugin = {import:upload-plugin} // <-- for character share links
+superFetch = {import:super-fetch-plugin} // <-- to bypass CORs issues in character custom code
+fullscreenButtonPlugin = {import:fullscreen-button-plugin}
+combineEmojis = {import:combine-emojis-plugin}
+bugReport = {import:bug-report-plugin} // for comments-plugin-based feedback button - it's a helper for getting browser debug info like browser version, localStorage size limits, etc. - stuff that's relevant to bug reports
+
+// HEADS UP:
+// All the code you see here and in the bottom-right editor is what "powers" this chat app thing.
+// Perchance allows you to make random generators, but it also allows you to create more complex applications like this one.
+// If you accidentally opened this, then click the "fullscreen" button to go back to using the chat app.
+// If you want to customize it to create your own chat app, then you can do that by editing this code, but it's pretty complex!
+// I'd recommend starting simpler if you're new to Perchance.
+// Start with the tutorial:  perchance.org/tutorial
+// Then check out this plugin and the examples linked on the plugin page:  perchance.org/ai-text-plugin
+
+async generateShareLinkForCharacter(json) => 
+  if(!window.CompressionStream) {
+    alert("Share links use a feature that's only available in modern browsers. Please upgrade your browser to the latest version to use this feature. If you're using Safari, switch to Chrome instead.");
+    return;
+  }
+  
+  let loadingModal = createLoadingModal("⏳ Generating share link...");
+  
+  let jsonString = JSON.stringify(json); 
+  
+  let urlHashData = encodeURIComponent(JSON.stringify(json)).replace(/[!'()*]/g, function(c) {
+    return '%' + c.charCodeAt(0).toString(16); // since encodeURIComponent doesn't encode some characters (like parentheses) and they mess up markdown links
+  });
+  console.log("shareUrl (hash version):", `https://perchance.org/${window.generatorName}#${urlHashData}`);
+  
+  // convert json text to blob:
+  let dataUrlJsonString = jsonString.replace(/#/g, "%23"); // since hash is a special character in dataurls (like normal URLs)
+  let blob = await fetch("data:text/plain;charset=utf-8,"+dataUrlJsonString).then(res => res.blob());
+  
+  // compress blob:
+  let compressedBlob = await compressBlobWithGzip(blob);
+  
+  let { url, size, error } = await uploadPlugin(compressedBlob);
+  if(error) {
+    loadingModal.delete();
+    alert(`Error: ${error}${error === "disallowed_content" ? ". If you believe this is incorrect, then you may need to edit the character description to explicitly state that the character is 18 or older, since the moderation system can make mistakes if there is ambiguity." : ""}`);
+  } else {
+    loadingModal.delete(); 
+    let fileName = url.replace("https://user.uploads.dev/file/", "");
+    let characterName = json.addCharacter.name.replace(/\s+/g, "_").replaceAll("~", ""); // this is just so URL is more readable - doesn't affect stored data at all
+    let shareUrl = `https://perchance.org/${window.generatorName}?data=${characterName}~${fileName}`;
+    console.log("shareUrl:", shareUrl);
+
+    let colorScheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "dark" : "light";
+    let result = await window.prompt2({
+      content: {type:"none", html:`<div style="margin-bottom:0.5rem; opacity:0.7; font-size:90%;">Here's a link to this character that you can share with others:</div><div style="display:flex; gap:0.5rem;"><input value="${shareUrl}" style="flex-grow:1; color-scheme:${colorScheme};"> <button onclick="navigator.clipboard.writeText(this.parentElement.querySelector('input').value); this.textContent='copied ✅'; setTimeout(() => { this.textContent='copy url'; }, 2000);">copy url</button> </div>`},
+    }, {cancelButtonText:null, submitButtonText:"finished"});
+  }
+
+async compressBlobWithGzip(blob) =>
+  const cs = new CompressionStream('gzip');
+  const compressedStream = blob.stream().pipeThrough(cs);
+  let outputBlob = await new Response(compressedStream).blob();
+  return new Blob([outputBlob], { type: "application/gzip" }); // <-- to add the correct mime type
+ 
+async loadDataFromUrlThatReferencesCloudStorageFile() => 
+  if(!window.DecompressionStream) {
+    alert("Character share links use a browser feature that's only available in modern browsers. Please upgrade your browser to the latest version to allow for loading data from character share links.");
+    return null;
+  }
+  
+  let loadingModal = createLoadingModal("Loading character data...");
+  
+  try {
+    // example URL:  https://perchance.org/ai-character-chat?data=Game_Master~85jf93h8hiifnd84hdksrkeh.gz
+    let searchParams = new URL(window.location.href).searchParams;
+    let dataParamValue = searchParams.get("data");
+    if(!dataParamValue) {
+      if(searchParams.get("char") && urlNamedCharacters[searchParams.get("char")]) { // see `urlNamedCharacters` list below - for URLs like https://perchance.org/ai-character-chat?char=ai-adventure
+        dataParamValue = "foo~"+urlNamedCharacters[searchParams.get("char")];
+      } else {
+        throw new Error("Invalid share URL.");
+      }
+    }
+    let fileName = dataParamValue.split("~").slice(-1)[0];
+    let fileUrl = "https://user.uploads.dev/file/"+fileName;
+
+    let blob = await fetch(fileUrl, {signal:AbortSignal.timeout ? AbortSignal.timeout(15000) : null}).then(res => res.ok ? res.blob() : null).catch(console.error);
+    if(!blob) {
+      loadingModal.delete();
+      await confirmAsync(`It seems you've tried to load a character share URL, but the file specified by the URL does not exist. If you believe it should exist, you can ask for help on the community forum, or check if the file has been quarantined:\n\nperchance.org/quarantined-files`, {hideCancel:true});
+      return null;
+    }
+    let text;
+    if(fileUrl.endsWith(".gz")) {
+      let decompressedBlob = await decompressBlobWithGzip(blob);
+      text = await decompressedBlob.text();
+    } else {
+      // can add other file formats in the future if needed
+      throw new Error("Invalid share URL.");
+    }
+    let data = JSON.parse(text);
+    loadingModal.delete();
+    return data;
+  } catch(e) {
+    alert(`Failed to load chat data: ${e.message}`);
+    console.error(e);
+  }
+  
+  loadingModal.delete();
+  return null;
+  
+async decompressBlobWithGzip(blob) =>
+  const ds = new DecompressionStream("gzip");
+  const decompressedStream = blob.stream().pipeThrough(ds);
+  return await new Response(decompressedStream).blob();
+
+async evaluatePerchanceTextInSandbox(text, opts) =>
+  if(!opts) opts = {};
+  let iframe = document.querySelector('#perchanceCodeEvaluationSandboxIframe');
+  if(!iframe) {
+    iframe = document.createElement("iframe");
+    iframe.src = "https://7deabe31ae18ea5ed27c5f71b9633999.perchance.org/ai-character-chat-sandboxed-executor";
+    iframe.id = "perchanceCodeEvaluationSandboxIframe";
+    iframe.sandbox = "allow-scripts allow-same-origin";
+    iframe.style.cssText = "position:fixed; width:1px; height:1px; opacity:0.01; top:-10px; right:-10px; pointer-events:none; border:0; outline:0; user-select:none;";
+    document.body.append(iframe);
+    iframe._resolvers = {};
+    let iframeLoadResolver;
+    let iframeLoadPromise = new Promise(r => iframeLoadResolver=r);
+    window.addEventListener('message', (event) => {
+      if(event.origin === 'https://7deabe31ae18ea5ed27c5f71b9633999.perchance.org') {
+        if(event.data.finishedLoading) {
+          iframeLoadResolver();
+          return;
+        }
+        const { requestId, text } = event.data;
+        if(iframe._resolvers[requestId]) {
+          iframe._resolvers[requestId](text);
+          delete iframe._resolvers[requestId];
+        }
+      }
+    });
+    await iframeLoadPromise;
+  }
+  const requestId = Math.random().toString();
+  return new Promise((resolve, reject) => {
+    iframe._resolvers[requestId] = resolve;
+    if(opts.timeout) {
+      setTimeout(() => {
+        if(iframe._resolvers[requestId]) reject("Sandbox did not respond in time.");
+      }, opts.timeout);
+    }
+    iframe.contentWindow.postMessage({ text, requestId }, 'https://7deabe31ae18ea5ed27c5f71b9633999.perchance.org');
+  });
+
+urlNamedCharacters
+  assistant = assistant
+  psychologist = 615fdef95fa7e75cbbaf943dc44d72be.gz
+  ai-adventure = b33c6ff0c14f92e8095ca90765848485.gz
+  coding-assistant = 570b3c67b8ed9ed8f83ef652be549b1c.gz
+  story-writer = 76b20593b117ab083d746312df4df296.gz
+  world-war-simulator = e1cf5213432a7eb9e310ec269fe38672.gz
+  therapist = 5cdaa39f9aabc7424c3b2e1b780a1e29.gz
+  // NOTE: must add named chars to $meta.dynamic too
+
+$meta
+  header
+    mode = minimal
+  // construct metadata based on character if the URL has a character reference:
+  async dynamic(inputs) => // note that $meta.dynamic function *cannot reference/use any variables/lists/etc. that are outside of itself*. In other words, its code must be *fully* self-contained (i.e. only use `inputs.urlParams`). It must also use pure JavaScript (i.e. no Perchance-specific features like `foo.selectOne`, `foo.titleCase`, etc.).
+    let defaults = {
+      title: `AI Character Chat (online, free, no sign-up, unlimited)`,   
+      description: `Perchance AI Chat - completely free, online, no login, unlimited messages, unlimited AI-generated images. Chat with AI characters via this Character.AI (C.AI) chat alternative. Custom AI character creation. Chat to the default Chloe character, or make your own AI character and talk to them freely - no limits, and no freemium gimicks that lure you to sign up. No message limits, no filter. You can create characters that can send pictures/images/photos, roleplay chatbots, AI RPGs/D&D experiences, an AI Dungeon alternative, anime AI chat, and basically anything else you can think of. No restrictions on daily usage. Like ChatGPT, but for fictional character RPs and AI characters, with image generation in chat.`,
+    };
+    let fileName;
+    if(inputs.urlParams.data && inputs.urlParams.data.endsWith(".gz")) {
+      fileName = inputs.urlParams.data.split("~").slice(-1)[0];
+    } else if(inputs.urlParams.char) {
+      if(inputs.urlParams.char === "assistant") {
+        return {
+          title: `AI Character Chat (online, free, no sign-up, unlimited)`,   
+          description: `AI Chat with characters for roleplaying or to get help with writing, language practice, creative tasks, coding questions, and lots more. Completely free, online, no login, unlimited messages, unlimited AI-generated images. Basically a more creative (and unfiltered/uncensored) ChatGPT alternative. Chat to the Chloe or make an AI assistant/character and talk to them freely - no limits on credits, and no freemium gimicks that lure you to sign up. Completely unlimited, no filter. You can create characters that can send pictures/images/photos, roleplay chatbots, AI RPGs/D&D game masters. Like ChatGPT, but better at fictional character RPs and AI characters, with image generation in chat.`,
+        };
+      }
+      let urlNamedCharacters = {
+        "ai-adventure": "b33c6ff0c14f92e8095ca90765848485.gz",
+        "coding-assistant": "570b3c67b8ed9ed8f83ef652be549b1c.gz",
+        "story-writer": "76b20593b117ab083d746312df4df296.gz",
+        "world-war-simulator": "e1cf5213432a7eb9e310ec269fe38672.gz",
+        "psychologist": "615fdef95fa7e75cbbaf943dc44d72be.gz",
+        "therapist": "5cdaa39f9aabc7424c3b2e1b780a1e29.gz",
+      };
+      fileName = urlNamedCharacters[inputs.urlParams.char];
+    }
+    if(fileName) {
+      try {   
+        let fileUrl = "https://user.uploads.dev/file/" +  fileName;
+        let blob = await fetch(fileUrl, {signal:AbortSignal.timeout ? AbortSignal.timeout(8000) : null}).then(res => res.blob());
+        const ds = new DecompressionStream("gzip");
+        const decompressedStream = blob.stream().pipeThrough(ds);
+        let decompressedBlob = await new Response(decompressedStream).blob();
+        let text = await decompressedBlob.text();
+        let data = JSON.parse(text);
+        let character = data.addCharacter;
+        return {
+          title: character.metaTitle ? character.metaTitle : `${character.name.slice(0, 40)} - AI Character Chat (free, no sign-up, unlimited)`,
+          description: character.metaDescription ? character.metaDescription : `Chat with the ${character.name} AI character. Here's this character's description: ${character.roleInstruction.slice(0, 450).replace(/\s+/g, " ")}`,
+          image: character.metaImage ? character.metaImage : character.avatarUrl,
+        };
+      } catch(e) {
+        console.error(e);
+        return defaults;
+      }
+    } else {
+      return defaults;   
+    }
+
+
+
+
+getMessageObjsWithoutSummarizedOnes(messages, opts) =>
+  if(!opts) opts = {};
+  messages = messages.slice(0);
+  const minimumMessageLevel = opts.minimumMessageLevel || 0; // used by the summarization process.
+  
+  let messageObjsWithoutSummarizedOnes = [];
+  let highestLevelSeen = 0;
+  
+  // it's we go backwards through the messages, and only 'collect' a message if its level is not below the highest level we've seen so far. it makes sense if you think about it for a bit.
+  // said another way, we go from the end of the messages to the start while 'monotonically climbing' up a level whenever we hit a 'higher' message.
+  while(messages.length > 0) {
+    let m = messages.pop();
+    let level = m.summariesEndingHere ? Math.max(...Object.keys(m.summariesEndingHere).map(n => Number(n))) : 0;
+    if(level < minimumMessageLevel) continue;
+    if(level >= highestLevelSeen) {
+      messageObjsWithoutSummarizedOnes.unshift(m);
+      highestLevelSeen = level;
+    }
+  }
+  return messageObjsWithoutSummarizedOnes; // NOTE: that this returns the message objects - when actually using for inference, you need to **use the highest level summary available within each message** (or the message text itself if `message.summariesEndingHere` is undefined)
+
+async injectHierarchicalSummariesAndComputeNextSummariesInBackgroundIfNeeded(threadId, opts) =>
+  // HEADS UP: This function is a bit confusing/convoluted, in part because it was "ported" from /ai-chat
+  // which uses a plain textarea instead of an IndexedDB database of actual message objects.
+  if(!window.__aiHierarchicalSummaryStuff) window.__aiHierarchicalSummaryStuff = {};
+  if(!window.__aiHierarchicalSummaryStuff[threadId]) {
+    window.__aiHierarchicalSummaryStuff[threadId] = {};
+    window.__aiHierarchicalSummaryStuff[threadId].summariesReadyToInject = [];
+  }
+  if(!opts) opts = {};
+  
+  // IMPORTANT: these messages will not have the latest N summaries (where N is defined below) in their summariesEndingHere property because we withhold them (see code below) until we have a few of them so that prefix cache invalidation doesn't happen every step.
+  let originalMessages = await db.messages.where({threadId}).toArray();
+  
+  let idToOriginalMessage = originalMessages.reduce((a,v) => (a[v.id]=v, a), {});
+  let preparedMessages = await prepareMessagesForBot({messages:originalMessages})
+  for(let m of preparedMessages) {
+    let originalMessage = idToOriginalMessage[m.id];
+    if(originalMessage.summariesEndingHere) m.summariesEndingHere = originalMessage.summariesEndingHere;
+  }
+  
+  let thread = await db.threads.get(threadId);
+  let threadCharacter = await db.characters.get(thread.characterId);
+  let userName = thread.userCharacter.name ?? threadCharacter.userCharacter.name ?? (await getUserCharacterObj()).name;
+  let characterName = thread.character.name ?? threadCharacter.name;
+  let roleInstruction = threadCharacter.roleInstruction.replaceAll("{{char}}", characterName).replaceAll("{{user}}", userName);
+  let extraContext = `In case it's useful here's a description of the **${characterName}** character: `+roleInstruction.replace(/\n+/g, " ");
+  
+  let idToPreparedMessage = preparedMessages.reduce((a,v) => (a[v.id]=v, a), {});
+  
+  // inject summaries if we have any - NOTE: we inject them into the preparedMessages *regardless* of whether we actually inject them into the DB (see note below on prefix cache stuff), since the next summary to be computed needs to have a completely up-to-date version of the messages - otherwise it'll repeat summaries that it has already done.
+  if(window.__aiHierarchicalSummaryStuff[threadId].summariesReadyToInject.length > 0) {
+    // NOTE: lastMessageSummarizedId is the id of the message object, but one of that objects *summaries* (i.e. `message.summary[level]`) may have been what was actually last summarized
+    let messagesToUpdate = new Set();
+    for(let {summarizedMessages, lastMessageSummarizedId, summary, memories, level} of window.__aiHierarchicalSummaryStuff[threadId].summariesReadyToInject) {
+      if(level <= 0) { console.error("summary level should be 1 or higher"); continue; }
+      let lastSummarizedMessageText = summarizedMessages[summarizedMessages.length-1];
+      let lastMessageObjInSummary = idToPreparedMessage[lastMessageSummarizedId];
+      if(!lastMessageObjInSummary) {
+        console.error(`!lastMessageObjInSummary ???? either the lastMessageSummarizedId is somehow wrong, or the original message no longer exists? custom code manipulating messages (specifically ids, maybe? or just deleted old message?)`, {preparedMessages, idToPreparedMessage, lastMessageSummarizedId});
+        continue;
+      }
+      let expectedLastSummarizedText = level===1 ? `${lastMessageObjInSummary.name}: ${lastMessageObjInSummary.content}` : lastMessageObjInSummary.summariesEndingHere[level-1];
+      if(expectedLastSummarizedText.trim() === lastSummarizedMessageText.trim()) { // mainly as a safety check in case of algorithm bugs, since we're only checking the *last* message
+        let m = lastMessageObjInSummary;
+        if(!m.summariesEndingHere) m.summariesEndingHere = {};
+        m.summariesEndingHere[level] = summary;
+        if(memories) {
+          // NOTE: as of writing, we only do memory creation at a single level. But I'm making memoriesEndingHere a level-keyed object like summariesEndingHere just in case I end up adding 'multi-level' memories at some point.
+          if(!m.memoriesEndingHere) m.memoriesEndingHere = {};
+          if(!m.memoriesEndingHere[level]) m.memoriesEndingHere[level] = [];
+          m.memoriesEndingHere[level].push(...(memories || []).map(memText => ({text:memText, embedding:null}))); // NOTE: this code gets run even when we're not injecting the updates from messagesToUpdate into the database. So we don't compute embedding here, because it's not needed for summary process, and this will get run every time this function is called, so we'd end up embedding the text multiple times for no reason. So instead we only do the embedding when we actually inject memories into the database (see window.embedTexts call below).
+        }
+        messagesToUpdate.add(m);
+      } else {
+        console.warn("Content of last-summmarized-message doesn't match content of message at lastMessageSummarizedId. Safe to ignore this warning if messages have been edited since last 'send' button click. This summary will simply be discarded and we'll compute a new one with the up-to-date messages.");
+      }
+    }
+    // IMPORTANT: we only inject summaries into the actual database if we have more than N of them, to reduce prefix cache invalidation.
+    if(window.__aiHierarchicalSummaryStuff[threadId].summariesReadyToInject.length >= 3) { // CAUTION: if you make this number higher, you might need to subtract more from idealMaxContextTokens, below. Otherwise middle-out stuff will do its own prefix cache invalidation.
+      for(let m of messagesToUpdate) {
+        // now that we're actually going to inject memories into the database, we compute the embeddings:
+        if(window.textEmbedderFunction) { // can't save memories if the user's browser can't load the text embedder model (for whatever reason)
+          if(m.memoriesEndingHere) {
+            for(let level in m.memoriesEndingHere) {
+              for(let memory of m.memoriesEndingHere[level]) {
+                if(!memory.embedding) {
+                  let [ embedding ] = await window.embedTexts({textArr:[memory.text], modelName:thread.textEmbeddingModelName});
+                  memory.embedding = embedding;
+                }
+              }
+            }
+          }
+        }
+        let updateObj = {summariesEndingHere: m.summariesEndingHere};
+        if(window.textEmbedderFunction) {
+          if(m.memoriesEndingHere) updateObj.memoriesEndingHere = m.memoriesEndingHere;
+        }
+        await db.messages.update(m.id, updateObj);
+      }
+      window.__aiHierarchicalSummaryStuff[threadId].summariesReadyToInject = [];
+    }
+  }
+  
+  const { countTokens, idealMaxContextTokens } = root.aiTextPlugin({getMetaObject:true});
+  let tokenCountToIdeallyStayUnder = idealMaxContextTokens-800; // leave buffer to allow for only intermittent summary injection (to prevent prefix cache invalidation after ~every message)
+  
+  const numCharsToSummarizeAtATime = 1500; // don't make this bigger without testing - IIRC, the summary calls to the AI could have context too large (causing implicit middle-out ablation) at when the summary hierarchy gets "deep"
+  
+  const messageTextWithSummaryReplacements = root.getMessageObjsWithoutSummarizedOnes(preparedMessages).map(m => {
+    let level = m.summariesEndingHere ? Math.max(...Object.keys(m.summariesEndingHere).map(n => Number(n))) : 0;
+    if(level === 0) return m.content;
+    else return m.summariesEndingHere[level];
+  });
+  
+  let currentlyUsedContextLength = countTokens(messageTextWithSummaryReplacements.join("\n\n") + (opts.extraTextForAccurateTokenCount || ""));
+  if(currentlyUsedContextLength < tokenCountToIdeallyStayUnder) {
+    console.log(`Summarization NOT needed. currentlyUsedContextLength=${currentlyUsedContextLength} which is less than ${tokenCountToIdeallyStayUnder}`, messageTextWithSummaryReplacements);
+    window.summarizationWasNeededLastCheck = false;
+    return;
+  } else {
+    console.log(`Summarization IS needed. currentlyUsedContextLength=${currentlyUsedContextLength} which is greater than ${tokenCountToIdeallyStayUnder}`, messageTextWithSummaryReplacements);
+    window.summarizationWasNeededLastCheck = true;
+  }
+      
+  // compute next summary in background if needed:
+  (async function() {
+    if(window.__aiHierarchicalSummaryStuff[threadId].alreadyDoingSummary) return;
+    try {
+      window.__aiHierarchicalSummaryStuff[threadId].alreadyDoingSummary = true;
+      
+      const allMessageObjs = [];
+      let i = 0;
+      for(let m of preparedMessages) {
+        allMessageObjs.push({
+          text: `${m.name}: ${m.content}`, // WARNING: if you change the format of this, you need to change the `expectedLastSummarizedText` check, above, since they need to *exactly* match for the sanity check to pass
+          index: i++,
+          messageId: m.id,
+          level: 0,
+        });
+        let summaryEntries = Object.entries(m.summariesEndingHere || {}).sort((a,b) => Number(a[0])-Number(b[0]));
+        for(let [level, summary] of summaryEntries) {
+          level = Number(level);
+          allMessageObjs.push({
+            text: summary,
+            index: i++,
+            messageId: m.id,
+            level,
+          });
+        }
+      }
+      
+      // conceptually we treat each "level" just like the first.
+      // the first level is just a bunch of messages with interspersed "SUMMARY^1: ..." messages, where the summary messages are a summary of the messages before them, up to the *previous* "SUMMARY^1: ..." message.
+      // so for the next level, we just delete/ignore the ^0 messages (i.e. the *actual* messages), and do exactly the same thing - i.e. treat "SUMMARY^1: ..." as if they were "messages" and "SUMMARY^2: ..." are the summaries of those "messages".
+      
+      let summaryLevelToMessageBlocks = new Map();
+      let summaryLevelBeingProcessed = 1;
+      while(1) {
+        // grab messages that are relevant to this 'level' (i.e. only this level and lower one):
+        const thisLevelAndPreviousLevelMessageObjs = allMessageObjs.filter(m => m.level === summaryLevelBeingProcessed || m.level === summaryLevelBeingProcessed-1);
+        
+        if(thisLevelAndPreviousLevelMessageObjs.length === 0) {
+          console.log("Finished creating summaryLevelToMessageBlocks.");
+          break;
+        }
+        
+        // get all summary 'blocks' (i.e. groups of messages ending with a summary message of this `level` that summarizes them, except for final block which doesn't have a summary at the end)
+        const blocks = [];
+        let currentBlock = [];
+        currentBlock.messageData = []; // data for each message, in same order as the messages in the block
+        for(let m of thisLevelAndPreviousLevelMessageObjs) {
+          currentBlock.push(m.text);
+          currentBlock.messageData.push(m);
+          if(m.level === summaryLevelBeingProcessed) {
+            blocks.push(currentBlock);
+            currentBlock = [];
+            currentBlock.messageData = [];
+          }
+        }
+        if(summaryLevelBeingProcessed === 1 && currentBlock.length === 0) {
+          console.warn("final block for summaryLevel==1 should have messages? if it doesn't, then we're maybe summarizing too close to the end of the chat log?");
+        }
+        blocks.push(currentBlock); // final block doesn't have a summary at the end
+        summaryLevelToMessageBlocks.set(summaryLevelBeingProcessed, blocks);
+        
+        summaryLevelBeingProcessed++;
+      }
+      
+      const summaryLevelBlockEntries = [...summaryLevelToMessageBlocks.entries()].sort((a,b) => a[0]-b[0]); // ascending order
+      for(let [summaryLevel, blocks] of summaryLevelBlockEntries) {
+        
+        // note: a block is just an array of messages, and all of them have a summary message (i.e. higher-level message) at the end EXCEPT the last block - we're in the process of adding that summary message here.
+        // but also note: the block has a messageData property which is also an array (see above)
+        let messagesToSummarizeFromFinalBlock = blocks[blocks.length-1];
+        
+        // note that we can use numCharsToSummarizeAtATime here even for the first level without worrying about summarizing too close to the end of the chat because we have a currentlyUsedContextLength check before running this summarization process.
+        let numCharsInFinalBlock = messagesToSummarizeFromFinalBlock.reduce((a,v) => a+v.length, 0);
+        if(numCharsInFinalBlock < numCharsToSummarizeAtATime) { 
+          console.log(`summaryLevel=${summaryLevel} doesn't need summarizing yet. numCharsInFinalBlock=${numCharsInFinalBlock}`);
+          continue;
+        }
+      
+        // remove messages from last block (which contains all messages after the last summary) until it's a good size for summarization:
+        while(1) {
+          if(messagesToSummarizeFromFinalBlock.length <= 1) break;
+          let numChars = messagesToSummarizeFromFinalBlock.reduce((a,v) => a+v.length, 0);
+          if(numChars < numCharsToSummarizeAtATime) break;
+          
+          // to speed things up, drop latter half if it's way too big:
+          if(numChars > numCharsToSummarizeAtATime*10) {
+            let halfOfMessagesCount = Math.floor(messagesToSummarizeFromFinalBlock.length/2);
+            for(let j = 0; j < halfOfMessagesCount; j++) {
+              messagesToSummarizeFromFinalBlock.pop();
+              messagesToSummarizeFromFinalBlock.messageData.pop();
+            }
+          } else {
+            messagesToSummarizeFromFinalBlock.pop();
+            messagesToSummarizeFromFinalBlock.messageData.pop();
+          }
+        }
+
+        if(messagesToSummarizeFromFinalBlock.length === 0) {
+          console.error("No messages to summarize??");
+          continue;
+        }
+
+        // let existingSummary = window.__aiHierarchicalSummaryStuff[threadId].summariesReadyToInject.filter(s => s.summarizedMessages.join("\n\n") === messagesToSummarizeFromFinalBlock.join("\n\n"))[0];
+        // if(existingSummary) {
+        //   console.error("Existing summary hasn't been injected yet?? Should have happened before this code ran.");
+        //   return;
+        // }
+        
+        // Note: It may seem brittle to choose an *index* to inject the summary at, but we also check to ensure the previous message matches.
+        // And if the text has since been edited, that's fine - the summary just gets thrown away and we re-do it next time the send button is clicked.
+        let lastMessageSummarizedData = messagesToSummarizeFromFinalBlock.messageData[messagesToSummarizeFromFinalBlock.length-1];
+        let lastMessageSummarizedIndex = lastMessageSummarizedData.index;
+        let lastMessageSummarizedId = lastMessageSummarizedData.messageId;
+        if(messagesToSummarizeFromFinalBlock.messageData.length !== messagesToSummarizeFromFinalBlock.length) { console.error("should be one data object per message (aligned)"); return; }
+        
+        let exampleBlocksForStartWith = blocks.slice(-3, -1);
+        let exampleBlockSummaries = exampleBlocksForStartWith.map(b => b[b.length-1]);
+        
+        // we get all messages for this summary level and above for placement in instruction (i.e. as context to help with summarization):
+        let summariesAtThisLevelAndAbove = root.getMessageObjsWithoutSummarizedOnes(preparedMessages, {minimumMessageLevel:summaryLevel}).map(m => {
+          let level = m.summariesEndingHere ? Math.max(...Object.keys(m.summariesEndingHere).map(n => Number(n))) : 0;
+          if(level === 0) return m.content; 
+          else return m.summariesEndingHere[level];
+        });
+        
+        // note that we can't just remove the last two instruction summaries here - they aren't necessarily the same as the summaries from the `exampleBlocksForStartWith` because they may have been 'compressed' into a higher level, so there can actually be no overlap at all.
+        // so we need to pop the instructionSummaries off based on the ones that are actually in the example blocks:
+        let instructionSummaries = JSON.parse(JSON.stringify(summariesAtThisLevelAndAbove));
+        while(1) {
+          if(instructionSummaries.length === 0) break;
+          if(exampleBlockSummaries.includes(instructionSummaries[instructionSummaries.length-1])) {
+            instructionSummaries.pop();
+            continue;
+          }
+          break;
+        }
+        
+        let startWithBlocks = exampleBlocksForStartWith.map((block) => ({messages:block.slice(0, -1), summary:block.slice(-1)[0]}));
+        startWithBlocks.push({messages:messagesToSummarizeFromFinalBlock, summary:""});
+        
+        let startWith = startWithBlocks.map(({messages, summary}, blockI) => {
+          let letterLabel = "";
+          if(blockI===0) letterLabel = "[A]";
+          if(blockI===1) letterLabel = "[B]";
+          if(blockI===2) letterLabel = "[C]";
+
+          let messagesText = messages.map((message, mi) => {
+            message = message.replace(/\n/g, " ").trim();
+            return `${summaryLevel === 1 ? `(${mi+1}) ` : ""}${message}`; // we prefix bottom-level messages with numbers, but not SUMMARY^N messages.
+          }).join(" ");
+          
+          summary = summary.replace(/\n/g, " ").trim();
+
+          return `>>> FULL TEXT of ${letterLabel}: ${messagesText}\n>>> SUMMARY of ${letterLabel}: ${summary}`;
+        }).join("\n---\n"); // NOTE: Need to ensure this joiner matches the task prompt below
+        
+        // since it's possible for there to be no blocks before the messages to summarize
+        startWith = startWith.trim(); // this is also important to prevent whitespace at end of startWith
+        
+        // This shared prefix is extracted above so that memory creation (after summary creation) is sure to hit the prefix cache.
+        let sharedContextPrefixText = [
+          `Below is${extraContext ? ` some context, plus` : ""} a summary of some events. You must use this information to complete the '@@@ TASK' specified at the bottom of this instruction.`,
+          `${extraContext ? `\n# Potentially Useful Context (may or may not be relevant):\n${extraContext}\n` : ""}`,
+          `# Summary of Previous Events:`,
+        ].join("\n").trim();
+
+        // WARNING: In functions defined within Perchance lists, *full* dedentation of *every* line happens automatically. If you move this into a <script> function, then this needs to be dedented manually.
+        const summaryTaskPrompt = `@@@ TASK: Your task is to generate some text and then a 'SUMMARY' of that text, and then do that a few more times. Above are the characters and the initial scenario, and a summary of earlier events. You must write the text, and then a summary of that text that you wrote, and then some more text, and a summary of that new text, and so on. Each summary should be a single paragraph of text which summarizes the important details from the preceding 'full text' to roughly half its original size.
+        Use this format/template for your response:
+        \`\`\`
+        >>> FULL TEXT of [A]: <some text>
+        >>> SUMMARY of [A]: <a one-paragraph summary of the [A] text>
+        ---
+        >>> FULL TEXT of [B]: <some text>
+        >>> SUMMARY of [B]: <a one-paragraph summary of the [B] text>
+        ---
+        >>> FULL TEXT of [C]: <some text>
+        >>> SUMMARY of [C]: <a one-paragraph summary of the [C] text>
+        \`\`\`
+        Again, your task is to write some text labelled with a letter, and then a summary of that text, and then some new text, and then a summary of that new text, and so on. Each summary should be a single paragraph of text which summarizes the new text to roughly half its original length. Don't add flowery prose to summaries. Summary text should contain only the most important information, and should use well-phrased sentences with natural structure and correct grammar.
+        NOTE: Don't append any other commentary/notes in your summaries (e.g. no word counts or commentary after completing the task). Just do the task and then end your response.
+        IMPORTANT: Avoid repetition within summaries! If there are erroneously repeated elements in the full text, then remove or ignore them when writing your well-phrased summary.
+        TIP: In order to ensure the summary is half the length of the full text, you should consider what's actually happening in the story at a "higher level", rather than simply re-stating all the individual facts in a terse form. The summary should be a higher-level explanation of the full text.
+        TIP: Ensure that your summaries use full, natural, readable sentences, with correct grammar. You can optionally remind yourself of this requirement in parentheses before one of the summaries.`.trim();
+
+        // try to fix 'over-compression' bug (see 'TIP' in instruction, above):
+        startWith = startWith.trim().slice(0, -1) + " (full, natural, readable sentences with correct grammar):";
+
+        let promptOptions = {
+          instruction: [ // IMPORTANT: if you change this instruction, make sure you don't affect the shared prefix cache with the memory generation, below
+            sharedContextPrefixText,
+            (instructionSummaries.length > 0 ? instructionSummaries : ["(None.)"]).join("\n"),
+            ``,
+            summaryTaskPrompt,
+          ].join("\n").trim(),
+          startWith,
+          stopSequences: ["\n\n", "\n---", "\n>>> FULL TEXT", "FULL TEXT"],
+        };
+        let data = await root.aiTextPlugin(promptOptions);
+        if(data.stopReason === "error") continue; // could retry a few times, but this is no big deal, since every message sent triggers another attempt
+
+        let summary = data.generatedText.trim().replace(/\n+/g, " ").trim().replace(/---$/, "").replace(">>> FULL TEXT", "").replace("FULL TEXT", "").trim();
+        if(!summary.trim() || (instructionSummaries[instructionSummaries.length-1] || "").trim() === summary.trim()) {
+          // AI has copied the previous summary, which sometimes happens.
+          console.warn("AI copied previous summary. Skipping this summary level for this 'round'.");
+          continue;
+        }
+
+        // Automatically fix repetition within summaries:
+        if(summary.split(summary.slice(-30)).length > 5) { // detect repetition of the final 30 chars many times, earlier in the text
+          console.warn("Repeition detected within summary. Fixing...");
+          let result = await root.aiTextPlugin({
+            instruction: [
+              `Does the following story summary snippet shown within <story_summary_snippet>...</story_summary_snippet> include erroneous/unnecessary repetition? If so, respond with fixed, repetition-free text within <fixed_story_summary_snippet>...</fixed_story_summary_snippet>. If the text is fine, then just respond with exactly 'no_repetition', and nothing more.`,
+              ``,
+              `<story_summary_snippet>`,
+              `${summary}`,
+              `</story_summary_snippet>`,
+              ``,
+              `Your response should either be 'no_repetition' or start with <fixed_story_summary_snippet> and give the repetition-free summary, and then end with </fixed_story_summary_snippet>. Feel free to just respond with 'no_repetition' if there's no repetition. Don't add any extra commentary.`,
+            ].join("\n"),
+            stopSequences: ["</fixed_story_summary_snippet>"],
+          });
+          if(result.stopReason === "error") continue;
+          let fixedSummary = result.generatedText.match(/<fixed_story_summary_snippet>(.+)<\/fixed_story_summary_snippet>/s)?.[1].trim();
+          console.warn("fixedSummary:", fixedSummary)
+          if(fixedSummary) summary = fixedSummary;
+        }
+        
+        let messagesSummarizedText = messagesToSummarizeFromFinalBlock.map((message, i) => {
+          message = message.replace(/\n/g, " ").trim();
+          return `(${i+1}) ${message}`;
+        }).join(" ");
+        
+        // Generate memories if they're enabled, and if this is a level 2 summary. We use level 2 summaries because level 1 tends not to have enough 'substance'/info-density to extract several lore/fact entries from.
+        let memories;
+        if(summaryLevel === 1 && opts.shouldCreateMemories) {  
+        
+          // WARNING: In functions defined within Perchance lists, *full* dedentation of *every* line happens automatically. If you move this into a <script> function, then this needs to be dedented manually.
+          const memoryTaskPrompt = `@@@ TASK: Your task is condense the *NEW_TEXT* below into a series of up to 3 lore/memory/fact entries which can be added to a database of facts about this story/world/roleplay/chat. You must extract "timeless facts", not temporary facts.
+          - An example of a "timeless fact" is "<char> was born in <town>". An example of a temporary fact is "<char> is hungry right now". We only want to put timeless facts in the database. Things that are likely to *always* be true.
+          - You should aim to make each entry fully self-contained, since an entry may be read on its own. Within each fact, provide enough surrounding context such that it would make sense if read on its own. Each entry must be self-contained.
+          - Give enough context so there there is no ambiguity in what/who is being referenced in each lore/memory entry that you write.
+          - Each entry should be no more than 3 sentences.
+          - Writing facts about specific significant/interesting events that happened is permissable, so long as you give enough details to deduce EXACTLY *when* AND *where* it happened. Don't leave any ambiguity.
+          - Use actual *names* instead of pronouns or other relative references. For example, instead of "He said to her..." you should write "Bob said to Alice...". And instead of "this town" you should write the full name of the town/location.
+          - If you're unsure whether a fact is "timeless", then you should err on the side of caution by adding more context. E.g. instead of "Bob is kind to Alice" (BAD, because may not be true forever), you should say "Bob was kind to Alice when he first met her." (GOOD because, if true, will *always* be true - i.e. it's a timeless version of the fact)
+          
+          IMPORTANT: Do NOT write about already-known things. Don't repeat things that we already know from the above context and previous events. Do NOT mention things from above character descriptions. Only add *new* things that we learned from the NEW_TEXT. Your task is to extract **NEW** information that we didn't already know. Only from NEW_TEXT.
+          
+          # NEW_TEXT:
+          ${messagesSummarizedText}
+          
+          Use this format/template for your response:
+          
+          # Lore/memory entries from NEW_TEXT:
+          1. <something we can deduce directly from NEW_TEXT>
+          2. <something else can deduce directly from NEW_TEXT>
+          3. <another thing can deduce directly from NEW_TEXT>
+          `.trim();
+          
+          let data = await root.aiTextPlugin({
+            instruction: [ // IMPORTANT: if you change this instruction, make sure you don't affect the shared prefix cache with the summary generation, above
+              sharedContextPrefixText,
+              (summariesAtThisLevelAndAbove.length > 0 ? summariesAtThisLevelAndAbove : ["(None.)"]).join("\n"),
+              ``,
+              memoryTaskPrompt,
+            ].join("\n").trim(),
+            startWith: [
+              `# Lore/memory entries from NEW_TEXT:`,
+              `1.`,
+            ].join("\n"),
+            stopSequences: ["\n4."],
+          });
+          if(data.stopReason === "error") continue; // could retry a few times, but this is no big deal, since every message sent triggers another attempt
+
+          memories = ("1."+data.generatedText).trim().split("\n").map(l => l.trim()).filter(l => l && /^[0-9]\. .+/.test(l)).map(l => l.replace(/^[0-9]\. /, ""));
+        }
+        
+        console.log("----------------");
+        console.log("----------------");
+        console.log("----------------");
+        console.log("𝗟𝗘𝗩𝗘𝗟:", summaryLevel);
+        // console.log("𝗜𝗡𝗦𝗧𝗥𝗨𝗖𝗧𝗜𝗢𝗡:", instruction);
+        // console.log("𝗦𝗧𝗔𝗥𝗧𝗪𝗜𝗧𝗛:", startWith);
+        console.log("𝗜𝗡𝗣𝗨𝗧 𝗧𝗘𝗫𝗧:", messagesSummarizedText);
+        console.log("𝗦𝗨𝗠𝗠𝗔𝗥𝗬:", summary);
+        console.log("𝗠𝗘𝗠𝗢𝗥𝗜𝗘𝗦:", memories || null);
+        console.log("----------------");
+        console.log("----------------");
+        console.log("----------------");
+        
+        window.__aiHierarchicalSummaryStuff[threadId].summariesReadyToInject.push({summarizedMessages:messagesToSummarizeFromFinalBlock, lastMessageSummarizedId, summary, memories, level:summaryLevel});
+      }
+    } catch(e) {
+      console.error(e);
+    } finally {
+      window.__aiHierarchicalSummaryStuff[threadId].alreadyDoingSummary = false;
+    }
+  })();
+
+
+async confirmAsync(message, opts) =>
+  if(!opts) opts = {};
+  if(!message) message = "Are you sure?"
+  return new Promise(resolve => {
+    const overlay = Object.assign(document.createElement("div"), { tabIndex: 0 });
+    overlay.style.cssText = `position:fixed;inset:0;z-index:99999999;display:grid;place-items:center;background-color:rgba(0,0,0,.65);font:16px/1.4 system-ui`;
+    overlay.innerHTML = `<div style="text-align:left !important;max-width:min(97vw, 450px);padding:15px;border-radius:8px;background-color:light-dark(#fff,#222);color:light-dark(#000,#fff);box-shadow:0 2px 8px rgba(0,0,0,.2);">
+      <p style="margin:0 0 20px;white-space:pre-wrap;">${message.replace(/[<>&]/g, m => ({"<":"&lt;","&":"&amp;",">":"&gt;"}[m]))}</p>
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button ${opts.hideCancel ? "hidden" : ""} style="padding:6px 16px;border:1px solid light-dark(#ccc,#555);border-radius:6px;background-color:light-dark(#f6f6f6,#333);color:inherit;cursor:pointer;">Cancel</button>
+        <button autofocus style="padding:6px 16px;border:none;border-radius:6px;background-color:light-dark(#1677ff,#2b87ff);color:#fff;cursor:pointer;">Okay</button>
+      </div>
+    </div>`;
+    const [cancelBtn, okBtn] = overlay.querySelectorAll("button");
+    const finish = val => { overlay.remove(); resolve(val); };
+    cancelBtn.onclick = () => finish(false);
+    okBtn.onclick = () => finish(true);
+    overlay.onkeydown = e => {
+      if (e.key === "Escape") finish(false);
+      else if (e.key === "Enter") finish(true);
+    };
+    document.body.append(overlay);
+    overlay.focus({ preventScroll: true }); // enables Esc handling immediately
+  });
+
+commentChannels
+  chat
+  chill
+  rp
+  spam
+  vent
+  share
+
+defaultCommentOptions
+  width = 100%
+  height = 100%
+  commentPlaceholderText = Add a friendly comment...
+  fullscreenButtonStyle = ""
+  customEmojis = {import:huge-emoji-list}
+  bannedUsers // for comments plugin
+    300cb70b21f2d67b1496
+    c3fc848cb123db2793f8
+    403b16b3422020848cd0

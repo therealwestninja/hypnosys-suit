@@ -1,0 +1,9 @@
+$meta
+  title = Ai Hypnosis Script Generator
+  description = Full-featured, advanced Ai-driven, free, high-quality hypnosis experience generator with narratied voiceovers. 
+  header 
+    mode = minimal // VN mode needs room and ai chat button there will confuse first time perchance users
+
+aiTextPlugin = {import:ai-text-plugin}
+
+$output
