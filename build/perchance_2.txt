@@ -91,6 +91,11 @@
   }
   .step-item.completed .step-num::before { content: '\2713'; }
   .step-item.completed .step-num-text { display: none; }
+  .step-item.skipped .step-circle { background: var(--wood-light); border-color: var(--wood-light); color: var(--text-faint); }
+  .step-item.skipped .step-label { color: var(--text-faint); }
+  .step-item.skipped .step-num::before { content: '—'; }
+  .step-item.skipped .step-num-text { display: none; }
+  .step-item.skipped .step-value { color: var(--text-faint); font-style: italic; }
   .step-label { font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); text-align: center; line-height: 1.3; max-width: 90px; }
   .step-item.current .step-label, .step-item.completed .step-label { color: var(--text-dim); }
   .step-value { font-size: 0.68rem; color: var(--neon-amber); text-align: center; max-width: 90px; line-height: 1.2; font-style: italic; margin-top: -4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -115,6 +120,15 @@
   .step-nav .btn-next:disabled { opacity: 0.3; cursor: not-allowed; filter: none; box-shadow: none; }
   .step-nav .step-spacer { flex: 0 0 0; }
   .btn-back[hidden], .btn-next[hidden] { display: none !important; }
+  .step-nav .btn-skip {
+    background: transparent; color: var(--text-faint);
+    border: 1px dashed var(--wood-light); border-radius: var(--radius);
+    padding: 10px 16px; font-size: 0.78rem; font-weight: 500;
+    cursor: pointer; letter-spacing: 0.02em; transition: all 0.25s;
+    font-family: var(--font-body); white-space: nowrap;
+  }
+  .step-nav .btn-skip:hover { color: var(--text-dim); border-color: var(--neon-amber); border-style: solid; }
+  .step-nav .btn-skip[hidden] { display: none !important; }
 
   /* ============ CARD GRID ============ */
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
@@ -245,6 +259,18 @@
     box-shadow: 0 0 6px rgba(57,255,142,0.4), 0 0 14px rgba(57,255,142,0.15);
   }
   .gen-phase.done { color: var(--accent-green); }
+  .gen-phase.error .gen-dot {
+    background: #ff3b3b; border-color: #ff3b3b;
+    box-shadow: 0 0 6px rgba(255,59,59,0.5), 0 0 14px rgba(255,59,59,0.2);
+  }
+  .gen-phase.error { color: #ff3b3b; cursor: pointer; }
+  .gen-phase.error:hover { text-decoration: underline; }
+  .gen-phase.warn .gen-dot {
+    background: var(--neon-amber); border-color: var(--neon-amber);
+    box-shadow: 0 0 6px rgba(255,179,0,0.5), 0 0 14px rgba(255,179,0,0.2);
+  }
+  .gen-phase.warn { color: var(--neon-amber); cursor: pointer; }
+  .gen-phase.warn:hover { text-decoration: underline; }
   @keyframes gen-pulse { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
   .gen-eta {
     text-align: center; font-size: 0.72rem; color: var(--text-dim);
@@ -1233,7 +1259,10 @@ body.in-session .footer {
  
     <!-- NAVIGATION -->
     <div class="step-nav">
-      <button class="btn-back" id="btnBack" hidden>← back</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-back" id="btnBack" hidden>← back</button>
+        <button class="btn-skip" id="btnSkipToScript">I already have a script</button>
+      </div>
       <div class="step-spacer"></div>
       <button class="btn-next" id="btnNext">next →</button>
     </div>
@@ -1263,6 +1292,7 @@ body.in-session .footer {
     <div class="session-controls">
       <button class="btn secondary" id="pauseBtn">pause</button>
       <button class="btn secondary" id="endBtn">end & re-alert</button>
+      <button class="btn secondary" id="backToEditBtn">← back to script</button>
       <button class="transcript-toggle" id="transcriptToggle">📜 script</button>
       <button class="transcript-toggle" id="recordBtn">⏺ record ambience</button>
       <button class="transcript-toggle" id="fullscreenBtn">⛶ fullscreen</button>
@@ -1720,6 +1750,7 @@ body.in-session .footer {
     personaFilter: 'all',
     methodFilter: 'all',
     _preMood: 5,
+    _skippedToScript: false,
   };
  
   const PHASE_DURATIONS = {
@@ -1903,12 +1934,16 @@ body.in-session .footer {
         state.stepsCompleted[i] = true;
       }
     }
+    // Going backward from a skip clears the skipped state
+    if (n < state.currentStep && state._skippedToScript) {
+      state._skippedToScript = false;
+    }
     state.currentStep = n;
     // Stop all previews when leaving the Configure step
     if (typeof _stopAllPreviews === 'function') _stopAllPreviews();
     updateStepUI();
     if (n === 4) { renderConfigSummary(); }
-    if (n === 5) { refreshSummary(); }
+    if (n === 5) { refreshSummary(); showEl('generateScriptBtn', true); }
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Accessibility: announce step change and move focus
@@ -1928,30 +1963,43 @@ body.in-session .footer {
     // Stepper circles
     document.querySelectorAll('.step-item').forEach(el => {
       const n = parseInt(el.dataset.step);
+      const isSkipped = state._skippedToScript && n < state.currentStep && !state.stepsCompleted[n];
       el.classList.toggle('current', n === state.currentStep);
-      el.classList.toggle('completed', n < state.currentStep);
-      el.classList.toggle('clickable', n < state.currentStep);
+      el.classList.toggle('completed', n < state.currentStep && !isSkipped);
+      el.classList.toggle('skipped', isSkipped);
+      el.classList.toggle('clickable', n < state.currentStep && !isSkipped);
     });
     // Connectors
     document.querySelectorAll('.step-connector').forEach(el => {
       const [from] = el.dataset.connector.split('-').map(Number);
-      el.classList.toggle('completed', from < state.currentStep);
+      const isSkipped = state._skippedToScript && !state.stepsCompleted[from];
+      el.classList.toggle('completed', from < state.currentStep && !isSkipped);
     });
-    // Step values under circles
-    $('stepValue1').textContent = state.stepsCompleted[1] ? getPersona().name : '';
-    $('stepValue2').textContent = state.stepsCompleted[2] ? getMethod().name : '';
-    let s3 = '';
-    if (state.stepsCompleted[3]) {
-      if (state.craftedSuggestion) s3 = 'crafted ✓';
-      else if (state.intentionType === 'trance') s3 = 'pure trance';
+    // Step values under circles — show "Skipped" for bypassed steps
+    if (state._skippedToScript) {
+      for (let i = 1; i <= 4; i++) {
+        const el = $('stepValue' + i);
+        if (el && !state.stepsCompleted[i]) el.textContent = 'skipped';
+      }
+    } else {
+      $('stepValue1').textContent = state.stepsCompleted[1] ? getPersona().name : '';
+      $('stepValue2').textContent = state.stepsCompleted[2] ? getMethod().name : '';
+      let s3 = '';
+      if (state.stepsCompleted[3]) {
+        if (state.craftedSuggestion) s3 = 'crafted ✓';
+        else if (state.intentionType === 'trance') s3 = 'pure trance';
+      }
+      $('stepValue3').textContent = s3;
+      $('stepValue4').textContent = state.stepsCompleted[4] ? state.length : '';
     }
-    $('stepValue3').textContent = s3;
-    $('stepValue4').textContent = state.stepsCompleted[4] ? state.length : '';
     $('stepValue5').textContent = state.fullScript ? 'ready ✓' : '';
     // Nav
     $('btnBack').hidden = state.currentStep === 1;
     $('btnNext').hidden = state.currentStep === TOTAL_STEPS;
     $('btnNext').disabled = !validateStep(state.currentStep);
+    // Skip button — only visible on step 1
+    const skipBtn = $('btnSkipToScript');
+    if (skipBtn) skipBtn.hidden = state.currentStep !== 1;
   }
  
   function refreshSummary() {
@@ -3043,16 +3091,23 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   // ====================================================================
 
   /** Determine the phase list based on session length */
+
+  /** Determine the phase list — includes affirmation interludes between work phases */
   function getPhaseList() {
     const base = ['settling', 'induction', 'deepener'];
     const workCount = state.length === 'long' ? 3 : state.length === 'medium' ? 2 : 1;
-    for (let i = 1; i <= workCount; i++) base.push(workCount > 1 ? `work-${i}` : 'work');
+    const userAff = $('userAffirmations')?.value?.trim();
+    for (let i = 1; i <= workCount; i++) {
+      // Add affirmation interlude before each work block (if user provided affirmations)
+      if (userAff && i > 1) base.push(`affirm-${i}`);
+      base.push(workCount > 1 ? `work-${i}` : 'work');
+    }
     base.push('emergence');
     return base;
   }
 
-  /** Render the phase progress dots */
-  function renderGenProgress(phases, activeIdx, doneMask, eta) {
+  /** Render phase progress with state: pending, streaming, done, error, warn */
+  function renderGenProgress(phases, stateMask, eta, retryCallback) {
     const wrap = $('genProgress');
     const container = $('genPhases');
     const etaEl = $('genEta');
@@ -3060,12 +3115,21 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     wrap.style.display = 'block';
     const labels = { settling: 'Settling', induction: 'Induction', deepener: 'Deepener', emergence: 'Emergence' };
     container.innerHTML = phases.map((p, i) => {
-      const label = labels[p] || (p.startsWith('work') ? 'Work' + (p.includes('-') ? ' ' + p.split('-')[1] : '') : p);
-      const cls = doneMask[i] ? 'done' : i === activeIdx ? 'streaming' : '';
-      return `<div class="gen-phase ${cls}"><div class="gen-dot"></div><span>${label}</span></div>`;
+      const label = labels[p] || (p.startsWith('work') ? 'Work' + (p.includes('-') ? ' ' + p.split('-')[1] : '') : p.startsWith('affirm') ? 'Affirm' : p);
+      const st = stateMask[i] || 'pending';
+      return `<div class="gen-phase ${st}" data-phase-idx="${i}"><div class="gen-dot"></div><span>${label}</span></div>`;
     }).join('');
     if (etaEl) etaEl.textContent = eta || '';
+    // Wire click-to-retry for error/warn states
+    if (retryCallback) {
+      container.querySelectorAll('.gen-phase.error, .gen-phase.warn').forEach(el => {
+        el.addEventListener('click', () => retryCallback(parseInt(el.dataset.phaseIdx)));
+      });
+    }
   }
+
+  // Generation state held outside so retry can access it
+  let _genState = null;
 
   async function generateFullScript() {
     if (_aiInProgress) { notify.info('An AI call is already in progress.'); return; }
@@ -3085,57 +3149,71 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     setLoading('regenScriptBtn', true);
 
     const phases = getPhaseList();
-    const doneMask = phases.map(() => false);
+    const stateMask = phases.map(() => 'pending');
     const phaseTimes = [];
     const phaseResults = {};
 
-    // Build shared context
     const craftedBlock = state.craftedSuggestion ? `\nCRAFTED SUGGESTION: "${state.craftedSuggestion.craftedSuggestion}"\nTRIGGER: ${state.craftedSuggestion.trigger}\nEFFECT: ${state.craftedSuggestion.coreResponse}` : '';
     const userAff = $('userAffirmations')?.value?.trim();
-    const affirmBlock = userAff ? `\nUSER AFFIRMATIONS:\n${userAff.split('\n').filter(l=>l.trim()).map(l=>`"${l.trim()}"`).join('\n')}` : '';
+    const affirmLines = userAff ? userAff.split('\n').filter(l => l.trim()).map(l => l.trim()) : [];
+    const affirmBlock = affirmLines.length ? `\nUSER AFFIRMATIONS:\n${affirmLines.map(l => `"${l}"`).join('\n')}` : '';
     const demoNote = method.category === 'demonstration' ? '\nDEMONSTRATION METHOD: direct suggestions, build effect, include TEST.' : '';
 
     const sharedContext = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"${craftedBlock}${affirmBlock}${demoNote}`;
 
     // Phase-specific instructions
     const phaseInstructions = {
-      settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user. Open naturally in your persona's voice — don't say "hello" or "welcome". Use [PAUSE n] markers. Output ONLY the script text.`,
-      induction: `Write the INDUCTION phase (~${targetWords.induction} words). Move from ordinary awareness toward trance using the ${method.name} method. Use [PAUSE n] markers liberally. Output ONLY the script text.`,
-      deepener: `Write the DEEPENER phase (~${targetWords.deepener} words). Take them deeper.${state.craftedSuggestion ? ' Foreshadow the suggestion.' : ''}${userAff ? ' Begin weaving the user\'s affirmations.' : ''} Use [PAUSE n] markers. Output ONLY the script text.`,
-      emergence: `Write the EMERGENCE phase (~${targetWords.emergence} words). ${method.category === 'demonstration' ? 'FIRST: deliver the TEST. THEN count up 1-5.' : state.craftedSuggestion ? 'State the core effect one final time as anchor, THEN count up 1-5.' : 'Count up 1-5 to full alertness.'} Bring them fully alert. Use [PAUSE n] markers. Output ONLY the script text.`,
+      settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user. Open naturally — don't say "hello". Use [PAUSE n] markers. Output ONLY the script text.`,
+      induction: `Write the INDUCTION phase (~${targetWords.induction} words). Move from awareness toward trance using ${method.name}. Use [PAUSE n] markers. Output ONLY script text.`,
+      deepener: `Write the DEEPENER phase (~${targetWords.deepener} words). Take them deeper.${state.craftedSuggestion ? ' Foreshadow the suggestion.' : ''}${affirmLines.length ? ' Begin weaving affirmations.' : ''} Use [PAUSE n]. Output ONLY script text.`,
+      emergence: `Write the EMERGENCE phase (~${targetWords.emergence} words). ${method.category === 'demonstration' ? 'FIRST: deliver the TEST. THEN count up 1-5.' : state.craftedSuggestion ? 'State core effect one final time, THEN count up 1-5.' : 'Count up 1-5 to full alertness.'} Use [PAUSE n]. Output ONLY script text.`,
     };
 
-    // Work phase instructions — split across multiple work phases
+    // Work phase instructions
     const workCount = phases.filter(p => p.startsWith('work')).length;
     const workWordsEach = Math.round(targetWords.work / workCount);
-    phases.forEach((p, i) => {
-      if (!p.startsWith('work')) return;
-      const workIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
-      let workNote = `Write WORK phase ${workIdx} of ${workCount} (~${workWordsEach} words). `;
-      if (workIdx === 1) {
-        workNote += state.craftedSuggestion
-          ? 'Deliver the crafted suggestion verbatim. Begin reinforcement.'
-          : method.category === 'demonstration' ? 'BUILD the demonstration effect progressively.' : 'Therapeutic deepening and awareness.';
-      } else if (workIdx === workCount) {
-        workNote += state.craftedSuggestion
-          ? 'Final reinforcement of the suggestion. Peak intensity. Future-pace the effect.'
-          : 'Peak deepening. Consolidation.';
-      } else {
-        workNote += state.craftedSuggestion
-          ? 'Continue reinforcement with variants. Intensify.'
-          : 'Continue deepening. Layer suggestions.';
+    phases.forEach(p => {
+      if (p.startsWith('affirm')) {
+        // Affirmation interlude — short, poetic, uses the user's exact words
+        phaseInstructions[p] = `Write a brief affirmation interlude (~40-60 words). Deliver these affirmations in ${persona.name}'s voice, woven into flowing, hypnotic language:\n${affirmLines.map(l => `"${l}"`).join('\n')}\nUse the user's exact words. Add [PAUSE 3] between each. Poetic, rhythmic, repetitive. Output ONLY script text.`;
+      } else if (p.startsWith('work')) {
+        const workIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
+        let note = `Write WORK phase ${workIdx} of ${workCount} (~${workWordsEach} words). `;
+        if (workIdx === 1) note += state.craftedSuggestion ? 'Deliver the crafted suggestion verbatim. Begin reinforcement.' : method.category === 'demonstration' ? 'BUILD the demonstration effect.' : 'Therapeutic deepening.';
+        else if (workIdx === workCount) note += state.craftedSuggestion ? 'Final reinforcement. Peak intensity. Future-pace.' : 'Peak deepening. Consolidation.';
+        else note += state.craftedSuggestion ? 'Continue reinforcement with variants. Intensify.' : 'Continue deepening.';
+        note += ' Use [PAUSE n]. Output ONLY script text.';
+        phaseInstructions[p] = note;
       }
-      workNote += userAff ? ' Weave the user\'s affirmations into this phase.' : '';
-      workNote += ' Use [PAUSE n] markers. Output ONLY the script text.';
-      phaseInstructions[p] = workNote;
     });
 
+    // Save gen state for retry access
+    _genState = { phases, stateMask, phaseResults, phaseTimes, sharedContext, phaseInstructions, persona, method, genStartTime: Date.now(), priorSummary: '' };
+
+    const retryPhase = async (idx) => {
+      if (_aiInProgress && !_genState) return;
+      const gs = _genState;
+      gs.stateMask[idx] = 'streaming';
+      renderGenProgress(gs.phases, gs.stateMask, null, retryPhase);
+      try {
+        const result = await generateSinglePhase(gs, idx);
+        gs.phaseResults[gs.phases[idx]] = result;
+        gs.stateMask[idx] = 'done';
+        renderGenProgress(gs.phases, gs.stateMask, null, retryPhase);
+        assembleAndShowScript(gs);
+        notify.success(`Phase "${gs.phases[idx]}" regenerated successfully.`);
+      } catch (e) {
+        gs.stateMask[idx] = 'error';
+        renderGenProgress(gs.phases, gs.stateMask, null, retryPhase);
+        notify.error(`Retry failed: ${e.message}. Click the red indicator to try again.`);
+      }
+    };
+
     // Show initial progress
-    renderGenProgress(phases, 0, doneMask, `Estimated: ~${phases.length * 60}s remaining`);
+    renderGenProgress(phases, stateMask, `Estimated: ~${phases.length * 60}s remaining`, retryPhase);
     const genStartTime = Date.now();
     const stopTimer = makeElapsedTimer(s => {
-      const avgTime = phaseTimes.length > 0 ? phaseTimes.reduce((a,b)=>a+b,0) / phaseTimes.length : 60;
-      const remaining = Math.max(0, Math.round(avgTime * (phases.length - phaseTimes.length) - (Date.now() - genStartTime) / 1000 + phaseTimes.reduce((a,b)=>a+b,0)));
+      const avgTime = phaseTimes.length > 0 ? phaseTimes.reduce((a,b) => a+b, 0) / phaseTimes.length : 60;
       const remSec = Math.max(0, Math.round(avgTime * (phases.length - phaseTimes.length)));
       $('genEta').textContent = `${s}s elapsed · ~${remSec}s remaining`;
     });
@@ -3146,47 +3224,39 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       for (let i = 0; i < phases.length; i++) {
         const phase = phases[i];
         const phaseStart = Date.now();
-        renderGenProgress(phases, i, doneMask, null);
+        stateMask[i] = 'streaming';
+        renderGenProgress(phases, stateMask, null, retryPhase);
 
-        // Build prompt with prior context
-        const summaryBlock = priorSummary ? `\n\nSO FAR (summary of what you've written — continue seamlessly, DO NOT repeat):\n${priorSummary}` : '';
-        const instruction = `${sharedContext}${summaryBlock}\n\n═══ YOUR TASK ═══\n${phaseInstructions[phase]}\n\nStay fully in ${persona.name}'s voice. Continue the flow naturally from what came before. Do NOT include phase markers like ===PHASE===. Start writing immediately:`;
-
-        const data = await root.aiTextPlugin({ instruction, stopSequences: ['\n\n\n\n', '==='], hideStartWith: true });
-        if (data.stopReason === 'error') throw new Error(`Phase "${phase}" failed. Try again.`);
-
-        let text = (data.generatedText || '').trim();
-        // Remove any stray phase markers the AI might have included
-        text = text.replace(/^===\w+===\s*/i, '').trim();
-        if (!text || text.length < 20) throw new Error(`Phase "${phase}" returned too little text.`);
-
-        phaseResults[phase] = text;
-
-        // Build running summary for next phase (keep it brief to avoid context bloat)
-        const summaryLine = text.length > 200 ? text.substring(0, 150).replace(/\[PAUSE \d+\]/g, '') + '...' : text.replace(/\[PAUSE \d+\]/g, '');
-        priorSummary += `\n${phase.toUpperCase()}: ${summaryLine}`;
-
-        // Mark done
-        doneMask[i] = true;
-        phaseTimes.push((Date.now() - phaseStart) / 1000);
-        renderGenProgress(phases, i + 1, doneMask, null);
+        try {
+          const result = await generateSinglePhase(_genState, i);
+          phaseResults[phase] = result;
+          priorSummary += `\n${phase.toUpperCase()}: ${result.length > 200 ? result.substring(0, 150).replace(/\[PAUSE \d+\]/g, '') + '...' : result.replace(/\[PAUSE \d+\]/g, '')}`;
+          _genState.priorSummary = priorSummary;
+          stateMask[i] = 'done';
+          phaseTimes.push((Date.now() - phaseStart) / 1000);
+        } catch (e) {
+          console.error(`Phase "${phase}" failed:`, e);
+          if (e.message.includes('AI') || e.message.includes('error') || e.message.includes('failed')) {
+            stateMask[i] = 'error';
+            notify.error(`"${phase}" failed: ${e.message}. Click the red indicator to retry.`);
+          } else {
+            stateMask[i] = 'warn';
+            notify.warn(`"${phase}" had an issue: ${e.message}. Click the yellow indicator to retry.`);
+          }
+          // Continue to next phase — partial script is better than nothing
+          phaseTimes.push(60); // estimate for ETA
+        }
+        renderGenProgress(phases, stateMask, null, retryPhase);
       }
 
-      // Assemble full script with markers
-      let fullScript = '';
-      const markerMap = { settling: 'SETTLING', induction: 'INDUCTION', deepener: 'DEEPENER', emergence: 'EMERGENCE' };
-      phases.forEach(p => {
-        const marker = markerMap[p] || 'WORK';
-        fullScript += `===${marker}===\n${phaseResults[p]}\n\n`;
-      });
-
-      state.fullScript = fullScript.trim();
-      state.parsedScript = parseScript(state.fullScript);
-      showScript();
-      updateStepUI();
-
+      assembleAndShowScript(_genState);
       const totalTime = Math.round((Date.now() - genStartTime) / 1000);
-      notify.success(`Script generated in ${totalTime}s — ${phases.length} phases. Review below.`);
+      const failures = stateMask.filter(s => s === 'error' || s === 'warn').length;
+      if (failures > 0) {
+        notify.warn(`Script generated in ${totalTime}s with ${failures} phase(s) needing retry. Click indicators to fix.`);
+      } else {
+        notify.success(`Script generated in ${totalTime}s — ${phases.length} phases complete.`);
+      }
 
     } catch (e) {
       console.error(e);
@@ -3196,9 +3266,41 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       stopTimer();
       setLoading('generateScriptBtn', false, 'generate full script');
       setLoading('regenScriptBtn', false);
-      // Keep gen progress visible showing final state (all green)
     }
   }
+
+  /** Generate a single phase via aiTextPlugin */
+  async function generateSinglePhase(gs, idx) {
+    const phase = gs.phases[idx];
+    const summaryBlock = gs.priorSummary ? `\n\nSO FAR (summary — continue seamlessly, DO NOT repeat):\n${gs.priorSummary}` : '';
+    const instruction = `${gs.sharedContext}${summaryBlock}\n\n═══ YOUR TASK ═══\n${gs.phaseInstructions[phase]}\n\nStay in ${gs.persona.name}'s voice. Continue naturally. No ===PHASE=== markers. Start immediately:`;
+
+    const data = await root.aiTextPlugin({ instruction, stopSequences: ['\n\n\n\n', '==='], hideStartWith: true });
+    if (data.stopReason === 'error') throw new Error('AI returned an error');
+
+    let text = (data.generatedText || '').trim();
+    text = text.replace(/^===\w+===\s*/i, '').trim();
+    if (!text || text.length < 15) throw new Error('Phase returned too little text');
+    return text;
+  }
+
+  /** Assemble all completed phases into a full script */
+  function assembleAndShowScript(gs) {
+    const markerMap = { settling: 'SETTLING', induction: 'INDUCTION', deepener: 'DEEPENER', emergence: 'EMERGENCE' };
+    let fullScript = '';
+    gs.phases.forEach(p => {
+      if (!gs.phaseResults[p]) return; // skip failed phases
+      const marker = markerMap[p] || (p.startsWith('affirm') ? 'WORK' : 'WORK');
+      fullScript += `===${marker}===\n${gs.phaseResults[p]}\n\n`;
+    });
+    if (fullScript.trim().length > 50) {
+      state.fullScript = fullScript.trim();
+      state.parsedScript = parseScript(state.fullScript);
+      showScript();
+      updateStepUI();
+    }
+  }
+
 
  
   function parseScript(text) {
@@ -4006,7 +4108,13 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   function togglePause() {
     state.paused = !state.paused;
     $('pauseBtn').textContent = state.paused ? 'resume' : 'pause';
-    if (state.paused) speechSynthesis.pause(); else speechSynthesis.resume();
+    if (state.paused) {
+      speechSynthesis.pause();
+      if (drone.ctx && drone.running) drone.ctx.suspend();
+    } else {
+      speechSynthesis.resume();
+      if (drone.ctx && drone.running) drone.ctx.resume();
+    }
   }
  
   // ====================================================================
@@ -4020,6 +4128,39 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   });
   $('btnNext').addEventListener('click', () => goToStep(state.currentStep + 1));
   $('btnBack').addEventListener('click', () => goToStep(state.currentStep - 1));
+  $('btnSkipToScript').addEventListener('click', () => {
+    state._skippedToScript = true;
+    state.currentStep = 5;
+    state.stepsCompleted = { 1: false, 2: false, 3: false, 4: false, 5: false };
+    // Show the script editor area with empty textarea for pasting
+    $('scriptText').value = '';
+    $('scriptStats').innerHTML = 'Paste or type your script here. Use <code>===SETTLING===</code>, <code>===INDUCTION===</code>, etc. markers to define phases, or just paste plain text.';
+    $('scriptPreview').classList.add('visible');
+    // Hide generate button and summary since we skipped config
+    showEl('generateScriptBtn', false);
+    showEl('genProgress', false);
+    updateStepUI();
+    notify.info('Paste your script into the editor below, then press Begin Session.');
+    // Focus the textarea
+    setTimeout(() => $('scriptText')?.focus(), 300);
+  });
+
+  // scriptText input handler — updates state when user edits/pastes
+  $('scriptText').addEventListener('input', () => {
+    const text = $('scriptText').value.trim();
+    if (text.length > 20) {
+      state.fullScript = text;
+      state.parsedScript = parseScript(text);
+      // Update word count
+      const spokenOnly = text.replace(/===\s*\w+\s*===/gi, ' ').replace(/\[PAUSE\s+\d+\]/gi, ' ');
+      const words = spokenOnly.split(/\s+/).filter(w => w.length > 0).length;
+      $('scriptStats').innerHTML = `<strong>${words}</strong> words · Edit below before starting.`;
+    } else {
+      state.fullScript = null;
+      state.parsedScript = null;
+    }
+    updateStepUI();
+  });
  
   // Filter tabs
   $('personaFilterTabs').addEventListener('click', e => {
@@ -4165,6 +4306,17 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   // Session
   $('pauseBtn').addEventListener('click', togglePause);
   $('endBtn').addEventListener('click', emergencyEnd);
+  $('backToEditBtn').addEventListener('click', () => {
+    if (!confirm('Stop the session and return to the script editor?')) return;
+    state.abortFlag = true; speechSynthesis.cancel();
+    drone.stop(); stopVisuals();
+    setSleepOverlay(false);
+    try { state._wakeLock?.release(); } catch(e) {}
+    document.body.classList.remove('in-session');
+    switchScreen('setup-wizard');
+    goToStep(5);
+    notify.info('Session stopped. You can edit the script and restart.');
+  });
   $('restartBtn').addEventListener('click', () => location.reload());
   $('transcriptToggle')?.addEventListener('click', toggleTranscript);
   $('recordBtn')?.addEventListener('click', toggleRecording);
