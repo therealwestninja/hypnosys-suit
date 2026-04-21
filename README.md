@@ -1,4 +1,4 @@
-# · Hypnosis Script Generator ·
+# · Advanced Hypnosis Narration Engine ·
 
 **A free, AI-driven, fully browser-native hypnosis experience generator.**
 
