@@ -1280,7 +1280,7 @@ body.in-session .footer {
       <div class="step-spacer"></div>
       <button class="btn-next" id="btnNext">next →</button>
     </div>
-  <div class="footer"><span>© 2026 therealwestninja.</span> · <a href="https://www.deviantart.com/west-ninja" target="_blank" rel="noopener">DeviantArt</a> · <a href="https://github.com/therealwestninja" target="_blank" rel="noopener">GitHub</a></div>
+  <div class="footer"><span>© 2026 therealwestninja.</span> · <a href="https://www.deviantart.com/west-ninja" target="_blank" rel="noopener">DeviantArt</a> · <a href="https://github.com/therealwestninja" target="_blank" rel="noopener">GitHub</a> · <a href="#" id="crisisLink" style="color:var(--accent-green);">crisis resources</a></div>
   </div>
  
   <!-- SESSION SCREEN -->
@@ -3424,6 +3424,9 @@ Begin:`;
     const scriptText = $('scriptText').value.trim();
     if (!scriptText) { notify.warn('Generate or paste a script first.'); return; }
 
+    // Daily session cap
+    if (!(await checkDailyCap())) return;
+
     // Check TTS availability
     const voiceList = (typeof speechSynthesis !== 'undefined') ? speechSynthesis.getVoices() : [];
     if (voiceList.length === 0) {
@@ -3813,6 +3816,9 @@ Begin:`;
 
     // Advance structured program (non-emergency only)
     if (!wasEmergency) advanceProgramDay();
+
+    // Refresh method gating (may unlock new categories)
+    applyMethodGating();
 
     // Build post-session summary
     const mins = Math.floor(elapsed / 60), secs = elapsed % 60;
@@ -4291,7 +4297,6 @@ Begin:`;
   // ====================================================================
   const SAFETY_KEY = 'stillness_safety_v1';
   function shouldShowSafety() { try { return !localStorage.getItem(SAFETY_KEY); } catch { return false; } }
-  function markSafetySeen() { try { localStorage.setItem(SAFETY_KEY, '1'); } catch {} }
 
   $('scConfirm')?.addEventListener('change', e => {
     const btn = $('safetyAcceptBtn');
@@ -4675,6 +4680,70 @@ Begin:`;
     if (caps.vibration) navigator.vibrate([100, 50, 100]);
   }
 
+  // Crisis resources — accessible from footer at any time
+  $('crisisLink')?.addEventListener('click', e => {
+    e.preventDefault();
+    const msg = 'If you are in crisis or experiencing distress:\n\n' +
+      '🇺🇸 USA: 988 Suicide & Crisis Lifeline — call or text 988\n' +
+      '🇬🇧 UK/IE: Samaritans — 116 123 (free, 24/7)\n' +
+      '🇦🇺 Australia: Lifeline — 13 11 14\n' +
+      '🇨🇦 Canada: Talk Suicide — 1-833-456-4566\n' +
+      '🌍 International: findahelpline.com\n\n' +
+      'This tool is not a substitute for professional care.';
+    alert(msg);
+  });
+
+  // Session daily cap — max 3 sessions per day to prevent compulsive use
+  async function checkDailyCap() {
+    const history = (await idbGet('stillness_history_v1')) || [];
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayCount = history.filter(s => {
+      const d = new Date(s.date); d.setHours(0,0,0,0);
+      return d.getTime() === today.getTime();
+    }).length;
+    if (todayCount >= 3) {
+      notify.info('You\'ve completed 3 sessions today — that\'s plenty. Rest and let the suggestions integrate. Come back tomorrow.');
+      return false;
+    }
+    return true;
+  }
+
+  // Monthly safety re-check — re-display contraindication screen every 30 days
+  function shouldReShowSafety() {
+    try {
+      const ts = localStorage.getItem(SAFETY_KEY);
+      if (!ts || ts === '1') return false; // legacy flag format, treat as seen
+      const lastSeen = parseInt(ts, 10);
+      if (isNaN(lastSeen)) return false;
+      return (Date.now() - lastSeen) > 30 * 86400000; // 30 days
+    } catch { return false; }
+  }
+  function markSafetySeen() { try { localStorage.setItem(SAFETY_KEY, String(Date.now())); } catch {} }
+
+  // Practice-unlock gating — methods unlock with experience
+  async function getSessionCount() {
+    const history = (await idbGet('stillness_history_v1')) || [];
+    return history.filter(s => s.completed).length;
+  }
+
+  async function applyMethodGating() {
+    const count = await getSessionCount();
+    // Thresholds: rapid unlocks at 3 sessions, advanced at 7
+    document.querySelectorAll('#methodFilterTabs .filter-tab').forEach(tab => {
+      const cat = tab.dataset.filter;
+      if (cat === 'rapid' && count < 3) {
+        tab.style.opacity = '0.4';
+        tab.title = `Unlocks after 3 completed sessions (${count} so far)`;
+      } else if (cat === 'advanced' && count < 7) {
+        tab.style.opacity = '0.4';
+        tab.title = `Unlocks after 7 completed sessions (${count} so far)`;
+      } else {
+        tab.style.opacity = '';
+        tab.title = '';
+      }
+    });
+  }
+
   // Persona modal
   $('personaCancelBtn').addEventListener('click', closePersonaEditor);
   $('personaSaveBtn').addEventListener('click', savePersonaFromForm);
@@ -4751,10 +4820,13 @@ Begin:`;
     // Onboarding tour for first-time visitors
     if (shouldShowTour()) setTimeout(startTour, 800);
 
-    // First-run safety screen
-    if (shouldShowSafety()) $('safetyScreen').style.display = 'flex';
+    // First-run safety screen (or monthly re-check)
+    if (shouldShowSafety() || shouldReShowSafety()) $('safetyScreen').style.display = 'flex';
 
     // Rising-score sparkline
     renderSparkline();
+
+    // Practice-unlock method gating
+    applyMethodGating();
   })();
 </script>
