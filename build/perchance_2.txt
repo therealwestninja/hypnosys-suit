@@ -53,7 +53,7 @@
     background: radial-gradient(ellipse, rgba(255,160,40,0.06) 0%, rgba(255,80,20,0.02) 40%, transparent 70%);
   }
   body { padding: 24px 18px 60px; position: relative; z-index: 1; }
-  .container { max-width: 850px; min-width: 600px; margin: 0 auto; position: relative; z-index: 1; }
+   .container { max-width: 850px; min-width: 600px; margin: 0 auto; position: relative; z-index: 1; }
 
   h1 {
     font-family: var(--font-display);
@@ -131,7 +131,7 @@
   .step-nav .btn-skip[hidden] { display: none !important; }
 
   /* ============ CARD GRID ============ */
-  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 5fr)); gap: 6px; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
   .card {
     background: var(--glass); border: 1px solid var(--glass-border);
     border-radius: var(--radius); padding: 5px 15x; cursor: pointer;
@@ -401,6 +401,8 @@
   #session-screen { text-align: center; padding-top: 8px; }
   body.in-session { background: #000; }
   body.in-session .container { color: var(--text-faint); }
+  body.in-session .app-layout { display: none; }
+  body.in-session .sidebar-toggle { display: none; }
   .phase-indicator { font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 20px; }
   .stage { position: relative; width: 100%; height: 360px; margin: 0 auto 30px; border-radius: 12px; overflow: hidden; background: #000; }
   .fixation-dot {
@@ -764,6 +766,13 @@ body.in-session .footer {
   .history-item .h-date { color: var(--text-faint); min-width: 60px; }
   .history-item .h-guide { color: var(--text); flex: 1; }
   .history-item .h-dur { color: var(--text-faint); }
+  .history-item .h-play, .history-item .h-delete {
+    background: none; border: 1px solid var(--glass-border); color: var(--text-faint);
+    border-radius: 4px; padding: 1px 5px; font-size: 0.65rem; cursor: pointer;
+    transition: all 0.2s; flex-shrink: 0; line-height: 1.2;
+  }
+  .history-item .h-play:hover { color: var(--neon-cyan); border-color: var(--neon-cyan); box-shadow: 0 0 6px rgba(0,229,255,0.2); }
+  .history-item .h-delete:hover { color: #ff3b3b; border-color: #ff3b3b; }
 
   /* ============ KEYBOARD HINT ============ */
   .kb-hint {
@@ -943,7 +952,7 @@ body.in-session .footer {
  
 <div class="container">
   <h1>· advanced hypnosis narration engine · </h1>
-  <p>"The" <i>single-most</i> dangerous hypnosys app on the planet, and it's free.<br>Generate scripts with automatically narrated voiceovers and fully guided sessions.</p>
+    <p>"The" <i>single-most</i> dangerous hypnosys app on the planet, and it's free.<br>Generate scripts with automatically narrated voiceovers and fully guided sessions.</p>
 
   <button class="sidebar-toggle" id="sidebarToggle">☰</button>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -3829,17 +3838,86 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       </div>
       <div style="font-size:0.72rem;color:var(--text-faint);text-align:center;">favourite guide: ${escapeHtml(favGuide)}</div>`;
 
-    // Recent sessions list (last 10)
+    // Recent sessions list (last 20)
     list.innerHTML = '';
-    history.slice(0, 10).forEach(s => {
+    history.slice(0, 20).forEach((s, idx) => {
       const d = new Date(s.date);
       const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
       const mins = Math.round((s.durationSec || 0) / 60);
+      const hasScript = !!(s.script && s.script.length > 20);
       const item = document.createElement('div');
       item.className = 'history-item';
-      item.innerHTML = `<span class="h-date">${dateStr}</span><span class="h-guide">${escapeHtml(s.guide || '—')} · ${escapeHtml(s.method || '—')}</span><span class="h-dur">${mins}m${s.completed ? '' : ' ✕'}</span>`;
+      item.innerHTML = `
+        <span class="h-date">${dateStr}</span>
+        <span class="h-guide">${escapeHtml(s.guide || '—')} · ${escapeHtml(s.method || '—')}</span>
+        <span class="h-dur">${mins}m${s.completed ? '' : ' ✕'}</span>
+        ${hasScript ? `<button class="h-play" data-idx="${idx}" title="Replay this session">▷</button>` : ''}
+        <button class="h-delete" data-idx="${idx}" title="Delete this entry">✕</button>`;
       list.appendChild(item);
     });
+
+    // Wire play buttons
+    list.querySelectorAll('.h-play').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        const idx = parseInt(e.target.dataset.idx, 10);
+        const entry = history[idx];
+        if (!entry?.script) { notify.warn('No script stored for this session.'); return; }
+        replayFromHistory(entry);
+      });
+    });
+
+    // Wire delete buttons
+    list.querySelectorAll('.h-delete').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        const idx = parseInt(e.target.dataset.idx, 10);
+        if (!confirm('Delete this session from history?')) return;
+        const h = (await idbGet('stillness_history_v1')) || [];
+        h.splice(idx, 1);
+        await idbSet('stillness_history_v1', h);
+        renderSessionHistory();
+        renderSidebarStats();
+        renderHeatmap();
+        renderSparkline();
+        notify.info('Session deleted.');
+      });
+    });
+  }
+
+  /** Replay a session from history — restores all settings and script */
+  function replayFromHistory(entry) {
+    // Restore settings
+    if (entry.personaId) state.selectedPersonaId = entry.personaId;
+    if (entry.methodId) state.selectedMethodId = entry.methodId;
+    if (entry.intention) { state.intentionType = entry.intention; const el = $('intentionType'); if (el) el.value = entry.intention; }
+    if (entry.length) { state.length = entry.length; const el = $('lengthSelect'); if (el) el.value = entry.length; }
+    if (entry.soundscape) { state.soundscape = entry.soundscape; state.droneEnabled = entry.soundscape !== 'none'; const el = $('soundscapeSelect'); if (el) el.value = entry.soundscape; }
+    if (entry.speechRate != null) { state.speechRate = entry.speechRate; const el = $('speechRate'); if (el) el.value = Math.round(entry.speechRate * 100); }
+    if (entry.voicePitch != null) { state.voicePitch = entry.voicePitch; }
+    if (entry.voiceVolume != null) { state.voiceVolume = entry.voiceVolume; }
+    if (entry.droneVolume != null) { state.droneVolume = entry.droneVolume; }
+    if (entry.vizOverride) { state.vizOverride = entry.vizOverride; const el = $('vizSelect'); if (el) el.value = entry.vizOverride; }
+    if (entry.vizSettings) state.vizSettings = { ...state.vizSettings, ...entry.vizSettings };
+    if (entry.duckingEnabled != null) { state.duckingEnabled = entry.duckingEnabled; const el = $('duckingToggle'); if (el) el.checked = entry.duckingEnabled; }
+    if (entry.intentionText) { const el = $('intentionInput'); if (el) el.value = entry.intentionText; }
+    if (entry.voiceName) state._savedVoiceName = entry.voiceName;
+
+    // Load the script
+    state.fullScript = entry.script;
+    state.parsedScript = parseScript(entry.script);
+
+    // Navigate to step 5 with the script loaded
+    state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: false };
+    renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
+    updateIntentionHint();
+    showScript();
+    state.currentStep = 5;
+    updateStepUI();
+    switchScreen('setup-wizard');
+    goToStep(5);
+    // Close sidebar on mobile
+    $('sidebar')?.classList.remove('open');
+    $('sidebarOverlay')?.classList.remove('open');
+    notify.success(`Session from ${new Date(entry.date).toLocaleDateString()} loaded — ready to replay.`);
   }
 
   /** Populate sidebar stats and streak from session history */
@@ -4396,6 +4474,19 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       durationSec: elapsed,
       completed: !wasEmergency,
       preMood: state._preMood || null,
+      // Full reproducibility data
+      script: state.fullScript || '',
+      personaId: state.selectedPersonaId,
+      methodId: state.selectedMethodId,
+      intentionText: $('intentionInput')?.value || '',
+      voiceName: $('voiceSelect')?.value || '',
+      speechRate: state.speechRate,
+      voicePitch: state.voicePitch,
+      voiceVolume: state.voiceVolume,
+      droneVolume: state.droneVolume,
+      vizOverride: state.vizOverride,
+      vizSettings: { ...state.vizSettings },
+      duckingEnabled: state.duckingEnabled,
     };
     const history = (await idbGet('stillness_history_v1')) || [];
     history.unshift(sessionRecord);
