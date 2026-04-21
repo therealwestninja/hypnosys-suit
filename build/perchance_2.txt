@@ -1824,6 +1824,61 @@ body.in-session .footer {
       const el = $(s); if (el) el.style.display = s === id ? 'block' : 'none';
     });
   }
+
+  // ====================================================================
+  // SETTINGS PERSISTENCE (auto-save/load to localStorage)
+  // ====================================================================
+  const SETTINGS_KEY = 'stillness_settings_v1';
+  let _saveTimeout = null;
+
+  function saveUserSettings() {
+    clearTimeout(_saveTimeout);
+    _saveTimeout = setTimeout(() => {
+      try {
+        const settings = {
+          selectedPersonaId: state.selectedPersonaId,
+          selectedMethodId: state.selectedMethodId,
+          intentionType: state.intentionType,
+          length: state.length,
+          soundscape: state.soundscape,
+          droneEnabled: state.droneEnabled,
+          speechRate: state.speechRate,
+          voicePitch: state.voicePitch,
+          voiceVolume: state.voiceVolume,
+          droneVolume: state.droneVolume,
+          vizOverride: state.vizOverride,
+          hud: state.hud,
+          intentionInput: $('intentionInput')?.value || '',
+          userAffirmations: $('userAffirmations')?.value || '',
+          voiceName: $('voiceSelect')?.value || '',
+        };
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      } catch {}
+    }, 1500);
+  }
+
+  function loadUserSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return false;
+      const s = JSON.parse(raw);
+      if (s.selectedPersonaId) state.selectedPersonaId = s.selectedPersonaId;
+      if (s.selectedMethodId) state.selectedMethodId = s.selectedMethodId;
+      if (s.intentionType) { state.intentionType = s.intentionType; const el = $('intentionType'); if (el) el.value = s.intentionType; }
+      if (s.length) { state.length = s.length; const el = $('lengthSelect'); if (el) el.value = s.length; }
+      if (s.soundscape) { state.soundscape = s.soundscape; state.droneEnabled = s.soundscape !== 'none'; const el = $('soundscapeSelect'); if (el) el.value = s.soundscape; }
+      if (s.speechRate != null) { state.speechRate = s.speechRate; const el = $('speechRate'); if (el) el.value = Math.round(s.speechRate * 100); }
+      if (s.voicePitch != null) { state.voicePitch = s.voicePitch; const el = $('voicePitch'); if (el) el.value = Math.round(s.voicePitch * 100); }
+      if (s.voiceVolume != null) { state.voiceVolume = s.voiceVolume; const el = $('voiceVolume'); if (el) el.value = Math.round(s.voiceVolume * 100); }
+      if (s.droneVolume != null) { state.droneVolume = s.droneVolume; const el = $('droneVolume'); if (el) el.value = Math.round(s.droneVolume * 100); }
+      if (s.vizOverride) { state.vizOverride = s.vizOverride; const el = $('vizSelect'); if (el) el.value = s.vizOverride; }
+      if (s.hud) state.hud = { ...state.hud, ...s.hud };
+      if (s.intentionInput) { const el = $('intentionInput'); if (el) el.value = s.intentionInput; }
+      if (s.userAffirmations) { const el = $('userAffirmations'); if (el) el.value = s.userAffirmations; }
+      if (s.voiceName) state._savedVoiceName = s.voiceName;
+      return true;
+    } catch { return false; }
+  }
   // ====================================================================
   // STEP MANAGEMENT
   // ====================================================================
@@ -1923,6 +1978,7 @@ body.in-session .footer {
         if (e.target.dataset.action === 'edit') { e.stopPropagation(); openPersonaEditor(p.id); return; }
         if (e.target.dataset.action === 'delete') { e.stopPropagation(); deletePersona(p.id); return; }
         state.selectedPersonaId = p.id;
+        saveUserSettings();
         renderPersonaGrid(); renderPersonaDetail(); hideScript(); updateStepUI();
       });
       grid.appendChild(card);
@@ -1949,6 +2005,7 @@ body.in-session .footer {
       card.innerHTML = `<div class="card-name">${escapeHtml(m.name)}${m.recommended ? `<span class="card-badge">recommended</span>` : ''}</div><div class="card-tagline">${escapeHtml(m.tagline)}</div><div class="card-tags">${m.tags.map(t => `<span class="card-tag">${escapeHtml(t)}</span>`).join('')}</div>`;
       card.addEventListener('click', () => {
         state.selectedMethodId = m.id;
+        saveUserSettings();
         // Update soundscape default when method changes
         state.soundscape = m.drone ? 'drone' : 'none';
         state.droneEnabled = m.drone;
@@ -2141,6 +2198,13 @@ body.in-session .footer {
         og.appendChild(opt);
       });
       select.appendChild(og);
+    }
+    // Restore saved voice preference
+    if (state._savedVoiceName) {
+      const opts = select.querySelectorAll('option');
+      for (const opt of opts) {
+        if (opt.value === state._savedVoiceName) { select.value = state._savedVoiceName; break; }
+      }
     }
     updateVoiceInfo();
   }
@@ -3982,18 +4046,20 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   });
  
   // Step 3
-  $('intentionType').addEventListener('change', updateIntentionHint);
-  $('intentionInput').addEventListener('input', () => { hideCrafted(); updateStepUI(); });
+  $('intentionType').addEventListener('change', () => { updateIntentionHint(); saveUserSettings(); });
+  $('intentionInput').addEventListener('input', () => { hideCrafted(); updateStepUI(); saveUserSettings(); });
+  $('userAffirmations')?.addEventListener('input', () => saveUserSettings());
   $('craftBtn').addEventListener('click', craftSuggestion);
   $('recraftBtn').addEventListener('click', craftSuggestion);
   $('editCraftedBtn').addEventListener('click', toggleEditCrafted);
   $('saveEditBtn').addEventListener('click', saveEditCrafted);
  
   // Step 4 — audio controls
-  $('lengthSelect').addEventListener('change', () => { state.length = $('lengthSelect').value; hideScript(); });
+  $('lengthSelect').addEventListener('change', () => { state.length = $('lengthSelect').value; hideScript(); saveUserSettings(); });
   $('soundscapeSelect')?.addEventListener('change', e => {
     state.soundscape = e.target.value;
     state.droneEnabled = e.target.value !== 'none';
+    saveUserSettings();
     const hint = $('soundscapeHint');
     if (hint) {
       if (e.target.value === 'binaural') hint.textContent = '⚠ Binaural beats require stereo headphones. Efficacy is contested in peer-reviewed literature.';
@@ -4030,9 +4096,15 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       const keyMap = { fixationDot:'fixationDot', textDisplay:'textDisplay', phaseDots:'phaseDots', phaseLabel:'phaseLabel', progressBar:'progressBar', sessionTime:'sessionTime', labels:'labels' };
       const stateKey = keyMap[key];
       if (stateKey) state.hud[stateKey] = e.target.checked;
+      saveUserSettings();
     });
   });
  
+
+  // Slider batch save — fires only on release (change), not every drag tick (input)
+  ['speechRate', 'voicePitch', 'voiceVolume', 'droneVolume'].forEach(id => {
+    $(id)?.addEventListener('change', () => saveUserSettings());
+  });
   // Step 5
   $('generateScriptBtn').addEventListener('click', generateFullScript);
   $('regenScriptBtn').addEventListener('click', generateFullScript);
@@ -4286,7 +4358,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   });
 
   // Voice select change → update info
-  $('voiceSelect').addEventListener('change', updateVoiceInfo);
+  $('voiceSelect').addEventListener('change', () => { updateVoiceInfo(); saveUserSettings(); });
 
   // Soundscape preview
   $('soundPreviewBtn')?.addEventListener('click', previewSoundscape);
@@ -4816,6 +4888,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     detectCaps();
     await _initStorage();
     refreshPersonas();
+    const hadSavedSettings = loadUserSettings();
     renderPersonaGrid();
     renderPersonaDetail();
     renderMethodGrid();
@@ -4826,12 +4899,14 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     renderSessionHistory();
     renderHeatmap();
     updateIntentionHint();
-    // Set soundscape default based on first method
-    const defaultMethod = getMethod();
-    state.soundscape = defaultMethod.drone ? 'drone' : 'none';
-    state.droneEnabled = defaultMethod.drone;
-    const ssSelect = $('soundscapeSelect');
-    if (ssSelect) ssSelect.value = state.soundscape;
+    // Set soundscape default based on method — but only if no saved settings
+    if (!hadSavedSettings) {
+      const defaultMethod = getMethod();
+      state.soundscape = defaultMethod.drone ? 'drone' : 'none';
+      state.droneEnabled = defaultMethod.drone;
+      const ssSelect = $('soundscapeSelect');
+      if (ssSelect) ssSelect.value = state.soundscape;
+    }
     updateStepUI();
 
     // Load shared config from URL fragment if present
