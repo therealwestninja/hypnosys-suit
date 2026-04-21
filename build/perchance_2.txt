@@ -1,272 +1,198 @@
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
   :root {
-    --bg: #050709;
-    --bg-soft: #0f1318;
-    --bg-softer: #161b23;
-    --text: #b8c2d1;
-    --text-dim: #4a5668;
-    --text-faint: #2a3340;
-    --accent: #6b94b8;
-    --accent-soft: #2a4055;
-    --accent-warm: #b8986b;
-    --accent-green: #7ba88e;
-    --accent-purple: #9a7bb8;
-    --fixation: #d4dce8;
+    --bg: #0d0a07;
+    --bg-soft: rgba(26,20,14,0.82);
+    --bg-softer: rgba(34,26,18,0.7);
+    --border: rgba(255,180,80,0.08);
+    --border-accent: rgba(0,229,255,0.3);
+    --text: #d4c4a8;
+    --text-dim: #7a6b55;
+    --text-faint: #3d3328;
+    --accent: #00e5ff;
+    --accent-soft: rgba(0,229,255,0.12);
+    --accent-warm: #ffb300;
+    --accent-green: #39ff8e;
+    --accent-purple: #b44dff;
+    --fixation: #00e5ff;
+    --neon-cyan: #00e5ff;
+    --neon-magenta: #ff2d95;
+    --neon-amber: #ffb300;
+    --neon-purple: #b44dff;
+    --wood: #1a1410;
+    --wood-light: #2a2018;
+    --glass: rgba(26,20,14,0.65);
+    --glass-border: rgba(255,180,80,0.1);
+    --radius: 8px;
+    --font-display: 'Cinzel', 'Georgia', serif;
+    --font-body: 'Nunito', system-ui, sans-serif;
+    --glow-cyan: 0 0 8px rgba(0,229,255,0.4), 0 0 20px rgba(0,229,255,0.15);
+    --glow-amber: 0 0 8px rgba(255,179,0,0.4), 0 0 20px rgba(255,179,0,0.15);
+    --glow-magenta: 0 0 8px rgba(255,45,149,0.4), 0 0 20px rgba(255,45,149,0.15);
+    --glow-purple: 0 0 8px rgba(180,77,255,0.4), 0 0 20px rgba(180,77,255,0.15);
   }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
     background: var(--bg); color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-family: var(--font-body);
     min-height: 100vh; overflow-x: hidden;
   }
-  body { padding: 24px 18px 60px; }
-  .container { max-width: 720px; margin: 0 auto; }
+  /* Wood grain + noise texture */
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    opacity: 0.06;
+    background-image:
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.02 0.8' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    background-size: 512px 512px;
+  }
+  /* Warm tavern lantern glow from above */
+  body::after {
+    content: ''; position: fixed; top: -30%; left: 50%; transform: translateX(-50%);
+    width: 800px; height: 600px; z-index: 0; pointer-events: none;
+    background: radial-gradient(ellipse, rgba(255,160,40,0.06) 0%, rgba(255,80,20,0.02) 40%, transparent 70%);
+  }
+  body { padding: 24px 18px 60px; position: relative; z-index: 1; }
+  .container { max-width: 720px; margin: 0 auto; position: relative; z-index: 1; }
+
   h1 {
-    font-weight: 200; font-size: 1.4rem; letter-spacing: 0.14em;
-    color: var(--text-dim); text-align: center;
-    margin: 0 0 28px; text-transform: uppercase;
+    font-family: var(--font-display);
+    font-weight: 600; font-size: 1.3rem; letter-spacing: 0.18em;
+    text-align: center; margin: 0 0 8px; text-transform: uppercase;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px rgba(0,229,255,0.5), 0 0 30px rgba(0,229,255,0.2), 0 0 60px rgba(0,229,255,0.08);
   }
- 
+  h1 + p {
+    text-align: center; font-size: 0.82rem; color: var(--text-dim);
+    line-height: 1.6; margin: 0 0 28px;
+  }
+
   /* ============ STEPPER ============ */
-  .stepper {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 0;
-    margin-bottom: 36px;
-    padding: 0 8px;
-  }
-  .step-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    min-width: 56px;
-    flex: 0 1 auto;
-    position: relative;
-    cursor: default;
-  }
+  .stepper { display: flex; align-items: flex-start; justify-content: center; gap: 0; margin-bottom: 36px; padding: 0 8px; }
+  .step-item { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 56px; flex: 0 1 auto; position: relative; cursor: default; }
   .step-item.clickable { cursor: pointer; }
-  .step-item.clickable:hover .step-circle { border-color: var(--accent); }
+  .step-item.clickable:hover .step-circle { border-color: var(--neon-cyan); box-shadow: var(--glow-cyan); }
   .step-circle {
-    width: 36px; height: 36px; border-radius: 50%;
-    background: var(--bg-soft);
-    border: 2px solid #1a2230;
+    width: 38px; height: 38px; border-radius: 6px;
+    background: var(--wood); border: 1.5px solid var(--wood-light);
     display: flex; align-items: center; justify-content: center;
-    font-size: 0.9rem; font-weight: 600;
-    color: var(--text-dim);
-    transition: all 0.3s;
-    z-index: 2; position: relative;
+    font-size: 0.85rem; font-weight: 600; color: var(--text-dim);
+    transition: all 0.35s ease; z-index: 2; position: relative;
+    font-family: var(--font-display);
   }
   .step-item.current .step-circle {
-    border-color: var(--accent); color: var(--accent);
-    box-shadow: 0 0 16px rgba(107, 148, 184, 0.45);
+    border-color: var(--neon-cyan); color: var(--neon-cyan);
+    box-shadow: var(--glow-cyan);
     background: var(--bg);
   }
   .step-item.completed .step-circle {
-    background: var(--accent); border-color: var(--accent); color: var(--bg);
+    background: var(--neon-amber); border-color: var(--neon-amber); color: var(--bg);
+    box-shadow: var(--glow-amber);
   }
-  .step-item.completed .step-num::before { content: '✓'; }
+  .step-item.completed .step-num::before { content: '\2713'; }
   .step-item.completed .step-num-text { display: none; }
-  .step-label {
-    font-size: 0.65rem; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--text-faint);
-    text-align: center; line-height: 1.3;
-    max-width: 90px;
-  }
-  .step-item.current .step-label,
-  .step-item.completed .step-label { color: var(--text-dim); }
-  .step-value {
-    font-size: 0.68rem;
-    color: var(--accent);
-    text-align: center;
-    max-width: 90px;
-    line-height: 1.2;
-    font-style: italic;
-    margin-top: -4px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .step-connector {
-    flex: 1 1 auto;
-    height: 2px;
-    background: #1a2230;
-    margin-top: 17px;
-    max-width: 50px;
-    min-width: 12px;
-    transition: background 0.3s;
-  }
-  .step-connector.completed { background: var(--accent); }
- 
+  .step-label { font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); text-align: center; line-height: 1.3; max-width: 90px; }
+  .step-item.current .step-label, .step-item.completed .step-label { color: var(--text-dim); }
+  .step-value { font-size: 0.68rem; color: var(--neon-amber); text-align: center; max-width: 90px; line-height: 1.2; font-style: italic; margin-top: -4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .step-connector { flex: 1 1 auto; height: 1px; background: var(--wood-light); margin-top: 18px; max-width: 50px; min-width: 12px; transition: background 0.3s; }
+  .step-connector.completed { background: var(--neon-amber); box-shadow: 0 0 6px rgba(255,179,0,0.3); }
+
   /* ============ STEP CONTENT ============ */
-  .step-content { display: none; animation: stepIn 0.4s ease-out; }
+  .step-content { display: none; animation: stepIn 0.5s ease-out; }
   .step-content.active { display: block; }
-  @keyframes stepIn {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+  @keyframes stepIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
   .step-header { text-align: center; margin-bottom: 28px; }
-  .step-title {
-    font-size: 1.5rem; font-weight: 300;
-    letter-spacing: 0.06em; color: var(--text);
-    margin: 0 0 8px;
-  }
-  .step-subtitle {
-    font-size: 0.88rem; color: var(--text-dim);
-    margin: 0; line-height: 1.55;
-    max-width: 500px; margin: 0 auto;
-  }
- 
+  .step-title { font-family: var(--font-display); font-size: 1.4rem; font-weight: 500; letter-spacing: 0.08em; color: var(--text); margin: 0 0 8px; text-transform: uppercase; }
+  .step-subtitle { font-size: 0.85rem; color: var(--text-dim); margin: 0; line-height: 1.55; max-width: 500px; margin: 0 auto; }
+
   /* ============ NAV BAR ============ */
-  .step-nav {
-    display: flex; justify-content: space-between;
-    align-items: center; margin-top: 40px;
-    padding-top: 24px; border-top: 1px solid #1a2230;
-    gap: 16px;
-  }
-  .step-nav .btn-back, .step-nav .btn-next {
-    padding: 12px 26px; border-radius: 8px;
-    font-size: 0.95rem; font-weight: 500;
-    cursor: pointer; letter-spacing: 0.03em;
-    transition: all 0.2s; border: none;
-  }
-  .step-nav .btn-back {
-    background: transparent; color: var(--text-dim);
-    border: 1px solid #1a2230;
-  }
-  .step-nav .btn-back:hover { color: var(--text); border-color: var(--accent-soft); }
-  .step-nav .btn-next {
-    background: var(--accent); color: var(--bg);
-    font-weight: 600; min-width: 140px;
-  }
-  .step-nav .btn-next:hover { filter: brightness(1.15); }
-  .step-nav .btn-next:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+  .step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--wood-light); gap: 16px; }
+  .step-nav .btn-back, .step-nav .btn-next { padding: 12px 26px; border-radius: var(--radius); font-size: 0.92rem; font-weight: 600; cursor: pointer; letter-spacing: 0.04em; transition: all 0.25s; border: none; font-family: var(--font-body); }
+  .step-nav .btn-back { background: transparent; color: var(--text-dim); border: 1px solid var(--wood-light); }
+  .step-nav .btn-back:hover { color: var(--text); border-color: var(--neon-amber); box-shadow: var(--glow-amber); }
+  .step-nav .btn-next { background: var(--neon-cyan); color: var(--bg); font-weight: 700; min-width: 140px; text-shadow: none; }
+  .step-nav .btn-next:hover { box-shadow: var(--glow-cyan); filter: brightness(1.1); }
+  .step-nav .btn-next:disabled { opacity: 0.3; cursor: not-allowed; filter: none; box-shadow: none; }
   .step-nav .step-spacer { flex: 0 0 0; }
   .btn-back[hidden], .btn-next[hidden] { display: none !important; }
- 
-  /* ============ CARD GRID (personas & methods) ============ */
+
+  /* ============ CARD GRID ============ */
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
   .card {
-    background: var(--bg-soft); border: 1px solid #1a2230;
-    border-radius: 10px; padding: 12px 14px; cursor: pointer;
-    transition: all 0.2s; position: relative;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 13px 15px; cursor: pointer;
+    transition: all 0.25s ease; position: relative;
     display: flex; flex-direction: column; gap: 4px;
   }
-  .card:hover { border-color: var(--accent-soft); }
-  .card.selected { border-color: var(--accent); background: #131c28; }
-  .card .card-name { font-weight: 500; font-size: 0.92rem; color: var(--text); }
+  .card:hover { border-color: rgba(255,180,80,0.2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+  .card.selected { border-color: var(--neon-cyan); background: rgba(0,229,255,0.04); box-shadow: 0 0 12px rgba(0,229,255,0.1); }
+  .card .card-name { font-weight: 600; font-size: 0.92rem; color: var(--text); }
   .card .card-tagline { font-size: 0.76rem; color: var(--text-dim); line-height: 1.4; }
   .card .card-tags { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; }
-  .card .card-tag {
-    font-size: 0.62rem; color: var(--text-faint);
-    padding: 1px 5px; border: 1px solid var(--text-faint);
-    border-radius: 3px; text-transform: lowercase; letter-spacing: 0.05em;
-  }
-  .card.category-contemplative { border-top: 2px solid var(--accent); }
-  .card.selected.category-contemplative { border-color: var(--accent); background: #111820; }
-  .card.category-showman { border-top: 2px solid var(--accent-warm); }
-  .card.selected.category-showman { border-color: var(--accent-warm); background: #1a1610; }
-  .card.category-therapeutic { border-top: 2px solid #8a9aaa; }
-  .card.selected.category-therapeutic { border-color: #8a9aaa; background: #141820; }
-  .card.category-demonstration { border-top: 2px solid var(--accent-purple); }
-  .card.selected.category-demonstration { border-color: var(--accent-purple); background: #1a1420; }
-  .card.category-somatic { border-top: 2px solid var(--accent-green); }
-  .card.selected.category-somatic { border-color: var(--accent-green); background: #121a16; }
-  .card.category-authoritarian { border-top: 2px solid #d46a6a; }
-  .card.selected.category-authoritarian { border-color: #d46a6a; background: #1a1214; }
-  .card.category-rapid { border-top: 2px solid #d4a74a; }
-  .card.selected.category-rapid { border-color: #d4a74a; background: #1a1810; }
-  .card.category-advanced { border-top: 2px solid #e06888; }
-  .card.selected.category-advanced { border-color: #e06888; background: #1a1218; }
+  .card .card-tag { font-size: 0.6rem; color: var(--text-faint); padding: 1px 5px; border: 1px solid var(--text-faint); border-radius: 3px; text-transform: lowercase; letter-spacing: 0.05em; }
+  .card.category-contemplative { border-left: 2px solid var(--neon-cyan); border-top: none; }
+  .card.selected.category-contemplative { border-color: var(--neon-cyan); }
+  .card.category-showman { border-left: 2px solid var(--neon-amber); border-top: none; }
+  .card.selected.category-showman { border-color: var(--neon-amber); }
+  .card.category-therapeutic { border-left: 2px solid #5fa8d4; border-top: none; }
+  .card.selected.category-therapeutic { border-color: #5fa8d4; }
+  .card.category-demonstration { border-left: 2px solid var(--neon-purple); border-top: none; }
+  .card.selected.category-demonstration { border-color: var(--neon-purple); }
+  .card.category-somatic { border-left: 2px solid var(--accent-green); border-top: none; }
+  .card.selected.category-somatic { border-color: var(--accent-green); }
+  .card.category-authoritarian { border-left: 2px solid var(--neon-magenta); border-top: none; }
+  .card.selected.category-authoritarian { border-color: var(--neon-magenta); }
+  .card.category-rapid { border-left: 2px solid var(--neon-amber); border-top: none; }
+  .card.selected.category-rapid { border-color: var(--neon-amber); }
+  .card.category-advanced { border-left: 2px solid var(--neon-magenta); border-top: none; }
+  .card.selected.category-advanced { border-color: var(--neon-magenta); }
   .card .card-actions { position: absolute; top: 6px; right: 6px; display: none; gap: 4px; }
   .card.is-custom:hover .card-actions { display: flex; }
-  .card .card-action-btn {
-    background: var(--bg-softer); border: 1px solid #2a3340;
-    color: var(--text-dim); border-radius: 4px; padding: 2px 6px;
-    font-size: 0.7rem; cursor: pointer;
-  }
+  .card .card-action-btn { background: var(--bg-softer); border: 1px solid var(--border); color: var(--text-dim); border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; cursor: pointer; }
   .card .card-action-btn:hover { color: var(--text); }
-  .card.add-new {
-    align-items: center; justify-content: center;
-    border-style: dashed; color: var(--text-dim); min-height: 80px; text-align: center;
-  }
-  .card .card-badge {
-    display: inline-block; background: var(--accent-soft); color: var(--text);
-    font-size: 0.58rem; padding: 2px 5px; border-radius: 3px;
-    letter-spacing: 0.05em; text-transform: uppercase; font-weight: 400;
-    margin-left: 6px; vertical-align: middle;
-  }
- 
+  .card.add-new { align-items: center; justify-content: center; border-style: dashed; border-left-style: dashed; color: var(--text-dim); min-height: 80px; text-align: center; }
+  .card .card-badge { display: inline-block; background: rgba(0,229,255,0.12); color: var(--neon-cyan); font-size: 0.56rem; padding: 2px 6px; border-radius: 3px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; margin-left: 6px; vertical-align: middle; }
+
   /* ============ FILTER TABS ============ */
-  .filter-tabs { display: flex; gap: 4px; margin-bottom: 12px; justify-content: center; }
-  .filter-tab {
-    background: var(--bg-soft); border: 1px solid #1a2230;
-    color: var(--text-dim); border-radius: 6px;
-    padding: 6px 14px; cursor: pointer; font-size: 0.78rem;
-    transition: all 0.2s; letter-spacing: 0.03em;
-  }
-  .filter-tab:hover { color: var(--text); }
-  .filter-tab.active { background: var(--accent-soft); color: var(--text); border-color: var(--accent); }
- 
+  .filter-tabs { display: flex; gap: 4px; margin-bottom: 12px; justify-content: center; flex-wrap: wrap; }
+  .filter-tab { background: var(--wood); border: 1px solid var(--wood-light); color: var(--text-dim); border-radius: var(--radius); padding: 6px 14px; cursor: pointer; font-size: 0.76rem; transition: all 0.25s; letter-spacing: 0.04em; font-weight: 600; }
+  .filter-tab:hover { color: var(--text); border-color: rgba(255,180,80,0.2); }
+  .filter-tab.active { background: rgba(0,229,255,0.08); color: var(--neon-cyan); border-color: var(--neon-cyan); box-shadow: 0 0 8px rgba(0,229,255,0.15); }
+
   /* ============ DETAIL PANEL ============ */
-  .detail-panel {
-    background: var(--bg-soft); border: 1px solid #1a2230;
-    border-radius: 10px; padding: 14px 16px; margin-top: 12px;
-    font-size: 0.85rem; line-height: 1.55; color: var(--text-dim);
-  }
+  .detail-panel { background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 14px 16px; margin-top: 12px; font-size: 0.85rem; line-height: 1.55; color: var(--text-dim); }
   .detail-panel strong { color: var(--text); }
-  .detail-panel .detail-title { font-size: 0.95rem; color: var(--text); font-weight: 500; margin-bottom: 6px; }
- 
+  .detail-panel .detail-title { font-family: var(--font-display); font-size: 1.0rem; color: var(--neon-amber); font-weight: 600; margin-bottom: 6px; letter-spacing: 0.06em; text-shadow: 0 0 8px rgba(255,179,0,0.2); }
+
   /* ============ INPUTS ============ */
-  textarea, input, select {
-    width: 100%; background: var(--bg-soft); border: 1px solid #1a2230;
-    border-radius: 8px; color: var(--text); padding: 12px 14px;
-    font-family: inherit; font-size: 0.95rem; outline: none;
-    transition: border-color 0.2s;
-  }
+  textarea, input, select { width: 100%; background: rgba(13,10,7,0.7); border: 1px solid var(--wood-light); border-radius: var(--radius); color: var(--text); padding: 12px 14px; font-family: var(--font-body); font-size: 0.92rem; outline: none; transition: border-color 0.3s, box-shadow 0.3s; }
   textarea { resize: vertical; min-height: 70px; }
-  textarea:focus, input:focus, select:focus { border-color: var(--accent); }
-  select {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%234a5668' stroke-width='1.5'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px;
-  }
-  .field-label { display: block; font-size: 0.8rem; color: var(--text-dim); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+  textarea:focus, input:focus, select:focus { border-color: var(--neon-cyan); box-shadow: 0 0 0 2px rgba(0,229,255,0.1), 0 0 12px rgba(0,229,255,0.08); }
+  select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a6b55' stroke-width='1.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; background-color: rgba(13,10,7,0.7); }
+  .field-label { display: block; font-size: 0.72rem; color: var(--neon-amber); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; font-weight: 600; font-family: var(--font-display); text-shadow: 0 0 6px rgba(255,179,0,0.15); }
   .field-group { margin-bottom: 20px; }
-  .sublabel { font-size: 0.75rem; color: var(--text-faint); margin-top: 6px; line-height: 1.5; }
- 
-  .toggle-row {
-    display: flex; align-items: center; gap: 12px;
-    background: var(--bg-soft); padding: 12px 14px;
-    border-radius: 8px; border: 1px solid #1a2230; margin-bottom: 8px;
-  }
-  .toggle-row label { flex: 1; font-size: 0.9rem; color: var(--text); cursor: pointer; }
-  .toggle-row .hint { font-size: 0.75rem; color: var(--text-dim); display: block; margin-top: 2px; }
+  .sublabel { font-size: 0.74rem; color: var(--text-faint); margin-top: 6px; line-height: 1.5; }
+  .hint { font-size: 0.72rem; color: var(--text-faint); font-weight: 400; }
+
+  .toggle-row { display: flex; align-items: center; gap: 12px; background: var(--glass); padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--glass-border); margin-bottom: 8px; }
+  .toggle-row label { flex: 1; font-size: 0.88rem; color: var(--text); cursor: pointer; }
+  .toggle-row .hint { font-size: 0.74rem; color: var(--text-dim); display: block; margin-top: 2px; }
   .toggle-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
   .toggle-row input[type="range"] { flex: 1; max-width: 140px; }
- 
+
   /* ============ BUTTONS ============ */
-  .btn {
-    background: var(--accent); color: var(--bg); border: none;
-    border-radius: 8px; padding: 13px 20px; font-size: 0.95rem; font-weight: 600;
-    letter-spacing: 0.04em; cursor: pointer; transition: filter 0.2s;
-  }
-  .btn:hover { filter: brightness(1.15); }
+  .btn { background: var(--neon-cyan); color: var(--bg); border: none; border-radius: var(--radius); padding: 13px 20px; font-size: 0.92rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; transition: all 0.25s; font-family: var(--font-body); text-shadow: none; }
+  .btn:hover { box-shadow: var(--glow-cyan); filter: brightness(1.1); }
   .btn.full { width: 100%; }
-  .btn.secondary { background: transparent; color: var(--text-dim); border: 1px solid #1a2230; }
-  .btn.warm { background: var(--accent-warm); }
+  .btn.secondary { background: transparent; color: var(--text-dim); border: 1px solid var(--wood-light); text-shadow: none; }
+  .btn.secondary:hover { border-color: var(--neon-amber); color: var(--neon-amber); box-shadow: var(--glow-amber); }
+  .btn.warm { background: var(--neon-amber); }
+  .btn.warm:hover { box-shadow: var(--glow-amber); }
   .btn.green { background: var(--accent-green); }
-  .btn:disabled { opacity: 0.5; cursor: wait; filter: none; }
+  .btn.green:hover { box-shadow: 0 0 8px rgba(57,255,142,0.4); }
+  .btn:disabled { opacity: 0.3; cursor: wait; filter: none; box-shadow: none; }
   .btn.loading { position: relative; color: transparent !important; }
-  .btn.loading::after {
-    content: ''; position: absolute;
-    top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.2);
-    border-top-color: rgba(255,255,255,0.8);
-    border-radius: 50%; animation: btn-spin 0.7s linear infinite;
-  }
+  .btn.loading::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.15); border-top-color: rgba(255,255,255,0.7); border-radius: 50%; animation: btn-spin 0.8s linear infinite; }
   @keyframes btn-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
   .craft-progress {
     text-align: center; margin-top: 12px; display: none;
@@ -278,7 +204,7 @@
   }
   .craft-progress .progress-bar-fill {
     height: 100%; width: 0%; border-radius: 2px;
-    background: linear-gradient(90deg, var(--accent-warm), var(--accent));
+    background: linear-gradient(90deg, var(--neon-amber), var(--neon-cyan));
     animation: craft-fill-indeterminate 2.5s ease-in-out infinite;
   }
   @keyframes craft-fill-indeterminate {
@@ -289,15 +215,50 @@
   .craft-progress .progress-label {
     font-size: 0.72rem; color: var(--text-dim); font-style: italic;
   }
+
+  /* ============ PHASE GENERATION PROGRESS ============ */
+  .gen-progress {
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+  }
+  .gen-phases {
+    display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .gen-phase {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 0.7rem; color: var(--text-faint); letter-spacing: 0.04em;
+    text-transform: uppercase; font-weight: 600;
+  }
+  .gen-dot {
+    width: 10px; height: 10px; border-radius: 3px;
+    background: var(--wood-light); border: 1px solid var(--wood-light);
+    transition: all 0.4s ease;
+  }
+  .gen-phase.streaming .gen-dot {
+    background: var(--neon-amber); border-color: var(--neon-amber);
+    box-shadow: 0 0 6px rgba(255,179,0,0.5), 0 0 14px rgba(255,179,0,0.2);
+    animation: gen-pulse 1.2s ease-in-out infinite;
+  }
+  .gen-phase.streaming { color: var(--neon-amber); }
+  .gen-phase.done .gen-dot {
+    background: var(--accent-green); border-color: var(--accent-green);
+    box-shadow: 0 0 6px rgba(57,255,142,0.4), 0 0 14px rgba(57,255,142,0.15);
+  }
+  .gen-phase.done { color: var(--accent-green); }
+  @keyframes gen-pulse { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
+  .gen-eta {
+    text-align: center; font-size: 0.72rem; color: var(--text-dim);
+    font-family: var(--font-body);
+  }
  
   /* ============ CRAFTED PREVIEW ============ */
   .crafted-preview {
-    background: var(--bg-soft); border: 1px solid var(--accent-warm);
-    border-radius: 10px; padding: 16px; margin-top: 16px; display: none;
+    background: var(--glass); border: 1px solid var(--neon-amber);
+    border-radius: var(--radius); padding: 16px; margin-top: 16px; display: none;
   }
   .crafted-preview.visible { display: block; }
   .crafted-preview h3 {
-    font-size: 0.72rem; color: var(--accent-warm);
+    font-size: 0.72rem; color: var(--neon-amber);
     letter-spacing: 0.12em; text-transform: uppercase;
     margin: 0 0 12px; font-weight: 500;
   }
@@ -308,7 +269,7 @@
   }
   .crafted-editable { font-size: 0.95rem; line-height: 1.6; color: var(--text); font-style: italic; min-height: 120px; }
   .crafted-meta { font-size: 0.75rem; color: var(--text-dim); line-height: 1.5; margin-bottom: 12px; }
-  .crafted-meta strong { color: var(--accent-warm); }
+  .crafted-meta strong { color: var(--neon-amber); }
   .crafted-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .crafted-actions .btn { flex: 1; min-width: 90px; padding: 8px 12px; font-size: 0.85rem; }
  
@@ -319,10 +280,10 @@
     gap: 10px; margin-bottom: 20px;
   }
   .summary-card {
-    background: var(--bg-soft); border: 1px solid #1a2230;
-    border-radius: 10px; padding: 12px 14px;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 12px 14px;
   }
-  .summary-card .summary-label {
+  .summary-card .summary-label { font-family: var(--font-display); }  .summary-card .summary-label {
     font-size: 0.62rem; letter-spacing: 0.12em;
     text-transform: uppercase; color: var(--text-faint);
     margin-bottom: 4px;
@@ -332,16 +293,16 @@
   }
  
   .brief-preview {
-    background: var(--bg-soft); border: 1px solid var(--accent-soft);
-    border-radius: 10px; padding: 14px 16px; margin-bottom: 20px;
+    background: var(--glass); border: 1px solid var(--accent-soft);
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 20px;
     font-size: 0.9rem; line-height: 1.55;
     color: var(--text-dim); font-style: italic;
   }
   .brief-preview strong { color: var(--text); font-style: normal; }
  
   .script-preview {
-    background: var(--bg-soft); border: 1px solid var(--accent-green);
-    border-radius: 10px; padding: 16px; margin-top: 16px; display: none;
+    background: var(--glass); border: 1px solid var(--accent-green);
+    border-radius: var(--radius); padding: 16px; margin-top: 16px; display: none;
   }
   .script-preview.visible { display: block; }
   .script-preview h3 {
@@ -356,7 +317,7 @@
     font-family: ui-monospace, "SF Mono", Consolas, monospace;
     font-size: 0.82rem; line-height: 1.55;
     background: var(--bg); color: var(--text);
-    padding: 14px; border: 1px solid #1a2230; border-radius: 6px;
+    padding: 14px; border: 1px solid var(--glass-border); border-radius: 6px;
     white-space: pre-wrap; resize: vertical;
   }
   .script-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
@@ -366,8 +327,8 @@
   .library-list { display: grid; gap: 6px; margin-top: 8px; }
   .library-item {
     display: flex; align-items: center; gap: 10px;
-    background: var(--bg-soft); border: 1px solid #1a2230;
-    border-radius: 8px; padding: 10px 12px;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 10px 12px;
     cursor: pointer; transition: all 0.2s;
   }
   .library-item:hover { border-color: var(--accent); }
@@ -388,7 +349,7 @@
   }
   .modal-backdrop.visible { display: flex; }
   .modal {
-    background: var(--bg-soft); border: 1px solid #1a2230;
+    background: var(--glass); border: 1px solid var(--glass-border);
     border-radius: 12px; padding: 24px;
     max-width: 540px; width: 100%;
     max-height: 90vh; overflow-y: auto;
@@ -406,7 +367,7 @@
   /* ============ DISCLAIMER ============ */
   .disclaimer {
     font-size: 0.75rem; color: var(--text-dim); line-height: 1.55;
-    background: var(--bg-soft); padding: 12px 14px; border-radius: 6px;
+    background: var(--glass); padding: 12px 14px; border-radius: 6px;
     border-left: 2px solid var(--accent-soft); margin-top: 24px;
   }
  
@@ -507,7 +468,7 @@ body.in-session .footer {
   }
   .toast {
     display: flex; align-items: flex-start; gap: 9px;
-    background: #16161c; border-radius: 8px; padding: 9px 12px;
+    background: #16161c; border-radius: var(--radius); padding: 9px 12px;
     font-size: 0.78rem; line-height: 1.5; color: #e2e0d8;
     pointer-events: all; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     opacity: 0; transform: translateX(12px);
@@ -563,8 +524,8 @@ body.in-session .footer {
 
   /* ============ POST-SESSION SUMMARY ============ */
   .post-summary {
-    background: var(--bg-soft); border: 1px solid #1a2230;
-    border-radius: 10px; padding: 16px; margin: 20px 0;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 16px; margin: 20px 0;
     text-align: left;
   }
   .post-summary h3 {
@@ -579,12 +540,12 @@ body.in-session .footer {
   .post-summary .post-label { color: var(--text-dim); }
   .post-summary .post-value { color: var(--text); font-weight: 500; }
   .post-trigger {
-    background: var(--bg); border: 1px solid var(--accent-warm);
-    border-radius: 8px; padding: 10px 14px; margin-top: 10px;
+    background: var(--bg); border: 1px solid var(--neon-amber);
+    border-radius: var(--radius); padding: 10px 14px; margin-top: 10px;
     text-align: center;
   }
   .post-trigger .trigger-label {
-    font-size: 0.68rem; color: var(--accent-warm);
+    font-size: 0.68rem; color: var(--neon-amber);
     letter-spacing: 0.1em; text-transform: uppercase;
     margin-bottom: 4px;
   }
@@ -594,7 +555,7 @@ body.in-session .footer {
 
   /* ============ VOICE PREVIEW ============ */
   .voice-preview-btn {
-    background: var(--bg-softer); border: 1px solid #2a3340;
+    background: var(--bg-softer); border: 1px solid var(--border);
     color: var(--text-dim); border-radius: 6px;
     padding: 6px 12px; font-size: 0.78rem; cursor: pointer;
     transition: all 0.2s;
@@ -608,7 +569,7 @@ body.in-session .footer {
     flex-wrap: wrap;
   }
   .preview-btn {
-    background: var(--bg-softer); border: 1px solid #2a3340;
+    background: var(--bg-softer); border: 1px solid var(--border);
     color: var(--text-dim); border-radius: 6px;
     padding: 5px 10px; font-size: 0.75rem; cursor: pointer;
     transition: all 0.2s; white-space: nowrap;
@@ -621,13 +582,13 @@ body.in-session .footer {
 
   /* ============ VIZ MINI PREVIEWER ============ */
   .viz-preview-wrap {
-    margin-top: 8px; border-radius: 8px; overflow: hidden;
-    border: 1px solid #1a2230; background: #000;
+    margin-top: 8px; border-radius: var(--radius); overflow: hidden;
+    border: 1px solid var(--glass-border); background: #000;
     position: relative;
   }
   .viz-preview-canvas {
     display: block; width: 100%; height: 120px;
-    border-radius: 8px;
+    border-radius: var(--radius);
   }
   .viz-preview-label {
     position: absolute; bottom: 6px; left: 8px;
@@ -652,11 +613,11 @@ body.in-session .footer {
   .preset-grid { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
   .preset-card {
     flex: 1; min-width: 120px; max-width: 180px;
-    background: var(--bg-soft); border: 1px solid #1a2230;
-    border-radius: 8px; padding: 10px 12px; cursor: pointer;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 10px 12px; cursor: pointer;
     transition: all 0.2s; text-align: center;
   }
-  .preset-card:hover { border-color: var(--accent-soft); background: #131c28; }
+  .preset-card:hover { border-color: var(--accent-soft); background: rgba(0,229,255,0.04); }
   .preset-card .preset-icon { font-size: 1.4rem; margin-bottom: 4px; }
   .preset-card .preset-name { font-size: 0.78rem; color: var(--text); font-weight: 500; }
   .preset-card .preset-desc { font-size: 0.62rem; color: var(--text-faint); margin-top: 2px; }
@@ -678,7 +639,7 @@ body.in-session .footer {
   .tour-card h3 { font-size: 0.82rem; color: var(--text); margin: 0 0 8px; font-weight: 500; }
   .tour-card p { font-size: 0.75rem; color: var(--text-dim); line-height: 1.6; margin: 0 0 14px; }
   .tour-dots { display: flex; gap: 4px; justify-content: center; margin-bottom: 12px; }
-  .tour-dot { width: 5px; height: 5px; border-radius: 3px; background: #1a2230; }
+  .tour-dot { width: 5px; height: 5px; border-radius: 3px; background: var(--glass-border); }
   .tour-dot.active { width: 16px; background: var(--accent); }
   .tour-actions { display: flex; justify-content: space-between; align-items: center; }
   .tour-skip { background: none; border: none; color: var(--text-faint); font-size: 0.68rem; cursor: pointer; padding: 0; }
@@ -689,15 +650,18 @@ body.in-session .footer {
     position: fixed; inset: 0; z-index: 2000;
     background: var(--bg); overflow-y: auto; padding: 24px 16px 40px;
     display: flex; flex-direction: column; align-items: center;
+    text-align: left;
   }
-  .safety-inner { max-width: 520px; width: 100%; }
-  .safety-inner h2 { font-size: 1rem; color: var(--text); font-weight: 500; margin: 0 0 12px; }
-  .safety-inner p { font-size: 0.78rem; color: var(--text-dim); line-height: 1.6; margin: 0 0 10px; }
+  .safety-inner { max-width: 520px; width: 100%; text-align: left; }
+  .safety-inner h2 { font-size: 1rem; color: var(--text); font-weight: 500; margin: 0 0 12px; text-align: left; }
+  .safety-inner p { font-size: 0.78rem; color: var(--text-dim); line-height: 1.6; margin: 0 0 10px; text-align: left; }
   .safety-check {
-    display: flex; align-items: flex-start; gap: 8px; padding: 8px 0;
-    font-size: 0.78rem; color: var(--text-dim); border-bottom: 1px solid #111820;
+    display: grid; grid-template-columns: 20px 1fr; gap: 8px; padding: 10px 0;
+    font-size: 0.78rem; color: var(--text-dim); border-bottom: 1px solid var(--glass-border);
+    text-align: left; align-items: start;
   }
-  .safety-check input[type="checkbox"] { margin-top: 3px; flex-shrink: 0; }
+  .safety-check input[type="checkbox"] { width: 16px; height: 16px; margin: 2px 0 0 0; }
+  .safety-check label { text-align: left; line-height: 1.5; }
 
   /* ============ 0-10 STATE SCALE ============ */
   .state-scale { margin: 12px 0 6px; text-align: center; }
@@ -721,10 +685,10 @@ body.in-session .footer {
   /* ============ JOURNAL ============ */
   .journal-area {
     width: 100%; min-height: 60px; max-height: 120px;
-    background: var(--bg-soft); border: 1px solid #1a2230;
-    border-radius: 8px; padding: 10px; margin: 10px 0;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 10px; margin: 10px 0;
     font-size: 0.78rem; color: var(--text-dim); resize: vertical;
-    font-family: inherit; line-height: 1.5;
+    font-family: var(--font-body); line-height: 1.5;
   }
   .journal-area::placeholder { color: var(--text-faint); }
 
@@ -733,8 +697,8 @@ body.in-session .footer {
 
   /* ============ GROUNDING EXERCISE ============ */
   .grounding-box {
-    background: var(--bg-soft); border: 1px solid var(--accent-green);
-    border-radius: 10px; padding: 18px; margin: 16px 0; text-align: left;
+    background: var(--glass); border: 1px solid var(--accent-green);
+    border-radius: var(--radius); padding: 18px; margin: 16px 0; text-align: left;
   }
   .grounding-box h3 {
     font-size: 0.72rem; color: var(--accent-green);
@@ -743,7 +707,7 @@ body.in-session .footer {
   }
   .grounding-step {
     font-size: 0.88rem; line-height: 1.6; color: var(--text-dim);
-    padding: 6px 0; border-bottom: 1px solid #1a2230;
+    padding: 6px 0; border-bottom: 1px solid var(--glass-border);
   }
   .grounding-step:last-child { border-bottom: none; }
   .grounding-step strong { color: var(--text); }
@@ -754,8 +718,8 @@ body.in-session .footer {
     margin: 12px 0;
   }
   .stat-chip {
-    background: var(--bg-soft); border: 1px solid #1a2230;
-    border-radius: 8px; padding: 8px 14px; text-align: center;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 8px 14px; text-align: center;
   }
   .stat-chip .stat-num {
     font-size: 1.2rem; font-weight: 300; color: var(--text);
@@ -781,8 +745,8 @@ body.in-session .footer {
     text-align: center; margin-top: 8px; letter-spacing: 0.04em;
   }
   .kb-hint kbd {
-    background: var(--bg-softer); border: 1px solid #2a3340;
-    border-radius: 3px; padding: 1px 5px; font-family: inherit;
+    background: var(--bg-softer); border: 1px solid var(--border);
+    border-radius: 3px; padding: 1px 5px; font-family: var(--font-body);
     font-size: 0.58rem;
   }
 
@@ -800,7 +764,7 @@ body.in-session .footer {
     margin: 16px 0 6px; font-weight: 500;
   }
   .transcript-toggle {
-    background: transparent; border: 1px solid #2a3340;
+    background: transparent; border: 1px solid var(--border);
     color: var(--text-faint); border-radius: 6px;
     padding: 4px 10px; font-size: 0.7rem; cursor: pointer;
   }
@@ -813,7 +777,7 @@ body.in-session .footer {
     position: fixed; top: 0; right: -320px; width: 300px; max-width: 85vw;
     height: 100vh; z-index: 30;
     background: rgba(8, 10, 14, 0.94);
-    border-left: 1px solid #1a2230;
+    border-left: 1px solid var(--glass-border);
     backdrop-filter: blur(12px);
     overflow-y: auto; overflow-x: hidden;
     padding: 16px 14px 40px;
@@ -822,14 +786,14 @@ body.in-session .footer {
   .live-panel.open { right: 0; }
   .live-panel-header {
     display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #1a2230;
+    margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--glass-border);
   }
   .live-panel-header h3 {
     font-size: 0.78rem; font-weight: 500; color: var(--text);
     letter-spacing: 0.08em; text-transform: uppercase; margin: 0;
   }
   .live-panel-close {
-    background: transparent; border: 1px solid #2a3340; color: var(--text-dim);
+    background: transparent; border: 1px solid var(--border); color: var(--text-dim);
     border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer;
   }
   .live-panel-close:hover { color: var(--text); }
@@ -1060,11 +1024,11 @@ body.in-session .footer {
       </div>
  
       <button class="btn warm full" id="craftBtn">craft hypnotic suggestion →</button>
-      <div class="sublabel" style="text-align: center; margin-top: 6px;">AI will convert your description into a technically-sound hypnotic suggestion. Takes 60–180 seconds.</div>
+      <div class="sublabel" style="text-align: center; margin-top: 6px;">AI will convert your description into a technically-sound hypnotic suggestion. Takes 2–3 minutes (120–180 seconds).</div>
 
       <div class="craft-progress" id="craftProgress">
         <div class="progress-bar-wrap"><div class="progress-bar-fill"></div></div>
-        <div class="progress-label" id="craftProgressLabel">crafting your suggestion — this takes 1–3 minutes...</div>
+        <div class="progress-label" id="craftProgressLabel">crafting your suggestion — about 2–3 minutes...</div>
       </div>
  
       <div class="crafted-preview" id="craftedPreview">
@@ -1231,8 +1195,14 @@ body.in-session .footer {
  
       <div class="brief-preview" id="briefPreview"></div>
  
+
+      <!-- Phase-by-phase generation progress -->
+      <div class="gen-progress" id="genProgress" style="display:none;">
+        <div class="gen-phases" id="genPhases"></div>
+        <div class="gen-eta" id="genEta"></div>
+      </div>
       <button class="btn green full" id="generateScriptBtn">generate full script</button>
-      <div class="sublabel" style="text-align: center; margin-top: 6px;">one AI call. ~20–40 seconds.</div>
+      <div class="sublabel" style="text-align: center; margin-top: 6px;">Generates each phase individually for higher quality. ~2–3 minutes total.</div>
  
       <div class="script-preview" id="scriptPreview">
         <h3>session script</h3>
@@ -1267,7 +1237,7 @@ body.in-session .footer {
       <div class="step-spacer"></div>
       <button class="btn-next" id="btnNext">next →</button>
     </div>
-  <div class="footer"><span>© 2026 therealwestninja.</span> · <a href="https://www.deviantart.com/west-ninja" target="_blank" rel="noopener">DeviantArt</a> · <a href="https://github.com/therealwestninja" target="_blank" rel="noopener">GitHub</a> · <a href="#" id="crisisLink" style="color:var(--accent-green);">crisis resources</a></div>
+  <div class="footer"><span>© 2026 therealwestninja.</span> · <a href="https://www.deviantart.com/west-ninja" target="_blank" rel="noopener">DeviantArt</a> · <a href="https://github.com/therealwestninja" target="_blank" rel="noopener">GitHub</a> · <a href="#" id="crisisLink" style="color:var(--accent-green); text-shadow: 0 0 6px rgba(57,255,142,0.2);">crisis resources</a></div>
   </div>
  
   <!-- SESSION SCREEN -->
@@ -1475,7 +1445,7 @@ body.in-session .footer {
     <div class="safety-check"><input type="checkbox" id="sc6"><label for="sc6">Currently intoxicated or under the influence</label></div>
     <p style="margin-top:12px; font-size:0.72rem; color:var(--text-faint);">If any apply, please consult a licensed hypnotherapist rather than using a self-help tool. This screen appears once and can be re-viewed in session history.</p>
     <div style="margin-top:12px;">
-      <label class="safety-check" style="border:none;font-weight:500;color:var(--text);"><input type="checkbox" id="scConfirm"> I confirm none of the above apply, and I understand this is not a substitute for professional care.</label>
+      <div class="safety-check" style="border:none;font-weight:500;color:var(--text);"><input type="checkbox" id="scConfirm"><label for="scConfirm">I confirm none of the above apply, and I understand this is not a substitute for professional care.</label></div>
     </div>
     <button class="btn" id="safetyAcceptBtn" disabled style="margin-top:16px;width:100%;">continue</button>
   </div>
@@ -2934,7 +2904,7 @@ body.in-session .footer {
     setLoading('craftBtn', true);
     setLoading('recraftBtn', true);
     $('craftProgress').classList.add('visible');
-    progressLabel.textContent = 'crafting your suggestion — this takes 1–3 minutes...';
+    progressLabel.textContent = 'crafting your suggestion — about 2–3 minutes...';
     const stopTimer = makeElapsedTimer(s => { progressLabel.textContent = `crafting... ${s}s elapsed`; });
 
     const instruction = `You are a master hypnotherapist converting a user's rough intention into a technically-precise hypnotic suggestion.
@@ -3003,12 +2973,38 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     showCrafted(); hideScript();
   }
  
+
   // ====================================================================
-  // SCRIPT GEN
+  // SCRIPT GEN — per-phase generation with live progress
   // ====================================================================
+
+  /** Determine the phase list based on session length */
+  function getPhaseList() {
+    const base = ['settling', 'induction', 'deepener'];
+    const workCount = state.length === 'long' ? 3 : state.length === 'medium' ? 2 : 1;
+    for (let i = 1; i <= workCount; i++) base.push(workCount > 1 ? `work-${i}` : 'work');
+    base.push('emergence');
+    return base;
+  }
+
+  /** Render the phase progress dots */
+  function renderGenProgress(phases, activeIdx, doneMask, eta) {
+    const wrap = $('genProgress');
+    const container = $('genPhases');
+    const etaEl = $('genEta');
+    if (!wrap || !container) return;
+    wrap.style.display = 'block';
+    const labels = { settling: 'Settling', induction: 'Induction', deepener: 'Deepener', emergence: 'Emergence' };
+    container.innerHTML = phases.map((p, i) => {
+      const label = labels[p] || (p.startsWith('work') ? 'Work' + (p.includes('-') ? ' ' + p.split('-')[1] : '') : p);
+      const cls = doneMask[i] ? 'done' : i === activeIdx ? 'streaming' : '';
+      return `<div class="gen-phase ${cls}"><div class="gen-dot"></div><span>${label}</span></div>`;
+    }).join('');
+    if (etaEl) etaEl.textContent = eta || '';
+  }
+
   async function generateFullScript() {
     if (_aiInProgress) { notify.info('An AI call is already in progress.'); return; }
-    // Guard: if user has edited the script textarea, confirm before clobbering
     const editedText = $('scriptText').value.trim();
     if (state.fullScript && editedText && editedText !== state.fullScript.trim()) {
       if (!confirm('Your manual edits to the script will be discarded. Regenerate anyway?')) return;
@@ -3023,95 +3019,123 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
     setLoading('generateScriptBtn', true);
     setLoading('regenScriptBtn', true);
-    const progressLabel = $('craftProgressLabel');
-    $('craftProgress').classList.add('visible');
-    progressLabel.textContent = 'generating full script...';
-    const stopTimer = makeElapsedTimer(s => { progressLabel.textContent = `generating script... ${s}s elapsed`; });
- 
-    const craftedBlock = state.craftedSuggestion ? `
-CRAFTED HYPNOTIC SUGGESTION (deliver verbatim in WORK phase):
-"${state.craftedSuggestion.craftedSuggestion}"
-TRIGGER: ${state.craftedSuggestion.trigger}
-CORE EFFECT: ${state.craftedSuggestion.coreResponse}
-REINFORCEMENT VARIANTS: ${JSON.stringify(state.craftedSuggestion.reinforcementPhrases)}
- 
-⚠️ In WORK phase: deliver the full crafted suggestion AT LEAST TWICE.
-⚠️ In EMERGENCE, BEFORE count-up: state core effect one last time as lasting anchor.
-` : '';
- 
-    const demoBlock = method.category === 'demonstration' ? `
-⚠️ DEMONSTRATION METHOD — goal is a tangible, noticeable effect the user can verify.
-• DIRECT present-tense suggestions ("your hand IS becoming heavy")
-• In WORK phase: BUILD the effect progressively
-• Include a TEST at end of WORK or start of EMERGENCE — instruct the user to attempt the "impossible" action
-` : '';
 
-    // User-authored affirmations
+    const phases = getPhaseList();
+    const doneMask = phases.map(() => false);
+    const phaseTimes = [];
+    const phaseResults = {};
+
+    // Build shared context
+    const craftedBlock = state.craftedSuggestion ? `\nCRAFTED SUGGESTION: "${state.craftedSuggestion.craftedSuggestion}"\nTRIGGER: ${state.craftedSuggestion.trigger}\nEFFECT: ${state.craftedSuggestion.coreResponse}` : '';
     const userAff = $('userAffirmations')?.value?.trim();
-    const affirmBlock = userAff ? `
-USER'S OWN AFFIRMATIONS (weave these exact phrases into DEEPENER and WORK phases):
-${userAff.split('\n').filter(l => l.trim()).map(l => `"${l.trim()}"`).join('\n')}
-⚠️ Use the user's exact words. Repeat each at least once.
-` : '';
- 
-    const instruction = `You are ${persona.name}. ${persona.systemPrompt}
- 
-A user has requested a self-hypnosis session. Write the COMPLETE spoken script from start to finish — word-for-word, as you would deliver it aloud — in your voice.
- 
-METHOD: ${method.name}
-${method.detail}
- 
-PACING:
-${PACING_RULES[method.pacing]}
- 
-${demoBlock}
- 
-SESSION THEME: "${rough || 'general trance experience'}"
-${craftedBlock}
-${affirmBlock}
- 
-═══ PHASE STRUCTURE — write ALL five phases with markers ═══
- 
-===SETTLING=== (~${targetWords.settling} words)
-Orient the user. Open naturally in your persona's voice — don't say "hello" or "welcome".
- 
-===INDUCTION=== (~${targetWords.induction} words)
-Move from ordinary awareness toward trance using this method.
- 
-===DEEPENER=== (~${targetWords.deepener} words)
-Take them deeper. ${state.craftedSuggestion ? 'Foreshadow one reinforcement variant.' : ''}
- 
-===WORK=== (~${targetWords.work} words)
-${method.category === 'demonstration' ? 'BUILD the demonstration effect progressively.' : ''}
-${state.craftedSuggestion ? 'Deliver the crafted suggestion verbatim, multiple times, with reinforcement variants between.' : 'Deepening and open awareness.'}
- 
-===EMERGENCE=== (~${targetWords.emergence} words)
-${method.category === 'demonstration' ? 'FIRST: deliver the TEST — invite user to attempt the "impossible" action. Give them time. THEN release and count up.' : state.craftedSuggestion ? 'FINAL ANCHOR first, THEN count-up.' : 'Count-up to fully alert.'}
- 
-═══ OUTPUT ═══
-• Use the ===PHASE=== markers exactly
-• Insert [PAUSE n] markers liberally (n = seconds)
-• Output ONLY the script with markers — no preamble, no commentary
-• Stay fully in the persona's voice
- 
-Begin:`;
- 
+    const affirmBlock = userAff ? `\nUSER AFFIRMATIONS:\n${userAff.split('\n').filter(l=>l.trim()).map(l=>`"${l.trim()}"`).join('\n')}` : '';
+    const demoNote = method.category === 'demonstration' ? '\nDEMONSTRATION METHOD: direct suggestions, build effect, include TEST.' : '';
+
+    const sharedContext = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"${craftedBlock}${affirmBlock}${demoNote}`;
+
+    // Phase-specific instructions
+    const phaseInstructions = {
+      settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user. Open naturally in your persona's voice — don't say "hello" or "welcome". Use [PAUSE n] markers. Output ONLY the script text.`,
+      induction: `Write the INDUCTION phase (~${targetWords.induction} words). Move from ordinary awareness toward trance using the ${method.name} method. Use [PAUSE n] markers liberally. Output ONLY the script text.`,
+      deepener: `Write the DEEPENER phase (~${targetWords.deepener} words). Take them deeper.${state.craftedSuggestion ? ' Foreshadow the suggestion.' : ''}${userAff ? ' Begin weaving the user\'s affirmations.' : ''} Use [PAUSE n] markers. Output ONLY the script text.`,
+      emergence: `Write the EMERGENCE phase (~${targetWords.emergence} words). ${method.category === 'demonstration' ? 'FIRST: deliver the TEST. THEN count up 1-5.' : state.craftedSuggestion ? 'State the core effect one final time as anchor, THEN count up 1-5.' : 'Count up 1-5 to full alertness.'} Bring them fully alert. Use [PAUSE n] markers. Output ONLY the script text.`,
+    };
+
+    // Work phase instructions — split across multiple work phases
+    const workCount = phases.filter(p => p.startsWith('work')).length;
+    const workWordsEach = Math.round(targetWords.work / workCount);
+    phases.forEach((p, i) => {
+      if (!p.startsWith('work')) return;
+      const workIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
+      let workNote = `Write WORK phase ${workIdx} of ${workCount} (~${workWordsEach} words). `;
+      if (workIdx === 1) {
+        workNote += state.craftedSuggestion
+          ? 'Deliver the crafted suggestion verbatim. Begin reinforcement.'
+          : method.category === 'demonstration' ? 'BUILD the demonstration effect progressively.' : 'Therapeutic deepening and awareness.';
+      } else if (workIdx === workCount) {
+        workNote += state.craftedSuggestion
+          ? 'Final reinforcement of the suggestion. Peak intensity. Future-pace the effect.'
+          : 'Peak deepening. Consolidation.';
+      } else {
+        workNote += state.craftedSuggestion
+          ? 'Continue reinforcement with variants. Intensify.'
+          : 'Continue deepening. Layer suggestions.';
+      }
+      workNote += userAff ? ' Weave the user\'s affirmations into this phase.' : '';
+      workNote += ' Use [PAUSE n] markers. Output ONLY the script text.';
+      phaseInstructions[p] = workNote;
+    });
+
+    // Show initial progress
+    renderGenProgress(phases, 0, doneMask, `Estimated: ~${phases.length * 30}s remaining`);
+    const genStartTime = Date.now();
+    const stopTimer = makeElapsedTimer(s => {
+      const avgTime = phaseTimes.length > 0 ? phaseTimes.reduce((a,b)=>a+b,0) / phaseTimes.length : 30;
+      const remaining = Math.max(0, Math.round(avgTime * (phases.length - phaseTimes.length) - (Date.now() - genStartTime) / 1000 + phaseTimes.reduce((a,b)=>a+b,0)));
+      const remSec = Math.max(0, Math.round(avgTime * (phases.length - phaseTimes.length)));
+      $('genEta').textContent = `${s}s elapsed · ~${remSec}s remaining`;
+    });
+
     try {
-      const data = await root.aiTextPlugin({ instruction, startWith: '===SETTLING===', stopSequences: ['\n\n\n\n', '[END OF SCRIPT]', '\n\n===END==='], hideStartWith: true });
-      if (data.stopReason === 'error') throw new Error('AI returned an error. Try again.');
-      const text = (data.generatedText || '').trim();
-      if (!text || text.length < 100) throw new Error('Script too short or empty');
-      const fullScript = '===SETTLING===' + (text.startsWith('\n') ? '' : '\n') + text;
-      state.fullScript = fullScript;
-      state.parsedScript = parseScript(fullScript);
+      let priorSummary = '';
+
+      for (let i = 0; i < phases.length; i++) {
+        const phase = phases[i];
+        const phaseStart = Date.now();
+        renderGenProgress(phases, i, doneMask, null);
+
+        // Build prompt with prior context
+        const summaryBlock = priorSummary ? `\n\nSO FAR (summary of what you've written — continue seamlessly, DO NOT repeat):\n${priorSummary}` : '';
+        const instruction = `${sharedContext}${summaryBlock}\n\n═══ YOUR TASK ═══\n${phaseInstructions[phase]}\n\nStay fully in ${persona.name}'s voice. Continue the flow naturally from what came before. Do NOT include phase markers like ===PHASE===. Start writing immediately:`;
+
+        const data = await root.aiTextPlugin({ instruction, stopSequences: ['\n\n\n\n', '==='], hideStartWith: true });
+        if (data.stopReason === 'error') throw new Error(`Phase "${phase}" failed. Try again.`);
+
+        let text = (data.generatedText || '').trim();
+        // Remove any stray phase markers the AI might have included
+        text = text.replace(/^===\w+===\s*/i, '').trim();
+        if (!text || text.length < 20) throw new Error(`Phase "${phase}" returned too little text.`);
+
+        phaseResults[phase] = text;
+
+        // Build running summary for next phase (keep it brief to avoid context bloat)
+        const summaryLine = text.length > 200 ? text.substring(0, 150).replace(/\[PAUSE \d+\]/g, '') + '...' : text.replace(/\[PAUSE \d+\]/g, '');
+        priorSummary += `\n${phase.toUpperCase()}: ${summaryLine}`;
+
+        // Mark done
+        doneMask[i] = true;
+        phaseTimes.push((Date.now() - phaseStart) / 1000);
+        renderGenProgress(phases, i + 1, doneMask, null);
+      }
+
+      // Assemble full script with markers
+      let fullScript = '';
+      const markerMap = { settling: 'SETTLING', induction: 'INDUCTION', deepener: 'DEEPENER', emergence: 'EMERGENCE' };
+      phases.forEach(p => {
+        const marker = markerMap[p] || 'WORK';
+        fullScript += `===${marker}===\n${phaseResults[p]}\n\n`;
+      });
+
+      state.fullScript = fullScript.trim();
+      state.parsedScript = parseScript(state.fullScript);
       showScript();
       updateStepUI();
-      notify.success('Script generated — review and edit below.');
+
+      const totalTime = Math.round((Date.now() - genStartTime) / 1000);
+      notify.success(`Script generated in ${totalTime}s — ${phases.length} phases. Review below.`);
+
     } catch (e) {
       console.error(e);
       notify.error('Script generation failed: ' + e.message);
-    } finally { _aiInProgress = false; stopTimer(); setLoading('generateScriptBtn', false, 'generate full script'); setLoading('regenScriptBtn', false); $('craftProgress').classList.remove('visible'); }
+    } finally {
+      _aiInProgress = false;
+      stopTimer();
+      setLoading('generateScriptBtn', false, 'generate full script');
+      setLoading('regenScriptBtn', false);
+      // Keep gen progress visible showing final state (all green)
+    }
   }
+
  
   function parseScript(text) {
     const phases = { settling: '', induction: '', deepener: '', work: '', emergence: '' };
@@ -4653,7 +4677,7 @@ Begin:`;
         <div class="tour-actions">
           <button class="tour-skip" id="tourSkip">${isLast ? '' : 'skip tour'}</button>
           <div style="display:flex;gap:6px;">
-            ${step > 0 ? '<button class="tour-next" id="tourBack" style="background:transparent;border:1px solid #2a3340;color:var(--text-dim);">← back</button>' : ''}
+            ${step > 0 ? '<button class="tour-next" id="tourBack" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);">← back</button>' : ''}
             <button class="tour-next" id="tourNext">${isLast ? 'done ✓' : 'next →'}</button>
           </div>
         </div>`;
