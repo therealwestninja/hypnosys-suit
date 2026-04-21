@@ -1940,43 +1940,62 @@ body.in-session .footer {
   // SETTINGS PERSISTENCE (auto-save/load to localStorage)
   // ====================================================================
   const SETTINGS_KEY = 'stillness_settings_v1';
+  const _kv = (typeof root !== 'undefined' && root.kv) ? root.kv : null;
   let _saveTimeout = null;
+
+  function _buildSettingsObj() {
+    return {
+      selectedPersonaId: state.selectedPersonaId,
+      selectedMethodId: state.selectedMethodId,
+      intentionType: state.intentionType,
+      length: state.length,
+      soundscape: state.soundscape,
+      droneEnabled: state.droneEnabled,
+      duckingEnabled: state.duckingEnabled,
+      speechRate: state.speechRate,
+      voicePitch: state.voicePitch,
+      voiceVolume: state.voiceVolume,
+      droneVolume: state.droneVolume,
+      vizOverride: state.vizOverride,
+      vizSettings: state.vizSettings,
+      hud: state.hud,
+      personaFilter: state.personaFilter,
+      methodFilter: state.methodFilter,
+      intentionInput: $('intentionInput')?.value || '',
+      userAffirmations: $('userAffirmations')?.value || '',
+      voiceName: $('voiceSelect')?.value || '',
+    };
+  }
 
   function saveUserSettings() {
     clearTimeout(_saveTimeout);
-    _saveTimeout = setTimeout(() => {
+    _saveTimeout = setTimeout(async () => {
       try {
-        const settings = {
-          selectedPersonaId: state.selectedPersonaId,
-          selectedMethodId: state.selectedMethodId,
-          intentionType: state.intentionType,
-          length: state.length,
-          soundscape: state.soundscape,
-          droneEnabled: state.droneEnabled,
-          duckingEnabled: state.duckingEnabled,
-          speechRate: state.speechRate,
-          voicePitch: state.voicePitch,
-          voiceVolume: state.voiceVolume,
-          droneVolume: state.droneVolume,
-          vizOverride: state.vizOverride,
-          vizSettings: state.vizSettings,
-          hud: state.hud,
-          personaFilter: state.personaFilter,
-          methodFilter: state.methodFilter,
-          intentionInput: $('intentionInput')?.value || '',
-          userAffirmations: $('userAffirmations')?.value || '',
-          voiceName: $('voiceSelect')?.value || '',
-        };
+        const settings = _buildSettingsObj();
+        // Primary: Perchance KV storage (cloud-backed, cross-device)
+        if (_kv) {
+          await _kv.settings.set(SETTINGS_KEY, settings);
+        }
+        // Fallback: localStorage (local-only, survives page refresh)
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
       } catch {}
     }, 1500);
   }
 
-  function loadUserSettings() {
+  async function loadUserSettings() {
     try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      if (!raw) return false;
-      const s = JSON.parse(raw);
+      let s = null;
+      // Try Perchance KV first (cloud-backed)
+      if (_kv) {
+        try { s = await _kv.settings.get(SETTINGS_KEY); } catch {}
+      }
+      // Fallback to localStorage
+      if (!s) {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (raw) s = JSON.parse(raw);
+      }
+      if (!s) return false;
+
       if (s.selectedPersonaId) state.selectedPersonaId = s.selectedPersonaId;
       if (s.selectedMethodId) state.selectedMethodId = s.selectedMethodId;
       if (s.intentionType) { state.intentionType = s.intentionType; const el = $('intentionType'); if (el) el.value = s.intentionType; }
@@ -5480,7 +5499,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     detectCaps();
     await _initStorage();
     refreshPersonas();
-    const hadSavedSettings = loadUserSettings();
+    const hadSavedSettings = await loadUserSettings();
     renderPersonaGrid();
     renderPersonaDetail();
     renderMethodGrid();
