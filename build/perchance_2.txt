@@ -867,7 +867,6 @@ body.in-session .footer {
     font-size: 2.5rem; font-weight: 200; color: var(--accent);
     margin-bottom: 8px;
   }
-  .cooldown-label {
     font-size: 0.8rem; color: var(--text-dim); letter-spacing: 0.06em;
   }
 
@@ -1762,6 +1761,7 @@ body.in-session .footer {
     editingPersonaId: null,
     personaFilter: 'all',
     methodFilter: 'all',
+    _preMood: 5,
   };
  
   const PHASE_DURATIONS = {
@@ -2025,11 +2025,13 @@ body.in-session .footer {
       if (craftBtn?.nextElementSibling) craftBtn.nextElementSibling.style.display = 'none'; // sublabel
       if (intentionInput) intentionInput.style.display = 'none';
       if (intentionLabel) intentionLabel.style.display = 'none';
+      showEl('affirmationGroup', false);
     } else {
       if (craftBtn) craftBtn.style.display = '';
       if (craftBtn?.nextElementSibling) craftBtn.nextElementSibling.style.display = '';
       if (intentionInput) intentionInput.style.display = '';
       if (intentionLabel) intentionLabel.style.display = '';
+      showEl('affirmationGroup', true);
     }
 
     updateStepUI();
@@ -3360,7 +3362,7 @@ Begin:`;
   }
 
   async function exportBackup() {
-    const backup = { version: 2, exportedAt: Date.now(), personas: loadCustomPersonas(), library: loadLibrary(), history: (await idbGet('stillness_history_v1')) || [] };
+    const backup = { version: 2, exportedAt: Date.now(), personas: loadCustomPersonas(), library: loadLibrary(), history: (await idbGet('stillness_history_v1')) || [], program: (await idbGet('stillness_program_v1')) || null };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     a.download = `stillness-backup-${new Date().toISOString().slice(0,10)}.json`;
@@ -3380,6 +3382,8 @@ Begin:`;
       const eh = (await idbGet('stillness_history_v1'))||[], ehIds = new Set(eh.map(h => h.id));
       const nh = (backup.history||[]).filter(h => !ehIds.has(h.id));
       if (nh.length) { const m = [...nh,...eh].sort((a,b)=>(b.date||0)-(a.date||0)); m.length = Math.min(m.length,50); await idbSet('stillness_history_v1',m); renderSessionHistory(); }
+      // Restore program state if present and no active program
+      if (backup.program && !(await idbGet('stillness_program_v1'))) { await idbSet('stillness_program_v1', backup.program); renderPrograms(); }
       notify.success(`Imported: ${np.length} personas, ${nl.length} scripts, ${nh.length} sessions.`);
     } catch(e) { notify.error('Import failed: ' + e.message); }
   }
@@ -3948,9 +3952,19 @@ Begin:`;
     document.querySelectorAll('#personaFilterTabs .filter-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === state.personaFilter));
     renderPersonaGrid();
   });
-  $('methodFilterTabs').addEventListener('click', e => {
+  $('methodFilterTabs').addEventListener('click', async e => {
     if (!e.target.dataset.filter) return;
-    state.methodFilter = e.target.dataset.filter;
+    const cat = e.target.dataset.filter;
+    // Practice-unlock gating: block locked categories
+    if (cat === 'rapid' || cat === 'advanced') {
+      const count = await getSessionCount();
+      const threshold = cat === 'rapid' ? 3 : 7;
+      if (count < threshold) {
+        notify.info(`${cat.charAt(0).toUpperCase() + cat.slice(1)} methods unlock after ${threshold} completed sessions (${count} so far).`);
+        return;
+      }
+    }
+    state.methodFilter = cat;
     document.querySelectorAll('#methodFilterTabs .filter-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === state.methodFilter));
     renderMethodGrid();
   });
