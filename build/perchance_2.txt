@@ -4170,7 +4170,6 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     });
 
     let fixed = processed.join('\n');
-    fixed = fixed.replace(/(===\s*\w+\s*===)\s*(?!\[PAUSE)/gi, '$1\n[PAUSE 4]\n');
     // Clean up double spaces from joins
     fixed = fixed.replace(/  +/g, ' ');
 
@@ -5010,7 +5009,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       if (state.droneEnabled && drone.running) drone.setPhaseFreq(phase);
 
       const cleanText = phaseText.replace(/^===\s*\w+\s*===\s*/i, '').trim();
-      await speakScript(cleanText);
+      try { await speakScript(cleanText); }
+      catch(e) { console.error(`Phase "${phase}" speak error:`, e); }
     }
 
     // Complete progress bar
