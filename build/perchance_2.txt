@@ -537,35 +537,59 @@ body.in-session .footer {
   }
 
   /* ============ POST-SESSION SUMMARY ============ */
-  .post-summary {
+  .post-wrap { max-width: 520px; margin: 0 auto; padding: 30px 16px 40px; }
+  .post-header { text-align: center; margin-bottom: 20px; }
+  .post-status { font-size: 1.6rem; margin-bottom: 6px; }
+  .post-message { font-size: 0.88rem; line-height: 1.6; color: var(--text-muted); margin: 0; }
+  .post-cards { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .post-card {
     background: var(--glass); border: 1px solid var(--glass-border);
-    border-radius: var(--radius); padding: 16px; margin: 20px 0;
-    text-align: left;
+    border-radius: var(--radius); padding: 14px 16px;
   }
-  .post-summary h3 {
-    font-size: 0.72rem; color: var(--accent);
-    letter-spacing: 0.12em; text-transform: uppercase;
-    margin: 0 0 10px; font-weight: 500;
+  .post-card-title {
+    font-size: 0.6rem; color: var(--neon-cyan); letter-spacing: 0.1em;
+    text-transform: uppercase; margin: 0 0 8px; font-family: var(--f-head);
   }
-  .post-summary .post-row {
-    display: flex; justify-content: space-between;
-    padding: 4px 0; font-size: 0.82rem;
+  .post-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 0.8rem; }
+  .post-label { color: var(--text-muted); }
+  .post-value { color: var(--text); font-weight: 500; }
+  .post-trigger-title { font-size: 0.6rem; color: var(--neon-amber); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 6px; font-family: var(--f-head); }
+  .post-trigger-text { font-size: 0.85rem; color: var(--text); }
+  .post-trigger-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; }
+  .post-checkin {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-bottom: 14px;
   }
-  .post-summary .post-label { color: var(--text-dim); }
-  .post-summary .post-value { color: var(--text); font-weight: 500; }
-  .post-trigger {
-    background: var(--bg); border: 1px solid var(--neon-amber);
-    border-radius: var(--radius); padding: 10px 14px; margin-top: 10px;
-    text-align: center;
+  .post-checkin-item {
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 12px; text-align: center;
   }
-  .post-trigger .trigger-label {
-    font-size: 0.68rem; color: var(--neon-amber);
-    letter-spacing: 0.1em; text-transform: uppercase;
-    margin-bottom: 4px;
+  .post-checkin-label { font-size: 0.62rem; color: var(--text-muted); margin-bottom: 4px; }
+  .post-checkin-val { font-size: 1.3rem; font-weight: 300; color: var(--text); margin-bottom: 2px; }
+  .post-checkin-item input[type="range"] { width: 100%; margin: 4px 0; }
+  .post-checkin-ends { display: flex; justify-content: space-between; font-size: 0.52rem; color: var(--text-faint); }
+  .post-checkin-feedback { font-size: 0.68rem; color: var(--neon-cyan); margin-top: 4px; min-height: 1em; }
+  .post-journal { margin-bottom: 16px; }
+  .journal-area {
+    width: 100%; min-height: 60px; max-height: 120px; resize: vertical;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 10px; color: var(--text);
+    font-size: 0.78rem; font-family: var(--f-body);
   }
-  .post-trigger .trigger-text {
-    font-size: 0.95rem; color: var(--text); font-style: italic;
+  .journal-area::placeholder { color: var(--text-faint); }
+  .post-wrap .btn { width: 100%; max-width: 280px; margin: 0 auto; display: block; }
+  .grounding-box {
+    background: rgba(255,171,0,0.06); border: 1px solid rgba(255,171,0,0.25);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px; text-align: left;
   }
+  .grounding-box h3 {
+    font-size: 0.72rem; color: var(--neon-amber); text-transform: uppercase;
+    letter-spacing: 0.1em; margin: 0 0 10px; font-family: var(--f-head);
+  }
+  .grounding-step { padding: 5px 0; font-size: 0.8rem; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .grounding-step:last-child { border-bottom: none; }
+  .grounding-step strong { color: var(--text); }
+  @media (max-width: 480px) { .post-checkin { grid-template-columns: 1fr; } }
 
   /* ============ VOICE PREVIEW ============ */
   .voice-preview-btn {
@@ -696,35 +720,7 @@ body.in-session .footer {
   }
   .sleep-overlay.active { display: block; }
 
-  /* ============ JOURNAL ============ */
-  .journal-area {
-    width: 100%; min-height: 60px; max-height: 120px;
-    background: var(--glass); border: 1px solid var(--glass-border);
-    border-radius: var(--radius); padding: 10px; margin: 10px 0;
-    font-size: 0.78rem; color: var(--text-dim); resize: vertical;
-    font-family: var(--font-body); line-height: 1.5;
-  }
-  .journal-area::placeholder { color: var(--text-faint); }
-
-  /* ============ MOOD CHECK-IN ============ */
   .mood-label { font-size: 0.7rem; color: var(--text-faint); text-align: center; margin-bottom: 10px; }
-
-  /* ============ GROUNDING EXERCISE ============ */
-  .grounding-box {
-    background: var(--glass); border: 1px solid var(--accent-green);
-    border-radius: var(--radius); padding: 18px; margin: 16px 0; text-align: left;
-  }
-  .grounding-box h3 {
-    font-size: 0.72rem; color: var(--accent-green);
-    letter-spacing: 0.12em; text-transform: uppercase;
-    margin: 0 0 12px; font-weight: 500;
-  }
-  .grounding-step {
-    font-size: 0.88rem; line-height: 1.6; color: var(--text-dim);
-    padding: 6px 0; border-bottom: 1px solid var(--glass-border);
-  }
-  .grounding-step:last-child { border-bottom: none; }
-  .grounding-step strong { color: var(--text); }
 
   /* ============ SESSION STATS ============ */
   .history-list { margin-top: 10px; }
@@ -1543,9 +1539,11 @@ body.in-session .footer {
  
   <!-- POST-SESSION -->
   <div id="post-screen" style="display:none;">
-    <div style="text-align:center; padding: 40px 0;">
-      <div style="font-size: 2rem; color: var(--accent); margin-bottom: 16px;">·</div>
-      <p style="font-size: 1.1rem; line-height: 1.7; color: var(--text-dim);" id="postMessage">Take a moment.<br>Notice how you feel.<br>Sip some water if you have it.</p>
+    <div class="post-wrap">
+      <div class="post-header" id="postHeader">
+        <div class="post-status" id="postStatusIcon">✓</div>
+        <p class="post-message" id="postMessage">Take a moment. Notice how you feel.</p>
+      </div>
 
       <!-- Grounding exercise (shown after emergency end) -->
       <div class="grounding-box" id="groundingBox" style="display:none;">
@@ -1555,42 +1553,39 @@ body.in-session .footer {
         <div class="grounding-step"><strong>3 things</strong> you can hear</div>
         <div class="grounding-step"><strong>2 things</strong> you can smell</div>
         <div class="grounding-step"><strong>1 thing</strong> you can taste</div>
-        <div style="font-size:0.75rem; color:var(--text-faint); margin-top:10px; font-style:italic;">Take your time with each one. There is no rush.</div>
+        <div style="font-size:0.7rem; color:var(--text-faint); margin-top:8px; font-style:italic;">Take your time. There is no rush.</div>
       </div>
 
-      <div class="post-summary" id="postSummary"></div>
-      <div id="postTriggerBox"></div>
+      <div class="post-cards">
+        <!-- Session summary -->
+        <div class="post-card" id="postSummary"></div>
+        <!-- Trigger/suggestion -->
+        <div class="post-card" id="postTriggerBox" style="display:none;"></div>
+      </div>
 
-      <!-- State check-in (0-10 scale) -->
-      <div id="moodCheckIn" style="margin-top: 16px;">
-        <div class="mood-label">how do you feel right now? (0 = worst, 10 = best)</div>
-        <div class="state-scale">
-          <div class="state-scale-value" id="postStateVal">5</div>
+      <!-- Check-in row: mood + alertness side by side -->
+      <div class="post-checkin">
+        <div class="post-checkin-item">
+          <div class="post-checkin-label">how do you feel?</div>
+          <div class="post-checkin-val" id="postStateVal">5</div>
           <input type="range" id="postStateSlider" min="0" max="10" value="5">
-          <div class="state-scale-labels"><span>worst</span><span>best</span></div>
+          <div class="post-checkin-ends"><span>worst</span><span>best</span></div>
+          <div class="post-checkin-feedback" id="moodFeedback"></div>
         </div>
-        <div class="mood-label" id="moodFeedback"></div>
-      </div>
-
-      <!-- Alertness check (Howard Alertness Scale) -->
-      <div id="alertnessCheck" style="margin-top: 10px;">
-        <div class="mood-label">how alert do you feel? (0 = very drowsy, 10 = fully alert)</div>
-        <div class="state-scale">
-          <div class="state-scale-value" id="alertnessVal">7</div>
+        <div class="post-checkin-item">
+          <div class="post-checkin-label">how alert are you?</div>
+          <div class="post-checkin-val" id="alertnessVal">7</div>
           <input type="range" id="alertnessSlider" min="0" max="10" value="7">
-          <div class="state-scale-labels"><span>drowsy</span><span>alert</span></div>
+          <div class="post-checkin-ends"><span>drowsy</span><span>alert</span></div>
         </div>
       </div>
 
       <!-- Journal -->
-      <div style="margin-top: 12px;">
-        <div class="mood-label">reflection (optional — saved with your session)</div>
+      <div class="post-journal">
         <textarea class="journal-area" id="journalText" placeholder="What did you notice? Any sensations, images, thoughts, or shifts?"></textarea>
       </div>
 
-      <div style="display: flex; gap: 10px; justify-content: center; margin-top: 24px; flex-wrap: wrap;">
-        <button class="btn" style="max-width: 240px;" id="restartBtn">begin a new session</button>
-      </div>
+      <button class="btn" id="restartBtn">begin a new session</button>
     </div>
   </div>
 </div>
@@ -2019,6 +2014,7 @@ body.in-session .footer {
     ['setup-wizard', 'session-screen', 'post-screen'].forEach(s => {
       const el = $(s); if (el) el.style.display = s === id ? 'block' : 'none';
     });
+    window.scrollTo(0, 0);
   }
 
   // ====================================================================
@@ -4114,56 +4110,39 @@ Output EXACTLY this JSON, no other text, no markdown fences:
    */
   function fixScriptTimings(scriptText) {
     const phaseRx = /(===\s*\w+\s*===)/gi;
-    const parts = scriptText.split(phaseRx);
 
-    const processed = parts.map((part) => {
-      if (/(===\s*\w+\s*===)/i.test(part)) return part;
-
-      let clean = part.replace(/\[PAUSE\s+\d+\]/gi, '').trim();
-      if (!clean) return part;
-
-      // Split into raw sentences
+    // Process a text segment that has NO pause markers inside it:
+    // split into sentences, add between-sentence pauses, add micro-pauses at punctuation
+    function processSegment(text) {
+      const clean = text.trim();
+      if (!clean) return text;
       let sentences = clean.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
-
       // Break long sentences (>30 words) at clause boundaries
       const broken = [];
       for (const sent of sentences) {
         const words = sent.split(/\s+/).length;
         if (words > 30) {
-          // Split at clause boundaries: semicolons, em-dashes, commas after 12+ words
           const clauses = sent.split(/(?<=[;—–])\s+|(?<=,)\s+(?=\w)/);
           let buffer = '';
           for (const clause of clauses) {
             const combined = buffer ? buffer + ' ' + clause : clause;
-            if (combined.split(/\s+/).length > 22 && buffer) {
-              broken.push(buffer.trim());
-              buffer = clause;
-            } else {
-              buffer = combined;
-            }
+            if (combined.split(/\s+/).length > 22 && buffer) { broken.push(buffer.trim()); buffer = clause; }
+            else { buffer = combined; }
           }
           if (buffer.trim()) broken.push(buffer.trim());
-        } else {
-          broken.push(sent);
-        }
+        } else { broken.push(sent); }
       }
       sentences = broken;
-
-      // Build result with calculated pauses
       const result = [];
       for (let i = 0; i < sentences.length; i++) {
         const raw = sentences[i].trim();
         const words = raw.split(/\s+/).length;
-        // Inject micro-pauses after commas, colons, and semicolons
         const sent = raw.replace(/([,;:])\s+/g, '$1 [PAUSE 1] ');
         result.push(sent);
-
         if (i === sentences.length - 1) continue;
-
         const isDirective = DIRECTIVE_RX.test(raw);
         const hasEllipsis = ELLIPSIS_RX.test(raw);
         const isQuestion = raw.endsWith('?');
-
         let pause;
         if (isDirective && words <= 8) pause = 5;
         else if (isDirective) pause = 4;
@@ -4172,19 +4151,33 @@ Output EXACTLY this JSON, no other text, no markdown fences:
         else if (words <= 5) pause = 2;
         else if (words >= 20) pause = 3;
         else pause = 2;
-
         result.push(`[PAUSE ${pause}]`);
       }
-
       return result.join(' ');
+    }
+
+    const phaseParts = scriptText.split(phaseRx);
+
+    const processed = phaseParts.map((part) => {
+      if (/(===\s*\w+\s*===)/i.test(part)) return part;
+      // Split by existing [PAUSE N] markers, PRESERVING them
+      const chunks = part.split(/(\[PAUSE\s+\d+\])/gi);
+      // chunks alternates: [text, pause_marker, text, pause_marker, text, ...]
+      return chunks.map(chunk => {
+        if (/\[PAUSE\s+\d+\]/i.test(chunk)) return chunk; // preserve original pause
+        return processSegment(chunk); // add timing within this segment
+      }).join(' ');
     });
 
     let fixed = processed.join('\n');
     fixed = fixed.replace(/(===\s*\w+\s*===)\s*(?!\[PAUSE)/gi, '$1\n[PAUSE 4]\n');
+    // Clean up double spaces from joins
+    fixed = fixed.replace(/  +/g, ' ');
 
     // Monotone detector: if all sentence-level pauses (> 1s) are identical
     // (e.g. non-hypnotic text where no directive words triggered variance),
     // apply jittered timing. Micro-pauses ([PAUSE 1]) are left untouched.
+    // Only jitter pauses that were COMPUTED (not original author pauses).
     const allPauses = fixed.match(/\[PAUSE\s+(\d+)\]/gi) || [];
     const sentencePauses = allPauses.filter(p => parseInt(p.match(/\d+/)[0], 10) > 1);
     if (sentencePauses.length > 3) {
@@ -4192,8 +4185,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       const allSame = vals.every(v => v === vals[0]);
       if (allSame) {
         fixed = fixed.replace(/\[PAUSE\s+(\d+)\]/gi, (m, n) => {
-          if (parseInt(n, 10) <= 1) return m; // preserve micro-pauses
-          const jitter = Math.floor(Math.random() * 4) - 1; // -1 to +2
+          if (parseInt(n, 10) <= 1) return m;
+          const jitter = Math.floor(Math.random() * 4) - 1;
           return `[PAUSE ${Math.max(2, 3 + jitter)}]`;
         });
       }
@@ -5049,10 +5042,9 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   }
 
   async function speakScript(text, bypassAbort = false) {
-    // Sanitize: strip any malformed [pause...] or [PAUSE...] markers that
-    // wouldn't match our canonical regex. Prevents TTS from reading "bracket
-    // pause bracket" aloud.
-    const canonical = text.replace(/\[\s*pause[^\]]*\]/gi, (m) => {
+    // Sanitize: strip phase markers and malformed pause markers
+    let canonical = text.replace(/===\s*\w+\s*===/gi, ''); // strip phase markers
+    canonical = canonical.replace(/\[\s*pause[^\]]*\]/gi, (m) => {
       const num = m.match(/\d+/);
       return num ? `[PAUSE ${num[0]}]` : '';
     });
@@ -5089,9 +5081,9 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   function speak(text) {
     return new Promise(resolve => {
       if (!('speechSynthesis' in window)) { setTimeout(resolve, text.length * 80); return; }
-      // Always cancel before speaking to reset Chrome's internal state
-      speechSynthesis.cancel();
-      setTimeout(() => _doSpeak(text, resolve), 60);
+      // Only cancel if something is unexpectedly still speaking
+      if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+      setTimeout(() => _doSpeak(text, resolve), speechSynthesis.speaking ? 80 : 20);
     });
   }
   function _doSpeak(text, resolve) {
@@ -5264,53 +5256,51 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const persona = getPersona(), method = getMethod();
     const summaryEl = $('postSummary');
     summaryEl.innerHTML = `
-      <h3>session summary</h3>
+      <div class="post-card-title">session summary</div>
       <div class="post-row"><span class="post-label">guide</span><span class="post-value">${escapeHtml(persona.name)}</span></div>
       <div class="post-row"><span class="post-label">method</span><span class="post-value">${escapeHtml(method.name)}</span></div>
       <div class="post-row"><span class="post-label">duration</span><span class="post-value">${mins}:${String(secs).padStart(2,'0')}</span></div>
-      <div class="post-row"><span class="post-label">completion</span><span class="post-value">${wasEmergency ? 'ended early (re-alerted)' : 'completed'}</span></div>
+      <div class="post-row"><span class="post-label">completion</span><span class="post-value">${wasEmergency ? 'ended early' : 'completed'}</span></div>
     `;
 
     // Show trigger/suggestion reminder if relevant
     const triggerBox = $('postTriggerBox');
     if (state.craftedSuggestion && state.craftedSuggestion.trigger && state.craftedSuggestion.trigger !== 'ongoing state') {
+      triggerBox.style.display = '';
       triggerBox.innerHTML = `
-        <div class="post-trigger">
-          <div class="trigger-label">your trigger</div>
-          <div class="trigger-text">${escapeHtml(state.craftedSuggestion.trigger)}</div>
-          <div style="font-size:0.75rem; color:var(--text-dim); margin-top:6px;">→ ${escapeHtml(state.craftedSuggestion.coreResponse || '')}</div>
-        </div>`;
+        <div class="post-trigger-title">your trigger</div>
+        <div class="post-trigger-text">${escapeHtml(state.craftedSuggestion.trigger)}</div>
+        <div class="post-trigger-sub">→ ${escapeHtml(state.craftedSuggestion.coreResponse || '')}</div>`;
     } else if (state.craftedSuggestion && state.craftedSuggestion.coreResponse) {
+      triggerBox.style.display = '';
       triggerBox.innerHTML = `
-        <div class="post-trigger">
-          <div class="trigger-label">suggestion installed</div>
-          <div class="trigger-text">${escapeHtml(state.craftedSuggestion.coreResponse)}</div>
-        </div>`;
+        <div class="post-trigger-title">suggestion installed</div>
+        <div class="post-trigger-text">${escapeHtml(state.craftedSuggestion.coreResponse)}</div>`;
     } else {
+      triggerBox.style.display = 'none';
       triggerBox.innerHTML = '';
     }
 
     // For demonstration methods, remind user of the test
     if (method.category === 'demonstration' && !wasEmergency) {
-      triggerBox.innerHTML += `<div class="post-trigger" style="margin-top:8px; border-color: var(--accent-purple);">
-        <div class="trigger-label" style="color:var(--accent-purple);">test now</div>
-        <div class="trigger-text" style="font-size:0.85rem;">Try the ${escapeHtml(method.name)} effect now. The suggestion should still be active.</div>
+      triggerBox.style.display = '';
+      triggerBox.innerHTML += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--glass-border);">
+        <div class="post-trigger-title" style="color:var(--accent-purple);">test now</div>
+        <div class="post-trigger-text" style="font-size:0.82rem;">Try the ${escapeHtml(method.name)} effect now.</div>
       </div>`;
     }
 
     // Emergency cooldown (30s after emergency end)
+    const statusIcon = $('postStatusIcon');
     if (wasEmergency) {
       state._cooldownUntil = Date.now() + 30000;
-      // Show grounding exercise after emergency end
-      const groundingBox = $('groundingBox');
-      if (groundingBox) groundingBox.style.display = 'block';
-      const postMsg = $('postMessage');
-      if (postMsg) postMsg.innerHTML = 'You ended the session early.<br>That\'s okay — take a moment to re-orient.';
+      if ($('groundingBox')) $('groundingBox').style.display = 'block';
+      if (statusIcon) { statusIcon.textContent = '⚠'; statusIcon.style.color = 'var(--neon-amber)'; }
+      if ($('postMessage')) $('postMessage').textContent = 'You ended early. That\'s okay — take a moment to re-orient.';
     } else {
-      const groundingBox = $('groundingBox');
-      if (groundingBox) groundingBox.style.display = 'none';
-      const postMsg = $('postMessage');
-      if (postMsg) postMsg.innerHTML = 'Take a moment.<br>Notice how you feel.<br>Sip some water if you have it.';
+      if ($('groundingBox')) $('groundingBox').style.display = 'none';
+      if (statusIcon) { statusIcon.textContent = '✓'; statusIcon.style.color = 'var(--neon-cyan)'; }
+      if ($('postMessage')) $('postMessage').textContent = 'Take a moment. Notice how you feel.';
     }
 
     // Reset post-session state controls
