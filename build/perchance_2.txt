@@ -956,6 +956,34 @@ body.in-session .footer {
     @keyframes stepIn { from { opacity: 1; transform: none; } }
     .step-circle, .step-connector { transition: none; }
   }
+  /* ── Stats Charts Modal ── */
+  .stats-modal-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.88); display: flex; align-items: flex-start; justify-content: center; padding: 12px; overflow-y: auto; }
+  .stats-modal { background: var(--bg); border: 1px solid var(--neon-cyan); border-radius: var(--radius); max-width: 900px; width: 100%; padding: 18px; box-shadow: 0 0 30px rgba(0,229,255,0.15); margin: auto; }
+  .stats-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .stats-modal-title { font-family: var(--f-head); font-size: 1.2rem; color: var(--text); margin: 0; }
+  .stats-modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.8rem; cursor: pointer; padding: 0 6px; line-height: 1; }
+  .stats-modal-close:hover { color: var(--neon-amber); }
+  .stats-kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 12px; }
+  .stats-kpi { background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 8px 4px; text-align: center; }
+  .stats-kpi-val { font-size: 1.05rem; font-weight: 700; color: var(--neon-cyan); font-family: var(--f-head); white-space: nowrap; }
+  .stats-kpi-label { font-size: 0.52rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+  .stats-tile { background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 8px; cursor: pointer; transition: all 0.25s ease; overflow: hidden; }
+  .stats-tile:hover { border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0,229,255,0.1); }
+  .stats-tile.expanded { grid-column: 1 / -1; }
+  .stats-tile-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .stats-chart-title { font-size: 0.62rem; color: var(--text-muted); text-transform: lowercase; font-family: var(--f-head); letter-spacing: 0.05em; }
+  .stats-expand-icon { font-size: 0.7rem; color: var(--text-faint); transition: transform 0.2s; }
+  .stats-tile.expanded .stats-expand-icon { transform: rotate(180deg); }
+  .stats-tile canvas { width: 100%; height: 160px; display: block; }
+  .stats-tile.expanded canvas { height: 280px; }
+  .stats-empty-msg { text-align: center; color: var(--text-faint); font-size: 0.78rem; padding: 40px 0; }
+  @media (max-width: 600px) {
+    .stats-kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    .stats-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .stats-tile canvas { height: 120px; }
+    .stats-tile.expanded canvas { height: 200px; }
+  }
 </style>
  
 <div class="container">
@@ -994,11 +1022,9 @@ body.in-session .footer {
             <div class="sublabel" style="font-size:0.58rem;margin-top:4px;">Profile stays on your device. Used to personalize AI scripts.</div>
           </div>
         </details>
-        <details open>
-          <summary>stats</summary>
-          <div id="sidebarStats"></div>
-          <div id="heatmapWrap" style="margin-top:6px;"></div>
-        </details>
+        <button class="btn secondary" id="openStatsBtn" style="width:100%;font-size:0.72rem;padding:8px;margin:6px 0;">📊 view stats &amp; charts</button>
+        <div id="sidebarStats"></div>
+        <div id="heatmapWrap" style="margin-top:6px;"></div>
         <details>
           <summary>history</summary>
           <div id="sessionStatsPanel"></div>
@@ -1586,6 +1612,30 @@ body.in-session .footer {
 
 <!-- Warm overlay for sleep sessions (blue-light reduction) -->
 <div class="sleep-overlay" id="sleepOverlay"></div>
+
+<!-- ============ STATS CHARTS MODAL ============ -->
+<div class="stats-modal-overlay" id="statsModal" style="display:none;">
+  <div class="stats-modal">
+    <div class="stats-modal-header">
+      <h2 class="stats-modal-title">your practice</h2>
+      <button class="stats-modal-close" id="statsModalClose">&times;</button>
+    </div>
+    <div class="stats-kpi-grid" id="statsKpiGrid"></div>
+    <div class="stats-grid" id="statsGrid">
+      <div class="stats-tile" data-chart="persona"><div class="stats-tile-head"><span class="stats-chart-title">guides</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartPersona"></canvas></div>
+      <div class="stats-tile" data-chart="method"><div class="stats-tile-head"><span class="stats-chart-title">methods</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartMethod"></canvas></div>
+      <div class="stats-tile" data-chart="intention"><div class="stats-tile-head"><span class="stats-chart-title">intentions</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartIntention"></canvas></div>
+      <div class="stats-tile" data-chart="soundscape"><div class="stats-tile-head"><span class="stats-chart-title">soundscapes</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartSoundscape"></canvas></div>
+      <div class="stats-tile" data-chart="hourly"><div class="stats-tile-head"><span class="stats-chart-title">by hour</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartHourly"></canvas></div>
+      <div class="stats-tile" data-chart="weekday"><div class="stats-tile-head"><span class="stats-chart-title">by day</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartWeekday"></canvas></div>
+      <div class="stats-tile" data-chart="mood"><div class="stats-tile-head"><span class="stats-chart-title">mood shift</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartMood"></canvas></div>
+      <div class="stats-tile" data-chart="completion"><div class="stats-tile-head"><span class="stats-chart-title">outcomes</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartCompletion"></canvas></div>
+      <div class="stats-tile" data-chart="settings"><div class="stats-tile-head"><span class="stats-chart-title">audio profile</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartSettings"></canvas></div>
+      <div class="stats-tile" data-chart="features"><div class="stats-tile-head"><span class="stats-chart-title">features tried</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartFeatures"></canvas></div>
+    </div>
+    <div class="stats-empty-msg" id="statsEmptyMsg" style="display:none;">Complete a few sessions to see your stats here.</div>
+  </div>
+</div>
 
 <!-- First-run safety/contraindication screen -->
 <div class="safety-screen" id="safetyScreen" style="display:none;">
@@ -4157,6 +4207,244 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   }
 
   // ====================================================================
+  // STATS CHARTS MODAL — Canvas 2D chart rendering
+  // ====================================================================
+  const CHART_COLORS = {
+    cyan: '#00e5ff', amber: '#ffab00', magenta: '#ff4081', purple: '#ba68c8',
+    green: '#39ff8e', blue: '#4fc3f7', orange: '#ff9800', teal: '#26a69a',
+    bars: ['#4fc3f7','#00e5ff','#26a69a','#39ff8e','#ffab00','#ff9800','#ff4081','#ba68c8','#7c4dff','#e0e0e0'],
+    gridLine: 'rgba(255,255,255,0.08)', label: 'rgba(255,255,255,0.5)', title: 'rgba(255,255,255,0.7)',
+  };
+
+  function drawBarChart(canvasId, labels, values, color) {
+    const canvas = $(canvasId); if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.offsetWidth || 360, H = canvas.offsetHeight || 200;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+    if (!values.length || values.every(v => v === 0)) { ctx.fillStyle = CHART_COLORS.label; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('No data yet', W/2, H/2); return; }
+    const pad = { top: 10, right: 10, bottom: 40, left: 32 };
+    const chartW = W - pad.left - pad.right, chartH = H - pad.top - pad.bottom;
+    const maxVal = Math.max(...values, 1);
+    const barW = Math.min(40, (chartW / labels.length) * 0.65);
+    const gap = chartW / labels.length;
+    // Grid lines
+    ctx.strokeStyle = CHART_COLORS.gridLine; ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 4; i++) { const y = pad.top + chartH * (1 - i/4); ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke(); }
+    // Bars
+    labels.forEach((label, i) => {
+      const barH = (values[i] / maxVal) * chartH;
+      const x = pad.left + gap * i + (gap - barW) / 2;
+      const y = pad.top + chartH - barH;
+      const c = Array.isArray(color) ? color[i % color.length] : color;
+      ctx.fillStyle = c; ctx.beginPath();
+      const r = Math.min(3, barW/2);
+      ctx.moveTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.arcTo(x + barW, y, x + barW, y + r, r);
+      ctx.lineTo(x + barW, pad.top + chartH); ctx.lineTo(x, pad.top + chartH); ctx.closePath(); ctx.fill();
+      // Value label
+      ctx.fillStyle = CHART_COLORS.title; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(values[i], x + barW/2, y - 4);
+      // Axis label
+      ctx.fillStyle = CHART_COLORS.label; ctx.font = '9px sans-serif';
+      ctx.save(); ctx.translate(x + barW/2, pad.top + chartH + 6);
+      if (labels.length > 6) { ctx.rotate(-0.5); ctx.textAlign = 'right'; } else { ctx.textAlign = 'center'; }
+      ctx.fillText(label.length > 12 ? label.slice(0,11) + '…' : label, 0, 8); ctx.restore();
+    });
+  }
+
+  function drawLineChart(canvasId, labels, values, color) {
+    const canvas = $(canvasId); if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.offsetWidth || 740, H = canvas.offsetHeight || 220;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+    if (!values.length) return;
+    const pad = { top: 14, right: 14, bottom: 36, left: 32 };
+    const chartW = W - pad.left - pad.right, chartH = H - pad.top - pad.bottom;
+    const maxVal = Math.max(...values, 1);
+    const xStep = chartW / (labels.length - 1 || 1);
+    // Grid
+    ctx.strokeStyle = CHART_COLORS.gridLine; ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 4; i++) { const y = pad.top + chartH * (1 - i/4); ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke(); }
+    // Fill area
+    ctx.beginPath(); ctx.moveTo(pad.left, pad.top + chartH);
+    values.forEach((v, i) => { ctx.lineTo(pad.left + i * xStep, pad.top + chartH - (v / maxVal) * chartH); });
+    ctx.lineTo(pad.left + (values.length-1) * xStep, pad.top + chartH); ctx.closePath();
+    ctx.fillStyle = color.replace(')', ',0.12)').replace('rgb', 'rgba'); ctx.fill();
+    // Line
+    ctx.beginPath();
+    values.forEach((v, i) => { const x = pad.left + i * xStep, y = pad.top + chartH - (v / maxVal) * chartH; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+    // Dots
+    values.forEach((v, i) => { const x = pad.left + i * xStep, y = pad.top + chartH - (v / maxVal) * chartH; ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill(); });
+    // Peak annotation
+    const peakIdx = values.indexOf(Math.max(...values));
+    if (values[peakIdx] > 0) {
+      const px = pad.left + peakIdx * xStep, py = pad.top + chartH - (values[peakIdx] / maxVal) * chartH;
+      ctx.fillStyle = CHART_COLORS.amber; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(`Peak: ${labels[peakIdx]} (${values[peakIdx]})`, Math.min(Math.max(px, 60), W - 60), py - 10);
+    }
+    // X labels
+    ctx.fillStyle = CHART_COLORS.label; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    labels.forEach((l, i) => { if (labels.length <= 10 || i % 2 === 0) ctx.fillText(l, pad.left + i * xStep, H - pad.bottom + 16); });
+  }
+
+  function drawDonutChart(canvasId, segments) {
+    const canvas = $(canvasId); if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.offsetWidth || 360, H = canvas.offsetHeight || 220;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+    const total = segments.reduce((s, seg) => s + seg.value, 0);
+    if (total === 0) { ctx.fillStyle = CHART_COLORS.label; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('No data yet', W/2, H/2); return; }
+    const cx = W / 2, cy = H / 2 - 6, outerR = Math.min(W, H) / 2 - 30, innerR = outerR * 0.55;
+    let angle = -Math.PI / 2;
+    segments.forEach(seg => {
+      const sweep = (seg.value / total) * Math.PI * 2;
+      ctx.beginPath(); ctx.arc(cx, cy, outerR, angle, angle + sweep); ctx.arc(cx, cy, innerR, angle + sweep, angle, true); ctx.closePath();
+      ctx.fillStyle = seg.color; ctx.fill();
+      // Label
+      const mid = angle + sweep / 2;
+      const lx = cx + Math.cos(mid) * (outerR + 16), ly = cy + Math.sin(mid) * (outerR + 16);
+      ctx.fillStyle = CHART_COLORS.title; ctx.font = '10px sans-serif'; ctx.textAlign = Math.cos(mid) > 0 ? 'left' : 'right';
+      ctx.fillText(`${seg.label} ${Math.round(seg.value / total * 100)}%`, lx, ly);
+      angle += sweep;
+    });
+  }
+
+  function drawHorizBars(canvasId, labels, values, maxVal, colors) {
+    const canvas = $(canvasId); if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.offsetWidth || 360, H = canvas.offsetHeight || 200;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+    const pad = { left: 80, right: 40, top: 10, bottom: 10 };
+    const rowH = (H - pad.top - pad.bottom) / labels.length;
+    const barMaxW = W - pad.left - pad.right;
+    labels.forEach((label, i) => {
+      const y = pad.top + i * rowH;
+      const barW = (values[i] / (maxVal || 1)) * barMaxW;
+      ctx.fillStyle = colors[i % colors.length]; ctx.beginPath();
+      const r = 3; ctx.moveTo(pad.left, y + 4); ctx.lineTo(pad.left + barW - r, y + 4); ctx.arcTo(pad.left + barW, y + 4, pad.left + barW, y + rowH - 8, r); ctx.arcTo(pad.left + barW, y + rowH - 8, pad.left + barW - r, y + rowH - 8, r); ctx.lineTo(pad.left, y + rowH - 8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = CHART_COLORS.label; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(label, pad.left - 6, y + rowH/2 + 3);
+      ctx.fillStyle = CHART_COLORS.title; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText(values[i].toFixed(2), pad.left + barW + 6, y + rowH/2 + 3);
+    });
+  }
+
+  function drawFeatureGrid(canvasId, featBitmask) {
+    const canvas = $(canvasId); if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.offsetWidth || 360, H = canvas.offsetHeight || 200;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+    const features = [
+      { name: 'Affirmations', bit: 1 }, { name: 'Programs', bit: 2 }, { name: 'Custom Persona', bit: 4 },
+      { name: 'Skip-to-Script', bit: 8 }, { name: 'Timing Fix', bit: 16 }, { name: 'Share', bit: 32 },
+      { name: 'Backup', bit: 64 }, { name: 'Double Induction', bit: 128 },
+    ];
+    const rowH = (H - 10) / features.length;
+    features.forEach((f, i) => {
+      const y = 8 + i * rowH;
+      const used = !!(featBitmask & f.bit);
+      ctx.fillStyle = used ? CHART_COLORS.cyan : 'rgba(255,255,255,0.06)';
+      ctx.beginPath(); ctx.roundRect(20, y, W - 40, rowH - 4, 4); ctx.fill();
+      ctx.fillStyle = used ? '#111' : CHART_COLORS.label; ctx.font = `${used ? 'bold ' : ''}11px sans-serif`; ctx.textAlign = 'left';
+      ctx.fillText(`${used ? '✓' : '○'}  ${f.name}`, 30, y + rowH/2 + 1);
+    });
+  }
+
+  // Chart render dispatch — maps tile data-chart to render calls
+  let _statsAnalytics = null;
+  function renderChart(tile) {
+    const chart = tile.dataset.chart;
+    const a = _statsAnalytics; if (!a) return;
+    const sorted = (map) => Object.entries(map || {}).sort((x,y) => y[1] - x[1]);
+    const topItems = (map, n) => { const s = sorted(map); return { labels: s.slice(0,n).map(e => e[0]), values: s.slice(0,n).map(e => e[1]) }; };
+    switch(chart) {
+      case 'persona': { const d = topItems(a.p, 8); drawBarChart('chartPersona', d.labels, d.values, CHART_COLORS.bars); break; }
+      case 'method': { const d = topItems(a.m, 8); drawBarChart('chartMethod', d.labels, d.values, CHART_COLORS.bars); break; }
+      case 'intention': { const d = topItems(a.i, 8); drawBarChart('chartIntention', d.labels, d.values, CHART_COLORS.bars); break; }
+      case 'soundscape': { const d = topItems(a.s, 8); drawBarChart('chartSoundscape', d.labels, d.values, CHART_COLORS.bars); break; }
+      case 'hourly': { drawLineChart('chartHourly', Array.from({length:24}, (_,i) => i.toString()), a.hr, CHART_COLORS.cyan); break; }
+      case 'weekday': { drawBarChart('chartWeekday', ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], a.dw, CHART_COLORS.bars); break; }
+      case 'mood': {
+        if (a.mood.n > 0) {
+          const avgPre = a.mood.preSum / a.mood.n, avgPost = a.mood.postSum > 0 ? a.mood.postSum / a.mood.n : null;
+          const mL = avgPost ? ['Pre','Post'] : ['Pre'], mV = avgPost ? [+avgPre.toFixed(1), +avgPost.toFixed(1)] : [+avgPre.toFixed(1)];
+          drawBarChart('chartMood', mL, mV, [CHART_COLORS.blue, CHART_COLORS.green]);
+        } else drawBarChart('chartMood', [], [], CHART_COLORS.cyan);
+        break;
+      }
+      case 'completion': {
+        const other = a.comp.total - a.comp.finished - a.comp.emergency;
+        drawDonutChart('chartCompletion', [
+          { label: 'Finished', value: a.comp.finished, color: CHART_COLORS.cyan },
+          { label: 'Emergency', value: a.comp.emergency, color: CHART_COLORS.amber },
+          { label: 'Incomplete', value: Math.max(0, other), color: CHART_COLORS.green },
+        ]); break;
+      }
+      case 'settings': {
+        if (a.cfg.n > 0) {
+          const cL = ['Rate','Pitch','Narr Vol','Drone'];
+          const cV = [a.cfg.rateSum/a.cfg.n, a.cfg.pitchSum/a.cfg.n, a.cfg.volSum/a.cfg.n, a.cfg.droneSum/a.cfg.n];
+          drawHorizBars('chartSettings', cL, cV, 1.2, [CHART_COLORS.cyan, CHART_COLORS.blue, CHART_COLORS.amber, CHART_COLORS.green]);
+        } else drawBarChart('chartSettings', [], [], CHART_COLORS.cyan);
+        break;
+      }
+      case 'features': drawFeatureGrid('chartFeatures', a.feat); break;
+    }
+  }
+
+  function renderAllCharts() {
+    document.querySelectorAll('.stats-tile').forEach(tile => renderChart(tile));
+  }
+
+  async function openStatsModal() {
+    const a = await getAnalytics();
+    _statsAnalytics = a;
+    const modal = $('statsModal');
+    if (a.comp.total < 1) {
+      $('statsKpiGrid').innerHTML = '';
+      $('statsGrid').style.display = 'none';
+      $('statsEmptyMsg').style.display = '';
+      modal.style.display = 'flex'; return;
+    }
+    $('statsEmptyMsg').style.display = 'none';
+    $('statsGrid').style.display = '';
+    const ins = deriveInsights(a);
+    const durMin = Math.floor(ins.avgDurationSec / 60), durSec = ins.avgDurationSec % 60;
+    const hrLbl = ins.peakHour < 12 ? `${ins.peakHour || 12}am` : `${ins.peakHour === 12 ? 12 : ins.peakHour - 12}pm`;
+    $('statsKpiGrid').innerHTML = [
+      { val: ins.totalSessions, label: 'sessions' },
+      { val: `${ins.completionRate}%`, label: 'completed' },
+      { val: ins.avgImprovement && parseFloat(ins.avgImprovement) > 0 ? `+${ins.avgImprovement}` : (ins.avgImprovement || '—'), label: 'mood gain' },
+      { val: `${durMin}m${durSec ? durSec + 's' : ''}`, label: 'avg duration' },
+      { val: hrLbl, label: 'peak hour' },
+      { val: ins.peakDayName.slice(0,3), label: 'peak day' },
+    ].map(k => `<div class="stats-kpi"><div class="stats-kpi-val">${k.val}</div><div class="stats-kpi-label">${k.label}</div></div>`).join('');
+
+    modal.style.display = 'flex';
+    // Render after display so canvas has layout dimensions
+    requestAnimationFrame(() => renderAllCharts());
+  }
+
+  function closeStatsModal() { $('statsModal').style.display = 'none'; _statsAnalytics = null; }
+
+  function toggleStatsTile(tile) {
+    const wasExpanded = tile.classList.contains('expanded');
+    // Collapse all first
+    document.querySelectorAll('.stats-tile.expanded').forEach(t => t.classList.remove('expanded'));
+    if (!wasExpanded) tile.classList.add('expanded');
+    // Re-render affected charts after CSS transition
+    setTimeout(() => {
+      if (wasExpanded) renderChart(tile);
+      else document.querySelectorAll('.stats-tile').forEach(t => renderChart(t));
+    }, 280);
+  }
+
+  // ====================================================================
   // EXPORT, SHARE, BACKUP/RESTORE
   // ====================================================================
   function exportScript() {
@@ -5116,6 +5404,14 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     if (file) importBackup(file);
     e.target.value = ''; // Reset so same file can be re-imported
   });
+
+  // Stats charts modal
+  $('openStatsBtn')?.addEventListener('click', openStatsModal);
+  $('statsModalClose')?.addEventListener('click', closeStatsModal);
+  $('statsModal')?.addEventListener('click', e => { if (e.target.id === 'statsModal') closeStatsModal(); });
+  document.querySelectorAll('.stats-tile').forEach(tile => {
+    tile.addEventListener('click', () => toggleStatsTile(tile));
+  });
  
   // Session
   $('pauseBtn').addEventListener('click', togglePause);
@@ -5466,7 +5762,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       persona: 'therapist', method: 'staircase', intention: 'behavior', length: 'medium', soundscape: 'rain' },
     { id: 'creativity', icon: '🎨', name: 'Creative Flow', desc: 'Dissolve creative blocks',
       persona: 'mystic', method: 'ericksonian', intention: 'creativity', length: 'medium', soundscape: 'fire' },
-    { id: 'energy', icon: ☀️', name: 'Energy Boost', desc: 'Wake up & activate',
+    { id: 'energy', icon: '☀️', name: 'Energy Boost', desc: 'Wake up & activate',
       persona: 'drill-instructor', method: 'dave-elman', intention: 'energy', length: 'quick', soundscape: 'white' },
   ];
 
