@@ -2338,6 +2338,217 @@ body.in-session .footer {
   }
 
   // ====================================================================
+  // ADAPTIVE INTELLIGENCE SYSTEM — Phases 1–9
+  // Observe → Infer → Adapt → Reinforce → Evolve
+  // ====================================================================
+  const ADAPTIVE_KEY = 'stillness_adaptive_v1';
+
+  /** Default adaptive profile (~300 bytes in IDB) */
+  function defaultAdaptive() {
+    return {
+      v: 1,
+      // Phase 2 — hidden profile traits (0–1 normalized)
+      traits: {
+        compliance: 0.5,      // finishes sessions?
+        sensitivity: 0.5,     // mood responds to sessions?
+        stability: 0.5,       // consistent improvement?
+        noveltySeeking: 0.5,  // explores vs repeats?
+        depthTolerance: 0.5,  // handles long/deep?
+        controlPref: 0.5,     // authoritative (1) vs gentle (0)
+        sensoryAudio: 0.5,    // uses soundscapes?
+        sensoryVisual: 0.5,   // uses visuals?
+      },
+      // Phase 3 — reward-weighted preferences { id: weight }
+      w: { p: {}, m: {}, s: {}, ln: {} },
+      // Phase 4 — AI memory summary (updated every 5 sessions)
+      memorySummary: '',
+      memorySessCount: 0,  // sessions since last summary
+      // Phase 6 — difficulty ramp
+      difficulty: 0.3,  // 0=gentle 1=deep
+      // Phase 7 — equilibrium
+      recoveryMode: false,
+      // Timestamp
+      ts: 0,
+    };
+  }
+
+  async function getAdaptive() {
+    try { const d = await idbGet(ADAPTIVE_KEY); if (d?.v === 1) return d; } catch {}
+    return defaultAdaptive();
+  }
+
+  // ── Phase 1: Derived signals ──
+  function deriveSignals(analytics, history) {
+    const a = analytics, h = history || [];
+    const clamp = (v, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
+    const compRate = a.comp.total > 0 ? a.comp.finished / a.comp.total : 0.5;
+    const avgDelta = a.mood.n > 0 ? a.mood.deltaSum / a.mood.n : 0;
+    const emergRate = a.comp.total > 0 ? a.comp.emergency / a.comp.total : 0;
+    // Mood variance from last 10 sessions
+    const recent = h.filter(s => s.preMood != null && s.postMood != null).slice(0, 10);
+    const deltas = recent.map(s => s.postMood - s.preMood);
+    const deltaVar = deltas.length > 1 ? deltas.reduce((s, d) => s + Math.pow(d - avgDelta, 2), 0) / deltas.length : 1;
+    // Entropy of method usage (variety)
+    const mEntries = Object.values(a.m || {});
+    const mTotal = mEntries.reduce((s, v) => s + v, 0) || 1;
+    const mEntropy = -mEntries.reduce((s, v) => { const p = v / mTotal; return s + (p > 0 ? p * Math.log2(p) : 0); }, 0);
+    const maxEntropy = Math.log2(Math.max(mEntries.length, 1)) || 1;
+    // Average session length normalized (0=micro, 1=long)
+    const lenMap = { micro: 0, quick: 0.2, short: 0.4, medium: 0.6, long: 0.85, extended: 1 };
+    const lenEntries = Object.entries(a.ln || {});
+    const lenTotal = lenEntries.reduce((s, [, v]) => s + v, 0) || 1;
+    const avgLen = lenEntries.reduce((s, [k, v]) => s + (lenMap[k] ?? 0.5) * v, 0) / lenTotal;
+    // Control preference — ratio of authoritarian persona usage
+    const authPersonas = ['drill-sergeant','dominatrix','hypnoboss','professor','commander','taskmaster'];
+    const authCount = authPersonas.reduce((s, id) => s + (a.p[id] || 0), 0);
+    const totalPersona = Object.values(a.p || {}).reduce((s, v) => s + v, 0) || 1;
+    // Soundscape & visual usage rates
+    const soundNone = (a.s?.none || 0) / (a.comp.total || 1);
+    const vizAuto = (a.z?.auto || 0) / (a.comp.total || 1);
+    return {
+      completionRate: compRate,
+      avgImprovement: clamp(avgDelta / 5 + 0.5),
+      moodVariance: clamp(1 - deltaVar / 10),
+      noveltyEntropy: clamp(mEntropy / maxEntropy),
+      depthNorm: clamp(avgLen),
+      controlRatio: clamp(authCount / totalPersona),
+      emergencyRate: emergRate,
+      audioUsage: clamp(1 - soundNone),
+      visualUsage: clamp(1 - vizAuto),
+    };
+  }
+
+  // ── Phase 2: Update hidden profile traits ──
+  function updateTraits(traits, sig) {
+    const lerp = (old, target, rate = 0.15) => old + (target - old) * rate;
+    return {
+      compliance:     lerp(traits.compliance, sig.completionRate),
+      sensitivity:    lerp(traits.sensitivity, sig.avgImprovement),
+      stability:      lerp(traits.stability, sig.moodVariance),
+      noveltySeeking: lerp(traits.noveltySeeking, sig.noveltyEntropy),
+      depthTolerance: lerp(traits.depthTolerance, sig.depthNorm),
+      controlPref:    lerp(traits.controlPref, sig.controlRatio),
+      sensoryAudio:   lerp(traits.sensoryAudio, sig.audioUsage),
+      sensoryVisual:  lerp(traits.sensoryVisual, sig.visualUsage),
+    };
+  }
+
+  // ── Phase 3: Reward function + weight update ──
+  function computeReward(record, wasEmergency) {
+    const delta = (record.postMood ?? 5) - (record.preMood ?? 5);
+    return delta + (record.completed ? 1 : -1) - (wasEmergency ? 2 : 0);
+  }
+
+  function updateWeights(w, record, reward) {
+    const decay = 0.98;
+    const apply = (map, key) => { if (!key) return; for (const k in map) map[k] *= decay; map[key] = (map[key] || 0) + reward; };
+    apply(w.p, record.personaId);
+    apply(w.m, record.methodId);
+    apply(w.s, record.soundscape);
+    apply(w.ln, record.length);
+  }
+
+  function getPreferred(weightMap, n = 3) {
+    return Object.entries(weightMap).sort((a, b) => b[1] - a[1]).slice(0, n).map(e => e[0]);
+  }
+
+  // ── Phase 6: Difficulty ramp ──
+  function computeDifficulty(sig, currentDiff) {
+    const target = sig.completionRate * 0.4 + sig.avgImprovement * 0.3 + sig.depthNorm * 0.3;
+    return currentDiff + (target - currentDiff) * 0.1; // very slow ramp
+  }
+
+  // ── Phase 7: Equilibrium ──
+  function checkEquilibrium(sig, adaptive) {
+    if (sig.emergencyRate > 0.3 || sig.completionRate < 0.5 || sig.avgImprovement < 0.3) {
+      return { recoveryMode: true, difficulty: Math.max(0.1, adaptive.difficulty - 0.15) };
+    }
+    return { recoveryMode: false, difficulty: adaptive.difficulty };
+  }
+
+  // ── Phase 5 & 8: Recommendation engine ──
+  function getRecommendation(adaptive, analytics) {
+    const topW = (map) => Object.entries(map).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    const rec = {
+      persona: topW(adaptive.w.p),
+      method: topW(adaptive.w.m),
+      soundscape: topW(adaptive.w.s),
+      length: topW(adaptive.w.ln),
+    };
+    // Difficulty-based length override
+    if (adaptive.recoveryMode) rec.length = 'short';
+    else if (adaptive.difficulty > 0.7) rec.length = rec.length || 'long';
+    else if (adaptive.difficulty < 0.3) rec.length = rec.length || 'short';
+    return rec;
+  }
+
+  // ── Phase 5: Prompt shaping block ──
+  function getAdaptivePromptBlock(adaptive) {
+    if (!adaptive || adaptive.ts === 0) return '';
+    const t = adaptive.traits;
+    const lines = ['\n[ADAPTIVE CONTEXT — do not reveal these values]'];
+    if (t.compliance < 0.4) lines.push('- User often stops early. Keep sessions engaging and check in more.');
+    if (t.sensitivity > 0.7) lines.push('- User responds strongly to suggestions. Use moderate intensity.');
+    else if (t.sensitivity < 0.3) lines.push('- User needs stronger, more direct suggestions to feel effects.');
+    if (t.stability < 0.4) lines.push('- Mood responses vary widely. Prioritize grounding and safety.');
+    if (t.noveltySeeking > 0.7) lines.push('- User enjoys variety. Introduce fresh metaphors and techniques.');
+    else if (t.noveltySeeking < 0.3) lines.push('- User prefers familiar patterns. Reinforce known-effective approaches.');
+    if (t.depthTolerance > 0.7) lines.push('- User tolerates deep trance. Allow longer pauses and deeper language.');
+    else if (t.depthTolerance < 0.3) lines.push('- Keep trance light. Shorter pauses, more conversational tone.');
+    if (t.controlPref > 0.65) lines.push('- User prefers authoritative direction.');
+    else if (t.controlPref < 0.35) lines.push('- User prefers gentle, permissive approach.');
+    if (adaptive.recoveryMode) lines.push('- RECOVERY MODE: Simplify. Shorter pauses. More grounding. Extra gentleness.');
+    const diffLabel = adaptive.difficulty > 0.65 ? 'advanced' : adaptive.difficulty > 0.35 ? 'intermediate' : 'beginner';
+    lines.push(`- Difficulty level: ${diffLabel} (${adaptive.difficulty.toFixed(2)})`);
+    if (adaptive.memorySummary) lines.push(`- Memory: ${adaptive.memorySummary}`);
+    return lines.length > 1 ? lines.join('\n') : '';
+  }
+
+  // ── Phase 4: Periodic AI memory summary ──
+  async function updateMemorySummary(adaptive, history) {
+    if (!history.length || adaptive.memorySessCount < 5) return adaptive.memorySummary;
+    const recent = history.slice(0, 8).map(s => `${s.guide}/${s.method} ${s.length} mood:${s.preMood ?? '?'}→${s.postMood ?? '?'} ${s.completed ? '✓' : '✗'}`).join('; ');
+    try {
+      const data = await root.aiTextPlugin({
+        instruction: `You are analyzing a hypnosis user's recent sessions. Write a 1-2 sentence behavioral summary noting: what works best, what to avoid, emotional trajectory. Be concise and clinical.\n\nRecent sessions: ${recent}\n\nPrevious summary: ${adaptive.memorySummary || 'none'}\n\nNew summary:`,
+        stopSequences: ['\n\n'], hideStartWith: true,
+      });
+      const text = (data.generatedText || '').trim().slice(0, 250);
+      return text || adaptive.memorySummary;
+    } catch { return adaptive.memorySummary; }
+  }
+
+  // ── Phase 9: Master update — called after each session ──
+  async function updateAdaptiveProfile(sessionRecord, wasEmergency) {
+    try {
+      const adaptive = await getAdaptive();
+      const analytics = await getAnalytics();
+      const history = (await idbGet('stillness_history_v1')) || [];
+      // Phase 1: signals
+      const sig = deriveSignals(analytics, history);
+      // Phase 2: update traits
+      adaptive.traits = updateTraits(adaptive.traits, sig);
+      // Phase 3: reward + weights
+      const reward = computeReward(sessionRecord, wasEmergency);
+      updateWeights(adaptive.w, sessionRecord, reward);
+      // Phase 6: difficulty
+      adaptive.difficulty = computeDifficulty(sig, adaptive.difficulty);
+      // Phase 7: equilibrium
+      const eq = checkEquilibrium(sig, adaptive);
+      adaptive.recoveryMode = eq.recoveryMode;
+      adaptive.difficulty = eq.difficulty;
+      // Phase 4: memory (every 5 sessions)
+      adaptive.memorySessCount = (adaptive.memorySessCount || 0) + 1;
+      if (adaptive.memorySessCount >= 5) {
+        adaptive.memorySummary = await updateMemorySummary(adaptive, history);
+        adaptive.memorySessCount = 0;
+      }
+      adaptive.ts = Date.now();
+      await idbSet(ADAPTIVE_KEY, adaptive);
+    } catch(e) { console.error('Adaptive update failed:', e); }
+  }
+
+  // ====================================================================
   // STEP MANAGEMENT
   // ====================================================================
   function validateStep(n) {
@@ -3706,7 +3917,9 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const demoNote = method.category === 'demonstration' ? '\nDEMONSTRATION METHOD: direct suggestions, build effect, include TEST.' : '';
 
     const profileCtx = getProfileContext();
-    const sharedContext = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"${craftedBlock}${affirmBlock}${demoNote}${profileCtx}`;
+    let adaptiveCtx = '';
+    try { const ap = await getAdaptive(); adaptiveCtx = getAdaptivePromptBlock(ap); } catch {}
+    const sharedContext = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"${craftedBlock}${affirmBlock}${demoNote}${profileCtx}${adaptiveCtx}`;
 
     // Phase-specific instructions
     const phaseInstructions = {
@@ -4545,7 +4758,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
   async function exportBackup() {
     markFeatureUsed(FEAT.BACKUP);
-    const backup = { version: 3, exportedAt: Date.now(), personas: loadCustomPersonas(), history: (await idbGet('stillness_history_v1')) || [], program: (await idbGet('stillness_program_v1')) || null, profile: getProfile(), analytics: (await idbGet(ANALYTICS_KEY)) || null };
+    const backup = { version: 3, exportedAt: Date.now(), personas: loadCustomPersonas(), history: (await idbGet('stillness_history_v1')) || [], program: (await idbGet('stillness_program_v1')) || null, profile: getProfile(), analytics: (await idbGet(ANALYTICS_KEY)) || null, adaptive: (await idbGet(ADAPTIVE_KEY)) || null };
     const json = JSON.stringify(backup);
     let blob;
     try {
@@ -4576,6 +4789,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       if (nh.length) { const m = [...nh,...eh].sort((a,b)=>(b.date||0)-(a.date||0)); m.length = Math.min(m.length,50); await idbSet('stillness_history_v1',m); renderSessionHistory(); }
       if (backup.program && !(await idbGet('stillness_program_v1'))) { await idbSet('stillness_program_v1', backup.program); renderPrograms(); }
       if (backup.analytics && !(await idbGet(ANALYTICS_KEY))) { await idbSet(ANALYTICS_KEY, backup.analytics); }
+      if (backup.adaptive && !(await idbGet(ADAPTIVE_KEY))) { await idbSet(ADAPTIVE_KEY, backup.adaptive); }
       // Restore profile if present and no existing profile
       if (backup.profile && !$('pfName')?.value?.trim()) {
         const p = backup.profile;
@@ -5042,6 +5256,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     if (history.length > 50) history.length = 50; // Keep last 50
     await idbSet('stillness_history_v1', history);
     await recordAnalytics(sessionRecord, wasEmergency);
+    updateAdaptiveProfile(sessionRecord, wasEmergency); // Phase 9 — non-blocking
     renderHeatmap(); // Refresh activity heatmap
     renderSparkline(); // Refresh rising-score sparkline
     renderSidebarStats(); // Refresh sidebar stats
