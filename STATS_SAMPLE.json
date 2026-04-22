@@ -1,0 +1,205 @@
+{
+  "_comment": "Sample analytics store after ~25 sessions over 3 weeks. Total object size: ~450 bytes.",
+
+  "analytics": {
+    "v": 1,
+
+    "p": {
+      "driver": 8,
+      "therapist": 6,
+      "dominatrix": 4,
+      "bodyworker": 3,
+      "mystic": 2,
+      "bartender": 2
+    },
+
+    "m": {
+      "highway": 7,
+      "progressive-relaxation": 5,
+      "staircase": 4,
+      "spiral": 3,
+      "body-scan": 3,
+      "fractionation": 2,
+      "arm-catalepsy": 1
+    },
+
+    "i": {
+      "emotional": 8,
+      "sleep": 6,
+      "trance": 4,
+      "pain": 3,
+      "focus": 2,
+      "trigger": 2
+    },
+
+    "s": {
+      "rain": 9,
+      "drone": 5,
+      "ocean": 4,
+      "bowls": 3,
+      "none": 2,
+      "cave": 1,
+      "crickets": 1
+    },
+
+    "z": {
+      "auto": 12,
+      "tunnel": 5,
+      "breathing": 4,
+      "starfield": 2,
+      "candle": 1,
+      "plasma": 1
+    },
+
+    "ln": {
+      "medium": 12,
+      "short": 8,
+      "long": 3,
+      "quick": 2
+    },
+
+    "hr": [0,0,0,0,0,0,0,1,2,1,0,0,0,1,2,0,0,0,1,3,5,6,3,0],
+    "_hr_comment": "Peak at 9pm (index 21 = 6 sessions). User practices mostly in the evening.",
+
+    "dw": [3,2,5,4,3,4,4],
+    "_dw_comment": "0=Sun..6=Sat. Fairly even spread, slight peak on Wednesday (index 2 = 5).",
+
+    "mood": {
+      "preSum": 112,
+      "postSum": 156,
+      "deltaSum": 44,
+      "n": 20
+    },
+    "_mood_comment": "avgPre=5.6, avgPost=7.8, avgImprovement=+2.2. Sessions consistently improve mood.",
+
+    "comp": {
+      "total": 25,
+      "finished": 21,
+      "emergency": 2
+    },
+    "_comp_comment": "84% completion rate. 2 emergency ends, 2 incomplete (closed tab or back-to-edit).",
+
+    "dur": {
+      "sum": 18720,
+      "n": 25
+    },
+    "_dur_comment": "Total: 312 minutes. Average: 749 seconds (~12.5 min per session).",
+
+    "cfg": {
+      "rateSum": 15.25,
+      "pitchSum": 20.75,
+      "volSum": 24.50,
+      "droneSum": 8.75,
+      "n": 25
+    },
+    "_cfg_comment": "avgRate=0.61 (slightly slower than default 0.65). avgDrone=0.35 (default). avgVol=0.98 (near max).",
+
+    "feat": 55,
+    "_feat_comment": "Binary: 00110111. Bits set: AFFIRMATIONS(1) + PROGRAMS(2) + CUSTOM_PERSONA(4) + TIMING_FIX(16) + SHARE(32) = 55. User has NOT tried: skip-to-script, backup, double-induction.",
+
+    "ts": 1745280000000,
+    "_ts_comment": "Last updated: April 22, 2025 00:00:00 UTC"
+  },
+
+  "derived_insights": {
+    "_comment": "These values are computed by deriveInsights() at display time, NOT stored.",
+    "favPersona": "driver",
+    "favMethod": "highway",
+    "favSoundscape": "rain",
+    "favIntention": "emotional",
+    "favViz": "auto",
+    "favLength": "medium",
+    "topPersonas": ["driver", "therapist", "dominatrix"],
+    "topMethods": ["highway", "progressive-relaxation", "staircase"],
+    "avgPreMood": "5.6",
+    "avgPostMood": "7.8",
+    "avgImprovement": "+2.2",
+    "avgDurationSec": 749,
+    "completionRate": 84,
+    "peakHour": 21,
+    "peakDayName": "Wednesday",
+    "totalSessions": 25,
+    "avgSpeechRate": "0.61",
+    "featuresUsed": ["affirmations", "programs", "custom persona", "timing fix", "share"]
+  },
+
+  "session_record_sample": {
+    "_comment": "One entry from the stillness_history_v1 array.",
+    "id": "sess_1745193600000",
+    "date": 1745193600000,
+    "guide": "The Driver",
+    "method": "Highway",
+    "intention": "emotional",
+    "length": "medium",
+    "soundscape": "rain",
+    "durationSec": 840,
+    "completed": true,
+    "preMood": 4,
+    "postMood": 8,
+    "journal": "Felt a deep sense of calm after the settling phase. The rain soundscape was perfect.",
+    "script": "===SETTLING===\nFocus on the sound of the road beneath you... [PAUSE 4] ...(truncated for sample)...",
+    "personaId": "driver",
+    "methodId": "highway",
+    "intentionText": "I want to feel calm and centered after a stressful day",
+    "voiceName": "Microsoft David - English (United States)",
+    "speechRate": 0.62,
+    "voicePitch": 0.85,
+    "voiceVolume": 1.0,
+    "droneVolume": 0.35,
+    "vizOverride": "tunnel",
+    "vizSettings": {
+      "speed": 0.8,
+      "intensity": 1.0,
+      "complexity": 1.0,
+      "trail": 0.12
+    },
+    "duckingEnabled": true
+  },
+
+  "profile_sample": {
+    "_comment": "From stillness_profile_v1 in localStorage / KV.",
+    "name": "Alex",
+    "pronouns": "they/them",
+    "age": "25-34",
+    "experience": "some",
+    "about": "Software developer, chronic stress. Looking for non-pharmaceutical tools.",
+    "appearance": "Tall, dark hair, brown eyes. Tension in shoulders and jaw.",
+    "goals": "Manage work anxiety, improve sleep quality, explore deeper trance states."
+  },
+
+  "settings_sample": {
+    "_comment": "From stillness_settings_v1 in localStorage / KV.",
+    "selectedPersonaId": "driver",
+    "selectedMethodId": "highway",
+    "intentionType": "emotional",
+    "length": "medium",
+    "soundscape": "rain",
+    "droneEnabled": true,
+    "duckingEnabled": true,
+    "speechRate": 0.62,
+    "voicePitch": 0.85,
+    "voiceVolume": 1.0,
+    "droneVolume": 0.35,
+    "vizOverride": "tunnel",
+    "vizSettings": {
+      "speed": 0.8,
+      "intensity": 1.0,
+      "complexity": 1.0,
+      "trail": 0.12
+    },
+    "hud": {
+      "fixationDot": true,
+      "textDisplay": true,
+      "phaseDots": true,
+      "phaseLabel": false,
+      "progressBar": true,
+      "sessionTime": true,
+      "labels": true
+    },
+    "personaFilter": "all",
+    "methodFilter": "therapeutic",
+    "intentionInput": "I want to feel calm and centered after a stressful day",
+    "userAffirmations": "I am safe and at peace.\nMy body knows how to relax.\nI release what I cannot control.",
+    "voiceName": "Microsoft David - English (United States)"
+  }
+}

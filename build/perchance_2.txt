@@ -2232,60 +2232,6 @@ body.in-session .footer {
       }
     } catch {}
   }
-  /** Rebuild the entire analytics store from current history (after deletions) */
-  async function rebuildAnalytics() {
-    try {
-      const history = (await idbGet('stillness_history_v1')) || [];
-      // Start fresh
-      const a = {
-        v: 1, p: {}, m: {}, i: {}, s: {}, z: {}, ln: {},
-        hr: new Array(24).fill(0), dw: new Array(7).fill(0),
-        mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0 },
-        comp: { total: 0, finished: 0, emergency: 0 },
-        dur: { sum: 0, n: 0 },
-        cfg: { rateSum: 0, pitchSum: 0, volSum: 0, droneSum: 0, n: 0 },
-        feat: 0, ts: Date.now(),
-      };
-
-      // Preserve feature flags from old analytics (features tried don't un-try)
-      try {
-        const old = await idbGet(ANALYTICS_KEY);
-        if (old?.feat) a.feat = old.feat;
-      } catch {}
-
-      // Replay each session into the counters
-      const inc = (map, key) => { if (key) map[key] = (map[key] || 0) + 1; };
-      for (const s of history) {
-        inc(a.p, s.personaId);
-        inc(a.m, s.methodId);
-        inc(a.i, s.intention);
-        inc(a.s, s.soundscape);
-        inc(a.z, s.vizOverride || 'auto');
-        inc(a.ln, s.length);
-
-        const d = new Date(s.date);
-        a.hr[d.getHours()]++;
-        a.dw[d.getDay()]++;
-
-        a.comp.total++;
-        if (s.completed) a.comp.finished++;
-
-        if (s.durationSec > 0) { a.dur.sum += s.durationSec; a.dur.n++; }
-
-        if (s.preMood != null) { a.mood.preSum += s.preMood; a.mood.n++; }
-        if (s.postMood != null) { a.mood.postSum += s.postMood; }
-        if (s.preMood != null && s.postMood != null) { a.mood.deltaSum += s.postMood - s.preMood; }
-
-        a.cfg.rateSum += (s.speechRate || 0.65);
-        a.cfg.pitchSum += (s.voicePitch || 0.85);
-        a.cfg.volSum += (s.voiceVolume || 1.0);
-        a.cfg.droneSum += (s.droneVolume || 0.35);
-        a.cfg.n++;
-      }
-
-      await idbSet(ANALYTICS_KEY, a);
-    } catch(e) { console.error('Analytics rebuild failed:', e); }
-  }
 
   // Feature bit constants
   const FEAT = { AFFIRMATIONS: 1, PROGRAMS: 2, CUSTOM_PERSONA: 4, SKIP_SCRIPT: 8, TIMING_FIX: 16, SHARE: 32, BACKUP: 64, DOUBLE_INDUCT: 128 };
@@ -5636,6 +5582,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   }
 
   function startProgramDay(prog, ps) {
+    markFeatureUsed(FEAT.PROGRAMS);
     // Apply program settings
     state.selectedPersonaId = prog.persona; state.selectedMethodId = prog.method;
     state.intentionType = prog.intention; state.length = prog.length;
