@@ -4164,15 +4164,17 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       // Build result with calculated pauses
       const result = [];
       for (let i = 0; i < sentences.length; i++) {
-        const sent = sentences[i].trim();
+        const raw = sentences[i].trim();
+        const words = raw.split(/\s+/).length;
+        // Inject micro-pauses after commas, colons, and semicolons
+        const sent = raw.replace(/([,;:])\s+/g, '$1 [PAUSE 1] ');
         result.push(sent);
 
         if (i === sentences.length - 1) continue;
 
-        const words = sent.split(/\s+/).length;
-        const isDirective = DIRECTIVE_RX.test(sent);
-        const hasEllipsis = ELLIPSIS_RX.test(sent);
-        const isQuestion = sent.endsWith('?');
+        const isDirective = DIRECTIVE_RX.test(raw);
+        const hasEllipsis = ELLIPSIS_RX.test(raw);
+        const isQuestion = raw.endsWith('?');
 
         let pause;
         if (isDirective && words <= 8) pause = 5;
@@ -4192,14 +4194,17 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     let fixed = processed.join('\n');
     fixed = fixed.replace(/(===\s*\w+\s*===)\s*(?!\[PAUSE)/gi, '$1\n[PAUSE 4]\n');
 
-    // Monotone detector: if all pauses are identical (e.g. non-hypnotic text
-    // where no directive words triggered variance), apply jittered timing
-    const allPauses = fixed.match(/\[PAUSE\s+(\d+)\]/gi);
-    if (allPauses && allPauses.length > 3) {
-      const vals = allPauses.map(p => parseInt(p.match(/\d+/)[0], 10));
+    // Monotone detector: if all sentence-level pauses (> 1s) are identical
+    // (e.g. non-hypnotic text where no directive words triggered variance),
+    // apply jittered timing. Micro-pauses ([PAUSE 1]) are left untouched.
+    const allPauses = fixed.match(/\[PAUSE\s+(\d+)\]/gi) || [];
+    const sentencePauses = allPauses.filter(p => parseInt(p.match(/\d+/)[0], 10) > 1);
+    if (sentencePauses.length > 3) {
+      const vals = sentencePauses.map(p => parseInt(p.match(/\d+/)[0], 10));
       const allSame = vals.every(v => v === vals[0]);
       if (allSame) {
-        fixed = fixed.replace(/\[PAUSE\s+\d+\]/gi, () => {
+        fixed = fixed.replace(/\[PAUSE\s+(\d+)\]/gi, (m, n) => {
+          if (parseInt(n, 10) <= 1) return m; // preserve micro-pauses
           const jitter = Math.floor(Math.random() * 4) - 1; // -1 to +2
           return `[PAUSE ${Math.max(2, 3 + jitter)}]`;
         });
