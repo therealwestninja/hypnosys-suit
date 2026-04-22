@@ -53,7 +53,8 @@
     background: radial-gradient(ellipse, rgba(255,160,40,0.06) 0%, rgba(255,80,20,0.02) 40%, transparent 70%);
   }
   body { padding: 24px 18px 60px; position: relative; z-index: 1; }
-   .container { max-width: 850px; min-width: 600px; margin: 0 auto; position: relative; z-index: 1; }
+   .container { max-width: 850px; margin: 0 auto; position: relative; z-index: 1; }
+  @media (min-width: 740px) { .container { min-width: 600px; } }
 
   h1 {
     font-family: var(--font-display);
@@ -726,22 +727,6 @@ body.in-session .footer {
   .grounding-step strong { color: var(--text); }
 
   /* ============ SESSION STATS ============ */
-  .stats-bar {
-    display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
-    margin: 12px 0;
-  }
-  .stat-chip {
-    background: var(--glass); border: 1px solid var(--glass-border);
-    border-radius: var(--radius); padding: 8px 14px; text-align: center;
-  }
-  .stat-chip .stat-num {
-    font-size: 1.2rem; font-weight: 300; color: var(--text);
-    display: block;
-  }
-  .stat-chip .stat-label {
-    font-size: 0.6rem; color: var(--text-faint);
-    text-transform: uppercase; letter-spacing: 0.1em;
-  }
   .history-list { margin-top: 10px; }
   .history-item {
     background: var(--glass); border: 1px solid var(--glass-border);
@@ -927,6 +912,16 @@ body.in-session .footer {
     letter-spacing: 0.04em; margin-top: 4px;
   }
   .sidebar-settings-btn:hover { border-color: var(--neon-amber); color: var(--text); }
+  .profile-form { display: flex; flex-direction: column; gap: 6px; padding: 4px 0; }
+  .pf-row { display: flex; flex-direction: column; gap: 2px; }
+  .pf-label { font-size: 0.6rem; color: var(--text-faint); letter-spacing: 0.06em; text-transform: uppercase; }
+  .pf-input, .pf-select, .pf-textarea {
+    background: var(--bg); border: 1px solid var(--glass-border); border-radius: 5px;
+    color: var(--text); font-family: var(--font-body); font-size: 0.72rem;
+    padding: 5px 7px; transition: border-color 0.2s;
+  }
+  .pf-input:focus, .pf-select:focus, .pf-textarea:focus { border-color: var(--neon-cyan); outline: none; }
+  .pf-textarea { resize: vertical; min-height: 36px; line-height: 1.35; }
   .sidebar-toggle {
     display: none; position: fixed; top: 12px; left: 12px; z-index: 100;
     background: var(--glass); border: 1px solid var(--glass-border);
@@ -973,13 +968,32 @@ body.in-session .footer {
   <div class="app-layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-inner">
-        <div class="sidebar-profile">
+        <div class="sidebar-profile" id="sidebarProfileHeader">
           <div class="sidebar-avatar">🧠</div>
           <div class="sidebar-profile-info">
-            <div class="sidebar-profile-name">Practitioner</div>
+            <div class="sidebar-profile-name" id="sidebarDisplayName">Practitioner</div>
             <div class="sidebar-profile-sub" id="sidebarStreak">—</div>
           </div>
         </div>
+        <details>
+          <summary>profile</summary>
+          <div class="profile-form">
+            <div class="pf-row"><label class="pf-label">Display Name</label><input type="text" id="pfName" class="pf-input" maxlength="30" placeholder="Practitioner"></div>
+            <div class="pf-row"><label class="pf-label">Pronouns</label>
+              <select id="pfPronouns" class="pf-select"><option value="">prefer not to say</option><option value="he/him">he / him</option><option value="she/her">she / her</option><option value="they/them">they / them</option><option value="other">other</option></select>
+            </div>
+            <div class="pf-row"><label class="pf-label">Age Range</label>
+              <select id="pfAge" class="pf-select"><option value="">prefer not to say</option><option value="18-24">18–24</option><option value="25-34">25–34</option><option value="35-44">35–44</option><option value="45-54">45–54</option><option value="55-64">55–64</option><option value="65+">65+</option></select>
+            </div>
+            <div class="pf-row"><label class="pf-label">Experience</label>
+              <select id="pfExperience" class="pf-select"><option value="beginner">Beginner — first time</option><option value="some">Some experience</option><option value="experienced">Experienced practitioner</option><option value="professional">Professional / trained</option></select>
+            </div>
+            <div class="pf-row"><label class="pf-label">About You</label><textarea id="pfAbout" class="pf-textarea" rows="2" maxlength="300" placeholder="Anything you'd like to share..."></textarea></div>
+            <div class="pf-row"><label class="pf-label">Your Appearance</label><textarea id="pfAppearance" class="pf-textarea" rows="2" maxlength="300" placeholder="Hair, eyes, build... for AI personalization"></textarea></div>
+            <div class="pf-row"><label class="pf-label">Goals</label><textarea id="pfGoals" class="pf-textarea" rows="2" maxlength="300" placeholder="What do you want from hypnosis?"></textarea></div>
+            <div class="sublabel" style="font-size:0.58rem;margin-top:4px;">Profile stays on your device. Used to personalize AI scripts.</div>
+          </div>
+        </details>
         <details open>
           <summary>stats</summary>
           <div id="sidebarStats"></div>
@@ -2050,6 +2064,283 @@ body.in-session .footer {
       return true;
     } catch { return false; }
   }
+
+  // ====================================================================
+  // USER PROFILE (bio, appearance, goals — for AI personalization)
+  // ====================================================================
+  const PROFILE_KEY = 'stillness_profile_v1';
+  let _profileSaveTimeout = null;
+
+  function getProfile() {
+    return {
+      name: $('pfName')?.value?.trim() || '',
+      pronouns: $('pfPronouns')?.value || '',
+      age: $('pfAge')?.value || '',
+      experience: $('pfExperience')?.value || 'beginner',
+      about: $('pfAbout')?.value?.trim() || '',
+      appearance: $('pfAppearance')?.value?.trim() || '',
+      goals: $('pfGoals')?.value?.trim() || '',
+    };
+  }
+
+  function saveProfile() {
+    clearTimeout(_profileSaveTimeout);
+    _profileSaveTimeout = setTimeout(async () => {
+      try {
+        const profile = getProfile();
+        if (_kv) await _kv.settings.set(PROFILE_KEY, profile);
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+        // Update sidebar display name
+        const nameEl = $('sidebarDisplayName');
+        if (nameEl) nameEl.textContent = profile.name || 'Practitioner';
+      } catch {}
+    }, 1000);
+  }
+
+  async function loadProfile() {
+    try {
+      let p = null;
+      if (_kv) { try { p = await _kv.settings.get(PROFILE_KEY); } catch {} }
+      if (!p) { const raw = localStorage.getItem(PROFILE_KEY); if (raw) p = JSON.parse(raw); }
+      if (!p) return;
+      if (p.name) { const el = $('pfName'); if (el) el.value = p.name; }
+      if (p.pronouns) { const el = $('pfPronouns'); if (el) el.value = p.pronouns; }
+      if (p.age) { const el = $('pfAge'); if (el) el.value = p.age; }
+      if (p.experience) { const el = $('pfExperience'); if (el) el.value = p.experience; }
+      if (p.about) { const el = $('pfAbout'); if (el) el.value = p.about; }
+      if (p.appearance) { const el = $('pfAppearance'); if (el) el.value = p.appearance; }
+      if (p.goals) { const el = $('pfGoals'); if (el) el.value = p.goals; }
+      const nameEl = $('sidebarDisplayName');
+      if (nameEl && p.name) nameEl.textContent = p.name;
+    } catch {}
+  }
+
+  /** Build an AI context string from the user's profile for prompt injection */
+  function getProfileContext() {
+    const p = getProfile();
+    const parts = [];
+    if (p.name) parts.push(`The subject's name is ${p.name}.`);
+    if (p.pronouns) parts.push(`Pronouns: ${p.pronouns}.`);
+    if (p.age) parts.push(`Age range: ${p.age}.`);
+    if (p.experience) parts.push(`Experience: ${p.experience}.`);
+    if (p.appearance) parts.push(`Appearance: ${p.appearance}.`);
+    if (p.goals) parts.push(`Goals: ${p.goals}.`);
+    return parts.length > 0 ? '\nSUBJECT PROFILE: ' + parts.join(' ') : '';
+  }
+
+  // ====================================================================
+  // USAGE ANALYTICS — compact incremental aggregation (O(1) storage)
+  // ====================================================================
+  const ANALYTICS_KEY = 'stillness_analytics_v1';
+
+  /** Get or initialize the analytics store */
+  async function getAnalytics() {
+    try {
+      const data = await idbGet(ANALYTICS_KEY);
+      if (data && data.v === 1) return data;
+    } catch {}
+    return {
+      v: 1,
+      // Frequency maps: { id: count }
+      p: {},   // persona usage
+      m: {},   // method usage
+      i: {},   // intention type usage
+      s: {},   // soundscape usage
+      z: {},   // visual effect usage
+      ln: {},  // session length usage
+      // Time patterns
+      hr: new Array(24).fill(0),  // hourly distribution (0-23)
+      dw: new Array(7).fill(0),   // day-of-week (0=Sun..6=Sat)
+      // Mood & completion
+      mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0 },
+      comp: { total: 0, finished: 0, emergency: 0 },
+      dur: { sum: 0, n: 0 },
+      // Settings usage (running sums for averages)
+      cfg: { rateSum: 0, pitchSum: 0, volSum: 0, droneSum: 0, n: 0 },
+      // Feature flags: which features the user has tried
+      feat: 0, // bitmask: 1=affirmations 2=programs 4=custom-persona 8=skip-to-script 16=timing-fixer 32=share 64=backup 128=double-induction
+      // Timestamp
+      ts: Date.now(),
+    };
+  }
+
+  /** Record a completed session into the analytics store */
+  async function recordAnalytics(record, wasEmergency) {
+    try {
+      const a = await getAnalytics();
+
+      // Frequency tallies (increment counters)
+      const inc = (map, key) => { if (key) map[key] = (map[key] || 0) + 1; };
+      inc(a.p, record.personaId);
+      inc(a.m, record.methodId);
+      inc(a.i, record.intention);
+      inc(a.s, record.soundscape);
+      inc(a.z, state.vizOverride || 'auto');
+      inc(a.ln, record.length);
+
+      // Time patterns
+      const d = new Date(record.date);
+      a.hr[d.getHours()] = (a.hr[d.getHours()] || 0) + 1;
+      a.dw[d.getDay()] = (a.dw[d.getDay()] || 0) + 1;
+
+      // Mood tracking
+      if (record.preMood != null) {
+        a.mood.preSum += record.preMood;
+        a.mood.n++;
+      }
+
+      // Completion
+      a.comp.total++;
+      if (wasEmergency) a.comp.emergency++;
+      else if (record.completed) a.comp.finished++;
+
+      // Duration
+      if (record.durationSec > 0) {
+        a.dur.sum += record.durationSec;
+        a.dur.n++;
+      }
+
+      // Settings averages
+      a.cfg.rateSum += (record.speechRate || 0.65);
+      a.cfg.pitchSum += (record.voicePitch || 0.85);
+      a.cfg.volSum += (record.voiceVolume || 1.0);
+      a.cfg.droneSum += (record.droneVolume || 0.35);
+      a.cfg.n++;
+
+      a.ts = Date.now();
+      await idbSet(ANALYTICS_KEY, a);
+    } catch(e) { console.error('Analytics write failed:', e); }
+  }
+
+  /** Update post-session mood in analytics */
+  async function recordPostMood(postVal) {
+    try {
+      const a = await getAnalytics();
+      a.mood.postSum += postVal;
+      a.mood.deltaSum += postVal - (state._preMood || 5);
+      await idbSet(ANALYTICS_KEY, a);
+    } catch {}
+  }
+
+  /** Set a feature-used flag (bitmask) */
+  async function markFeatureUsed(bit) {
+    try {
+      const a = await getAnalytics();
+      if (!(a.feat & bit)) {
+        a.feat |= bit;
+        await idbSet(ANALYTICS_KEY, a);
+      }
+    } catch {}
+  }
+  /** Rebuild the entire analytics store from current history (after deletions) */
+  async function rebuildAnalytics() {
+    try {
+      const history = (await idbGet('stillness_history_v1')) || [];
+      // Start fresh
+      const a = {
+        v: 1, p: {}, m: {}, i: {}, s: {}, z: {}, ln: {},
+        hr: new Array(24).fill(0), dw: new Array(7).fill(0),
+        mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0 },
+        comp: { total: 0, finished: 0, emergency: 0 },
+        dur: { sum: 0, n: 0 },
+        cfg: { rateSum: 0, pitchSum: 0, volSum: 0, droneSum: 0, n: 0 },
+        feat: 0, ts: Date.now(),
+      };
+
+      // Preserve feature flags from old analytics (features tried don't un-try)
+      try {
+        const old = await idbGet(ANALYTICS_KEY);
+        if (old?.feat) a.feat = old.feat;
+      } catch {}
+
+      // Replay each session into the counters
+      const inc = (map, key) => { if (key) map[key] = (map[key] || 0) + 1; };
+      for (const s of history) {
+        inc(a.p, s.personaId);
+        inc(a.m, s.methodId);
+        inc(a.i, s.intention);
+        inc(a.s, s.soundscape);
+        inc(a.z, s.vizOverride || 'auto');
+        inc(a.ln, s.length);
+
+        const d = new Date(s.date);
+        a.hr[d.getHours()]++;
+        a.dw[d.getDay()]++;
+
+        a.comp.total++;
+        if (s.completed) a.comp.finished++;
+
+        if (s.durationSec > 0) { a.dur.sum += s.durationSec; a.dur.n++; }
+
+        if (s.preMood != null) { a.mood.preSum += s.preMood; a.mood.n++; }
+        if (s.postMood != null) { a.mood.postSum += s.postMood; }
+        if (s.preMood != null && s.postMood != null) { a.mood.deltaSum += s.postMood - s.preMood; }
+
+        a.cfg.rateSum += (s.speechRate || 0.65);
+        a.cfg.pitchSum += (s.voicePitch || 0.85);
+        a.cfg.volSum += (s.voiceVolume || 1.0);
+        a.cfg.droneSum += (s.droneVolume || 0.35);
+        a.cfg.n++;
+      }
+
+      await idbSet(ANALYTICS_KEY, a);
+    } catch(e) { console.error('Analytics rebuild failed:', e); }
+  }
+
+  // Feature bit constants
+  const FEAT = { AFFIRMATIONS: 1, PROGRAMS: 2, CUSTOM_PERSONA: 4, SKIP_SCRIPT: 8, TIMING_FIX: 16, SHARE: 32, BACKUP: 64, DOUBLE_INDUCT: 128 };
+
+  /** Rebuild analytics from remaining history — called after deletes to keep data consistent */
+  async function rebuildAnalytics(historyArr) {
+    try {
+      const existing = await getAnalytics();
+      const feat = existing.feat || 0; // preserve feature flags
+      const a = { v: 1, p: {}, m: {}, i: {}, s: {}, z: {}, ln: {},
+        hr: new Array(24).fill(0), dw: new Array(7).fill(0),
+        mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0 },
+        comp: { total: 0, finished: 0, emergency: 0 },
+        dur: { sum: 0, n: 0 }, cfg: { rateSum: 0, pitchSum: 0, volSum: 0, droneSum: 0, n: 0 },
+        feat, ts: Date.now() };
+      const inc = (map, key) => { if (key) map[key] = (map[key] || 0) + 1; };
+      for (const r of historyArr) {
+        inc(a.p, r.personaId); inc(a.m, r.methodId); inc(a.i, r.intention);
+        inc(a.s, r.soundscape); inc(a.z, r.vizOverride || 'auto'); inc(a.ln, r.length);
+        const d = new Date(r.date); a.hr[d.getHours()]++; a.dw[d.getDay()]++;
+        if (r.preMood != null) { a.mood.preSum += r.preMood; a.mood.n++; }
+        if (r.postMood != null) { a.mood.postSum += r.postMood; a.mood.deltaSum += (r.postMood - (r.preMood || 5)); }
+        a.comp.total++; if (r.completed) a.comp.finished++;
+        if (r.durationSec > 0) { a.dur.sum += r.durationSec; a.dur.n++; }
+        a.cfg.rateSum += (r.speechRate || 0.65); a.cfg.pitchSum += (r.voicePitch || 0.85);
+        a.cfg.volSum += (r.voiceVolume || 1.0); a.cfg.droneSum += (r.droneVolume || 0.35); a.cfg.n++;
+      }
+      await idbSet(ANALYTICS_KEY, a);
+    } catch(e) { console.error('Analytics rebuild failed:', e); }
+  }
+
+  /** Derive insights from analytics — top preferences, patterns */
+  function deriveInsights(a) {
+    const topKey = obj => Object.entries(obj).sort((a,b) => b[1] - a[1])[0]?.[0] || null;
+    const topN = (obj, n) => Object.entries(obj).sort((a,b) => b[1] - a[1]).slice(0, n).map(e => e[0]);
+    const avgMood = a.mood.n > 0 ? (a.mood.preSum / a.mood.n).toFixed(1) : null;
+    const avgPost = a.mood.n > 0 && a.mood.postSum > 0 ? (a.mood.postSum / a.mood.n).toFixed(1) : null;
+    const avgDelta = a.mood.n > 0 ? (a.mood.deltaSum / a.mood.n).toFixed(1) : null;
+    const avgDur = a.dur.n > 0 ? Math.round(a.dur.sum / a.dur.n) : 0;
+    const peakHour = a.hr.indexOf(Math.max(...a.hr));
+    const peakDay = a.dw.indexOf(Math.max(...a.dw));
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    return {
+      favPersona: topKey(a.p), favMethod: topKey(a.m), favSoundscape: topKey(a.s),
+      favIntention: topKey(a.i), favViz: topKey(a.z), favLength: topKey(a.ln),
+      topPersonas: topN(a.p, 3), topMethods: topN(a.m, 3),
+      avgPreMood: avgMood, avgPostMood: avgPost, avgImprovement: avgDelta,
+      avgDurationSec: avgDur, completionRate: a.comp.total > 0 ? Math.round(a.comp.finished / a.comp.total * 100) : 0,
+      peakHour, peakDayName: dayNames[peakDay] || '—',
+      totalSessions: a.comp.total,
+      avgSpeechRate: a.cfg.n > 0 ? (a.cfg.rateSum / a.cfg.n).toFixed(2) : null,
+      featuresUsed: Object.entries(FEAT).filter(([,bit]) => a.feat & bit).map(([name]) => name.toLowerCase().replace('_',' ')),
+    };
+  }
+
   // ====================================================================
   // STEP MANAGEMENT
   // ====================================================================
@@ -3295,7 +3586,7 @@ UNIVERSAL RULES:
 
 TYPE-SPECIFIC GUIDANCE:
 ${type.guidance}
-
+${getProfileContext()}
 Output EXACTLY this JSON, no other text, no markdown fences:
 {
   "craftedSuggestion": "Complete hypnotic suggestion, 3-5 sentences, ready to deliver verbatim. Second person.",
@@ -3418,7 +3709,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const affirmBlock = affirmLines.length ? `\nUSER AFFIRMATIONS:\n${affirmLines.map(l => `"${l}"`).join('\n')}` : '';
     const demoNote = method.category === 'demonstration' ? '\nDEMONSTRATION METHOD: direct suggestions, build effect, include TEST.' : '';
 
-    const sharedContext = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"${craftedBlock}${affirmBlock}${demoNote}`;
+    const profileCtx = getProfileContext();
+    const sharedContext = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"${craftedBlock}${affirmBlock}${demoNote}${profileCtx}`;
 
     // Phase-specific instructions
     const phaseInstructions = {
@@ -3715,40 +4007,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       return;
     }
 
-    // Calculate stats
-    const totalSessions = history.length;
-    const totalMinutes = Math.round(history.reduce((sum, s) => sum + (s.durationSec || 0), 0) / 60);
-    const completed = history.filter(s => s.completed).length;
-
-    // Compassionate streak — allows 1-day gaps (auto-freeze) per Lally et al.
-    const today = new Date(); today.setHours(0,0,0,0);
-    const dayMs = 86400000;
-    const sessionDays = [...new Set(history.map(s => {
-      const d = new Date(s.date); d.setHours(0,0,0,0); return d.getTime();
-    }))].sort((a,b) => b - a);
-
-    let streak = 0, freezesUsed = 0;
-    let checkDay = today.getTime();
-    for (const day of sessionDays) {
-      const gap = (checkDay - day) / dayMs;
-      if (gap <= 1) { streak++; checkDay = day; } // consecutive or same day
-      else if (gap === 2 && freezesUsed < 2) { streak++; freezesUsed++; checkDay = day; } // 1-day gap auto-freeze
-      else break;
-    }
-
-    // Favorite guide
-    const guideCounts = {};
-    history.forEach(s => { guideCounts[s.guide] = (guideCounts[s.guide] || 0) + 1; });
-    const favGuide = Object.entries(guideCounts).sort((a,b) => b[1] - a[1])[0]?.[0] || '—';
-
-    panel.innerHTML = `
-      <div class="stats-bar">
-        <div class="stat-chip"><span class="stat-num">${totalSessions}</span><span class="stat-label">sessions</span></div>
-        <div class="stat-chip"><span class="stat-num">${totalMinutes}</span><span class="stat-label">minutes</span></div>
-        <div class="stat-chip"><span class="stat-num">${streak}</span><span class="stat-label">day streak</span></div>
-        <div class="stat-chip"><span class="stat-num">${Math.round(completed/totalSessions*100)}%</span><span class="stat-label">completed</span></div>
-      </div>
-      <div style="font-size:0.72rem;color:var(--text-faint);text-align:center;">favourite guide: ${escapeHtml(favGuide)}</div>`;
+    // Panel cleared — stats are shown in sidebarStats, sparkline appends here
+    panel.innerHTML = '';
 
     // Recent sessions list (last 20)
     list.innerHTML = '';
@@ -3810,6 +4070,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
         const h = (await idbGet('stillness_history_v1')) || [];
         h.splice(idx, 1);
         await idbSet('stillness_history_v1', h);
+        await rebuildAnalytics(h);
         renderSessionHistory();
         renderSidebarStats();
         renderHeatmap();
@@ -3892,14 +4153,24 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const statsEl = $('sidebarStats');
     const streakEl = $('sidebarStreak');
     const history = (await idbGet('stillness_history_v1')) || [];
-    if (history.length === 0) {
+    const analytics = await getAnalytics();
+
+    // Use analytics for all-time aggregates (never decremented by deletions)
+    const totalSessions = Math.max(analytics.comp.total, history.length);
+    const totalMinutes = analytics.dur.n > 0
+      ? Math.round(analytics.dur.sum / 60)
+      : Math.round(history.reduce((sum, s) => sum + (s.durationSec || 0), 0) / 60);
+    const completionPct = analytics.comp.total > 0
+      ? Math.round(analytics.comp.finished / analytics.comp.total * 100)
+      : (history.length > 0 ? Math.round(history.filter(s => s.completed).length / history.length * 100) : 0);
+
+    if (totalSessions === 0) {
       if (statsEl) statsEl.innerHTML = '<div style="font-size:0.68rem;color:var(--text-faint);">No sessions yet</div>';
       if (streakEl) streakEl.textContent = 'New practitioner';
       return;
     }
-    const totalSessions = history.length;
-    const totalMinutes = Math.round(history.reduce((sum, s) => sum + (s.durationSec || 0), 0) / 60);
-    const completed = history.filter(s => s.completed).length;
+
+    // Streak calculated from history dates (temporal — reflects current record)
     const today = new Date(); today.setHours(0,0,0,0);
     const dayMs = 86400000;
     const sessionDays = [...new Set(history.map(s => { const d = new Date(s.date); d.setHours(0,0,0,0); return d.getTime(); }))].sort((a,b) => b - a);
@@ -3911,12 +4182,31 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       else break;
     }
     if (streakEl) streakEl.textContent = streak > 0 ? `${streak}-day streak` : `${totalSessions} sessions`;
+
     if (statsEl) {
-      statsEl.innerHTML = `
+      let html = `
         <div class="sidebar-stat-row"><span>Sessions</span><span class="sidebar-stat-val">${totalSessions}</span></div>
         <div class="sidebar-stat-row"><span>Minutes</span><span class="sidebar-stat-val">${totalMinutes}</span></div>
         <div class="sidebar-stat-row"><span>Streak</span><span class="sidebar-stat-val">${streak} days</span></div>
-        <div class="sidebar-stat-row"><span>Completion</span><span class="sidebar-stat-val">${Math.round(completed/totalSessions*100)}%</span></div>`;
+        <div class="sidebar-stat-row"><span>Completion</span><span class="sidebar-stat-val">${completionPct}%</span></div>`;
+
+      // Analytics insights (after 2+ tracked sessions)
+      if (analytics.comp.total >= 2) {
+        try {
+          const ins = deriveInsights(analytics);
+          const hourLabel = ins.peakHour < 12 ? `${ins.peakHour || 12}am` : `${ins.peakHour === 12 ? 12 : ins.peakHour - 12}pm`;
+          html += `<div style="margin-top:6px;border-top:1px solid var(--glass-border);padding-top:6px;">`;
+          if (ins.avgImprovement && parseFloat(ins.avgImprovement) > 0) {
+            html += `<div class="sidebar-stat-row"><span>Avg improvement</span><span class="sidebar-stat-val" style="color:var(--accent-green);">+${ins.avgImprovement}</span></div>`;
+          }
+          html += `<div class="sidebar-stat-row"><span>Peak time</span><span class="sidebar-stat-val">${hourLabel}</span></div>`;
+          if (ins.favPersona) html += `<div class="sidebar-stat-row"><span>Fav guide</span><span class="sidebar-stat-val" style="font-size:0.7rem;">${ins.favPersona}</span></div>`;
+          if (ins.favSoundscape && ins.favSoundscape !== 'none') html += `<div class="sidebar-stat-row"><span>Fav sound</span><span class="sidebar-stat-val" style="font-size:0.7rem;">${ins.favSoundscape}</span></div>`;
+          html += `</div>`;
+        } catch {}
+      }
+
+      statsEl.innerHTML = html;
     }
   }
 
@@ -3937,6 +4227,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   }
 
   async function shareConfig() {
+    markFeatureUsed(FEAT.SHARE);
     // Compact URI-safe params — no gzip overhead for small payloads
     const params = new URLSearchParams();
     params.set('p', state.selectedPersonaId);
@@ -4019,7 +4310,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   }
 
   async function exportBackup() {
-    const backup = { version: 3, exportedAt: Date.now(), personas: loadCustomPersonas(), history: (await idbGet('stillness_history_v1')) || [], program: (await idbGet('stillness_program_v1')) || null };
+    markFeatureUsed(FEAT.BACKUP);
+    const backup = { version: 3, exportedAt: Date.now(), personas: loadCustomPersonas(), history: (await idbGet('stillness_history_v1')) || [], program: (await idbGet('stillness_program_v1')) || null, profile: getProfile(), analytics: (await idbGet(ANALYTICS_KEY)) || null };
     const json = JSON.stringify(backup);
     let blob;
     try {
@@ -4035,11 +4327,9 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     try {
       let text;
       try {
-        // Try gzip decompression first
         const stream = file.stream().pipeThrough(new DecompressionStream('gzip'));
         text = await new Response(stream).text();
       } catch(e) {
-        // Fallback to plain JSON
         text = await file.text();
       }
       const backup = JSON.parse(text);
@@ -4051,6 +4341,19 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       const nh = (backup.history||[]).filter(h => !ehIds.has(h.id));
       if (nh.length) { const m = [...nh,...eh].sort((a,b)=>(b.date||0)-(a.date||0)); m.length = Math.min(m.length,50); await idbSet('stillness_history_v1',m); renderSessionHistory(); }
       if (backup.program && !(await idbGet('stillness_program_v1'))) { await idbSet('stillness_program_v1', backup.program); renderPrograms(); }
+      if (backup.analytics && !(await idbGet(ANALYTICS_KEY))) { await idbSet(ANALYTICS_KEY, backup.analytics); }
+      // Restore profile if present and no existing profile
+      if (backup.profile && !$('pfName')?.value?.trim()) {
+        const p = backup.profile;
+        if (p.name) { const el = $('pfName'); if (el) el.value = p.name; }
+        if (p.pronouns) { const el = $('pfPronouns'); if (el) el.value = p.pronouns; }
+        if (p.age) { const el = $('pfAge'); if (el) el.value = p.age; }
+        if (p.experience) { const el = $('pfExperience'); if (el) el.value = p.experience; }
+        if (p.about) { const el = $('pfAbout'); if (el) el.value = p.about; }
+        if (p.appearance) { const el = $('pfAppearance'); if (el) el.value = p.appearance; }
+        if (p.goals) { const el = $('pfGoals'); if (el) el.value = p.goals; }
+        saveProfile();
+      }
       notify.success(`Imported: ${np.length} personas, ${nh.length} sessions.`);
     } catch(e) { notify.error('Import failed: ' + e.message); }
   }
@@ -4504,6 +4807,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     history.unshift(sessionRecord);
     if (history.length > 50) history.length = 50; // Keep last 50
     await idbSet('stillness_history_v1', history);
+    await recordAnalytics(sessionRecord, wasEmergency);
     renderHeatmap(); // Refresh activity heatmap
     renderSparkline(); // Refresh rising-score sparkline
     renderSidebarStats(); // Refresh sidebar stats
@@ -4648,6 +4952,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   $('btnBack').addEventListener('click', () => goToStep(state.currentStep - 1));
   $('btnSkipToScript').addEventListener('click', () => {
     state._skippedToScript = true;
+    markFeatureUsed(FEAT.SKIP_SCRIPT);
     state.currentStep = 5;
     state.stepsCompleted = { 1: false, 2: false, 3: false, 4: false, 5: false };
     // Show the script editor area with empty textarea for pasting
@@ -4687,6 +4992,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
   // Fix Timings button
   $('fixTimingsBtn').addEventListener('click', () => {
+    markFeatureUsed(FEAT.TIMING_FIX);
     const text = $('scriptText').value.trim();
     if (!text) return;
     const fixed = fixScriptTimings(text);
@@ -4726,7 +5032,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   // Step 3
   $('intentionType').addEventListener('change', () => { updateIntentionHint(); saveUserSettings(); });
   $('intentionInput').addEventListener('input', () => { hideCrafted(); updateStepUI(); saveUserSettings(); });
-  $('userAffirmations')?.addEventListener('input', () => saveUserSettings());
+  $('userAffirmations')?.addEventListener('input', () => { saveUserSettings(); markFeatureUsed(FEAT.AFFIRMATIONS); });
   $('craftBtn').addEventListener('click', craftSuggestion);
   $('recraftBtn').addEventListener('click', craftSuggestion);
   $('editCraftedBtn').addEventListener('click', toggleEditCrafted);
@@ -4834,6 +5140,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     // Save to most recent session record
     const history = (await idbGet('stillness_history_v1')) || [];
     if (history.length > 0) { history[0].postMood = val; history[0].preMood = state._preMood ?? null; await idbSet('stillness_history_v1', history); }
+    recordPostMood(val);
   });
 
   // Alertness check — auto-trigger grounding if low
@@ -5213,7 +5520,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       persona: 'therapist', method: 'staircase', intention: 'behavior', length: 'medium', soundscape: 'rain' },
     { id: 'creativity', icon: '🎨', name: 'Creative Flow', desc: 'Dissolve creative blocks',
       persona: 'mystic', method: 'ericksonian', intention: 'creativity', length: 'medium', soundscape: 'fire' },
-    { id: 'energy', icon: '☀️', name: 'Energy Boost', desc: 'Wake up & activate',
+    { id: 'energy', icon: ☀️', name: 'Energy Boost', desc: 'Wake up & activate',
       persona: 'drill-instructor', method: 'dave-elman', intention: 'energy', length: 'quick', soundscape: 'white' },
   ];
 
@@ -5515,6 +5822,14 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   $('sidebarSettingsBtn')?.addEventListener('click', () => {
     $('crisisLink')?.click();
   });
+
+  // Profile form — save on any input change
+  ['pfName', 'pfAbout', 'pfAppearance', 'pfGoals'].forEach(id => {
+    $(id)?.addEventListener('input', saveProfile);
+  });
+  ['pfPronouns', 'pfAge', 'pfExperience'].forEach(id => {
+    $(id)?.addEventListener('change', saveProfile);
+  });
   // Session daily cap — max 3 sessions per day to prevent compulsive use
   async function checkDailyCap() {
     const history = (await idbGet('stillness_history_v1')) || [];
@@ -5569,6 +5884,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   // Persona modal
   $('personaCancelBtn').addEventListener('click', closePersonaEditor);
   $('personaSaveBtn').addEventListener('click', savePersonaFromForm);
+    markFeatureUsed(FEAT.CUSTOM_PERSONA);
   $('personaModal').addEventListener('click', e => { if (e.target.id === 'personaModal') closePersonaEditor(); });
 
   // Hypnotic Induction Profile quiz
@@ -5579,10 +5895,14 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     await _initStorage();
     refreshPersonas();
     const hadSavedSettings = await loadUserSettings();
+    await loadProfile();
     renderPersonaGrid();
     renderPersonaDetail();
     renderMethodGrid();
     renderMethodDetail();
+    // Restore filter tab visual state from saved settings
+    document.querySelectorAll('#personaFilterTabs .filter-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === state.personaFilter));
+    document.querySelectorAll('#methodFilterTabs .filter-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === state.methodFilter));
     renderPresets();
     renderPrograms();
     renderSessionHistory();
