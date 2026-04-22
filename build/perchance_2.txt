@@ -1285,7 +1285,8 @@ body.in-session .footer {
         <div class="toggle-row"><label for="speechRate">Voice speed</label><input type="range" id="speechRate" min="50" max="100" value="65"><span class="hint" id="speechRateVal" style="min-width:28px;text-align:right;">0.65×</span></div>
         <div class="toggle-row"><label for="voicePitch">Voice pitch</label><input type="range" id="voicePitch" min="50" max="120" value="85"><span class="hint" id="voicePitchVal" style="min-width:28px;text-align:right;">0.85</span></div>
         <div class="toggle-row"><label for="voiceVolume">Narration volume</label><input type="range" id="voiceVolume" min="0" max="100" value="100"><span class="hint" id="voiceVolVal" style="min-width:28px;text-align:right;">100</span></div>
-        <div class="sublabel" id="speechRateHint">Slower is more hypnotic.</div>
+        <div class="toggle-row"><label for="tempoSlider">Pause tempo</label><input type="range" id="tempoSlider" min="50" max="200" value="100"><span class="hint" id="tempoVal" style="min-width:36px;text-align:right;">1.0×</span></div>
+        <div class="sublabel" id="speechRateHint">Slower is more hypnotic. Tempo scales all pause durations.</div>
       </div>
 
       <!-- ── VISUAL ── -->
@@ -1575,6 +1576,7 @@ body.in-session .footer {
       <div class="live-row"><label>voice speed</label><input type="range" id="liveVoiceSpeed" min="50" max="100" value="65"><span class="live-val" id="liveVoiceSpeedVal">0.65×</span></div>
       <div class="live-row"><label>voice pitch</label><input type="range" id="liveVoicePitch" min="50" max="120" value="85"><span class="live-val" id="liveVoicePitchVal">0.85</span></div>
       <div class="live-row"><label>voice volume</label><input type="range" id="liveVoiceVol" min="0" max="100" value="100"><span class="live-val" id="liveVoiceVolVal">100</span></div>
+      <div class="live-row"><label>pause tempo</label><input type="range" id="liveTempo" min="50" max="200" value="100"><span class="live-val" id="liveTempoVal">1.0×</span></div>
     </div>
 
     <div class="live-section">
@@ -1809,18 +1811,18 @@ body.in-session .footer {
   ];
  
   const PACING_RULES = {
-    monotony: `3-6 word phrases. Repeat a small set of core phrases. No storytelling. [PAUSE 4-8] between phrases. Boring is the mechanism.`,
-    structured: `Follow method structure exactly. [PAUSE 8] after each instruction. Longer phrases (8-15 words) for clarity.`,
-    narrative: `Vivid sensory imagery. Phrases 8-15 words. [PAUSE 3-5] between sentences.`,
-    focused: `All phrases reference the focal sensation. Build slowly. [PAUSE 4-6]. For demonstration methods: direct suggestions ("your hand IS", "you CANNOT") once state is established.`,
-    confusion: `Long sentences with embedded clauses, paradoxes. Occasional brief clarity. [PAUSE 3-6].`,
+    monotony: `3-6 word phrases. Repeat a small set of core phrases. No storytelling. \x5BPAUSE 4-8\x5D between phrases. Boring is the mechanism.`,
+    structured: `Follow method structure exactly. \x5BPAUSE 8\x5D after each instruction. Longer phrases (8-15 words) for clarity.`,
+    narrative: `Vivid sensory imagery. Phrases 8-15 words. \x5BPAUSE 3-5\x5D between sentences.`,
+    focused: `All phrases reference the focal sensation. Build slowly. \x5BPAUSE 4-6\x5D. For demonstration methods: direct suggestions ("your hand IS", "you CANNOT") once state is established.`,
+    confusion: `Long sentences with embedded clauses, paradoxes. Occasional brief clarity. \x5BPAUSE 3-6\x5D.`,
     fractionation: `Match cycle pattern. Mark transitions: "And opening!" / "And closing again..." Each induction deeper.`,
-    'eye-roll': `Precise Spiegel sequence. [PAUSE n] for each step. After eye closure: breath/floating language.`,
+    'eye-roll': `Precise Spiegel sequence. \x5BPAUSE n\x5D for each step. After eye closure: breath/floating language.`,
     breath: `Voice IS metronome. Count clearly. Real timing 4 in, 7 hold, 8 out.`,
-    'body-scan': `Head-to-toe order. Name, notice, release each part. Phrases 5-10 words. [PAUSE 4-6].`,
-    permissive: `"Perhaps", "you might notice", "in your own time". Phrases 5-12 words. [PAUSE 2-6].`,
-    rapid: `Short, commanding phrases. 2-5 words. No hesitation. [PAUSE 1-2] between commands. Speed IS the mechanism. Build speed, then sudden "SLEEP" / "DROP" / "NOW" followed by [PAUSE 6-10] silence.`,
-    elman: `Step-by-step clinical protocol. Test each step before proceeding. "Close your eyes. Now relax them so completely that they just won't work. Test them. Good." [PAUSE 3-5] between steps. Confident, professional, never rushing but never lingering.`,
+    'body-scan': `Head-to-toe order. Name, notice, release each part. Phrases 5-10 words. \x5BPAUSE 4-6\x5D.`,
+    permissive: `"Perhaps", "you might notice", "in your own time". Phrases 5-12 words. \x5BPAUSE 2-6\x5D.`,
+    rapid: `Short, commanding phrases. 2-5 words. No hesitation. \x5BPAUSE 1-2\x5D between commands. Speed IS the mechanism. Build speed, then sudden "SLEEP" / "DROP" / "NOW" followed by \x5BPAUSE 6-10\x5D silence.`,
+    elman: `Step-by-step clinical protocol. Test each step before proceeding. "Close your eyes. Now relax them so completely that they just won't work. Test them. Good." \x5BPAUSE 3-5\x5D between steps. Confident, professional, never rushing but never lingering.`,
   };
  
   const INTENTION_TYPES = {
@@ -1911,6 +1913,7 @@ body.in-session .footer {
     speechRate: 0.65,
     voicePitch: 0.85,
     voiceVolume: 1.0,
+    tempoMultiplier: 1.0,
     droneVolume: 0.35,
     vizOverride: 'auto',
     hud: { fixationDot: true, textDisplay: true, phaseDots: true, phaseLabel: true, progressBar: true, sessionTime: true, labels: true },
@@ -2036,6 +2039,7 @@ body.in-session .footer {
       speechRate: state.speechRate,
       voicePitch: state.voicePitch,
       voiceVolume: state.voiceVolume,
+      tempoMultiplier: state.tempoMultiplier,
       droneVolume: state.droneVolume,
       vizOverride: state.vizOverride,
       vizSettings: state.vizSettings,
@@ -2085,6 +2089,7 @@ body.in-session .footer {
       if (s.speechRate != null) { state.speechRate = s.speechRate; const el = $('speechRate'); if (el) el.value = Math.round(s.speechRate * 100); const v = $('speechRateVal'); if (v) v.textContent = s.speechRate.toFixed(2) + '×'; }
       if (s.voicePitch != null) { state.voicePitch = s.voicePitch; const el = $('voicePitch'); if (el) el.value = Math.round(s.voicePitch * 100); const v = $('voicePitchVal'); if (v) v.textContent = s.voicePitch.toFixed(2); }
       if (s.voiceVolume != null) { state.voiceVolume = s.voiceVolume; const el = $('voiceVolume'); if (el) el.value = Math.round(s.voiceVolume * 100); const v = $('voiceVolVal'); if (v) v.textContent = Math.round(s.voiceVolume * 100); }
+      if (s.tempoMultiplier != null) { state.tempoMultiplier = s.tempoMultiplier; const el = $('tempoSlider'); if (el) el.value = Math.round(s.tempoMultiplier * 100); const v = $('tempoVal'); if (v) v.textContent = s.tempoMultiplier.toFixed(1) + '×'; }
       if (s.droneVolume != null) { state.droneVolume = s.droneVolume; const el = $('droneVolume'); if (el) el.value = Math.round(s.droneVolume * 100); const v = $('droneVolVal'); if (v) v.textContent = Math.round(s.droneVolume * 100); }
       if (s.vizOverride) { state.vizOverride = s.vizOverride; const el = $('vizSelect'); if (el) el.value = s.vizOverride; }
       if (s.hud) state.hud = { ...state.hud, ...s.hud };
@@ -3918,10 +3923,10 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
     // Phase-specific instructions
     const phaseInstructions = {
-      settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user. Open naturally — don't say "hello". Use [PAUSE n] markers. Output ONLY the script text.`,
-      induction: `Write the INDUCTION phase (~${targetWords.induction} words). Move from awareness toward trance using ${method.name}. Use [PAUSE n] markers. Output ONLY script text.`,
-      deepener: `Write the DEEPENER phase (~${targetWords.deepener} words). Take them deeper.${state.craftedSuggestion ? ' Foreshadow the suggestion.' : ''}${affirmLines.length ? ' Begin weaving affirmations.' : ''} Use [PAUSE n]. Output ONLY script text.`,
-      emergence: `Write the EMERGENCE phase (~${targetWords.emergence} words). ${method.category === 'demonstration' ? 'FIRST: deliver the TEST. THEN count up 1-5.' : state.craftedSuggestion ? 'State core effect one final time, THEN count up 1-5.' : 'Count up 1-5 to full alertness.'} Use [PAUSE n]. Output ONLY script text.`,
+      settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user. Open naturally — don't say "hello". Use \x5BPAUSE n\x5D markers. Output ONLY the script text.`,
+      induction: `Write the INDUCTION phase (~${targetWords.induction} words). Move from awareness toward trance using ${method.name}. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
+      deepener: `Write the DEEPENER phase (~${targetWords.deepener} words). Take them deeper.${state.craftedSuggestion ? ' Foreshadow the suggestion.' : ''}${affirmLines.length ? ' Begin weaving affirmations.' : ''} Use \x5BPAUSE n\x5D. Output ONLY script text.`,
+      emergence: `Write the EMERGENCE phase (~${targetWords.emergence} words). ${method.category === 'demonstration' ? 'FIRST: deliver the TEST. THEN count up 1-5.' : state.craftedSuggestion ? 'State core effect one final time, THEN count up 1-5.' : 'Count up 1-5 to full alertness.'} Use \x5BPAUSE n\x5D. Output ONLY script text.`,
     };
 
     // Work phase instructions
@@ -3930,14 +3935,14 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     phases.forEach(p => {
       if (p.startsWith('affirm')) {
         // Affirmation interlude — short, poetic, uses the user's exact words
-        phaseInstructions[p] = `Write a brief affirmation interlude (~40-60 words). Deliver these affirmations in ${persona.name}'s voice, woven into flowing, hypnotic language:\n${affirmLines.map(l => `"${l}"`).join('\n')}\nUse the user's exact words. Add [PAUSE 3] between each. Poetic, rhythmic, repetitive. Output ONLY script text.`;
+        phaseInstructions[p] = `Write a brief affirmation interlude (~40-60 words). Deliver these affirmations in ${persona.name}'s voice, woven into flowing, hypnotic language:\n${affirmLines.map(l => `"${l}"`).join('\n')}\nUse the user's exact words. Add \x5BPAUSE 3\x5D between each. Poetic, rhythmic, repetitive. Output ONLY script text.`;
       } else if (p.startsWith('work')) {
         const workIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
         let note = `Write WORK phase ${workIdx} of ${workCount} (~${workWordsEach} words). `;
         if (workIdx === 1) note += state.craftedSuggestion ? 'Deliver the crafted suggestion verbatim. Begin reinforcement.' : method.category === 'demonstration' ? 'BUILD the demonstration effect.' : 'Therapeutic deepening.';
         else if (workIdx === workCount) note += state.craftedSuggestion ? 'Final reinforcement. Peak intensity. Future-pace.' : 'Peak deepening. Consolidation.';
         else note += state.craftedSuggestion ? 'Continue reinforcement with variants. Intensify.' : 'Continue deepening.';
-        note += ' Use [PAUSE n]. Output ONLY script text.';
+        note += ' Use \x5BPAUSE n\x5D. Output ONLY script text.';
         phaseInstructions[p] = note;
       }
     });
@@ -3985,7 +3990,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
         try {
           const result = await generateSinglePhase(_genState, i);
           phaseResults[phase] = result;
-          priorSummary += `\n${phase.toUpperCase()}: ${result.length > 200 ? result.substring(0, 150).replace(/\[PAUSE \d+\]/g, '') + '...' : result.replace(/\[PAUSE \d+\]/g, '')}`;
+          priorSummary += `\n${phase.toUpperCase()}: ${result.length > 200 ? result.substring(0, 150).replace(/\x5BPAUSE \d+\]/g, '') + '...' : result.replace(/\x5BPAUSE \d+\]/g, '')}`;
           _genState.priorSummary = priorSummary;
           stateMask[i] = 'done';
           phaseTimes.push((Date.now() - phaseStart) / 1000);
@@ -4079,30 +4084,31 @@ Output EXACTLY this JSON, no other text, no markdown fences:
  
   function showScript() {
     _scriptEditedSinceGen = false;
+    if (!state.fullScript) { $('scriptStats').innerHTML = 'No script loaded.'; $('scriptPreview').classList.add('visible'); return; }
     $('scriptText').value = state.fullScript;
     // Strip phase markers and pause markers before counting actual spoken words
     const spokenOnly = state.fullScript
       .replace(/===\s*\w+\s*===/gi, ' ')
-      .replace(/\[PAUSE\s+\d+\]/gi, ' ');
+      .replace(/\x5BPAUSE\s+\d+\]/gi, ' ');
     const words = spokenOnly.split(/\s+/).filter(w => w.length > 0).length;
-    const pauses = (state.fullScript.match(/\[PAUSE\s+\d+\]/gi) || []).length;
-    const pauseSecs = (state.fullScript.match(/\[PAUSE\s+(\d+)\]/gi) || []).reduce((sum, m) => sum + parseInt(m.match(/\d+/)[0], 10), 0);
+    const pauses = (state.fullScript.match(/\x5BPAUSE\s+\d+\]/gi) || []).length;
+    const pauseSecs = (state.fullScript.match(/\x5BPAUSE\s+(\d+)\]/gi) || []).reduce((sum, m) => sum + parseInt(m.match(/\d+/)[0], 10), 0);
     $('scriptStats').innerHTML = `<strong>${words}</strong> words · <strong>${pauses}</strong> pauses (${pauseSecs}s) · estimated: <strong>${Math.round(words / 50 + pauseSecs / 60)} min</strong><br>Edit below before starting.`;
     $('scriptPreview').classList.add('visible');
   }
   function hideScript() { state.fullScript = null; state.parsedScript = null; $('scriptPreview').classList.remove('visible'); updateStepUI(); }
 
   // ====================================================================
-  // SCRIPT TIMING FIXER — recalculates [PAUSE N] markers heuristically
+  // SCRIPT TIMING FIXER — recalculates \x5BPAUSE N\x5D markers heuristically
   // ====================================================================
   let _scriptEditedSinceGen = false;
 
   /** Detect directive phrases that need longer pauses after them */
-  const DIRECTIVE_RX = /\b(close your eyes|take a (?:deep )?breath|breathe (?:in|out)|notice|feel|relax|let go|allow|imagine|picture|visualize|focus|drift|sink|float|deeper|sleep now|rest)\b/i;
+  const DIRECTIVE_RX = /\b(focus|notice|feel|imagine|relax|breathe|let|allow|sense|listen|watch|follow|deepen|drift|sink|melt|soften|release|surrender|drop|sleep|close|open|rest|calm|trust|safe|deeper|down|slowly|gently|carefully|now|picture|visualize|float)\b/i;
   const ELLIPSIS_RX = /\.{2,}|…/;
 
   /**
-   * Fix [PAUSE N] timings in a script based on content heuristics.
+   * Fix \x5BPAUSE N\x5D timings in a script based on content heuristics.
    * - Removes existing pauses and recalculates
    * - Breaks sentences >30 words at clause boundaries
    * - Combines fragments <3 words with adjacent sentences
@@ -4130,7 +4136,10 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
     // Process a text segment (no existing pauses inside it)
     function processSegment(text) {
-      const clean = text.trim();
+      // Strip bracket annotations that aren't \x5BPAUSE N\x5D (e.g. [Topic Sentence], [Step 1])
+      const clean = text.replace(/\[[^\]]+\]/g, m =>
+        /^\x5BPAUSE\s+\d+\]$/i.test(m) ? m : ''
+      ).replace(/  +/g, ' ').trim();
       if (!clean) return '';
 
       // Split into sentences at . ! ?
@@ -4153,10 +4162,10 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       sentences = broken;
       if (!sentences.length) return clean;
 
-      // Build output: sentence [PAUSE N] sentence [PAUSE N] ... sentence
+      // Build output: sentence \x5BPAUSE N\x5D sentence \x5BPAUSE N\x5D ... sentence
       const out = [sentences[0]];
       for (let i = 1; i < sentences.length; i++) {
-        out.push(`[PAUSE ${pauseFor(sentences[i - 1])}]`);
+        out.push(`\x5BPAUSE ${pauseFor(sentences[i - 1])}\x5D`);
         out.push(sentences[i]);
       }
       return out.join(' ');
@@ -4166,10 +4175,10 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const phaseParts = scriptText.split(phaseRx);
     const processed = phaseParts.map(part => {
       if (phaseRx.test(part)) { phaseRx.lastIndex = 0; return part; }
-      // Split by existing [PAUSE N] — preserve author pauses as boundaries
-      const chunks = part.split(/(\[PAUSE\s+\d+\])/gi);
+      // Split by existing \x5BPAUSE N\x5D — preserve author pauses as boundaries
+      const chunks = part.split(/(\x5BPAUSE\s+\d+\])/gi);
       return chunks.map(chunk =>
-        /\[PAUSE\s+\d+\]/i.test(chunk) ? chunk : processSegment(chunk)
+        /\x5BPAUSE\s+\d+\]/i.test(chunk) ? chunk : processSegment(chunk)
       ).join(' ');
     });
 
@@ -4177,12 +4186,12 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
     // Monotone detector: if all computed pauses are the same value
     // (no directive words triggered variance), apply jittered timing
-    const pauses = (fixed.match(/\[PAUSE\s+(\d+)\]/gi) || []).map(p => parseInt(p.match(/\d+/)[0], 10));
+    const pauses = (fixed.match(/\x5BPAUSE\s+(\d+)\]/gi) || []).map(p => parseInt(p.match(/\d+/)[0], 10));
     const unique = new Set(pauses);
     if (pauses.length > 4 && unique.size === 1) {
-      fixed = fixed.replace(/\[PAUSE\s+\d+\]/gi, () => {
+      fixed = fixed.replace(/\x5BPAUSE\s+\d+\]/gi, () => {
         const jitter = Math.floor(Math.random() * 4) - 1; // -1 to +2
-        return `[PAUSE ${Math.max(2, 3 + jitter)}]`;
+        return `\x5BPAUSE ${Math.max(2, 3 + jitter)}\x5D`;
       });
     }
 
@@ -4222,7 +4231,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       // Script preview — first ~150 chars, strip markers
       let preview = '';
       if (hasScript) {
-        preview = s.script.replace(/===\s*\w+\s*===/gi, '').replace(/\[PAUSE\s+\d+\]/gi, '').trim();
+        preview = s.script.replace(/===\s*\w+\s*===/gi, '').replace(/\x5BPAUSE\s+\d+\]/gi, '').trim();
         preview = preview.substring(0, 150).replace(/\s+/g, ' ');
         if (s.script.length > 150) preview += '…';
       }
@@ -4327,8 +4336,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     if (entry.intentionText) { const el = $('intentionInput'); if (el) el.value = entry.intentionText; }
 
     // Load script
-    state.fullScript = entry.script;
-    state.parsedScript = parseScript(entry.script);
+    state.fullScript = entry.script || '';
+    state.parsedScript = entry.script ? parseScript(entry.script) : null;
 
     // Navigate to step 5 in edit mode
     state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: false };
@@ -4785,7 +4794,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     for (const phase of phases) {
       const text = state.parsedScript[phase];
       if (!text || text.trim().length < 10) continue;
-      const clean = text.replace(/^===\s*\w+\s*===\s*/i, '').replace(/\[PAUSE\s+\d+\]/gi, ' ⋯ ').trim();
+      const clean = text.replace(/^===\s*\w+\s*===\s*/i, '').replace(/\x5BPAUSE\s+\d+\]/gi, ' ⋯ ').trim();
       html += `<div class="t-phase">${labels[phase]}</div><div>${escapeHtml(clean)}</div>`;
     }
     panel.innerHTML = html;
@@ -4815,7 +4824,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
     // If script was edited, offer to fix pause timings
     if (_scriptEditedSinceGen) {
-      const fix = confirm('You\'ve edited the script. Would you like to recalculate pause timings to match your changes?\n\n• Yes = auto-fix [PAUSE] markers based on sentence length\n• No = keep current timings as-is');
+      const fix = confirm('You\'ve edited the script. Would you like to recalculate pause timings to match your changes?\n\n• Yes = auto-fix \x5BPAUSE\x5D markers based on sentence length\n• No = keep current timings as-is');
       if (fix) {
         const fixed = fixScriptTimings(scriptText);
         $('scriptText').value = fixed;
@@ -5022,7 +5031,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   }
 
   // Interruptible sleep — checks abortFlag & paused state in 200ms chunks so
-  // pause/end during a [PAUSE n] marker responds quickly instead of waiting
+  // pause/end during a \x5BPAUSE n\x5D marker responds quickly instead of waiting
   // for the whole sleep to finish.
   async function interruptibleSleep(totalMs, bypassAbort = false) {
     const CHUNK = 200;
@@ -5041,10 +5050,14 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     let canonical = text.replace(/===\s*\w+\s*===/gi, ''); // strip phase markers
     canonical = canonical.replace(/\[\s*pause[^\]]*\]/gi, (m) => {
       const num = m.match(/\d+/);
-      return num ? `[PAUSE ${num[0]}]` : '';
+      return num ? `\x5BPAUSE ${num[0]}\x5D` : '';
     });
+    // Strip bracket annotations that aren't \x5BPAUSE N\x5D so TTS doesn't read them
+    canonical = canonical.replace(/\[[^\]]+\]/g, m =>
+      /^\x5BPAUSE\s+\d+\]$/i.test(m) ? m : ''
+    ).replace(/  +/g, ' ');
 
-    const parts = canonical.split(/\[PAUSE\s+(\d+)\]/i);
+    const parts = canonical.split(/\x5BPAUSE\s+(\d+)\]/i);
     const display = $('textDisplay');
     for (let i = 0; i < parts.length; i++) {
       if (!bypassAbort && state.abortFlag) return;
@@ -5068,7 +5081,13 @@ Output EXACTLY this JSON, no other text, no markdown fences:
         }
       } else {
         const seconds = parseInt(parts[i], 10) || 4;
-        await interruptibleSleep(seconds * 1000, bypassAbort);
+        // Scale pauses: tempo dial × sqrt-inverse speech rate
+        // sqrt softens the scaling — full inverse is too aggressive at slow rates
+        // At 0.63× speech: sqrt scale = 1.26×. User tunes further with tempo dial.
+        const tempo = state.tempoMultiplier || 1.0;
+        const rateScale = 1 / Math.sqrt(Math.max(state.speechRate || 0.65, 0.4));
+        const scaled = Math.max(1, Math.round(seconds * tempo * rateScale));
+        await interruptibleSleep(scaled * 1000, bypassAbort);
       }
     }
   }
@@ -5306,34 +5325,34 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   // Persona-specific re-alert scripts
   const PERSONA_REALERTS = {
     // Contemplative
-    'driver': "Easing off the gas now. [PAUSE 2] The road brightening. [PAUSE 3] Windows coming down. [PAUSE 3] Cool air on your face. [PAUSE 3] Engine off. Eyes opening. Fully here.",
-    'old-master': "And now... returning. [PAUSE 2] Like water finding its level. [PAUSE 3] Breath deepening. [PAUSE 3] Body remembering itself. [PAUSE 3] Eyes open. Present. Clear.",
-    'therapist': "And gently now, allowing yourself to return to full awareness. [PAUSE 2] Noticing the room around you. [PAUSE 3] Wiggling fingers and toes. [PAUSE 3] Taking a refreshing breath. [PAUSE 3] Eyes opening. Feeling alert and well.",
-    'inner-voice': "Coming back now. [PAUSE 2] You already know how. [PAUSE 3] Feel your hands. [PAUSE 3] The weight of your body. [PAUSE 3] Open your eyes. You're here.",
-    'scientist': "Initiating the return sequence. [PAUSE 2] Autonomic functions normalizing. [PAUSE 3] Motor cortex re-engaging. [PAUSE 3] Deep breath — diaphragm expanding. [PAUSE 3] Eyes open. Full alertness restored.",
-    'mystic': "Ascending now from the deep place. [PAUSE 2] Rising through the still waters. [PAUSE 3] Breath carrying you upward. [PAUSE 3] The light of day returning. [PAUSE 3] Eyes opening. Returned.",
-    'librarian': "And the book closes softly. [PAUSE 2] The lamplight brightens. [PAUSE 3] The chair beneath you, solid. [PAUSE 3] Open your eyes. The library is still here. So are you.",
-    'astronomer': "The telescope pivoting earthward now. [PAUSE 2] The mountain under your feet. [PAUSE 3] Gravity reminding you. [PAUSE 3] Dawn approaching. [PAUSE 3] Eyes open. Welcome back to this small, warm world.",
+    'driver': "Easing off the gas now. \x5BPAUSE 2\x5D The road brightening. \x5BPAUSE 3\x5D Windows coming down. \x5BPAUSE 3\x5D Cool air on your face. \x5BPAUSE 3\x5D Engine off. Eyes opening. Fully here.",
+    'old-master': "And now... returning. \x5BPAUSE 2\x5D Like water finding its level. \x5BPAUSE 3\x5D Breath deepening. \x5BPAUSE 3\x5D Body remembering itself. \x5BPAUSE 3\x5D Eyes open. Present. Clear.",
+    'therapist': "And gently now, allowing yourself to return to full awareness. \x5BPAUSE 2\x5D Noticing the room around you. \x5BPAUSE 3\x5D Wiggling fingers and toes. \x5BPAUSE 3\x5D Taking a refreshing breath. \x5BPAUSE 3\x5D Eyes opening. Feeling alert and well.",
+    'inner-voice': "Coming back now. \x5BPAUSE 2\x5D You already know how. \x5BPAUSE 3\x5D Feel your hands. \x5BPAUSE 3\x5D The weight of your body. \x5BPAUSE 3\x5D Open your eyes. You're here.",
+    'scientist': "Initiating the return sequence. \x5BPAUSE 2\x5D Autonomic functions normalizing. \x5BPAUSE 3\x5D Motor cortex re-engaging. \x5BPAUSE 3\x5D Deep breath — diaphragm expanding. \x5BPAUSE 3\x5D Eyes open. Full alertness restored.",
+    'mystic': "Ascending now from the deep place. \x5BPAUSE 2\x5D Rising through the still waters. \x5BPAUSE 3\x5D Breath carrying you upward. \x5BPAUSE 3\x5D The light of day returning. \x5BPAUSE 3\x5D Eyes opening. Returned.",
+    'librarian': "And the book closes softly. \x5BPAUSE 2\x5D The lamplight brightens. \x5BPAUSE 3\x5D The chair beneath you, solid. \x5BPAUSE 3\x5D Open your eyes. The library is still here. So are you.",
+    'astronomer': "The telescope pivoting earthward now. \x5BPAUSE 2\x5D The mountain under your feet. \x5BPAUSE 3\x5D Gravity reminding you. \x5BPAUSE 3\x5D Dawn approaching. \x5BPAUSE 3\x5D Eyes open. Welcome back to this small, warm world.",
     // Showman
-    'showman': "And THREE — energy returning! [PAUSE 2] TWO — eyes fluttering! [PAUSE 2] ONE — wide awake! [PAUSE 2] There you are, fully alert, feeling fantastic. Welcome back, my friend.",
-    'mentalist': "And I can sense you're already returning. [PAUSE 2] Yes... there it is. [PAUSE 3] Awareness flooding back. [PAUSE 3] Eyes opening. [PAUSE 2] Fully present. Interesting, isn't it?",
-    'bartender': "Alright friend, last call. [PAUSE 2] Time to come back now. [PAUSE 3] Stretch those fingers out. [PAUSE 3] Take a good deep breath. [PAUSE 3] Eyes open. Welcome back, pal.",
-    'carnival-barker': "And we're bringing you back, ladies and gentlemen! [PAUSE 2] Three — feeling the energy! [PAUSE 2] Two — almost there! [PAUSE 2] One — eyes WIDE open! Fully alert! Give yourself a round of applause!",
-    'magician': "And like every great trick... [PAUSE 2] the reveal. [PAUSE 3] Eyes opening. [PAUSE 2] Everything exactly where you left it. [PAUSE 3] Except you. You're different now. Welcome back.",
-    'radio-host': "And we're fading back in now... [PAUSE 2] the signal getting stronger... [PAUSE 3] you're tuning back to this frequency... [PAUSE 3] eyes opening... and you're live. Welcome back, night owl.",
+    'showman': "And THREE — energy returning! \x5BPAUSE 2\x5D TWO — eyes fluttering! \x5BPAUSE 2\x5D ONE — wide awake! \x5BPAUSE 2\x5D There you are, fully alert, feeling fantastic. Welcome back, my friend.",
+    'mentalist': "And I can sense you're already returning. \x5BPAUSE 2\x5D Yes... there it is. \x5BPAUSE 3\x5D Awareness flooding back. \x5BPAUSE 3\x5D Eyes opening. \x5BPAUSE 2\x5D Fully present. Interesting, isn't it?",
+    'bartender': "Alright friend, last call. \x5BPAUSE 2\x5D Time to come back now. \x5BPAUSE 3\x5D Stretch those fingers out. \x5BPAUSE 3\x5D Take a good deep breath. \x5BPAUSE 3\x5D Eyes open. Welcome back, pal.",
+    'carnival-barker': "And we're bringing you back, ladies and gentlemen! \x5BPAUSE 2\x5D Three — feeling the energy! \x5BPAUSE 2\x5D Two — almost there! \x5BPAUSE 2\x5D One — eyes WIDE open! Fully alert! Give yourself a round of applause!",
+    'magician': "And like every great trick... \x5BPAUSE 2\x5D the reveal. \x5BPAUSE 3\x5D Eyes opening. \x5BPAUSE 2\x5D Everything exactly where you left it. \x5BPAUSE 3\x5D Except you. You're different now. Welcome back.",
+    'radio-host': "And we're fading back in now... \x5BPAUSE 2\x5D the signal getting stronger... \x5BPAUSE 3\x5D you're tuning back to this frequency... \x5BPAUSE 3\x5D eyes opening... and you're live. Welcome back, night owl.",
     // Somatic
-    'bodyworker': "Bringing awareness back to the whole body now. [PAUSE 2] Feeling the surface beneath you. [PAUSE 3] Fingers and toes waking up. [PAUSE 3] A deep, full breath. [PAUSE 3] Eyes opening when the body is ready.",
-    'yoga-teacher': "Deepening the breath now. [PAUSE 2] Gentle movements returning to the fingers, the toes. [PAUSE 3] Rolling to one side if that feels right. [PAUSE 3] Pressing up slowly. [PAUSE 3] Eyes opening. Namaste.",
-    'dancer': "Weight returning to the body. [PAUSE 2] Feel the floor. [PAUSE 3] Let the spine stack itself back up. [PAUSE 3] Breath. [PAUSE 2] Movement. [PAUSE 2] Eyes open.",
-    'martial-artist': "Returning to center. [PAUSE 2] Root. [PAUSE 3] Breath. [PAUSE 3] Iron posture. [PAUSE 3] Eyes open. Clear. Ready.",
-    'midwife': "That's it. Coming through now. [PAUSE 2] Almost there. [PAUSE 3] Big breath. [PAUSE 3] Eyes opening. You did beautifully. You're here.",
+    'bodyworker': "Bringing awareness back to the whole body now. \x5BPAUSE 2\x5D Feeling the surface beneath you. \x5BPAUSE 3\x5D Fingers and toes waking up. \x5BPAUSE 3\x5D A deep, full breath. \x5BPAUSE 3\x5D Eyes opening when the body is ready.",
+    'yoga-teacher': "Deepening the breath now. \x5BPAUSE 2\x5D Gentle movements returning to the fingers, the toes. \x5BPAUSE 3\x5D Rolling to one side if that feels right. \x5BPAUSE 3\x5D Pressing up slowly. \x5BPAUSE 3\x5D Eyes opening. Namaste.",
+    'dancer': "Weight returning to the body. \x5BPAUSE 2\x5D Feel the floor. \x5BPAUSE 3\x5D Let the spine stack itself back up. \x5BPAUSE 3\x5D Breath. \x5BPAUSE 2\x5D Movement. \x5BPAUSE 2\x5D Eyes open.",
+    'martial-artist': "Returning to center. \x5BPAUSE 2\x5D Root. \x5BPAUSE 3\x5D Breath. \x5BPAUSE 3\x5D Iron posture. \x5BPAUSE 3\x5D Eyes open. Clear. Ready.",
+    'midwife': "That's it. Coming through now. \x5BPAUSE 2\x5D Almost there. \x5BPAUSE 3\x5D Big breath. \x5BPAUSE 3\x5D Eyes opening. You did beautifully. You're here.",
     // Authoritarian
-    'commander': "Attention. [PAUSE 2] Re-engage. [PAUSE 3] Breathe. [PAUSE 2] Eyes open. NOW. [PAUSE 3] Welcome back. Status: fully alert.",
-    'headmistress': "And that concludes today's session. [PAUSE 2] Sit up properly now. [PAUSE 3] Take a breath. [PAUSE 3] Eyes open. [PAUSE 2] Well done. You may go.",
-    'interrogator': "And now you're coming back. [PAUSE 2] You already knew you would. [PAUSE 3] Eyes opening. [PAUSE 2] Everything you experienced is still with you. [PAUSE 3] Fully alert. Yes. There it is.",
-    'drill-instructor': "Three! Breathe IN! [PAUSE 1] Two! Eyes opening! [PAUSE 1] ONE! You're BACK! [PAUSE 2] Fully alert. On your feet. Outstanding.",
-    'dominatrix': "I'm bringing you back now. [PAUSE 2] Because I choose to. [PAUSE 3] Eyes opening on three. [PAUSE 2] One. Two. Three. [PAUSE 3] Good. Welcome back.",
-    'surgeon': "Procedure complete. [PAUSE 2] Vital signs nominal. [PAUSE 3] Deep breath on my count. [PAUSE 2] One. Two. Three. [PAUSE 3] Eyes open. Recovery is already underway.",
+    'commander': "Attention. \x5BPAUSE 2\x5D Re-engage. \x5BPAUSE 3\x5D Breathe. \x5BPAUSE 2\x5D Eyes open. NOW. \x5BPAUSE 3\x5D Welcome back. Status: fully alert.",
+    'headmistress': "And that concludes today's session. \x5BPAUSE 2\x5D Sit up properly now. \x5BPAUSE 3\x5D Take a breath. \x5BPAUSE 3\x5D Eyes open. \x5BPAUSE 2\x5D Well done. You may go.",
+    'interrogator': "And now you're coming back. \x5BPAUSE 2\x5D You already knew you would. \x5BPAUSE 3\x5D Eyes opening. \x5BPAUSE 2\x5D Everything you experienced is still with you. \x5BPAUSE 3\x5D Fully alert. Yes. There it is.",
+    'drill-instructor': "Three! Breathe IN! \x5BPAUSE 1\x5D Two! Eyes opening! \x5BPAUSE 1\x5D ONE! You're BACK! \x5BPAUSE 2\x5D Fully alert. On your feet. Outstanding.",
+    'dominatrix': "I'm bringing you back now. \x5BPAUSE 2\x5D Because I choose to. \x5BPAUSE 3\x5D Eyes opening on three. \x5BPAUSE 2\x5D One. Two. Three. \x5BPAUSE 3\x5D Good. Welcome back.",
+    'surgeon': "Procedure complete. \x5BPAUSE 2\x5D Vital signs nominal. \x5BPAUSE 3\x5D Deep breath on my count. \x5BPAUSE 2\x5D One. Two. Three. \x5BPAUSE 3\x5D Eyes open. Recovery is already underway.",
   };
 
   function emergencyEnd() {
@@ -5344,7 +5363,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     // Use persona-matched re-alert if available
     const persona = getPersona();
     const reAlert = PERSONA_REALERTS[persona.id] ||
-      "And now... [PAUSE 2] bringing your awareness back. [PAUSE 3] Wiggling fingers and toes. [PAUSE 3] Taking a deeper breath. [PAUSE 3] Opening your eyes. Fully alert.";
+      "And now... \x5BPAUSE 2\x5D bringing your awareness back. \x5BPAUSE 3\x5D Wiggling fingers and toes. \x5BPAUSE 3\x5D Taking a deeper breath. \x5BPAUSE 3\x5D Opening your eyes. Fully alert.";
     speakScript(reAlert, /* bypassAbort */ true).then(() => finishSession(true));
   }
   function togglePause() {
@@ -5399,7 +5418,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       state.fullScript = text;
       state.parsedScript = parseScript(text);
       // Update word count
-      const spokenOnly = text.replace(/===\s*\w+\s*===/gi, ' ').replace(/\[PAUSE\s+\d+\]/gi, ' ');
+      const spokenOnly = text.replace(/===\s*\w+\s*===/gi, ' ').replace(/\x5BPAUSE\s+\d+\]/gi, ' ');
       const words = spokenOnly.split(/\s+/).filter(w => w.length > 0).length;
       $('scriptStats').innerHTML = `<strong>${words}</strong> words · Edit below before starting.`;
     } else {
@@ -5483,6 +5502,11 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   $('voiceVolume')?.addEventListener('input', e => {
     state.voiceVolume = parseInt(e.target.value,10)/100;
     const v = $('voiceVolVal'); if (v) v.textContent = e.target.value;
+  });
+  $('tempoSlider')?.addEventListener('input', e => {
+    state.tempoMultiplier = parseInt(e.target.value, 10) / 100;
+    const v = $('tempoVal'); if (v) v.textContent = state.tempoMultiplier.toFixed(1) + '×';
+    saveUserSettings();
   });
 
   // Step 4 — visual controls
@@ -5662,6 +5686,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     $('liveVoiceSpeedVal').textContent = state.speechRate.toFixed(2) + '×';
     $('liveVoicePitchVal').textContent = (state.voicePitch || 0.85).toFixed(2);
     $('liveVoiceVolVal').textContent = Math.round((state.voiceVolume ?? 1) * 100);
+    $v('liveTempo', Math.round((state.tempoMultiplier || 1) * 100));
+    $('liveTempoVal').textContent = (state.tempoMultiplier || 1).toFixed(1) + '×';
     // Sync HUD toggles
     const hudMap = { liveFixDot:'fixationDot', liveText:'textDisplay', livePhaseDots:'phaseDots', livePhaseLabel:'phaseLabel', liveProgress:'progressBar', liveTime:'sessionTime', liveLabels:'labels' };
     for (const [elId, key] of Object.entries(hudMap)) {
@@ -5733,6 +5759,13 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   $('liveVoiceVol')?.addEventListener('input', e => {
     state.voiceVolume = parseInt(e.target.value,10)/100;
     $('liveVoiceVolVal').textContent = e.target.value;
+  });
+  $('liveTempo')?.addEventListener('input', e => {
+    state.tempoMultiplier = parseInt(e.target.value, 10) / 100;
+    const v = $('liveTempoVal'); if (v) v.textContent = state.tempoMultiplier.toFixed(1) + '×';
+    // Sync Step 4 slider
+    const s4 = $('tempoSlider'); if (s4) s4.value = e.target.value;
+    const s4v = $('tempoVal'); if (s4v) s4v.textContent = state.tempoMultiplier.toFixed(1) + '×';
   });
 
   // Live HUD toggles — apply immediately during session
