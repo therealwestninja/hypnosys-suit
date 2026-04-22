@@ -4191,6 +4191,21 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
     let fixed = processed.join('\n');
     fixed = fixed.replace(/(===\s*\w+\s*===)\s*(?!\[PAUSE)/gi, '$1\n[PAUSE 4]\n');
+
+    // Monotone detector: if all pauses are identical (e.g. non-hypnotic text
+    // where no directive words triggered variance), apply jittered timing
+    const allPauses = fixed.match(/\[PAUSE\s+(\d+)\]/gi);
+    if (allPauses && allPauses.length > 3) {
+      const vals = allPauses.map(p => parseInt(p.match(/\d+/)[0], 10));
+      const allSame = vals.every(v => v === vals[0]);
+      if (allSame) {
+        fixed = fixed.replace(/\[PAUSE\s+\d+\]/gi, () => {
+          const jitter = Math.floor(Math.random() * 4) - 1; // -1 to +2
+          return `[PAUSE ${Math.max(2, 3 + jitter)}]`;
+        });
+      }
+    }
+
     return fixed;
   }
 
@@ -5092,6 +5107,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     u.rate = state.speechRate; u.pitch = state.voicePitch || 0.85; u.volume = state.voiceVolume ?? 1.0;
     let settled = false;
     let lastBoundaryAt = Date.now();
+    let boundaryEverFired = false;
     const done = () => { if (!settled) { settled = true; clearInterval(silenceWatch); resolve(); } };
     u.onend = done;
     u.onerror = done;
@@ -5100,6 +5116,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const display = $('textDisplay');
     u.onboundary = (e) => {
       lastBoundaryAt = Date.now();
+      boundaryEverFired = true;
       if (e.name === 'word' && display) {
         const before = text.slice(0, e.charIndex);
         const word = text.slice(e.charIndex, e.charIndex + e.charLength);
@@ -5120,23 +5137,28 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     }
 
     // ACTIVE SILENCE WATCHDOG — every 2s, check if speech has made progress.
-    // If speaking but no onboundary fired in 5s, Chrome is stuck. Force-resolve.
+    // Only use boundary-based stuck detection if onboundary actually fires on
+    // this platform. Many voices/browsers never fire it — in that case we rely
+    // solely on the not-speaking check and hard ceiling.
+    const speakStartedAt = Date.now();
     const silenceWatch = setInterval(() => {
       if (settled) { clearInterval(silenceWatch); return; }
       const silentFor = Date.now() - lastBoundaryAt;
-      if (speechSynthesis.speaking && silentFor > 5000) {
-        // Chrome is stuck — cancel and move on
+      if (boundaryEverFired && speechSynthesis.speaking && silentFor > 8000) {
+        // Chrome is stuck — boundaries were firing then stopped for 8s
         speechSynthesis.cancel();
         done();
       }
-      if (!speechSynthesis.speaking && !speechSynthesis.pending) {
+      // Grace period: don't check not-speaking until at least 1s after start
+      if (Date.now() - speakStartedAt > 1000 && !speechSynthesis.speaking && !speechSynthesis.pending) {
         // Speech finished without firing onend (Firefox edge case)
         done();
       }
     }, 2000);
 
-    // Hard ceiling — absolute maximum wait per chunk (shorter than before)
-    setTimeout(() => { speechSynthesis.cancel(); done(); }, Math.max(10000, text.length * 150));
+    // Hard ceiling — scaled by speech rate (slower rate = more time needed)
+    const rateMultiplier = 1 / Math.max(state.speechRate || 0.65, 0.4);
+    setTimeout(() => { speechSynthesis.cancel(); done(); }, Math.max(15000, text.length * 180 * rateMultiplier));
   }
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
