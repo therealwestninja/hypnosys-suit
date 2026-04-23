@@ -1192,7 +1192,7 @@ body.in-session .footer {
               <input type="checkbox" id="smartDirectorEnabled">
               <span>
                 Smart Director
-                <span class="hint"Track your overall mental health. All done locally, guide your interactions and set inject tailored personalization. Turn this off to disable all auto-personalization.</span>
+                <span class="hint">Track your overall mental health. All done locally. Enable to Guardrail your interactions, or use tailored personalization. Turn this off to disable all auto-personalization. (Not Recommended).</span>
               </span>
             </label>
             <div class="sublabel" style="font-size:0.64rem;line-height:1.5;">When disabled, your profile still saves locally, but it is not silently injected into scripts.</div>
