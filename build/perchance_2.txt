@@ -1553,6 +1553,7 @@ I return to myself easily"></textarea>
             <button class="preview-btn" id="addWorkPhaseBtn">+ add work block</button>
             <button class="preview-btn" id="addAffirmPhaseBtn">+ add affirmation</button>
             <button class="preview-btn" id="addLightenerPhaseBtn">+ add lightener</button>
+            <button class="preview-btn" id="addWakePhaseBtn">+ add wake</button>
             <button class="preview-btn" id="addReintroPhaseBtn">+ add reintro</button>
             <button class="preview-btn" id="normalizePhaseOrderBtn">reset to default order</button>
           </div>
@@ -1650,7 +1651,7 @@ I return to myself easily"></textarea>
       <div class="phase-dot" data-phase="induction"></div>
       <div class="phase-dot" data-phase="deepener"></div>
       <div class="phase-dot" data-phase="work"></div>
-      <div class="phase-dot" data-phase="emergence"></div>
+      <div class="phase-dot" data-phase="wake"></div>
     </div>
     <div class="phase-indicator" id="phaseIndicator">settling</div>
     <div class="stage" id="stage">
@@ -2008,11 +2009,11 @@ I return to myself easily"></textarea>
 
     // ── Body ───────────────────────────────────────────────────
     pain: { label: 'Pain management / comfort', hint: 'Name the specific sensation and its location. Not a substitute for medical care.', guidance: `PAIN MANAGEMENT: NEVER deny the sensation exists. Instead, transform relationship to it. Dial metaphor (turn it down). Reinterpret (pressure instead of pain, warmth instead of burning). Dissociate (the sensation belongs to the hand on the table, not to you). Glove anesthesia spread. Always include: "This works alongside your medical care, not instead of it."` },
-    sleep: { label: 'Sleep induction (stay asleep)', hint: 'Fall asleep during the session and don\'t wake up until morning.', guidance: `SLEEP INDUCTION: no emergence phase. Progressive deepening becomes sleep. "In a few moments, this trance will become natural sleep, and you'll sleep deeply through the night." NO count-up. NO re-alerting. Final suggestion drifts into silence. The EMERGENCE phase should be EMPTY or contain only "Sleep now... deep, restful, natural sleep..." followed by long silence.` },
+    sleep: { label: 'Sleep induction (stay asleep)', hint: 'Fall asleep during the session and don\'t wake up until morning.', guidance: `SLEEP INDUCTION: no wake or reintroduction. Progressive deepening becomes sleep. "In a few moments, this trance will become natural sleep, and you'll sleep deeply through the night." NO count-up. NO re-alerting. Final phase drifts into silence and sleep. The WAKE and REINTRODUCTION phases should be EMPTY or omitted for sleep sessions.` },
     energy: { label: 'Energy / vitality boost', hint: 'Physical energy, alertness, motivation. Where do you feel depleted?', guidance: `ENERGY: opposite of relaxation — progressive ACTIVATION. Warmth becomes heat. Stillness becomes vibration. "Energy building in your solar plexus", "spreading outward like sunlight". Emergence is especially important — bring them back ALERT and ENERGIZED, not drowsy. Upward imagery: rising, expanding, brightening.` },
 
     // ── Demonstration ─────────────────────────────────────────
-    convincer: { label: 'Convincer demonstration', hint: 'Prove hypnosis works to yourself with a demonstrable effect.', guidance: `CONVINCER PROTOCOL. UNDENIABLE physical/cognitive effect. Use DIRECT suggestions in present tense ("your hand IS heavier", "fingers ARE drawing together"). Build a clear challenge to test AFTER emergence.` },
+    convincer: { label: 'Convincer demonstration', hint: 'Prove hypnosis works to yourself with a demonstrable effect.', guidance: `CONVINCER PROTOCOL. UNDENIABLE physical/cognitive effect. Use DIRECT suggestions in present tense ("your hand IS heavier", "fingers ARE drawing together"). Build a clear challenge to test AFTER wake.` },
     novelty: { label: 'Novelty effect / party trick', hint: 'Classic stage effect — laughter trigger, name blank, etc.', guidance: `NOVELTY EFFECT. Post-hypnotic suggestion producing a fun, demonstrable effect on cue. Testable. Direct suggestions with specific triggers. Include a test.` },
 
     // ── Advanced ───────────────────────────────────────────────
@@ -2100,11 +2101,11 @@ I return to myself easily"></textarea>
   };
  
   const PHASE_DURATIONS = {
-    micro:  { settling: 15,  induction: 30,  deepener: 15,  work: 60,  lightener: 15, reintroduction: 20 },
-    quick:  { settling: 30,  induction: 90,  deepener: 30,  work: 120, lightener: 30, reintroduction: 30 },
-    short:  { settling: 60,  induction: 180, deepener: 60,  work: 240, lightener: 45, reintroduction: 45 },
-    medium: { settling: 90,  induction: 300, deepener: 180, work: 360, lightener: 60, reintroduction: 60 },
-    long:   { settling: 120, induction: 420, deepener: 300, work: 540, lightener: 75, reintroduction: 75 },
+    micro:  { settling: 15,  induction: 30,  deepener: 15,  work: 60,  lightener: 15, wake: 12, reintroduction: 20 },
+    quick:  { settling: 30,  induction: 90,  deepener: 30,  work: 120, lightener: 30, wake: 20, reintroduction: 30 },
+    short:  { settling: 60,  induction: 180, deepener: 60,  work: 240, lightener: 45, wake: 30, reintroduction: 45 },
+    medium: { settling: 90,  induction: 300, deepener: 180, work: 360, lightener: 60, wake: 40, reintroduction: 60 },
+    long:   { settling: 120, induction: 420, deepener: 300, work: 540, lightener: 75, wake: 50, reintroduction: 75 },
   };
  
   const _FALLBACK_PERSONA = { id: 'fallback', name: 'Guide', tagline: '', category: 'contemplative', systemPrompt: '' };
@@ -3200,7 +3201,7 @@ I return to myself easily"></textarea>
         warnings.push('An authoritarian guide with a permissive method is an unusual combination. It can work, but the tones may clash.');
       }
       if (state.intentionType === 'sleep') {
-        warnings.push('Sleep sessions skip the emergence phase. You will not be re-alerted — the session ends in silence.');
+        warnings.push('Sleep sessions skip wake and reintroduction. You will not be re-alerted — the session ends in silence.');
       }
       if (warnings.length) {
         warnEl.style.display = 'block';
@@ -3540,7 +3541,7 @@ I return to myself easily"></textarea>
 
     setPhaseFreq(phase) {
       if (this.type !== 'drone' || !this.ctx) return;
-      const freqMap = { settling: 70, induction: 67, deepener: 63, work: 60, emergence: 70 };
+      const freqMap = { settling: 70, induction: 67, deepener: 63, work: 60, lightener: 66, wake: 72, reintroduction: 74, emergence: 72 };
       const target = freqMap[phase] || 70;
       if (this.nodes[0]?.frequency) this.nodes[0].frequency.linearRampToValueAtTime(target, this.ctx.currentTime + 4);
       if (this.nodes[2]?.frequency) this.nodes[2].frequency.linearRampToValueAtTime(target * 2.01, this.ctx.currentTime + 4);
@@ -3930,7 +3931,7 @@ I return to myself easily"></textarea>
   };
 
   // Phase-based speed multipliers for visuals
-  const PHASE_VIZ_SPEED = { settling: 0.5, induction: 1.0, deepener: 0.7, work: 0.9, emergence: 0.6 };
+  const PHASE_VIZ_SPEED = { settling: 0.5, induction: 1.0, deepener: 0.7, work: 0.9, lightener: 0.75, wake: 0.95, reintroduction: 0.8, emergence: 0.95 };
 
   // ====================================================================
   // PREVIEW ENGINES (Configure tab — separate from session playback)
@@ -4240,6 +4241,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       induction: 'Induction',
       deepener: 'Deepener',
       lightener: 'Lightener',
+      wake: 'Wake',
       reintroduction: 'Reintroduction',
       emergence: 'Emergence',
       work: idx ? `Work ${idx}` : 'Work',
@@ -4272,6 +4274,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       induction: 'induction',
       deepener: 'deepener',
       lightener: 'lightener',
+      wake: 'wake',
       reintroduction: 'reintroduction',
       emergence: 'emergence',
       work: num ? `work(?:\s*[-:]?\s*${num})?` : 'work(?:\s*[-:]?\s*\d+)?',
@@ -4300,7 +4303,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       phases.push(workCount > 1 ? `work-${i}` : 'work');
     }
     if (state.intentionType === 'sleep') return phases;
-    phases.push('lightener', 'reintroduction');
+    phases.push('lightener', 'wake', 'reintroduction');
     return phases;
   }
 
@@ -4378,7 +4381,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       induction: `Write the INDUCTION phase (~${targetWords.induction} words). Move from awareness toward trance using ${method.name}. Use [PAUSE n] markers. Output ONLY script text.`,
       deepener: `Write the DEEPENER phase (~${targetWords.deepener} words). Take them deeper.${state.craftedSuggestion ? ' Foreshadow the suggestion.' : ''}${affirmLines.length ? ' Begin weaving affirmations.' : ''} Use [PAUSE n]. Output ONLY script text.`,
       lightener: `Write the LIGHTENER phase (~${targetWords.lightener} words). Ease intensity down gradually. Keep the same narrator voice and continuity. This phase works with the narrator rather than stopping them. Use gentle return language, body awareness, orientation, breath, movement, and upward pacing. Use [PAUSE n] markers. Output ONLY script text.`,
-      reintroduction: `Write the REINTRODUCTION phase (~${targetWords.reintroduction} words). Final return to ordinary awareness. Include a warm welcome-back, a suggestion to slowly get up only when ready, stretch, shake it off, and continue the day. If this is a demonstration method, the test can be mentioned BEFORE the final welcome-back, but the ending must fully reintroduce the user. Use [PAUSE n] markers. Output ONLY script text.`,
+      wake: `Write the WAKE phase (~${targetWords.wake} words). Bring the user fully awake and alert. Use a distinct upward count or direct waking sequence. Re-alert clearly. Eyes open. Fully awake. This is the actual wake-up phase and must not be replaced by reintroduction. Use [PAUSE n] markers. Output ONLY script text.`,
+      reintroduction: `Write the REINTRODUCTION phase (~${targetWords.reintroduction} words). This phase happens AFTER wake. The user is already awake. Include a warm welcome-back, a suggestion to slowly get up only when ready, stretch, shake it off, and continue the day. If this is a demonstration method, the test can be mentioned after wake and before the final welcome-back, but the ending must fully reintroduce the user. Use [PAUSE n] markers. Output ONLY script text.`,
     };
 
     // Work phase instructions
@@ -4646,14 +4650,21 @@ ${s.text.trim()}`).join('\n\n').trim();
       work: 'Continue the work here. [PAUSE 3]',
       affirm: 'Return to the user\'s affirmations here. [PAUSE 3]',
       lightener: 'Begin easing intensity down. Notice the room. Notice the body. [PAUSE 3]',
+      wake: 'In a moment, coming all the way back now. Five, returning. Four, breathing deeper. Three, energy returning. Two, eyes beginning to open. One, fully awake and alert. [PAUSE 3]',
       reintroduction: 'Welcome back. When you feel ready, slowly get up. Stretch. Shake it off. Go about your day. [PAUSE 3]',
     };
     const newSection = { phaseId: nextId, text: scaffoldMap[phaseId] || 'New phase text. [PAUSE 3]' };
     if (phaseId === 'work' || phaseId === 'affirm') {
-      const insertAt = sections.findIndex(s => ['lightener', 'reintroduction'].includes(String(s.phaseId).replace(/-\d+$/, '')));
+      const insertAt = sections.findIndex(s => ['lightener', 'wake', 'reintroduction'].includes(String(s.phaseId).replace(/-\d+$/, '')));
       if (insertAt >= 0) sections.splice(insertAt, 0, newSection);
       else sections.push(newSection);
     } else if (phaseId === 'lightener') {
+      const wakeIdx = sections.findIndex(s => String(s.phaseId).replace(/-\d+$/, '') === 'wake');
+      const reintroIdx = sections.findIndex(s => String(s.phaseId).replace(/-\d+$/, '') === 'reintroduction');
+      const insertIdx = wakeIdx >= 0 ? wakeIdx : reintroIdx;
+      if (insertIdx >= 0) sections.splice(insertIdx, 0, newSection);
+      else sections.push(newSection);
+    } else if (phaseId === 'wake') {
       const reintroIdx = sections.findIndex(s => String(s.phaseId).replace(/-\d+$/, '') === 'reintroduction');
       if (reintroIdx >= 0) sections.splice(reintroIdx, 0, newSection);
       else sections.push(newSection);
@@ -6226,6 +6237,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('addWorkPhaseBtn')?.addEventListener('click', () => addPhaseSection('work'));
   $('addAffirmPhaseBtn')?.addEventListener('click', () => addPhaseSection('affirm'));
   $('addLightenerPhaseBtn')?.addEventListener('click', () => addPhaseSection('lightener'));
+  $('addWakePhaseBtn')?.addEventListener('click', () => addPhaseSection('wake'));
   $('addReintroPhaseBtn')?.addEventListener('click', () => addPhaseSection('reintroduction'));
   $('normalizePhaseOrderBtn')?.addEventListener('click', resetPhaseOrderToDefault);
 
