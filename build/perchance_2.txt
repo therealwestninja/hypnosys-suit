@@ -52,9 +52,10 @@
     width: 800px; height: 600px; z-index: 0; pointer-events: none;
     background: radial-gradient(ellipse, rgba(255,160,40,0.06) 0%, rgba(255,80,20,0.02) 40%, transparent 70%);
   }
-  body { padding: 24px 18px 60px; position: relative; z-index: 1; }
-   .container { max-width: 850px; margin: 0 auto; position: relative; z-index: 1; }
-  @media (min-width: 740px) { .container { min-width: 600px; } }
+  body { padding: 14px 10px 40px; position: relative; z-index: 1; }
+   .container { width: 100%; max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; padding-inline: 0; }
+  @media (min-width: 768px) { body { padding: 18px 14px 48px; } }
+  @media (min-width: 1024px) { body { padding: 22px 18px 56px; } }
 
   h1 {
     font-family: var(--font-display);
@@ -69,12 +70,20 @@
   }
 
   /* ============ STEPPER ============ */
-  .stepper { display: flex; align-items: flex-start; justify-content: center; gap: 0; margin-bottom: 36px; padding: 0 8px; }
-  .step-item { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 56px; flex: 0 1 auto; position: relative; cursor: default; }
+  .stepper {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: start;
+    gap: 6px;
+    margin-bottom: 24px;
+    padding: 0;
+    width: 100%;
+  }
+  .step-item { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; width: 100%; position: relative; cursor: default; }
   .step-item.clickable { cursor: pointer; }
   .step-item.clickable:hover .step-circle { border-color: var(--neon-cyan); box-shadow: var(--glow-cyan); }
   .step-circle {
-    width: 38px; height: 38px; border-radius: 6px;
+    width: clamp(28px, 8vw, 38px); height: clamp(28px, 8vw, 38px); border-radius: 6px;
     background: var(--wood); border: 1.5px solid var(--wood-light);
     display: flex; align-items: center; justify-content: center;
     font-size: 0.85rem; font-weight: 600; color: var(--text-dim);
@@ -97,10 +106,11 @@
   .step-item.skipped .step-num::before { content: '—'; }
   .step-item.skipped .step-num-text { display: none; }
   .step-item.skipped .step-value { color: var(--text-faint); font-style: italic; }
-  .step-label { font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); text-align: center; line-height: 1.3; max-width: 90px; }
+  .step-label { font-size: clamp(0.5rem, 1.8vw, 0.62rem); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); text-align: center; line-height: 1.2; max-width: 100%; word-break: break-word; text-wrap: balance; }
   .step-item.current .step-label, .step-item.completed .step-label { color: var(--text-dim); }
-  .step-value { font-size: 0.68rem; color: var(--neon-amber); text-align: center; max-width: 90px; line-height: 1.2; font-style: italic; margin-top: -4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .step-connector { flex: 1 1 auto; height: 1px; background: var(--wood-light); margin-top: 18px; max-width: 50px; min-width: 12px; transition: background 0.3s; }
+  .step-value { font-size: clamp(0.52rem, 1.9vw, 0.68rem); color: var(--neon-amber); text-align: center; max-width: 100%; line-height: 1.15; font-style: italic; margin-top: -2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .step-num { font-size: clamp(0.72rem, 2.4vw, 0.85rem); }
+  .step-connector { display: none; }
   .step-connector.completed { background: var(--neon-amber); box-shadow: 0 0 6px rgba(255,179,0,0.3); }
 
   /* ============ STEP CONTENT ============ */
@@ -109,14 +119,15 @@
   @keyframes stepIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
   .step-header { text-align: center; margin-bottom: 28px; }
   .step-title { font-family: var(--font-display); font-size: 1.4rem; font-weight: 500; letter-spacing: 0.08em; color: var(--text); margin: 0 0 8px; text-transform: uppercase; }
-  .step-subtitle { font-size: 0.85rem; color: var(--text-dim); margin: 0; line-height: 1.55; max-width: 500px; margin: 0 auto; }
+  .step-subtitle { font-size: 0.85rem; color: var(--text-dim); margin: 0; line-height: 1.55; max-width: 36rem; margin: 0 auto; }
 
   /* ============ NAV BAR ============ */
-  .step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--wood-light); gap: 16px; }
+  .step-nav { display: grid; grid-template-columns: 1fr; align-items: stretch; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--wood-light); gap: 12px; }
+  @media (min-width: 900px) { .step-nav { grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; } }
   .step-nav .btn-back, .step-nav .btn-next { padding: 12px 26px; border-radius: var(--radius); font-size: 0.92rem; font-weight: 600; cursor: pointer; letter-spacing: 0.04em; transition: all 0.25s; border: none; font-family: var(--font-body); }
   .step-nav .btn-back { background: transparent; color: var(--text-dim); border: 1px solid var(--wood-light); }
   .step-nav .btn-back:hover { color: var(--text); border-color: var(--neon-amber); box-shadow: var(--glow-amber); }
-  .step-nav .btn-next { background: var(--neon-cyan); color: var(--bg); font-weight: 700; min-width: 140px; text-shadow: none; }
+  .step-nav .btn-next { background: var(--neon-cyan); color: var(--bg); font-weight: 700; min-width: 0; text-shadow: none; }
   .step-nav .btn-next:hover { box-shadow: var(--glow-cyan); filter: brightness(1.1); }
   .step-nav .btn-next:disabled { opacity: 0.3; cursor: not-allowed; filter: none; box-shadow: none; }
   .step-nav .step-spacer { flex: 0 0 0; }
@@ -132,7 +143,9 @@
   .step-nav .btn-skip[hidden] { display: none !important; }
 
   /* ============ CARD GRID ============ */
-  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .card-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  @media (min-width: 640px) { .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 980px) { .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .card {
     background: var(--glass); border: 1px solid var(--glass-border);
     border-radius: var(--radius); padding: 5px 15px; cursor: pointer;
@@ -189,8 +202,8 @@
   .sublabel { font-size: 0.74rem; color: var(--text-faint); margin-top: 6px; line-height: 1.5; }
   .hint { font-size: 0.72rem; color: var(--text-faint); font-weight: 400; }
 
-  .toggle-row { display: flex; align-items: center; gap: 12px; background: var(--glass); padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--glass-border); margin-bottom: 8px; }
-  .toggle-row label { flex: 1; font-size: 0.88rem; color: var(--text); cursor: pointer; }
+  .toggle-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(120px, 1fr) auto; align-items: center; gap: 12px; background: var(--glass); padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--glass-border); margin-bottom: 8px; }
+  .toggle-row label { min-width: 0; font-size: 0.88rem; color: var(--text); cursor: pointer; }
   .toggle-row .hint { font-size: 0.74rem; color: var(--text-dim); display: block; margin-top: 2px; }
   .toggle-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
   .toggle-row input[type="range"] { flex: 1; max-width: 140px; }
@@ -303,8 +316,8 @@
   /* ============ SUMMARY CARDS (step 5) ============ */
   .summary-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 10px; margin-bottom: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px; margin-bottom: 20px;
   }
   .summary-card {
     background: var(--glass); border: 1px solid var(--glass-border);
@@ -347,8 +360,9 @@
     padding: 14px; border: 1px solid var(--glass-border); border-radius: 6px;
     white-space: pre-wrap; resize: vertical;
   }
-  .script-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-  .script-actions .btn { flex: 1; min-width: 100px; padding: 10px 12px; font-size: 0.88rem; }
+  .script-actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; }
+  @media (min-width: 640px) { .script-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .script-actions .btn { min-width: 0; width: 100%; padding: 10px 12px; font-size: 0.88rem; }
  
   /* ============ LIBRARY ============ */
   .library-empty { font-size: 0.8rem; color: var(--text-faint); font-style: italic; padding: 10px 0; }
@@ -603,8 +617,7 @@ body.in-session .footer {
 
   /* ============ PREVIEW CONTROLS (shared) ============ */
   .preview-row {
-    display: flex; align-items: center; gap: 6px; margin-top: 8px;
-    flex-wrap: wrap;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, max-content)); align-items: center; gap: 8px; margin-top: 8px;
   }
   .preview-btn {
     background: var(--bg-softer); border: 1px solid var(--border);
@@ -648,9 +661,10 @@ body.in-session .footer {
   .heatmap-cell[data-count="4"] { background: #39d353; border-color: #39d353; }
 
   /* ============ QUICK-START PRESETS ============ */
-  .preset-grid { display: flex; gap: 8px; flex-wrap: wrap; margin: 5px 0; }
+  .preset-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 5px 0; }
+  @media (min-width: 900px) { .preset-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .preset-card {
-    flex: 1; min-width: 85px; max-width: 150px;
+    min-width: 0; max-width: none;
     background: var(--glass); border: 1px solid var(--glass-border);
     border-radius: var(--radius); padding: 5px 15px; cursor: pointer;
     transition: all 0.2s; text-align: center;
@@ -853,12 +867,17 @@ body.in-session .footer {
 
   /* ============ SIDEBAR PROFILE PANEL ============ */
   .app-layout {
-    display: flex; gap: 16px; align-items: flex-start; position: relative;
+    display: grid; grid-template-columns: 1fr; gap: 14px; align-items: flex-start; position: relative;
   }
   .sidebar {
-    width: 260px; flex-shrink: 0; position: sticky; top: 16px;
-    max-height: calc(100vh - 32px); overflow-y: auto; overflow-x: hidden;
+    width: 100%; position: static;
+    max-height: none; overflow: visible;
     scrollbar-width: thin; scrollbar-color: var(--wood-light) transparent;
+    align-self: start;
+  }
+  @media (min-width: 960px) {
+    .app-layout { grid-template-columns: minmax(220px, 260px) minmax(0, 1fr); gap: 16px; }
+    .sidebar { width: 100%; position: static; max-height: none; overflow: visible; }
   }
   .sidebar-inner {
     background: var(--glass); border: 1px solid var(--glass-border);
@@ -927,21 +946,92 @@ body.in-session .footer {
   .sidebar-toggle:hover { border-color: var(--neon-cyan); box-shadow: var(--glow-cyan); }
   .main-content { flex: 1; min-width: 0; }
 
-  @media (max-width: 740px) {
-    .app-layout { flex-direction: column; }
-    .sidebar {
-      position: fixed; top: 0; left: -280px; z-index: 200;
-      width: 270px; height: 100vh; max-height: 100vh;
-      background: var(--bg); padding: 50px 8px 16px; transition: left 0.3s ease;
-      border-right: 1px solid var(--glass-border);
+  @media (max-width: 959px) {
+    .sidebar-toggle, .sidebar-overlay { display: none !important; }
+  }
+
+
+  .step-content[data-step="4"] .field-group,
+  .step-content[data-step="5"] .field-group,
+  .step-content[data-step="6"] .field-group {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+  .step-content[data-step="4"] .detail-panel,
+  .step-content[data-step="5"] .detail-panel,
+  .step-content[data-step="6"] .detail-panel {
+    overflow-wrap: anywhere;
+  }
+  #phaseEditorList {
+    display: grid;
+    gap: 8px;
+  }
+  #phaseEditorList .toggle-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  #phaseEditorPanel .preview-row {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
+  .step-nav > div:first-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .toggle-row {
+      grid-template-columns: 1fr;
+      align-items: stretch;
     }
-    .sidebar.open { left: 0; }
-    .sidebar-toggle { display: block; }
-    .sidebar-overlay {
-      position: fixed; inset: 0; z-index: 199;
-      background: rgba(0,0,0,0.5); display: none;
+  .toggle-row input[type="range"] { width: 100%; max-width: none; }
+  .step-nav .btn-next,
+  .step-nav .btn-back,
+  .step-nav .btn-skip {
+      width: 100%;
+      min-width: 0;
+      white-space: normal;
     }
-    .sidebar-overlay.open { display: block; }
+  .preview-row {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+  .filter-tabs {
+      justify-content: stretch;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  .filter-tab { text-align: center; }
+  @media (min-width: 640px) {
+    .summary-grid,
+    .preset-grid,
+    .script-actions,
+    .stats-grid,
+    .stats-kpi-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .preview-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (min-width: 900px) {
+    .step-item[data-step="5"] {
+      grid-column: auto;
+      max-width: none;
+      justify-self: stretch;
+    }
+    .toggle-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+    .step-nav .btn-next,
+    .step-nav .btn-back,
+    .step-nav .btn-skip { width: auto; }
+  }
+  @media (max-width: 420px) {
+    .summary-grid,
+    .preset-grid,
+    .card-grid,
+    .script-actions,
+    .stats-grid,
+    .stats-kpi-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* ============ REDUCED MOTION ============ */
@@ -959,7 +1049,7 @@ body.in-session .footer {
   .stats-modal-title { font-family: var(--f-head); font-size: 1.2rem; color: var(--text); margin: 0; }
   .stats-modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.8rem; cursor: pointer; padding: 0 6px; line-height: 1; }
   .stats-modal-close:hover { color: var(--neon-amber); }
-  .stats-kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 12px; }
+  .stats-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin-bottom: 12px; }
   .stats-kpi { background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 8px 4px; text-align: center; }
   .stats-kpi-val { font-size: 1.05rem; font-weight: 700; color: var(--neon-cyan); font-family: var(--f-head); white-space: nowrap; }
   .stats-kpi-label { font-size: 0.52rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px; }
@@ -1033,7 +1123,20 @@ body.in-session .footer {
             <label class="btn secondary" style="flex:1;font-size:0.72rem;padding:6px;text-align:center;cursor:pointer;">import .gz<input type="file" id="restoreInput" accept=".gz,.json" style="display:none;"></label>
           </div>
         </details>
-        <button class="sidebar-settings-btn" id="sidebarSettingsBtn"> &#8226; I NEED HELP &#8226;</button>
+        <details>
+          <summary>options</summary>
+          <div class="profile-form" style="padding-top:6px;">
+            <label class="toggle-row" for="remoteProcessingOptIn" style="align-items:flex-start;">
+              <input type="checkbox" id="remoteProcessingOptIn">
+              <span>
+                Enable remote backup + processing
+                <span class="hint">Off by default. Requires explicit consent before anything is enabled.</span>
+              </span>
+            </label>
+            <div class="sublabel" style="font-size:0.64rem;line-height:1.5;">If enabled, data may be sent to a remote server for backup and further processing. You can turn it off later.</div>
+            <button class="sidebar-settings-btn" id="sidebarSettingsBtn" style="margin-top:8px;">help &amp; safety resources</button>
+          </div>
+        </details>
       </div>
     </aside>
     <div class="main-content">
@@ -1064,14 +1167,20 @@ body.in-session .footer {
       <div class="step-connector" data-connector="3-4"></div>
       <div class="step-item" data-step="4">
         <div class="step-circle"><span class="step-num"><span class="step-num-text">4</span></span></div>
-        <div class="step-label">Configure</div>
+        <div class="step-label">Affirmations</div>
         <div class="step-value" id="stepValue4"></div>
       </div>
       <div class="step-connector" data-connector="4-5"></div>
       <div class="step-item" data-step="5">
         <div class="step-circle"><span class="step-num"><span class="step-num-text">5</span></span></div>
-        <div class="step-label">Generate</div>
+        <div class="step-label">Configure</div>
         <div class="step-value" id="stepValue5"></div>
+      </div>
+      <div class="step-connector" data-connector="5-6"></div>
+      <div class="step-item" data-step="6">
+        <div class="step-circle"><span class="step-num"><span class="step-num-text">6</span></span></div>
+        <div class="step-label">Generate</div>
+        <div class="step-value" id="stepValue6"></div>
       </div>
     </div>
  
@@ -1172,12 +1281,7 @@ body.in-session .footer {
         <textarea id="intentionInput" placeholder="Plain language. Be specific. e.g. 'feel a warm happy smile when I think about kittens'"></textarea>
       </div>
 
-      <div class="field-group" id="affirmationGroup">
-        <label class="field-label">your own affirmations <span class="hint">(optional)</span></label>
-        <textarea id="userAffirmations" rows="2" placeholder="Type your own affirmations — the AI will weave them into the script. One per line. e.g.&#10;I am calm and in control&#10;My body knows how to heal"></textarea>
-        <div class="sublabel">Your exact words will appear in the deepening and work phases.</div>
-      </div>
- 
+
       <button class="btn warm full" id="craftBtn">craft hypnotic suggestion →</button>
       <div class="sublabel" style="text-align: center; margin-top: 6px;">AI will convert your description into a technically-sound hypnotic suggestion. Takes 2–3 minutes (120–180 seconds).</div>
 
@@ -1199,8 +1303,39 @@ body.in-session .footer {
       </div>
     </div>
  
-    <!-- STEP 4: CONFIGURE -->
+    <!-- STEP 4: AFFIRMATIONS -->
     <div class="step-content" data-step="4">
+      <div class="step-header">
+        <h2 class="step-title">Add Your Own Affirmations</h2>
+        <p class="step-subtitle">Optional, but now fully part of the generation flow. The AI can place your exact words into deepening, work, and affirmation moments instead of treating them like a static import.</p>
+      </div>
+
+      <div class="detail-panel" style="margin-bottom:16px;">
+        <div class="detail-title">How this step works</div>
+        Add one affirmation per line. Keep them short, clear, and in the exact wording you want to hear. These lines can be woven into multiple phases, repeated, softened, or spaced out with pauses depending on the session design.
+      </div>
+
+      <div class="field-group" id="affirmationGroup">
+        <label class="field-label">your own affirmations <span class="hint">(optional)</span></label>
+        <textarea id="userAffirmations" rows="5" placeholder="One affirmation per line. e.g.&#10;I am calm and in control
+My body knows how to heal
+I return to myself easily"></textarea>
+        <div class="sublabel">Tip: Write in the present tense, one thought per line. Your exact words may appear in affirmation interludes, deepening, or work blocks.</div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">affirmation handling</label>
+        <select id="affirmationMode">
+          <option value="woven" selected>Woven through the script — subtle and integrated</option>
+          <option value="pulse">Dedicated affirmation moments — clearer repetition</option>
+          <option value="light">Light touch — use sparingly</option>
+        </select>
+        <div class="sublabel">Choose how strongly the AI should foreground your affirmations.</div>
+      </div>
+    </div>
+
+    <!-- STEP 5: CONFIGURE -->
+    <div class="step-content" data-step="6">
       <div class="step-header">
         <h2 class="step-title">Configure the Session</h2>
         <p class="step-subtitle">Fully customize your experience. Defaults are sensible — change only what you want.</p>
@@ -1360,27 +1495,42 @@ body.in-session .footer {
       <div class="disclaimer" id="configWarning" style="display:none;"></div>
     </div>
  
-    <!-- STEP 5: GENERATE & BEGIN -->
-    <div class="step-content" data-step="5">
+    <!-- STEP 6: GENERATE & BEGIN -->
+    <div class="step-content" data-step="6">
       <div class="step-header">
         <h2 class="step-title">Generate Your Session</h2>
-        <p class="step-subtitle">Review your choices, generate the full script, then begin.</p>
+        <p class="step-subtitle">Review your choices, jump back if needed, generate the full script, then begin.</p>
       </div>
  
       <div class="summary-grid">
         <div class="summary-card"><div class="summary-label">Guide</div><div class="summary-value" id="summaryGuide">—</div></div>
         <div class="summary-card"><div class="summary-label">Method</div><div class="summary-value" id="summaryMethod">—</div></div>
         <div class="summary-card"><div class="summary-label">Length</div><div class="summary-value" id="summaryLength">—</div></div>
+        <div class="summary-card"><div class="summary-label">Affirmations</div><div class="summary-value" id="summaryAffirmations">—</div></div>
         <div class="summary-card"><div class="summary-label">Intention</div><div class="summary-value" id="summaryIntention">—</div></div>
       </div>
  
       <div class="brief-preview" id="briefPreview"></div>
  
+      <div class="detail-panel" id="workflowReviewPanel" style="margin-bottom:16px;">
+        <div class="detail-title">change something?</div>
+        <div style="margin-bottom:8px; font-size:0.78rem; color:var(--text-dim);">Jump back to a specific step without losing your current script draft. This keeps the flow clearer than forcing you to step backward one screen at a time.</div>
+        <div class="preview-row">
+          <button class="preview-btn" id="jumpGuideBtn">change guide</button>
+          <button class="preview-btn" id="jumpMethodBtn">change method</button>
+          <button class="preview-btn" id="jumpIntentionBtn">change intention</button>
+          <button class="preview-btn" id="jumpConfigBtn">change settings</button>
+        </div>
+      </div>
 
       <!-- Phase-by-phase generation progress -->
       <div class="gen-progress" id="genProgress" style="display:none;">
         <div class="gen-phases" id="genPhases"></div>
         <div class="gen-eta" id="genEta"></div>
+      </div>
+      <div class="craft-progress" id="scriptBuildProgress" style="display:none;">
+        <div class="progress-bar-wrap"><div class="progress-bar-fill"></div></div>
+        <div class="progress-label">assembling phase order and timing…</div>
       </div>
       <button class="btn green full" id="generateScriptBtn">generate full script</button>
       <div class="sublabel" style="text-align: center; margin-top: 6px;">Generates each phase individually for higher quality. ~6–7 minutes total.</div>
@@ -1394,6 +1544,18 @@ body.in-session .footer {
           <button class="btn secondary" id="autoTempoBtn">⏱ auto-tempo</button>
           <button class="btn secondary" id="exportScriptBtn">↓ download .txt</button>
           <button class="btn green" id="beginBtn">begin session →</button>
+        </div>
+        <div class="detail-panel" id="phaseEditorPanel" style="margin-top:12px; display:none;">
+          <div class="detail-title">phase order</div>
+          <div style="margin-bottom:8px; font-size:0.78rem; color:var(--text-dim);">Arrange, remove, or add phase sections. Similar controls are now clustered here instead of stretching across a single row.</div>
+          <div id="phaseEditorList"></div>
+          <div class="preview-row" style="margin-top:10px;">
+            <button class="preview-btn" id="addWorkPhaseBtn">+ add work block</button>
+            <button class="preview-btn" id="addAffirmPhaseBtn">+ add affirmation</button>
+            <button class="preview-btn" id="addLightenerPhaseBtn">+ add lightener</button>
+            <button class="preview-btn" id="addReintroPhaseBtn">+ add reintro</button>
+            <button class="preview-btn" id="normalizePhaseOrderBtn">reset to default order</button>
+          </div>
         </div>
       </div>
 
@@ -1415,7 +1577,7 @@ body.in-session .footer {
     <div class="step-nav">
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn-back" id="btnBack" hidden>← back</button>
-        <button class="btn-skip" id="btnSkipToScript">I already have a script</button>
+        <button class="btn-skip" id="btnSkipToScript">use my own script</button>
       </div>
       <div class="step-spacer"></div>
       <button class="btn-next" id="btnNext">next →</button>
@@ -1469,7 +1631,11 @@ body.in-session .footer {
         <textarea class="journal-area" id="journalText" placeholder="What did you notice? Any sensations, images, thoughts, or shifts?"></textarea>
       </div>
 
-      <button class="btn" id="restartBtn">begin a new session</button>
+      <div class="script-actions" style="margin-top:8px;">
+        <button class="btn secondary" id="postBackToScriptBtn">← back to script</button>
+        <button class="btn secondary" id="returnToSetupBtn">back to setup</button>
+        <button class="btn" id="restartBtn">start another session</button>
+      </div>
     </div>
   </div>
   <div class="footer"><span>© 2026 therealwestninja.</span> · <a href="https://www.deviantart.com/west-ninja" target="_blank" rel="noopener">DeviantArt</a> · <a href="https://github.com/therealwestninja" target="_blank" rel="noopener">GitHub</a> · <a href="#" id="crisisLink" style="color:var(--accent-green); text-shadow: 0 0 6px rgba(57,255,142,0.2);">crisis resources</a></div>
@@ -1626,7 +1792,7 @@ body.in-session .footer {
       <div class="stats-tile" data-chart="weekday"><div class="stats-tile-head"><span class="stats-chart-title">by day</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartWeekday"></canvas></div>
       <div class="stats-tile" data-chart="mood"><div class="stats-tile-head"><span class="stats-chart-title">mood shift</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartMood"></canvas></div>
       <div class="stats-tile" data-chart="completion"><div class="stats-tile-head"><span class="stats-chart-title">outcomes</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartCompletion"></canvas></div>
-      <div class="stats-tile" data-chart="settings"><div class="stats-tile-head"><span class="stats-chart-title">audio profile</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartSettings"></canvas></div>
+      <div class="stats-tile" data-chart="settings"><div class="stats-tile-head"><span class="stats-chart-title">audio + structure</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartSettings"></canvas></div>
       <div class="stats-tile" data-chart="features"><div class="stats-tile-head"><span class="stats-chart-title">features tried</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartFeatures"></canvas></div>
     </div>
     <div class="stats-empty-msg" id="statsEmptyMsg" style="display:none;">Complete a few sessions to see your stats here.</div>
@@ -1895,7 +2061,7 @@ body.in-session .footer {
   // ====================================================================
   // STATE
   // ====================================================================
-  const TOTAL_STEPS = 5;
+  const TOTAL_STEPS = 6;
   const state = {
     currentStep: 1,
     stepsCompleted: { 1: false, 2: false, 3: false, 4: false, 5: false },
@@ -1915,6 +2081,7 @@ body.in-session .footer {
     voiceVolume: 1.0,
     tempoMultiplier: 1.0,
     droneVolume: 0.35,
+    affirmationMode: 'woven',
     vizOverride: 'auto',
     hud: { fixationDot: true, textDisplay: true, phaseDots: true, phaseLabel: true, progressBar: true, sessionTime: true, labels: true },
     vizSettings: { speed: 1.0, intensity: 1.0, complexity: 1.0, trail: 0.12 },
@@ -1927,14 +2094,17 @@ body.in-session .footer {
     _preMood: 5,
     _skippedToScript: false,
     vizSpeed: 1.0,
+    generatedPhaseOrder: [],
+    scriptSections: [],
+    remoteProcessingOptIn: false,
   };
  
   const PHASE_DURATIONS = {
-    micro:  { settling: 15,  induction: 30,  deepener: 15,  work: 60,  emergence: 30 },
-    quick:  { settling: 30,  induction: 90,  deepener: 30,  work: 120, emergence: 45 },
-    short:  { settling: 60,  induction: 180, deepener: 60,  work: 240, emergence: 60 },
-    medium: { settling: 90,  induction: 300, deepener: 180, work: 360, emergence: 90 },
-    long:   { settling: 120, induction: 420, deepener: 300, work: 540, emergence: 90 },
+    micro:  { settling: 15,  induction: 30,  deepener: 15,  work: 60,  lightener: 15, reintroduction: 20 },
+    quick:  { settling: 30,  induction: 90,  deepener: 30,  work: 120, lightener: 30, reintroduction: 30 },
+    short:  { settling: 60,  induction: 180, deepener: 60,  work: 240, lightener: 45, reintroduction: 45 },
+    medium: { settling: 90,  induction: 300, deepener: 180, work: 360, lightener: 60, reintroduction: 60 },
+    long:   { settling: 120, induction: 420, deepener: 300, work: 540, lightener: 75, reintroduction: 75 },
   };
  
   const _FALLBACK_PERSONA = { id: 'fallback', name: 'Guide', tagline: '', category: 'contemplative', systemPrompt: '' };
@@ -1957,6 +2127,24 @@ body.in-session .footer {
     }
     if (!Array.isArray(_personaCache)) _personaCache = [];
 
+    // Normalize legacy history/settings/analytics stores
+    try {
+      const legacyHistory = (await idbGet('stillness_history_v1')) || [];
+      if (Array.isArray(legacyHistory) && legacyHistory.length) {
+        const normalizedHistory = legacyHistory.map(normalizeHistoryEntry).sort((a,b)=>(b.date||0)-(a.date||0));
+        await idbSet('stillness_history_v1', normalizedHistory);
+      }
+    } catch {}
+    try {
+      const analytics = await idbGet(ANALYTICS_KEY) || await idbGet('stillness_analytics_v2');
+      if (analytics) await idbSet(ANALYTICS_KEY, normalizeAnalyticsData(analytics));
+    } catch {}
+    try {
+      const raw = localStorage.getItem('stillness_settings_v3') || localStorage.getItem('stillness_settings_v2');
+      if (raw && !localStorage.getItem(SETTINGS_KEY)) {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(normalizeSettings(JSON.parse(raw))));
+      }
+    } catch {}
 
     // Persist browser storage so IDB isn't cleared
     if (navigator.storage?.persist) await navigator.storage.persist();
@@ -2002,13 +2190,20 @@ body.in-session .footer {
   }
  
 
-  /** Update phase dot indicators: -1=reset, >4=all done, N=active */
-  function updatePhaseDots(activeIdx) {
+  /** Rebuild visible phase dots to match the current script/phase plan */
+  function renderSessionPhaseDots(phases = []) {
+    const wrap = $('phaseDots');
+    if (!wrap) return;
+    wrap.innerHTML = phases.map(p => `<div class="phase-dot" data-phase="${escapeHtml(p)}" title="${escapeHtml(getPhaseLabel(p).toLowerCase())}"></div>`).join('');
+  }
+
+  /** Update phase dot indicators: -1=reset, N=active, >=length=all done */
+  function updatePhaseDots(activeIdx, totalCount = document.querySelectorAll('.phase-dot').length) {
     document.querySelectorAll('.phase-dot').forEach((d, i) => {
       d.classList.remove('active', 'done');
       if (activeIdx >= 0 && i < activeIdx) d.classList.add('done');
       if (i === activeIdx) d.classList.add('active');
-      if (activeIdx > 4) d.classList.add('done');
+      if (activeIdx >= totalCount) d.classList.add('done');
     });
   }
 
@@ -2023,7 +2218,7 @@ body.in-session .footer {
   // ====================================================================
   // SETTINGS PERSISTENCE (auto-save/load to localStorage)
   // ====================================================================
-  const SETTINGS_KEY = 'stillness_settings_v1';
+  const SETTINGS_KEY = 'stillness_settings_v4';
   const _kv = (typeof root !== 'undefined' && root.kv) ? root.kv : null;
   let _saveTimeout = null;
 
@@ -2048,7 +2243,10 @@ body.in-session .footer {
       methodFilter: state.methodFilter,
       intentionInput: $('intentionInput')?.value || '',
       userAffirmations: $('userAffirmations')?.value || '',
+      affirmationMode: $('affirmationMode')?.value || 'woven',
       voiceName: $('voiceSelect')?.value || '',
+      remoteProcessingOptIn: !!$('remoteProcessingOptIn')?.checked,
+      settingsVersion: 4,
     };
   }
 
@@ -2067,6 +2265,89 @@ body.in-session .footer {
     }, 1500);
   }
 
+  function normalizeSettings(raw = {}) {
+    const s = { ...(raw || {}) };
+    if (s.voiceName == null) s.voiceName = s.narratorVoice || s.selectedVoice || s.voice || '';
+    if (s.userAffirmations == null) s.userAffirmations = s.affirmations || s.customAffirmations || '';
+    if (s.affirmationMode == null) s.affirmationMode = s.affirmMode || 'woven';
+    if (s.vizSettings == null && s.visualSettings) s.vizSettings = s.visualSettings;
+    if (s.vizOverride == null && s.visualMode) s.vizOverride = s.visualMode;
+    if (s.tempoMultiplier == null && s.pauseTempo != null) s.tempoMultiplier = s.pauseTempo;
+    if (s.length == null && s.sessionLength) s.length = s.sessionLength;
+    if (s.intentionInput == null && s.intentionText) s.intentionInput = s.intentionText;
+    if (s.remoteProcessingOptIn == null) s.remoteProcessingOptIn = !!(s.remoteBackupOptIn || s.cloudSyncOptIn || s.serverConsent);
+    if (s.settingsVersion == null) s.settingsVersion = 1;
+    return s;
+  }
+
+  function normalizeHistoryEntry(raw = {}) {
+    const entry = { ...(raw || {}) };
+    if (!entry.id) entry.id = entry.date || `legacy-${Math.random().toString(36).slice(2)}`;
+    if (!entry.date) entry.date = Date.now();
+    if (entry.intentionText == null) entry.intentionText = entry.intentionInput || entry.prompt || '';
+    if (entry.userAffirmations == null) entry.userAffirmations = entry.affirmations || entry.customAffirmations || '';
+    if (entry.affirmationMode == null) entry.affirmationMode = entry.affirmMode || 'woven';
+    if (entry.voiceName == null) entry.voiceName = entry.narratorVoice || entry.selectedVoice || '';
+    if (entry.workBlockCount == null && entry.metrics?.workBlocks != null) entry.workBlockCount = entry.metrics.workBlocks;
+    if (!Array.isArray(entry.phaseOrder) || !entry.phaseOrder.length) {
+      try {
+        if (entry.script) {
+          const parsed = parseScript(entry.script);
+          entry.phaseOrder = parsed?.ordered?.length ? parsed.ordered : (entry.phaseOrder || []);
+        }
+      } catch {}
+    }
+    if (entry.workflowVersion == null) entry.workflowVersion = entry.stepsTotal === 6 ? 10 : 9;
+    if (entry.stepsTotal == null) entry.stepsTotal = entry.workflowVersion >= 10 ? 6 : 5;
+    return entry;
+  }
+
+  function normalizeAnalyticsData(data) {
+    const base = {
+      v: 3,
+      p: {}, m: {}, i: {}, s: {}, z: {}, ln: {}, am: {}, vc: {},
+      hr: new Array(24).fill(0), dw: new Array(7).fill(0),
+      mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0 },
+      comp: { total: 0, finished: 0, emergency: 0 },
+      dur: { sum: 0, n: 0 },
+      shape: { phaseSum: 0, workSum: 0, affirmSum: 0, n: 0 },
+      cfg: { rateSum: 0, pitchSum: 0, volSum: 0, droneSum: 0, n: 0 },
+      feat: 0,
+      ts: Date.now(),
+    };
+    const a = { ...base, ...(data || {}) };
+    a.v = 3;
+    a.p = a.p || {}; a.m = a.m || {}; a.i = a.i || {}; a.s = a.s || {}; a.z = a.z || {}; a.ln = a.ln || {};
+    a.am = a.am || {}; a.vc = a.vc || {};
+    a.hr = Array.isArray(a.hr) ? Array.from({length:24}, (_,i)=>Number(a.hr[i]||0)) : base.hr.slice();
+    a.dw = Array.isArray(a.dw) ? Array.from({length:7}, (_,i)=>Number(a.dw[i]||0)) : base.dw.slice();
+    a.mood = { ...base.mood, ...(a.mood || {}) };
+    a.comp = { ...base.comp, ...(a.comp || {}) };
+    a.dur = { ...base.dur, ...(a.dur || {}) };
+    a.shape = { ...base.shape, ...(a.shape || {}) };
+    a.cfg = { ...base.cfg, ...(a.cfg || {}) };
+    return a;
+  }
+
+  function mergeAnalyticsData(existing, incoming) {
+    const a = normalizeAnalyticsData(existing);
+    const b = normalizeAnalyticsData(incoming);
+    const sumMaps = ['p','m','i','s','z','ln','am','vc'];
+    for (const key of sumMaps) {
+      for (const [k,v] of Object.entries(b[key] || {})) a[key][k] = (a[key][k] || 0) + (Number(v) || 0);
+    }
+    a.hr = a.hr.map((v,i) => v + (Number(b.hr[i]) || 0));
+    a.dw = a.dw.map((v,i) => v + (Number(b.dw[i]) || 0));
+    for (const k of ['preSum','postSum','deltaSum','n']) a.mood[k] = (a.mood[k] || 0) + (b.mood[k] || 0);
+    for (const k of ['total','finished','emergency']) a.comp[k] = (a.comp[k] || 0) + (b.comp[k] || 0);
+    for (const k of ['sum','n']) a.dur[k] = (a.dur[k] || 0) + (b.dur[k] || 0);
+    for (const k of ['phaseSum','workSum','affirmSum','n']) a.shape[k] = (a.shape[k] || 0) + (b.shape[k] || 0);
+    for (const k of ['rateSum','pitchSum','volSum','droneSum','n']) a.cfg[k] = (a.cfg[k] || 0) + (b.cfg[k] || 0);
+    a.feat = (a.feat || 0) | (b.feat || 0);
+    a.ts = Math.max(a.ts || 0, b.ts || 0, Date.now());
+    return a;
+  }
+
   async function loadUserSettings() {
     try {
       let s = null;
@@ -2076,22 +2357,23 @@ body.in-session .footer {
       }
       // Fallback to localStorage
       if (!s) {
-        const raw = localStorage.getItem(SETTINGS_KEY);
+        const raw = localStorage.getItem(SETTINGS_KEY) || localStorage.getItem('stillness_settings_v3') || localStorage.getItem('stillness_settings_v2');
         if (raw) s = JSON.parse(raw);
       }
       if (!s) return false;
+      s = normalizeSettings(s);
 
       if (s.selectedPersonaId) state.selectedPersonaId = s.selectedPersonaId;
       if (s.selectedMethodId) state.selectedMethodId = s.selectedMethodId;
       if (s.intentionType) { state.intentionType = s.intentionType; const el = $('intentionType'); if (el) el.value = s.intentionType; }
       if (s.length) { state.length = s.length; const el = $('lengthSelect'); if (el) el.value = s.length; }
-      if (s.soundscape) { state.soundscape = s.soundscape; state.droneEnabled = s.soundscape !== 'none'; const el = $('soundscapeSelect'); if (el) el.value = s.soundscape; }
+      if (s.soundscape != null) { state.soundscape = s.soundscape; state.droneEnabled = s.soundscape !== 'none'; const el = $('soundscapeSelect'); if (el) el.value = s.soundscape; }
       if (s.speechRate != null) { state.speechRate = s.speechRate; const el = $('speechRate'); if (el) el.value = Math.round(s.speechRate * 100); const v = $('speechRateVal'); if (v) v.textContent = s.speechRate.toFixed(2) + '×'; }
       if (s.voicePitch != null) { state.voicePitch = s.voicePitch; const el = $('voicePitch'); if (el) el.value = Math.round(s.voicePitch * 100); const v = $('voicePitchVal'); if (v) v.textContent = s.voicePitch.toFixed(2); }
       if (s.voiceVolume != null) { state.voiceVolume = s.voiceVolume; const el = $('voiceVolume'); if (el) el.value = Math.round(s.voiceVolume * 100); const v = $('voiceVolVal'); if (v) v.textContent = Math.round(s.voiceVolume * 100); }
       if (s.tempoMultiplier != null) { state.tempoMultiplier = s.tempoMultiplier; const el = $('tempoSlider'); if (el) el.value = Math.round(s.tempoMultiplier * 100); const v = $('tempoVal'); if (v) v.textContent = s.tempoMultiplier.toFixed(1) + '×'; }
       if (s.droneVolume != null) { state.droneVolume = s.droneVolume; const el = $('droneVolume'); if (el) el.value = Math.round(s.droneVolume * 100); const v = $('droneVolVal'); if (v) v.textContent = Math.round(s.droneVolume * 100); }
-      if (s.vizOverride) { state.vizOverride = s.vizOverride; const el = $('vizSelect'); if (el) el.value = s.vizOverride; }
+      if (s.vizOverride != null) { state.vizOverride = s.vizOverride; const el = $('vizSelect'); if (el) el.value = s.vizOverride; }
       if (s.hud) state.hud = { ...state.hud, ...s.hud };
       if (s.duckingEnabled != null) { state.duckingEnabled = s.duckingEnabled; const el = $('duckingToggle'); if (el) el.checked = s.duckingEnabled; }
       if (s.vizSettings) {
@@ -2109,8 +2391,13 @@ body.in-session .footer {
       if (s.personaFilter) state.personaFilter = s.personaFilter;
       if (s.methodFilter) state.methodFilter = s.methodFilter;
       if (s.intentionInput) { const el = $('intentionInput'); if (el) el.value = s.intentionInput; }
-      if (s.userAffirmations) { const el = $('userAffirmations'); if (el) el.value = s.userAffirmations; }
+      if (s.userAffirmations != null) { const el = $('userAffirmations'); if (el) el.value = s.userAffirmations; }
+      if (s.affirmationMode) { const el = $('affirmationMode'); if (el) el.value = s.affirmationMode; state.affirmationMode = s.affirmationMode; }
       if (s.voiceName) state._savedVoiceName = s.voiceName;
+      state.remoteProcessingOptIn = !!s.remoteProcessingOptIn;
+      const rpcb = $('remoteProcessingOptIn'); if (rpcb) rpcb.checked = !!state.remoteProcessingOptIn;
+      applySavedVoiceSelection();
+      updateVoiceInfo();
       return true;
     } catch { return false; }
   }
@@ -2133,6 +2420,24 @@ body.in-session .footer {
     };
   }
 
+  function applyProfileToForm(profile, opts = {}) {
+    const p = profile || {};
+    const setVal = (id, value, fallback = '') => {
+      const el = $(id);
+      if (el) el.value = value ?? fallback;
+    };
+    setVal('pfName', p.name, '');
+    setVal('pfPronouns', p.pronouns, '');
+    setVal('pfAge', p.age, '');
+    setVal('pfExperience', p.experience, 'beginner');
+    setVal('pfAbout', p.about, '');
+    setVal('pfAppearance', p.appearance, '');
+    setVal('pfGoals', p.goals, '');
+    const nameEl = $('sidebarDisplayName');
+    if (nameEl) nameEl.textContent = p.name || 'Practitioner';
+    if (opts.save !== false) saveProfile();
+  }
+
   function saveProfile() {
     clearTimeout(_profileSaveTimeout);
     _profileSaveTimeout = setTimeout(async () => {
@@ -2153,15 +2458,7 @@ body.in-session .footer {
       if (_kv) { try { p = await _kv.settings.get(PROFILE_KEY); } catch {} }
       if (!p) { const raw = localStorage.getItem(PROFILE_KEY); if (raw) p = JSON.parse(raw); }
       if (!p) return;
-      if (p.name) { const el = $('pfName'); if (el) el.value = p.name; }
-      if (p.pronouns) { const el = $('pfPronouns'); if (el) el.value = p.pronouns; }
-      if (p.age) { const el = $('pfAge'); if (el) el.value = p.age; }
-      if (p.experience) { const el = $('pfExperience'); if (el) el.value = p.experience; }
-      if (p.about) { const el = $('pfAbout'); if (el) el.value = p.about; }
-      if (p.appearance) { const el = $('pfAppearance'); if (el) el.value = p.appearance; }
-      if (p.goals) { const el = $('pfGoals'); if (el) el.value = p.goals; }
-      const nameEl = $('sidebarDisplayName');
-      if (nameEl && p.name) nameEl.textContent = p.name;
+      applyProfileToForm(p, { save: false });
     } catch {}
   }
 
@@ -2181,16 +2478,16 @@ body.in-session .footer {
   // ====================================================================
   // USAGE ANALYTICS — compact incremental aggregation (O(1) storage)
   // ====================================================================
-  const ANALYTICS_KEY = 'stillness_analytics_v1';
+  const ANALYTICS_KEY = 'stillness_analytics_v3';
 
   /** Get or initialize the analytics store */
   async function getAnalytics() {
     try {
-      const data = await idbGet(ANALYTICS_KEY);
-      if (data && data.v === 1) return data;
+      const data = await idbGet(ANALYTICS_KEY) || await idbGet('stillness_analytics_v2');
+      if (data) return normalizeAnalyticsData(data);
     } catch {}
     return {
-      v: 1,
+      v: 3,
       // Frequency maps: { id: count }
       p: {},   // persona usage
       m: {},   // method usage
@@ -2198,6 +2495,8 @@ body.in-session .footer {
       s: {},   // soundscape usage
       z: {},   // visual effect usage
       ln: {},  // session length usage
+      am: {},  // affirmation mode usage
+      vc: {},  // narrator voice usage
       // Time patterns
       hr: new Array(24).fill(0),  // hourly distribution (0-23)
       dw: new Array(7).fill(0),   // day-of-week (0=Sun..6=Sat)
@@ -2205,6 +2504,7 @@ body.in-session .footer {
       mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0 },
       comp: { total: 0, finished: 0, emergency: 0 },
       dur: { sum: 0, n: 0 },
+      shape: { phaseSum: 0, workSum: 0, affirmSum: 0, n: 0 },
       // Settings usage (running sums for averages)
       cfg: { rateSum: 0, pitchSum: 0, volSum: 0, droneSum: 0, n: 0 },
       // Feature flags: which features the user has tried
@@ -2225,8 +2525,10 @@ body.in-session .footer {
       inc(a.m, record.methodId);
       inc(a.i, record.intention);
       inc(a.s, record.soundscape);
-      inc(a.z, state.vizOverride || 'auto');
+      inc(a.z, record.vizOverride || state.vizOverride || 'auto');
       inc(a.ln, record.length);
+      inc(a.am, record.affirmationMode || 'woven');
+      inc(a.vc, record.voiceName || 'default');
 
       // Time patterns
       const d = new Date(record.date);
@@ -2256,6 +2558,12 @@ body.in-session .footer {
       a.cfg.volSum += (record.voiceVolume || 1.0);
       a.cfg.droneSum += (record.droneVolume || 0.35);
       a.cfg.n++;
+
+      const metrics = record.metrics || {};
+      a.shape.phaseSum += metrics.phaseCount || (Array.isArray(record.phaseOrder) ? record.phaseOrder.length : 0);
+      a.shape.workSum += record.workBlockCount || metrics.workBlocks || 0;
+      a.shape.affirmSum += metrics.affirmBlocks || 0;
+      a.shape.n++;
 
       a.ts = Date.now();
       await idbSet(ANALYTICS_KEY, a);
@@ -2291,16 +2599,16 @@ body.in-session .footer {
     try {
       const existing = await getAnalytics();
       const feat = existing.feat || 0; // preserve feature flags
-      const a = { v: 1, p: {}, m: {}, i: {}, s: {}, z: {}, ln: {},
+      const a = { v: 2, p: {}, m: {}, i: {}, s: {}, z: {}, ln: {}, am: {}, vc: {},
         hr: new Array(24).fill(0), dw: new Array(7).fill(0),
         mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0 },
         comp: { total: 0, finished: 0, emergency: 0 },
-        dur: { sum: 0, n: 0 }, cfg: { rateSum: 0, pitchSum: 0, volSum: 0, droneSum: 0, n: 0 },
+        dur: { sum: 0, n: 0 }, shape: { phaseSum: 0, workSum: 0, affirmSum: 0, n: 0 }, cfg: { rateSum: 0, pitchSum: 0, volSum: 0, droneSum: 0, n: 0 },
         feat, ts: Date.now() };
       const inc = (map, key) => { if (key) map[key] = (map[key] || 0) + 1; };
       for (const r of historyArr) {
         inc(a.p, r.personaId); inc(a.m, r.methodId); inc(a.i, r.intention);
-        inc(a.s, r.soundscape); inc(a.z, r.vizOverride || 'auto'); inc(a.ln, r.length);
+        inc(a.s, r.soundscape); inc(a.z, r.vizOverride || 'auto'); inc(a.ln, r.length); inc(a.am, r.affirmationMode || 'woven'); inc(a.vc, r.voiceName || 'default');
         const d = new Date(r.date); a.hr[d.getHours()]++; a.dw[d.getDay()]++;
         if (r.preMood != null) { a.mood.preSum += r.preMood; a.mood.n++; }
         if (r.postMood != null) { a.mood.postSum += r.postMood; a.mood.deltaSum += (r.postMood - (r.preMood || 5)); }
@@ -2308,6 +2616,11 @@ body.in-session .footer {
         if (r.durationSec > 0) { a.dur.sum += r.durationSec; a.dur.n++; }
         a.cfg.rateSum += (r.speechRate || 0.65); a.cfg.pitchSum += (r.voicePitch || 0.85);
         a.cfg.volSum += (r.voiceVolume || 1.0); a.cfg.droneSum += (r.droneVolume || 0.35); a.cfg.n++;
+        const metrics = r.metrics || {};
+        a.shape.phaseSum += metrics.phaseCount || (Array.isArray(r.phaseOrder) ? r.phaseOrder.length : 0);
+        a.shape.workSum += r.workBlockCount || metrics.workBlocks || 0;
+        a.shape.affirmSum += metrics.affirmBlocks || 0;
+        a.shape.n++;
       }
       await idbSet(ANALYTICS_KEY, a);
     } catch(e) { console.error('Analytics rebuild failed:', e); }
@@ -2333,6 +2646,10 @@ body.in-session .footer {
       peakHour, peakDayName: dayNames[peakDay] || '—',
       totalSessions: a.comp.total,
       avgSpeechRate: a.cfg.n > 0 ? (a.cfg.rateSum / a.cfg.n).toFixed(2) : null,
+      avgPhaseCount: a.shape?.n > 0 ? (a.shape.phaseSum / a.shape.n).toFixed(1) : null,
+      avgWorkBlocks: a.shape?.n > 0 ? (a.shape.workSum / a.shape.n).toFixed(1) : null,
+      favAffirmationMode: topKey(a.am || {}),
+      favVoice: topKey(a.vc || {}),
       featuresUsed: Object.entries(FEAT).filter(([,bit]) => a.feat & bit).map(([name]) => name.toLowerCase().replace('_',' ')),
     };
   }
@@ -2523,7 +2840,7 @@ body.in-session .footer {
     try {
       const adaptive = await getAdaptive();
       const analytics = await getAnalytics();
-      const history = (await idbGet('stillness_history_v1')) || [];
+      const history = ((await idbGet('stillness_history_v1')) || []).map(normalizeHistoryEntry);
       // Phase 1: signals
       const sig = deriveSignals(analytics, history);
       // Phase 2: update traits
@@ -2559,8 +2876,45 @@ body.in-session .footer {
       return !!state.craftedSuggestion || skipCraft;
     }
     if (n === 4) return true;
-    if (n === 5) return !!state.fullScript;
+    if (n === 5) return true;
+    if (n === 6) return !!state.fullScript;
     return true;
+  }
+
+  function clearGeneratedScriptUi() {
+    state.fullScript = null;
+    state.parsedScript = null;
+    state.generatedPhaseOrder = [];
+    state.scriptSections = [];
+    if (typeof _scriptEditedSinceGen !== 'undefined') _scriptEditedSinceGen = false;
+    if ($('scriptText')) $('scriptText').value = '';
+    if ($('scriptStats')) $('scriptStats').innerHTML = '';
+    if ($('scriptPreview')) $('scriptPreview').classList.remove('visible');
+    if ($('phaseEditorPanel')) $('phaseEditorPanel').style.display = 'none';
+    if ($('genProgress')) $('genProgress').style.display = 'none';
+    if ($('scriptBuildProgress')) $('scriptBuildProgress').style.display = 'none';
+    if ($('generateScriptBtn')) showEl('generateScriptBtn', true);
+  }
+
+  function resetWizardForNewSession(opts = {}) {
+    const preserveSelections = opts.preserveSelections !== false;
+    state.currentStep = 1;
+    state.stepsCompleted = { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false };
+    state._skippedToScript = false;
+    state.abortFlag = false;
+    state.paused = false;
+    state.craftedSuggestion = null;
+    if (!preserveSelections) {
+      state.selectedPersonaId = 'driver';
+      state.selectedMethodId = 'highway';
+      state.intentionType = 'trigger';
+      state.length = 'medium';
+      $('intentionInput').value = '';
+    }
+    clearGeneratedScriptUi();
+    switchScreen('setup-wizard');
+    goToStep(1);
+    updateStepUI();
   }
  
   function goToStep(n) {
@@ -2580,12 +2934,12 @@ body.in-session .footer {
     // Stop all previews when leaving the Configure step
     if (typeof _stopAllPreviews === 'function') _stopAllPreviews();
     updateStepUI();
-    if (n === 4) { renderConfigSummary(); }
-    if (n === 5) { refreshSummary(); showEl('generateScriptBtn', true); }
+    if (n === 5) { renderConfigSummary(); }
+    if (n === 6) { refreshSummary(); showEl('generateScriptBtn', true); }
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Accessibility: announce step change and move focus
-    const stepNames = { 1: 'Choose Your Guide', 2: 'Choose Your Method', 3: 'Set Your Intention', 4: 'Configure the Session', 5: 'Generate Your Session' };
+    const stepNames = { 1: 'Choose Your Guide', 2: 'Choose Your Method', 3: 'Set Your Intention', 4: 'Add Your Own Affirmations', 5: 'Configure the Session', 6: 'Generate Your Session' };
     const announce = $('ariaStepAnnounce');
     if (announce) announce.textContent = `Step ${n} of ${TOTAL_STEPS}: ${stepNames[n] || ''}`;
     // Move focus to step heading
@@ -2615,7 +2969,7 @@ body.in-session .footer {
     });
     // Step values under circles — show "Skipped" for bypassed steps
     if (state._skippedToScript) {
-      for (let i = 1; i <= 4; i++) {
+      for (let i = 1; i <= 5; i++) {
         const el = $('stepValue' + i);
         if (el && !state.stepsCompleted[i]) el.textContent = 'skipped';
       }
@@ -2628,13 +2982,30 @@ body.in-session .footer {
         else if (state.intentionType === 'trance') s3 = 'pure trance';
       }
       $('stepValue3').textContent = s3;
-      $('stepValue4').textContent = state.stepsCompleted[4] ? state.length : '';
+      $('stepValue4').textContent = state.stepsCompleted[4] ? (($('userAffirmations')?.value || '').trim() ? 'custom ✓' : 'none') : '';
+      $('stepValue5').textContent = state.stepsCompleted[5] ? state.length : '';
     }
-    $('stepValue5').textContent = state.fullScript ? 'ready ✓' : '';
+    $('stepValue6').textContent = state.fullScript ? 'ready ✓' : '';
     // Nav
     $('btnBack').hidden = state.currentStep === 1;
     $('btnNext').hidden = state.currentStep === TOTAL_STEPS;
     $('btnNext').disabled = !validateStep(state.currentStep);
+    const backLabels = {
+      2: '← guide',
+      3: '← method',
+      4: '← intention',
+      5: '← affirmations',
+      6: state._skippedToScript ? '← pasted script setup' : '← session settings'
+    };
+    const nextLabels = {
+      1: 'choose a method →',
+      2: 'set your intention →',
+      3: 'add affirmations →',
+      4: 'choose session settings →',
+      5: 'review & generate script →'
+    };
+    $('btnBack').textContent = backLabels[state.currentStep] || '← back';
+    $('btnNext').textContent = nextLabels[state.currentStep] || 'next →';
     // Skip button — only visible on step 1
     const skipBtn = $('btnSkipToScript');
     if (skipBtn) skipBtn.hidden = state.currentStep !== 1;
@@ -2643,8 +3014,10 @@ body.in-session .footer {
   function refreshSummary() {
     $('summaryGuide').textContent = getPersona().name;
     $('summaryMethod').textContent = getMethod().name;
-    $('summaryLength').textContent = state.length.charAt(0).toUpperCase() + state.length.slice(1);
+    $('summaryLength').textContent = `${state.length.charAt(0).toUpperCase() + state.length.slice(1)} · ${getWorkBlockCount()} work block${getWorkBlockCount() === 1 ? '' : 's'}`;
     const intent = $('intentionInput').value.trim() || '(trance only)';
+    const affCount = (($('userAffirmations')?.value || '').split(/\n+/).map(s => s.trim()).filter(Boolean)).length;
+    if ($('summaryAffirmations')) $('summaryAffirmations').textContent = affCount ? `${affCount} custom · ${($('affirmationMode')?.value || 'woven')}` : 'none';
     $('summaryIntention').textContent = intent.length > 60 ? intent.substring(0, 57) + '...' : intent;
     updateBriefPreview();
   }
@@ -2885,15 +3258,19 @@ body.in-session .footer {
       });
       select.appendChild(og);
     }
-    // Restore saved voice preference
-    if (state._savedVoiceName) {
-      const opts = select.querySelectorAll('option');
-      for (const opt of opts) {
-        if (opt.value === state._savedVoiceName) { select.value = state._savedVoiceName; break; }
-      }
-    }
+    applySavedVoiceSelection();
     updateVoiceInfo();
   }
+  function applySavedVoiceSelection() {
+    const select = $('voiceSelect');
+    if (!select) return;
+    if (state._savedVoiceName) {
+      const opts = [...select.querySelectorAll('option')];
+      const exact = opts.find(opt => opt.value === state._savedVoiceName);
+      if (exact) select.value = state._savedVoiceName;
+    }
+  }
+
   function updateVoiceInfo() {
     const select = $('voiceSelect');
     const info = $('voiceInfo');
@@ -3847,20 +4224,94 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   // SCRIPT GEN — per-phase generation with live progress
   // ====================================================================
 
-  /** Determine the phase list based on session length */
+  /** Session work block count by selected length */
+  function getWorkBlockCount() {
+    if (state.length === 'long') return 5;
+    if (state.length === 'medium') return 2;
+    return 1;
+  }
 
-  /** Determine the phase list — includes affirmation interludes between work phases */
-  function getPhaseList() {
-    const base = ['settling', 'induction', 'deepener'];
-    const workCount = state.length === 'long' ? 3 : state.length === 'medium' ? 2 : 1;
+  function getPhaseLabel(phaseId) {
+    if (!phaseId) return 'Phase';
+    const base = phaseId.replace(/-\d+$/, '');
+    const idx = phaseId.includes('-') ? phaseId.split('-').pop() : '';
+    const labels = {
+      settling: 'Settling',
+      induction: 'Induction',
+      deepener: 'Deepener',
+      lightener: 'Lightener',
+      reintroduction: 'Reintroduction',
+      emergence: 'Emergence',
+      work: idx ? `Work ${idx}` : 'Work',
+      affirm: idx ? `Affirmation ${idx}` : 'Affirmation',
+    };
+    return labels[base] || phaseId;
+  }
+
+  function phaseIdToMarker(phaseId) {
+    return String(phaseId || 'work').toUpperCase().replace(/\s+/g, '-');
+  }
+
+  function markerToPhaseId(marker) {
+    return String(marker || '').toLowerCase();
+  }
+
+  const PHASE_MARKER_CAPTURE_RX = /===\s*([A-Z0-9-]+)\s*===/gi;
+  const PHASE_MARKER_SPLIT_RX = /(===\s*[A-Z0-9-]+\s*===)/gi;
+  const PHASE_MARKER_STRIP_RX = /===\s*[A-Z0-9-]+\s*===/gi;
+
+  function stripLeadingPhaseHeader(text, phaseId = '') {
+    let out = String(text || '').replace(/^﻿/, '').trimStart();
+    // Canonical marker line, including numbered phases like WORK-1 / AFFIRM-2
+    out = out.replace(/^===\s*[A-Z0-9-]+\s*===\s*(?:\r?\n)?/i, '');
+    // Markdown / label-only heading lines at the top of a generated phase
+    const base = String(phaseId || '').replace(/-\d+$/, '');
+    const num = (String(phaseId || '').match(/-(\d+)$/) || [])[1];
+    const labelMap = {
+      settling: 'settling',
+      induction: 'induction',
+      deepener: 'deepener',
+      lightener: 'lightener',
+      reintroduction: 'reintroduction',
+      emergence: 'emergence',
+      work: num ? `work(?:\s*[-:]?\s*${num})?` : 'work(?:\s*[-:]?\s*\d+)?',
+      affirm: num ? `affirm(?:ation)?(?:\s*[-:]?\s*${num})?` : 'affirm(?:ation)?(?:\s*[-:]?\s*\d+)?',
+    };
+    const phaseRx = labelMap[base];
+    if (phaseRx) {
+      const headingOnly = new RegExp(`^(?:[#>*-]+\s*)?(?:phase\s*[:\-]\s*)?(?:${phaseRx})\s*:?(?:\r?\n)+`, 'i');
+      out = out.replace(headingOnly, '');
+      const bareLine = new RegExp(`^(?:phase\s*[:\-]\s*)?(?:${phaseRx})\s*:?\s*(?:\r?\n)+`, 'i');
+      out = out.replace(bareLine, '');
+    }
+    return out.trim();
+  }
+
+  function stripAllPhaseMarkers(text) {
+    return String(text || '').replace(/===\s*[A-Z0-9-]+\s*===/gi, ' ');
+  }
+
+  function getSessionPhaseBlueprint() {
+    const phases = ['settling', 'induction', 'deepener'];
+    const workCount = getWorkBlockCount();
     const userAff = $('userAffirmations')?.value?.trim();
     for (let i = 1; i <= workCount; i++) {
-      // Add affirmation interlude before each work block (if user provided affirmations)
-      if (userAff && i > 1) base.push(`affirm-${i}`);
-      base.push(workCount > 1 ? `work-${i}` : 'work');
+      if (userAff && i > 1) phases.push(`affirm-${i}`);
+      phases.push(workCount > 1 ? `work-${i}` : 'work');
     }
-    base.push('emergence');
-    return base;
+    if (state.intentionType === 'sleep') return phases;
+    phases.push('lightener', 'reintroduction');
+    return phases;
+  }
+
+  function getPhaseList() {
+    return getSessionPhaseBlueprint();
+  }
+
+  function getPlaybackPhaseOrder() {
+    if (state.generatedPhaseOrder?.length) return [...state.generatedPhaseOrder];
+    if (state.parsedScript?.ordered?.length) return [...state.parsedScript.ordered];
+    return getPhaseList();
   }
 
   /** Render phase progress with state: pending, streaming, done, error, warn */
@@ -3870,14 +4321,12 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const etaEl = $('genEta');
     if (!wrap || !container) return;
     wrap.style.display = 'block';
-    const labels = { settling: 'Settling', induction: 'Induction', deepener: 'Deepener', emergence: 'Emergence' };
     container.innerHTML = phases.map((p, i) => {
-      const label = labels[p] || (p.startsWith('work') ? 'Work' + (p.includes('-') ? ' ' + p.split('-')[1] : '') : p.startsWith('affirm') ? 'Affirm' : p);
+      const label = getPhaseLabel(p);
       const st = stateMask[i] || 'pending';
       return `<div class="gen-phase ${st}" data-phase-idx="${i}"><div class="gen-dot"></div><span>${label}</span></div>`;
     }).join('');
     if (etaEl) etaEl.textContent = eta || '';
-    // Wire click-to-retry for error/warn states
     if (retryCallback) {
       container.querySelectorAll('.gen-phase.error, .gen-phase.warn').forEach(el => {
         el.addEventListener('click', () => retryCallback(parseInt(el.dataset.phaseIdx)));
@@ -3901,6 +4350,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const rough = $('intentionInput').value.trim();
     const wpm = 50;
     const targetWords = Object.fromEntries(Object.entries(durations).map(([k,v]) => [k, Math.round(v * wpm / 60)]));
+    const scriptBuildProgress = $('scriptBuildProgress');
+    if (scriptBuildProgress) scriptBuildProgress.style.display = 'block';
 
     setLoading('generateScriptBtn', true);
     setLoading('regenScriptBtn', true);
@@ -3923,10 +4374,11 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
     // Phase-specific instructions
     const phaseInstructions = {
-      settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user. Open naturally — don't say "hello". Use \x5BPAUSE n\x5D markers. Output ONLY the script text.`,
-      induction: `Write the INDUCTION phase (~${targetWords.induction} words). Move from awareness toward trance using ${method.name}. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
-      deepener: `Write the DEEPENER phase (~${targetWords.deepener} words). Take them deeper.${state.craftedSuggestion ? ' Foreshadow the suggestion.' : ''}${affirmLines.length ? ' Begin weaving affirmations.' : ''} Use \x5BPAUSE n\x5D. Output ONLY script text.`,
-      emergence: `Write the EMERGENCE phase (~${targetWords.emergence} words). ${method.category === 'demonstration' ? 'FIRST: deliver the TEST. THEN count up 1-5.' : state.craftedSuggestion ? 'State core effect one final time, THEN count up 1-5.' : 'Count up 1-5 to full alertness.'} Use \x5BPAUSE n\x5D. Output ONLY script text.`,
+      settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user. Open naturally — don't say "hello". Use [PAUSE n] markers. Output ONLY the script text.`,
+      induction: `Write the INDUCTION phase (~${targetWords.induction} words). Move from awareness toward trance using ${method.name}. Use [PAUSE n] markers. Output ONLY script text.`,
+      deepener: `Write the DEEPENER phase (~${targetWords.deepener} words). Take them deeper.${state.craftedSuggestion ? ' Foreshadow the suggestion.' : ''}${affirmLines.length ? ' Begin weaving affirmations.' : ''} Use [PAUSE n]. Output ONLY script text.`,
+      lightener: `Write the LIGHTENER phase (~${targetWords.lightener} words). Ease intensity down gradually. Keep the same narrator voice and continuity. This phase works with the narrator rather than stopping them. Use gentle return language, body awareness, orientation, breath, movement, and upward pacing. Use [PAUSE n] markers. Output ONLY script text.`,
+      reintroduction: `Write the REINTRODUCTION phase (~${targetWords.reintroduction} words). Final return to ordinary awareness. Include a warm welcome-back, a suggestion to slowly get up only when ready, stretch, shake it off, and continue the day. If this is a demonstration method, the test can be mentioned BEFORE the final welcome-back, but the ending must fully reintroduce the user. Use [PAUSE n] markers. Output ONLY script text.`,
     };
 
     // Work phase instructions
@@ -4026,6 +4478,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       stopTimer();
       setLoading('generateScriptBtn', false, 'generate full script');
       setLoading('regenScriptBtn', false);
+      if (scriptBuildProgress) scriptBuildProgress.style.display = 'none';
     }
   }
 
@@ -4035,68 +4488,209 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const summaryBlock = gs.priorSummary ? `\n\nSO FAR (summary — continue seamlessly, DO NOT repeat):\n${gs.priorSummary}` : '';
     const instruction = `${gs.sharedContext}${summaryBlock}\n\n═══ YOUR TASK ═══\n${gs.phaseInstructions[phase]}\n\nStay in ${gs.persona.name}'s voice. Continue naturally. No ===PHASE=== markers. Start immediately:`;
 
-    const data = await root.aiTextPlugin({ instruction, stopSequences: ['\n\n\n\n', '==='], hideStartWith: true });
+    const data = await root.aiTextPlugin({ instruction, stopSequences: ['\n\n\n\n'], hideStartWith: true });
     if (data.stopReason === 'error') throw new Error('AI returned an error');
 
-    let text = (data.generatedText || '').trim();
-    text = text.replace(/^===\w+===\s*/i, '').trim();
+    let raw = (data.generatedText || '').trim();
+    let text = stripLeadingPhaseHeader(raw, phase);
+    if ((!text || text.length < 15) && raw) {
+      text = raw
+        .replace(PHASE_MARKER_STRIP_RX, ' ')
+        .replace(/^(?:[#>*-]+\s*)?(?:phase\s*[:\-]\s*)?[a-z][a-z0-9\s\-]{1,40}:?\s*/i, '')
+        .trim();
+    }
     if (!text || text.length < 15) throw new Error('Phase returned too little text');
     return text;
   }
 
   /** Assemble all completed phases into a full script */
   function assembleAndShowScript(gs) {
-    const markerMap = { settling: 'SETTLING', induction: 'INDUCTION', deepener: 'DEEPENER', emergence: 'EMERGENCE' };
     let fullScript = '';
     gs.phases.forEach(p => {
-      if (!gs.phaseResults[p]) return; // skip failed phases
-      const marker = markerMap[p] || (p.startsWith('affirm') ? 'WORK' : 'WORK');
-      fullScript += `===${marker}===\n${gs.phaseResults[p]}\n\n`;
+      if (!gs.phaseResults[p]) return;
+      fullScript += `===${phaseIdToMarker(p)}===
+${gs.phaseResults[p]}
+
+`;
     });
     if (fullScript.trim().length > 50) {
       state.fullScript = fullScript.trim();
+      state.generatedPhaseOrder = [...gs.phases];
       state.parsedScript = parseScript(state.fullScript);
       showScript();
       updateStepUI();
     }
   }
 
-
- 
   function parseScript(text) {
-    const phases = { settling: '', induction: '', deepener: '', work: '', emergence: '' };
-    const markers = [
-      { key: 'settling', rx: /===\s*SETTLING\s*===/i },
-      { key: 'induction', rx: /===\s*INDUCTION\s*===/i },
-      { key: 'deepener', rx: /===\s*DEEPENER\s*===/i },
-      { key: 'work', rx: /===\s*WORK\s*===/i },
-      { key: 'emergence', rx: /===\s*EMERGENCE\s*===/i },
-    ];
-    const positions = markers.map(m => { const match = text.match(m.rx); return { key: m.key, index: match ? match.index + match[0].length : -1, start: match ? match.index : -1 }; });
-    const found = positions.filter(p => p.index !== -1).sort((a,b) => a.index - b.index);
-    for (let i = 0; i < found.length; i++) {
-      const cur = found[i];
-      const end = i + 1 < found.length ? found[i+1].start : text.length;
-      phases[cur.key] = text.substring(cur.index, end).trim();
+    const phases = {};
+    const ordered = [];
+    const matches = [...text.matchAll(PHASE_MARKER_CAPTURE_RX)];
+    if (!matches.length) return { ...phases, ordered: [] };
+    for (let i = 0; i < matches.length; i++) {
+      const marker = matches[i][1];
+      const phaseId = markerToPhaseId(marker);
+      const start = matches[i].index + matches[i][0].length;
+      const end = i + 1 < matches.length ? matches[i + 1].index : text.length;
+      const body = text.substring(start, end).trim();
+      phases[phaseId] = body;
+      ordered.push(phaseId);
+      if (phaseId.startsWith('work')) phases.work = [phases.work, body].filter(Boolean).join('\n\n');
     }
+    phases.ordered = ordered;
     return phases;
   }
- 
+
+  function getScriptMetrics(text) {
+    const full = String(text || '');
+    const spokenOnly = stripAllPhaseMarkers(full)
+      .replace(/\x5BPAUSE\s+\d+\x5D/gi, ' ');
+    const words = spokenOnly.split(/\s+/).filter(w => w.length > 0).length;
+    const pauses = (full.match(/\x5BPAUSE\s+\d+\x5D/gi) || []).length;
+    const pauseSecs = (full.match(/\x5BPAUSE\s+(\d+)\]/gi) || []).reduce((sum, m) => sum + parseInt(m.match(/\d+/)[0], 10), 0);
+    const parsed = parseScript(full);
+    const phaseCount = (parsed.ordered || []).length;
+    const workBlocks = (parsed.ordered || []).filter(p => p.startsWith('work')).length;
+    const affirmBlocks = (parsed.ordered || []).filter(p => p.startsWith('affirm')).length;
+    const estimatedMin = Math.round(words / 50 + pauseSecs / 60);
+    return { words, pauses, pauseSecs, phaseCount, workBlocks, affirmBlocks, estimatedMin, ordered: parsed.ordered || [] };
+  }
+
+  function normalizePhaseSections(sections) {
+    const cleaned = (sections || []).filter(s => s && s.text && s.text.trim()).map(s => ({ ...s, text: s.text.trim() }));
+    let workIdx = 0;
+    let affirmIdx = 0;
+    return cleaned.map(section => {
+      const base = String(section.phaseId || 'work').replace(/-\d+$/, '');
+      if (base === 'work') {
+        workIdx += 1;
+        section.phaseId = `work-${workIdx}`;
+      } else if (base === 'affirm') {
+        affirmIdx += 1;
+        section.phaseId = `affirm-${affirmIdx}`;
+      } else {
+        section.phaseId = base;
+      }
+      return section;
+    });
+  }
+
+  function getScriptSectionsFromState() {
+    const ordered = state.parsedScript?.ordered?.length ? state.parsedScript.ordered : getPlaybackPhaseOrder();
+    return ordered.map(phaseId => ({ phaseId, text: state.parsedScript?.[phaseId] || '' })).filter(s => s.text && s.text.trim());
+  }
+
+  function getSpokenScriptPreviewText() {
+    const sections = getScriptSectionsFromState();
+    return sections.map(s => stripLeadingPhaseHeader(s.text, s.phaseId).trim()).filter(Boolean).join('\n\n');
+  }
+
+  function setScriptFromSections(sections, opts = {}) {
+    const cleaned = normalizePhaseSections(sections);
+    state.scriptSections = cleaned.map(s => ({ ...s }));
+    state.generatedPhaseOrder = cleaned.map(s => s.phaseId);
+    state.fullScript = cleaned.map(s => `===${phaseIdToMarker(s.phaseId)}===
+${s.text.trim()}`).join('\n\n').trim();
+    state.parsedScript = parseScript(state.fullScript);
+    if (!opts.skipRender) showScript();
+    updateStepUI();
+  }
+
+  function renderPhaseEditor() {
+    const panel = $('phaseEditorPanel');
+    const list = $('phaseEditorList');
+    if (!panel || !list) return;
+    const sections = getScriptSectionsFromState();
+    state.scriptSections = sections;
+    if (!sections.length) {
+      panel.style.display = 'none';
+      return;
+    }
+    panel.style.display = 'block';
+    list.innerHTML = sections.map((s, i) => `
+      <div class="toggle-row" data-phase-idx="${i}" style="align-items:flex-start;">
+        <div style="flex:1; min-width:0;">
+          <label>${escapeHtml(getPhaseLabel(s.phaseId))}<span class="hint">${escapeHtml((s.text || '').replace(/\x5BPAUSE\s+\d+\x5D/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 100) || 'empty')}</span></label>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3, minmax(72px, auto)); gap:6px; margin-left:8px;">
+          <button class="preview-btn phase-up" data-idx="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
+          <button class="preview-btn phase-down" data-idx="${i}" ${i === sections.length - 1 ? 'disabled' : ''}>↓</button>
+          <button class="preview-btn phase-remove" data-idx="${i}">remove</button>
+        </div>
+      </div>`).join('');
+    list.querySelectorAll('.phase-up').forEach(btn => btn.addEventListener('click', () => movePhaseSection(parseInt(btn.dataset.idx, 10), -1)));
+    list.querySelectorAll('.phase-down').forEach(btn => btn.addEventListener('click', () => movePhaseSection(parseInt(btn.dataset.idx, 10), 1)));
+    list.querySelectorAll('.phase-remove').forEach(btn => btn.addEventListener('click', () => removePhaseSection(parseInt(btn.dataset.idx, 10))));
+  }
+
+  function movePhaseSection(idx, delta) {
+    const sections = getScriptSectionsFromState();
+    const j = idx + delta;
+    if (j < 0 || j >= sections.length) return;
+    [sections[idx], sections[j]] = [sections[j], sections[idx]];
+    setScriptFromSections(sections);
+  }
+
+  function removePhaseSection(idx) {
+    const sections = getScriptSectionsFromState();
+    sections.splice(idx, 1);
+    setScriptFromSections(sections);
+  }
+
+  function addPhaseSection(phaseId) {
+    const sections = getScriptSectionsFromState();
+    const count = sections.filter(s => s.phaseId.startsWith(phaseId)).length + 1;
+    let nextId = phaseId;
+    if (phaseId === 'work' || phaseId === 'affirm') nextId = `${phaseId}-${count}`;
+    const scaffoldMap = {
+      work: 'Continue the work here. [PAUSE 3]',
+      affirm: 'Return to the user\'s affirmations here. [PAUSE 3]',
+      lightener: 'Begin easing intensity down. Notice the room. Notice the body. [PAUSE 3]',
+      reintroduction: 'Welcome back. When you feel ready, slowly get up. Stretch. Shake it off. Go about your day. [PAUSE 3]',
+    };
+    const newSection = { phaseId: nextId, text: scaffoldMap[phaseId] || 'New phase text. [PAUSE 3]' };
+    if (phaseId === 'work' || phaseId === 'affirm') {
+      const insertAt = sections.findIndex(s => ['lightener', 'reintroduction'].includes(String(s.phaseId).replace(/-\d+$/, '')));
+      if (insertAt >= 0) sections.splice(insertAt, 0, newSection);
+      else sections.push(newSection);
+    } else if (phaseId === 'lightener') {
+      const reintroIdx = sections.findIndex(s => String(s.phaseId).replace(/-\d+$/, '') === 'reintroduction');
+      if (reintroIdx >= 0) sections.splice(reintroIdx, 0, newSection);
+      else sections.push(newSection);
+    } else {
+      sections.push(newSection);
+    }
+    setScriptFromSections(sections);
+  }
+
+  function resetPhaseOrderToDefault() {
+    if (!state.fullScript) return;
+    state.generatedPhaseOrder = getPhaseList();
+    state.parsedScript = parseScript(state.fullScript);
+    const sections = [];
+    const used = new Set();
+    for (const phaseId of state.generatedPhaseOrder) {
+      if (state.parsedScript[phaseId]) {
+        sections.push({ phaseId, text: state.parsedScript[phaseId] });
+        used.add(phaseId);
+      }
+    }
+    for (const phaseId of state.parsedScript.ordered || []) {
+      if (!used.has(phaseId)) sections.push({ phaseId, text: state.parsedScript[phaseId] });
+    }
+    setScriptFromSections(sections);
+  }
+
   function showScript() {
     _scriptEditedSinceGen = false;
-    if (!state.fullScript) { $('scriptStats').innerHTML = 'No script loaded.'; $('scriptPreview').classList.add('visible'); return; }
+    if (!state.fullScript) { $('scriptStats').innerHTML = 'No script loaded.'; $('scriptPreview').classList.add('visible'); renderPhaseEditor(); return; }
     $('scriptText').value = state.fullScript;
-    // Strip phase markers and pause markers before counting actual spoken words
-    const spokenOnly = state.fullScript
-      .replace(/===\s*\w+\s*===/gi, ' ')
-      .replace(/\x5BPAUSE\s+\d+\]/gi, ' ');
-    const words = spokenOnly.split(/\s+/).filter(w => w.length > 0).length;
-    const pauses = (state.fullScript.match(/\x5BPAUSE\s+\d+\]/gi) || []).length;
-    const pauseSecs = (state.fullScript.match(/\x5BPAUSE\s+(\d+)\]/gi) || []).reduce((sum, m) => sum + parseInt(m.match(/\d+/)[0], 10), 0);
-    $('scriptStats').innerHTML = `<strong>${words}</strong> words · <strong>${pauses}</strong> pauses (${pauseSecs}s) · estimated: <strong>${Math.round(words / 50 + pauseSecs / 60)} min</strong><br>Edit below before starting.`;
+    const metrics = getScriptMetrics(state.fullScript);
+    $('scriptStats').innerHTML = `<strong>${metrics.words}</strong> words · <strong>${metrics.pauses}</strong> pauses (${metrics.pauseSecs}s) · <strong>${metrics.phaseCount}</strong> phases · <strong>${metrics.workBlocks}</strong> work block${metrics.workBlocks === 1 ? '' : 's'} · estimated: <strong>${metrics.estimatedMin} min</strong><br>Phase header lines are internal structure markers. Spoken content is preserved below them.`;
     $('scriptPreview').classList.add('visible');
+    renderPhaseEditor();
   }
-  function hideScript() { state.fullScript = null; state.parsedScript = null; $('scriptPreview').classList.remove('visible'); updateStepUI(); }
+  function hideScript() { state.fullScript = null; state.parsedScript = null; state.generatedPhaseOrder = []; state.scriptSections = []; $('scriptPreview').classList.remove('visible'); renderPhaseEditor(); updateStepUI(); }
 
   // ====================================================================
   // SCRIPT TIMING FIXER — recalculates \x5BPAUSE N\x5D markers heuristically
@@ -4115,7 +4709,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
    * - Inserts pauses based on content type and length
    */
   function fixScriptTimings(scriptText) {
-    const phaseRx = /(===\s*\w+\s*===)/gi;
+    const phaseRx = PHASE_MARKER_SPLIT_RX;
 
     // Compute pause duration based on sentence content
     function pauseFor(sentence) {
@@ -4227,11 +4821,16 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       const mins = Math.round((s.durationSec || 0) / 60);
       const hasScript = !!(s.script && s.script.length > 20);
       const status = s.completed ? `${mins}m` : `${mins}m · inc`;
+      const metrics = s.metrics || getScriptMetrics(s.script || '');
+      const phaseCount = Array.isArray(s.phaseOrder) ? s.phaseOrder.length : metrics.phaseCount;
+      const workBlocks = s.workBlockCount || metrics.workBlocks || 0;
+      const profileName = s.profileSnapshot?.name || s.profileName || '';
+      const affirmMode = s.affirmationMode || '';
 
       // Script preview — first ~150 chars, strip markers
       let preview = '';
       if (hasScript) {
-        preview = s.script.replace(/===\s*\w+\s*===/gi, '').replace(/\x5BPAUSE\s+\d+\]/gi, '').trim();
+        preview = s.script.replace(PHASE_MARKER_STRIP_RX, '').replace(/\x5BPAUSE\s+\d+\]/gi, '').trim();
         preview = preview.substring(0, 150).replace(/\s+/g, ' ');
         if (s.script.length > 150) preview += '…';
       }
@@ -4240,7 +4839,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       item.className = 'history-item';
       item.innerHTML = `
         <div class="h-title">${dateStr} ${timeStr} · ${status}</div>
-        <div class="h-meta">${escapeHtml(s.guide || '—')} · ${escapeHtml(s.method || '—')}${s.intentionText ? ' · ' + escapeHtml(s.intentionText.substring(0, 30)) : ''}</div>
+        <div class="h-meta">${escapeHtml(s.guide || '—')} · ${escapeHtml(s.method || '—')} · ${phaseCount} phases · ${workBlocks} work block${workBlocks === 1 ? '' : 's'}${affirmMode ? ' · ' + escapeHtml(affirmMode) : ''}${profileName ? ' · ' + escapeHtml(profileName) : ''}${s.intentionText ? ' · ' + escapeHtml(s.intentionText.substring(0, 30)) : ''}</div>
         ${preview ? `<div class="h-preview">${escapeHtml(preview)}</div>` : '<div class="h-no-script">no script stored</div>'}
         <div class="h-actions">
           <button class="h-btn h-play" data-idx="${idx}" title="Replay session" ${hasScript ? '' : 'disabled'}>▶</button>
@@ -4290,6 +4889,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
   /** Replay a session from history — restores all settings and script */
   function replayFromHistory(entry) {
+    entry = normalizeHistoryEntry(entry);
     // Restore settings
     if (entry.personaId) state.selectedPersonaId = entry.personaId;
     if (entry.methodId) state.selectedMethodId = entry.methodId;
@@ -4304,21 +4904,27 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     if (entry.vizSettings) state.vizSettings = { ...state.vizSettings, ...entry.vizSettings };
     if (entry.duckingEnabled != null) { state.duckingEnabled = entry.duckingEnabled; const el = $('duckingToggle'); if (el) el.checked = entry.duckingEnabled; }
     if (entry.intentionText) { const el = $('intentionInput'); if (el) el.value = entry.intentionText; }
+    if (entry.userAffirmations != null) { const el = $('userAffirmations'); if (el) el.value = entry.userAffirmations; }
+    if (entry.affirmationMode) { state.affirmationMode = entry.affirmationMode; const el = $('affirmationMode'); if (el) el.value = entry.affirmationMode; }
     if (entry.voiceName) state._savedVoiceName = entry.voiceName;
+    applySavedVoiceSelection();
+    updateVoiceInfo();
+    if (entry.profileSnapshot) applyProfileToForm(entry.profileSnapshot);
 
     // Load the script
     state.fullScript = entry.script;
     state.parsedScript = parseScript(entry.script);
+    state.generatedPhaseOrder = entry.phaseOrder || state.parsedScript.ordered || [];
 
-    // Navigate to step 5 with the script loaded
-    state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: false };
+    // Navigate to step 6 with the script loaded
+    state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: false };
     renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
     updateIntentionHint();
     showScript();
-    state.currentStep = 5;
+    state.currentStep = 6;
     updateStepUI();
     switchScreen('setup-wizard');
-    goToStep(5);
+    goToStep(6);
     // Close sidebar on mobile
     $('sidebar')?.classList.remove('open');
     $('sidebarOverlay')?.classList.remove('open');
@@ -4327,6 +4933,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
   /** Load a session from history into the script editor for editing */
   function editFromHistory(entry) {
+    entry = normalizeHistoryEntry(entry);
     // Restore settings (same as replay)
     if (entry.personaId) state.selectedPersonaId = entry.personaId;
     if (entry.methodId) state.selectedMethodId = entry.methodId;
@@ -4334,21 +4941,28 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     if (entry.length) { state.length = entry.length; const el = $('lengthSelect'); if (el) el.value = entry.length; }
     if (entry.soundscape) { state.soundscape = entry.soundscape; state.droneEnabled = entry.soundscape !== 'none'; const el = $('soundscapeSelect'); if (el) el.value = entry.soundscape; }
     if (entry.intentionText) { const el = $('intentionInput'); if (el) el.value = entry.intentionText; }
+    if (entry.userAffirmations != null) { const el = $('userAffirmations'); if (el) el.value = entry.userAffirmations; }
+    if (entry.affirmationMode) { state.affirmationMode = entry.affirmationMode; const el = $('affirmationMode'); if (el) el.value = entry.affirmationMode; }
+    if (entry.voiceName) state._savedVoiceName = entry.voiceName;
+    applySavedVoiceSelection();
+    updateVoiceInfo();
+    if (entry.profileSnapshot) applyProfileToForm(entry.profileSnapshot);
 
     // Load script
     state.fullScript = entry.script || '';
     state.parsedScript = entry.script ? parseScript(entry.script) : null;
+    state.generatedPhaseOrder = entry.phaseOrder || state.parsedScript?.ordered || [];
 
-    // Navigate to step 5 in edit mode
-    state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: false };
+    // Navigate to step 6 in edit mode
+    state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: false };
     renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
     updateIntentionHint();
     showScript();
     showEl('generateScriptBtn', true);
-    state.currentStep = 5;
+    state.currentStep = 6;
     updateStepUI();
     switchScreen('setup-wizard');
-    goToStep(5);
+    goToStep(6);
     $('sidebar')?.classList.remove('open');
     $('sidebarOverlay')?.classList.remove('open');
     // Focus the textarea for editing
@@ -4600,9 +5214,11 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       }
       case 'settings': {
         if (a.cfg.n > 0) {
-          const cL = ['Rate','Pitch','Narr Vol','Drone'];
-          const cV = [a.cfg.rateSum/a.cfg.n, a.cfg.pitchSum/a.cfg.n, a.cfg.volSum/a.cfg.n, a.cfg.droneSum/a.cfg.n];
-          drawHorizBars('chartSettings', cL, cV, 1.2, [CHART_COLORS.cyan, CHART_COLORS.blue, CHART_COLORS.amber, CHART_COLORS.green]);
+          const avgPhase = a.shape?.n ? (a.shape.phaseSum / a.shape.n) : 0;
+          const avgWork = a.shape?.n ? (a.shape.workSum / a.shape.n) : 0;
+          const cL = ['Rate','Pitch','Narr Vol','Drone','Phases','Work'];
+          const cV = [a.cfg.rateSum/a.cfg.n, a.cfg.pitchSum/a.cfg.n, a.cfg.volSum/a.cfg.n, a.cfg.droneSum/a.cfg.n, avgPhase / 10, avgWork / 5];
+          drawHorizBars('chartSettings', cL, cV, 1.2, [CHART_COLORS.cyan, CHART_COLORS.blue, CHART_COLORS.amber, CHART_COLORS.green, CHART_COLORS.purple || CHART_COLORS.cyan, CHART_COLORS.blue]);
         } else drawBarChart('chartSettings', [], [], CHART_COLORS.cyan);
         break;
       }
@@ -4688,6 +5304,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       const viz = params.get('v');
       const intentText = params.get('t');
       const aff = params.get('a');
+      const affirmMode = params.get('am') || params.get('affirm');
+      const voiceName = params.get('vn') || params.get('voice') || params.get('narrator');
 
       // Apply settings
       if (personaId && state.personas.find(p => p.id === personaId)) state.selectedPersonaId = personaId;
@@ -4699,6 +5317,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       if (viz) { state.vizOverride = viz; const el = $('vizSelect'); if (el) el.value = viz; }
       if (intentText) { const el = $('intentionInput'); if (el) el.value = decodeURIComponent(intentText).slice(0, 500); }
       if (aff) { const el = $('userAffirmations'); if (el) el.value = decodeURIComponent(aff).slice(0, 500); }
+      if (affirmMode) { state.affirmationMode = affirmMode; const el = $('affirmationMode'); if (el) el.value = affirmMode; }
+      if (voiceName) { state._savedVoiceName = decodeURIComponent(voiceName).slice(0, 200); applySavedVoiceSelection(); updateVoiceInfo(); }
 
       renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
       updateIntentionHint(); updateStepUI();
@@ -4708,9 +5328,9 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       const method = getMethod();
       notify.info(`Shared config loaded: ${persona.name} · ${method.name} · ${length || 'medium'}. Review settings and generate when ready.`, 8000);
 
-      // Mark steps as complete so they can jump to generate
-      state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: false };
-      goToStep(4); // Start at Configure so they can review
+      // Mark steps as complete so they can jump to configure/generate in the new 6-step flow
+      state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: false, 6: false };
+      goToStep(5); // Start at Configure so they can review
 
       // Clean URL
       history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -4726,6 +5346,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
         if (cfg.i) { state.intentionType = cfg.i; $('intentionType').value = cfg.i; }
         if (cfg.l) { state.length = cfg.l; $('lengthSelect').value = cfg.l; }
         renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail(); updateStepUI();
+        state.stepsCompleted = { 1: true, 2: true, 3: true, 4: false, 5: false, 6: false };
+        goToStep(4);
         notify.info('Shared config loaded (legacy format). Review and generate.');
         history.replaceState(null, '', window.location.pathname + window.location.search);
       } catch(e2) { console.error('Failed to parse shared config:', e2); }
@@ -4734,7 +5356,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
   async function exportBackup() {
     markFeatureUsed(FEAT.BACKUP);
-    const backup = { version: 3, exportedAt: Date.now(), personas: loadCustomPersonas(), history: (await idbGet('stillness_history_v1')) || [], program: (await idbGet('stillness_program_v1')) || null, profile: getProfile(), analytics: (await idbGet(ANALYTICS_KEY)) || null, adaptive: (await idbGet(ADAPTIVE_KEY)) || null };
+    const backup = { version: 5, exportedAt: Date.now(), personas: loadCustomPersonas(), history: (await idbGet('stillness_history_v1')) || [], program: (await idbGet('stillness_program_v1')) || null, profile: getProfile(), settings: _buildSettingsObj(), analytics: (await idbGet(ANALYTICS_KEY)) || null, adaptive: (await idbGet(ADAPTIVE_KEY)) || null };
     const json = JSON.stringify(backup);
     let blob;
     try {
@@ -4760,24 +5382,40 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       const ep = loadCustomPersonas(), eIds = new Set(ep.map(p => p.id));
       const np = (backup.personas||[]).filter(p => !eIds.has(p.id));
       if (np.length) { saveCustomPersonas([...ep,...np]); refreshPersonas(); renderPersonaGrid(); }
-      const eh = (await idbGet('stillness_history_v1'))||[], ehIds = new Set(eh.map(h => h.id));
-      const nh = (backup.history||[]).filter(h => !ehIds.has(h.id));
-      if (nh.length) { const m = [...nh,...eh].sort((a,b)=>(b.date||0)-(a.date||0)); m.length = Math.min(m.length,50); await idbSet('stillness_history_v1',m); renderSessionHistory(); }
-      if (backup.program && !(await idbGet('stillness_program_v1'))) { await idbSet('stillness_program_v1', backup.program); renderPrograms(); }
-      if (backup.analytics && !(await idbGet(ANALYTICS_KEY))) { await idbSet(ANALYTICS_KEY, backup.analytics); }
-      if (backup.adaptive && !(await idbGet(ADAPTIVE_KEY))) { await idbSet(ADAPTIVE_KEY, backup.adaptive); }
-      // Restore profile if present and no existing profile
-      if (backup.profile && !$('pfName')?.value?.trim()) {
-        const p = backup.profile;
-        if (p.name) { const el = $('pfName'); if (el) el.value = p.name; }
-        if (p.pronouns) { const el = $('pfPronouns'); if (el) el.value = p.pronouns; }
-        if (p.age) { const el = $('pfAge'); if (el) el.value = p.age; }
-        if (p.experience) { const el = $('pfExperience'); if (el) el.value = p.experience; }
-        if (p.about) { const el = $('pfAbout'); if (el) el.value = p.about; }
-        if (p.appearance) { const el = $('pfAppearance'); if (el) el.value = p.appearance; }
-        if (p.goals) { const el = $('pfGoals'); if (el) el.value = p.goals; }
-        saveProfile();
+      const existingHistoryRaw = (await idbGet('stillness_history_v1')) || [];
+      const existingHistory = existingHistoryRaw.map(normalizeHistoryEntry);
+      const ehIds = new Set(existingHistory.map(h => h.id));
+      const incomingHistory = (backup.history || []).map(normalizeHistoryEntry);
+      const nh = incomingHistory.filter(h => !ehIds.has(h.id));
+      if (nh.length || existingHistoryRaw.length !== existingHistory.length) {
+        const mergedHistory = [...nh, ...existingHistory].map(normalizeHistoryEntry).sort((a,b)=>(b.date||0)-(a.date||0));
+        mergedHistory.length = Math.min(mergedHistory.length, 50);
+        await idbSet('stillness_history_v1', mergedHistory);
+        renderSessionHistory();
       }
+      if (backup.program && !(await idbGet('stillness_program_v1'))) { await idbSet('stillness_program_v1', backup.program); renderPrograms(); }
+      if (backup.analytics) {
+        const mergedAnalytics = mergeAnalyticsData(await getAnalytics(), backup.analytics);
+        await idbSet(ANALYTICS_KEY, mergedAnalytics);
+      }
+      if (backup.adaptive && !(await idbGet(ADAPTIVE_KEY))) { await idbSet(ADAPTIVE_KEY, backup.adaptive); }
+      if (backup.settings) {
+        const merged = normalizeSettings({ ..._buildSettingsObj(), ...normalizeSettings(backup.settings) });
+        if (_kv) { try { await _kv.settings.set(SETTINGS_KEY, merged); } catch {} }
+        try {
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+          localStorage.removeItem('stillness_settings_v2');
+        } catch {}
+        await loadUserSettings();
+      }
+      if (backup.profile) {
+        const hasExistingProfile = !!($('pfName')?.value?.trim() || $('pfAbout')?.value?.trim() || $('pfGoals')?.value?.trim());
+        if (!hasExistingProfile) applyProfileToForm(backup.profile, { save: true });
+      }
+      await rebuildAnalytics((await idbGet('stillness_history_v1')) || []);
+      renderSidebarStats();
+      renderHeatmap();
+      renderSparkline();
       notify.success(`Imported: ${np.length} personas, ${nh.length} sessions.`);
     } catch(e) { notify.error('Import failed: ' + e.message); }
   }
@@ -4788,14 +5426,13 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   function populateTranscript() {
     const panel = $('transcriptPanel');
     if (!panel || !state.parsedScript) return;
-    const phases = ['settling','induction','deepener','work','emergence'];
-    const labels = { settling:'Settling', induction:'Induction', deepener:'Deepener', work:'Work', emergence:'Emergence' };
+    const phases = getPlaybackPhaseOrder();
     let html = '';
     for (const phase of phases) {
       const text = state.parsedScript[phase];
       if (!text || text.trim().length < 10) continue;
-      const clean = text.replace(/^===\s*\w+\s*===\s*/i, '').replace(/\x5BPAUSE\s+\d+\]/gi, ' ⋯ ').trim();
-      html += `<div class="t-phase">${labels[phase]}</div><div>${escapeHtml(clean)}</div>`;
+      const clean = stripLeadingPhaseHeader(text, phase).replace(/\[PAUSE\s+\d+\]/gi, ' ⋯ ').trim();
+      html += `<div class="t-phase">${escapeHtml(getPhaseLabel(phase))}</div><div>${escapeHtml(clean)}</div>`;
     }
     panel.innerHTML = html;
   }
@@ -4976,12 +5613,16 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       if (timeEl) timeEl.textContent = `${mins}:${String(secs).padStart(2,'0')} elapsed`;
     }, 1000);
 
-    const phases = ['settling','induction','deepener','work','emergence'];
-    const phaseLabels = { settling: 'settling', induction: 'going inward', deepener: 'deeper', work: method.category === 'demonstration' ? 'the effect' : 'transformation', emergence: 're-alerting' };
+    const phases = getPlaybackPhaseOrder().filter(phase => state.parsedScript?.[phase]);
+    renderSessionPhaseDots(phases);
+    const phaseLabels = Object.fromEntries(phases.map(phase => [phase, getPhaseLabel(phase).toLowerCase()]));
 
-    // Safety timeout — absolute max session duration (expected × 2 + 5 min buffer)
     const durations = PHASE_DURATIONS[state.length] || PHASE_DURATIONS.medium;
-    const expectedSec = Object.values(durations).reduce((a, b) => a + b, 0);
+    const expectedSec = phases.reduce((sum, phase) => {
+      const base = phase.replace(/-\d+$/, '');
+      if (base === 'affirm') return sum + 45;
+      return sum + (durations[base] || 60);
+    }, 0);
     state._safetyTimeout = setTimeout(() => {
       if (!state._finishing && state._sessionStartTime) {
         notify.warn('Session exceeded maximum expected duration — auto-finishing.');
@@ -5006,20 +5647,20 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       updatePhaseDots(pi);
 
       // Update progress bar
-      const pct = Math.round((pi / phases.length) * 100);
+      const pct = Math.round((pi / Math.max(phases.length, 1)) * 100);
       $('sessionProgressFill').style.width = pct + '%';
 
       // Modulate drone frequency per phase
       if (state.droneEnabled && drone.running) drone.setPhaseFreq(phase);
 
-      const cleanText = phaseText.replace(/^===\s*\w+\s*===\s*/i, '').trim();
+      const cleanText = stripLeadingPhaseHeader(phaseText, phase).trim();
       try { await speakScript(cleanText); }
       catch(e) { console.error(`Phase "${phase}" speak error:`, e); }
     }
 
     // Complete progress bar
     $('sessionProgressFill').style.width = '100%';
-    updatePhaseDots(5);
+    updatePhaseDots(phases.length, phases.length);
 
     // Always finish the session — if abortFlag was set by emergencyEnd,
     // that path calls finishSession(true) itself, so only call if not aborting.
@@ -5047,14 +5688,13 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
   async function speakScript(text, bypassAbort = false) {
     // Sanitize: strip phase markers and malformed pause markers
-    let canonical = text.replace(/===\s*\w+\s*===/gi, ''); // strip phase markers
+    let canonical = text.replace(PHASE_MARKER_STRIP_RX, '');
     canonical = canonical.replace(/\[\s*pause[^\]]*\]/gi, (m) => {
       const num = m.match(/\d+/);
       return num ? `\x5BPAUSE ${num[0]}\x5D` : '';
     });
-    // Strip bracket annotations that aren't \x5BPAUSE N\x5D so TTS doesn't read them
     canonical = canonical.replace(/\[[^\]]+\]/g, m =>
-      /^\x5BPAUSE\s+\d+\]$/i.test(m) ? m : ''
+      /^\x5BPAUSE\s+\d+\x5D$/i.test(m) ? m : ''
     ).replace(/  +/g, ' ');
 
     const parts = canonical.split(/\x5BPAUSE\s+(\d+)\]/i);
@@ -5066,24 +5706,17 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       if (i % 2 === 0) {
         const segment = parts[i].trim();
         if (!segment) continue;
-        const chunks = segment.split(/(?<=[.!?])\s+/).filter(s => s.trim());
-        for (const chunk of chunks) {
-          if (!bypassAbort && state.abortFlag) return;
-          while (state.paused && !state.abortFlag) await sleep(200);
-          if (!bypassAbort && state.abortFlag) return;
+        if (display) {
           display.style.opacity = 0;
-          await sleep(350);
-          display.textContent = chunk;
+          await sleep(200);
+          display.textContent = segment;
           display.style.opacity = 0.5;
-          if (drone.running && state.duckingEnabled) drone.duck();
-          await speak(chunk);
-          if (drone.running) drone.unduck();
         }
+        if (drone.running && state.duckingEnabled) drone.duck();
+        await speak(segment);
+        if (drone.running) drone.unduck();
       } else {
         const seconds = parseInt(parts[i], 10) || 4;
-        // Scale pauses: tempo dial × sqrt-inverse speech rate
-        // sqrt softens the scaling — full inverse is too aggressive at slow rates
-        // At 0.63× speech: sqrt scale = 1.26×. User tunes further with tempo dial.
         const tempo = state.tempoMultiplier || 1.0;
         const rateScale = 1 / Math.sqrt(Math.max(state.speechRate || 0.65, 0.4));
         const scaled = Math.max(1, Math.round(seconds * tempo * rateScale));
@@ -5218,6 +5851,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
     // Save session to history
     const elapsed = state._sessionStartTime ? Math.round((Date.now() - state._sessionStartTime) / 1000) : 0;
+    const currentProfile = getProfile();
+    const scriptMetrics = getScriptMetrics(state.fullScript || '');
     const sessionRecord = {
       id: 'sess_' + Date.now(),
       date: Date.now(),
@@ -5235,6 +5870,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       methodId: state.selectedMethodId,
       intentionText: $('intentionInput')?.value || '',
       voiceName: $('voiceSelect')?.value || '',
+      userAffirmations: $('userAffirmations')?.value || '',
+      affirmationMode: $('affirmationMode')?.value || 'woven',
       speechRate: state.speechRate,
       voicePitch: state.voicePitch,
       voiceVolume: state.voiceVolume,
@@ -5242,6 +5879,13 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       vizOverride: state.vizOverride,
       vizSettings: { ...state.vizSettings },
       duckingEnabled: state.duckingEnabled,
+      phaseOrder: getPlaybackPhaseOrder(),
+      profileName: currentProfile.name || 'Practitioner',
+      profileSnapshot: currentProfile,
+      workBlockCount: scriptMetrics.workBlocks,
+      metrics: scriptMetrics,
+      workflowVersion: 11,
+      stepsTotal: 6,
     };
     const history = (await idbGet('stillness_history_v1')) || [];
     history.unshift(sessionRecord);
@@ -5389,11 +6033,15 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   });
   $('btnNext').addEventListener('click', () => goToStep(state.currentStep + 1));
   $('btnBack').addEventListener('click', () => goToStep(state.currentStep - 1));
+$('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
+  $('jumpMethodBtn')?.addEventListener('click', () => goToStep(2));
+  $('jumpIntentionBtn')?.addEventListener('click', () => goToStep(3));
+  $('jumpConfigBtn')?.addEventListener('click', () => goToStep(4));
   $('btnSkipToScript').addEventListener('click', () => {
     state._skippedToScript = true;
     markFeatureUsed(FEAT.SKIP_SCRIPT);
-    state.currentStep = 5;
-    state.stepsCompleted = { 1: false, 2: false, 3: false, 4: false, 5: false };
+    state.currentStep = 6;
+    state.stepsCompleted = { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false };
     // Show the script editor area with empty textarea for pasting
     $('scriptText').value = '';
     $('scriptStats').innerHTML = 'Paste or type your script here. Use <code>===SETTLING===</code>, <code>===INDUCTION===</code>, etc. markers to define phases, or just paste plain text.';
@@ -5402,7 +6050,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     showEl('generateScriptBtn', false);
     showEl('genProgress', false);
     updateStepUI();
-    notify.info('Paste your script into the editor below, then press Begin Session.');
+    notify.info('Paste your script into the editor below, then press Begin Session. You can still jump back with the back button if you want the guided builder again.');
     // Focus the textarea
     setTimeout(() => $('scriptText')?.focus(), 300);
   });
@@ -5411,19 +6059,24 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   $('scriptText').addEventListener('input', () => {
     const text = $('scriptText').value.trim();
     if (text.length > 20) {
-      // Detect if content changed from original generated script
       if (state.fullScript && text !== state.fullScript.trim()) {
         _scriptEditedSinceGen = true;
       }
       state.fullScript = text;
       state.parsedScript = parseScript(text);
-      // Update word count
-      const spokenOnly = text.replace(/===\s*\w+\s*===/gi, ' ').replace(/\x5BPAUSE\s+\d+\]/gi, ' ');
+      state.generatedPhaseOrder = state.parsedScript.ordered || [];
+      const spokenOnly = text.replace(/===\s*[A-Z0-9-]+\s*===/gi, ' ').replace(/\x5BPAUSE\s+\d+\]/gi, ' ');
       const words = spokenOnly.split(/\s+/).filter(w => w.length > 0).length;
-      $('scriptStats').innerHTML = `<strong>${words}</strong> words · Edit below before starting.`;
+      const pauses = (text.match(/\x5BPAUSE\s+\d+\]/gi) || []).length;
+      const pauseSecs = (text.match(/\x5BPAUSE\s+(\d+)\]/gi) || []).reduce((sum, m) => sum + parseInt(m.match(/\d+/)[0], 10), 0);
+      const phaseCount = (state.parsedScript.ordered || []).length;
+      $('scriptStats').innerHTML = `<strong>${words}</strong> words · <strong>${pauses}</strong> pauses (${pauseSecs}s) · <strong>${phaseCount}</strong> phases · estimated: <strong>${Math.round(words / 50 + pauseSecs / 60)} min</strong><br>Edit below before starting.`;
+      renderPhaseEditor();
     } else {
       state.fullScript = null;
       state.parsedScript = null;
+      state.generatedPhaseOrder = [];
+      renderPhaseEditor();
     }
     updateStepUI();
   });
@@ -5469,7 +6122,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   // Step 3
   $('intentionType').addEventListener('change', () => { updateIntentionHint(); saveUserSettings(); });
   $('intentionInput').addEventListener('input', () => { hideCrafted(); updateStepUI(); saveUserSettings(); });
-  $('userAffirmations')?.addEventListener('input', () => { saveUserSettings(); markFeatureUsed(FEAT.AFFIRMATIONS); });
+  $('userAffirmations')?.addEventListener('input', () => { saveUserSettings(); updateStepUI(); markFeatureUsed(FEAT.AFFIRMATIONS); });
+  $('affirmationMode')?.addEventListener('change', () => { state.affirmationMode = $('affirmationMode').value; saveUserSettings(); });
   $('craftBtn').addEventListener('click', craftSuggestion);
   $('recraftBtn').addEventListener('click', craftSuggestion);
   $('editCraftedBtn').addEventListener('click', toggleEditCrafted);
@@ -5490,18 +6144,22 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   $('droneVolume').addEventListener('input', e => {
     state.droneVolume = parseInt(e.target.value,10)/100; drone.setVolume(state.droneVolume);
     const v = $('droneVolVal'); if (v) v.textContent = e.target.value;
+    saveUserSettings();
   });
   $('speechRate').addEventListener('input', e => {
     state.speechRate = parseInt(e.target.value,10)/100;
     const v = $('speechRateVal'); if (v) v.textContent = (parseInt(e.target.value,10)/100).toFixed(2) + '×';
+    saveUserSettings();
   });
   $('voicePitch')?.addEventListener('input', e => {
     state.voicePitch = parseInt(e.target.value,10)/100;
     const v = $('voicePitchVal'); if (v) v.textContent = (parseInt(e.target.value,10)/100).toFixed(2);
+    saveUserSettings();
   });
   $('voiceVolume')?.addEventListener('input', e => {
     state.voiceVolume = parseInt(e.target.value,10)/100;
     const v = $('voiceVolVal'); if (v) v.textContent = e.target.value;
+    saveUserSettings();
   });
   $('tempoSlider')?.addEventListener('input', e => {
     state.tempoMultiplier = parseInt(e.target.value, 10) / 100;
@@ -5565,6 +6223,11 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   $('exportScriptBtn').addEventListener('click', exportScript);
 
   $('beginBtn').addEventListener('click', startSession);
+  $('addWorkPhaseBtn')?.addEventListener('click', () => addPhaseSection('work'));
+  $('addAffirmPhaseBtn')?.addEventListener('click', () => addPhaseSection('affirm'));
+  $('addLightenerPhaseBtn')?.addEventListener('click', () => addPhaseSection('lightener'));
+  $('addReintroPhaseBtn')?.addEventListener('click', () => addPhaseSection('reintroduction'));
+  $('normalizePhaseOrderBtn')?.addEventListener('click', resetPhaseOrderToDefault);
 
   // Pre-session state scale (0-10)
   $('preStateSlider')?.addEventListener('input', e => {
@@ -5652,7 +6315,15 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     goToStep(5);
     notify.info('Session stopped. You can edit the script and restart.');
   });
-  $('restartBtn').addEventListener('click', () => location.reload());
+  $('restartBtn').addEventListener('click', () => resetWizardForNewSession({ preserveSelections: true }));
+  $('returnToSetupBtn')?.addEventListener('click', () => {
+    switchScreen('setup-wizard');
+    goToStep(1);
+  });
+  $('postBackToScriptBtn')?.addEventListener('click', () => {
+    switchScreen('setup-wizard');
+    goToStep(5);
+  });
   $('transcriptToggle')?.addEventListener('click', toggleTranscript);
   $('recordBtn')?.addEventListener('click', toggleRecording);
   $('fullscreenBtn')?.addEventListener('click', () => {
@@ -5850,7 +6521,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   });
 
   // Voice select change → update info
-  $('voiceSelect').addEventListener('change', () => { updateVoiceInfo(); saveUserSettings(); });
+  $('voiceSelect').addEventListener('change', async () => { updateVoiceInfo(); state._savedVoiceName = $('voiceSelect').value; saveUserSettings(); try { if (_kv) await _kv.settings.set(SETTINGS_KEY, _buildSettingsObj()); } catch {} });
 
   // Soundscape preview
   $('soundPreviewBtn')?.addEventListener('click', previewSoundscape);
@@ -6296,8 +6967,38 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     $('sidebar')?.classList.remove('open');
     $('sidebarOverlay')?.classList.remove('open');
   });
+  function openRemoteConsentModal() { $('remoteConsentModal')?.classList.add('visible'); }
+  function closeRemoteConsentModal() { $('remoteConsentModal')?.classList.remove('visible'); }
+
   $('sidebarSettingsBtn')?.addEventListener('click', () => {
     $('crisisLink')?.click();
+  });
+
+  $('remoteProcessingOptIn')?.addEventListener('change', e => {
+    if (e.target.checked && !state.remoteProcessingOptIn) {
+      e.target.checked = false;
+      openRemoteConsentModal();
+      return;
+    }
+    state.remoteProcessingOptIn = !!e.target.checked;
+    saveUserSettings();
+    notify.info(state.remoteProcessingOptIn ? 'Remote backup + processing enabled.' : 'Remote backup + processing disabled.');
+  });
+  $('remoteConsentCancelBtn')?.addEventListener('click', () => {
+    const cb = $('remoteProcessingOptIn'); if (cb) cb.checked = false;
+    state.remoteProcessingOptIn = false;
+    saveUserSettings();
+    closeRemoteConsentModal();
+  });
+  $('remoteConsentAgreeBtn')?.addEventListener('click', () => {
+    const cb = $('remoteProcessingOptIn'); if (cb) cb.checked = true;
+    state.remoteProcessingOptIn = true;
+    saveUserSettings();
+    closeRemoteConsentModal();
+    notify.info('Remote backup + processing enabled.');
+  });
+  $('remoteConsentModal')?.addEventListener('click', e => {
+    if (e.target?.id === 'remoteConsentModal') closeRemoteConsentModal();
   });
 
   // Profile form — save on any input change
@@ -6373,6 +7074,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     refreshPersonas();
     const hadSavedSettings = await loadUserSettings();
     await loadProfile();
+    if (typeof loadVoices === 'function') { loadVoices(); applySavedVoiceSelection(); updateVoiceInfo(); }
     renderPersonaGrid();
     renderPersonaDetail();
     renderMethodGrid();
@@ -6416,5 +7118,281 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
     // Practice-unlock method gating
     applyMethodGating();
+  })();
+</script>
+
+
+<style id="accessibility-contrast-overrides-v8">
+  :root {
+    --text-dim: #b9ab91;
+    --text-faint: #96876f;
+    --glass-border: rgba(255,180,80,0.18);
+    --border: rgba(255,180,80,0.18);
+  }
+
+  html { font-size: 16px; }
+  body { line-height: 1.5; }
+  button, .btn, .filter-tab, .preview-btn, .voice-preview-btn, .transcript-toggle, .sidebar-tab, .profile-chip {
+    min-height: 40px;
+  }
+  .step-label,
+  .summary-card .summary-label,
+  .post-card-title,
+  .post-trigger-title,
+  .field-label,
+  .sidebar-section-title,
+  .pf-label,
+  .stats-kpi-label,
+  .stats-chart-title,
+  .card .card-badge {
+    font-size: 0.75rem !important;
+    line-height: 1.35;
+  }
+  .step-value,
+  .hint,
+  .sublabel,
+  .preview-hint,
+  .kb-hint,
+  .sidebar-profile-sub,
+  .live-small,
+  .post-trigger-sub,
+  .footer,
+  .script-stats,
+  .crafted-meta,
+  .step-nav .btn-skip,
+  .card .card-tagline,
+  .preset-card .preset-desc,
+  .tour-card p,
+  .safety-inner p,
+  .safety-check,
+  .history-item .h-meta,
+  .history-item .h-preview,
+  .history-item .h-no-script,
+  .transcript-toggle,
+  .live-row label,
+  .live-row select,
+  .phase-indicator,
+  .mood-label,
+  .session-time,
+  .audio-indicator,
+  .persona-indicator,
+  .method-indicator,
+  .detail-panel,
+  details summary,
+  .filter-tab,
+  .modal .field-label-sm,
+  .library-empty,
+  .brief-preview,
+  .disclaimer,
+  .script-text,
+  .journal-area,
+  .toggle-row label,
+  .toggle-row .hint {
+    font-size: 0.875rem !important;
+    line-height: 1.5;
+  }
+  .card .card-tag,
+  .post-checkin-label,
+  .state-scale-labels span,
+  .stats-expand-icon {
+    font-size: 0.75rem !important;
+  }
+  .tour-skip,
+  .tour-next,
+  .post-checkin-ends,
+  .history-item .h-btn,
+  .step-circle,
+  .step-nav .btn-back,
+  .step-nav .btn-next,
+  .btn,
+  .btn.secondary,
+  .btn.warm,
+  .btn.green,
+  .preview-btn,
+  .voice-preview-btn,
+  .filter-tab,
+  .sidebar-tab,
+  .profile-chip {
+    font-size: 0.95rem !important;
+  }
+  .card .card-action-btn,
+  .live-btn,
+  .transcript-toggle {
+    font-size: 0.85rem !important;
+  }
+  .post-checkin-val,
+  .step-title,
+  .summary-card .summary-value,
+  .card .card-name {
+    letter-spacing: normal;
+  }
+  .step-circle { width: 42px; height: 42px; }
+  .history-item .h-btn { width: 36px; height: 32px; }
+  .filter-tab.active,
+  .btn:hover,
+  .btn.secondary:hover,
+  .preview-btn.active,
+  .voice-preview-btn.active,
+  .sidebar-tab.active,
+  .profile-chip.active {
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.08), 0 0 12px rgba(0,229,255,0.18);
+  }
+  input, select, textarea {
+    font-size: 1rem !important;
+  }
+  input::placeholder, textarea::placeholder {
+    color: #a89982;
+    opacity: 1;
+  }
+  .card, .detail-panel, .summary-card, .post-card, .toggle-row, .crafted-preview, .script-preview, .modal, .brief-preview, .disclaimer, .history-item {
+    border-color: rgba(255,180,80,0.2);
+  }
+  @media (max-width: 480px) {
+    .step-label,
+    .summary-card .summary-label,
+    .post-card-title,
+    .post-trigger-title,
+    .field-label,
+    .sidebar-section-title,
+    .pf-label,
+    .stats-kpi-label,
+    .stats-chart-title,
+    .card .card-badge {
+      font-size: 0.72rem !important;
+    }
+    .step-value,
+    .hint,
+    .sublabel,
+    .preview-hint,
+    .kb-hint,
+    .sidebar-profile-sub,
+    .live-small,
+    .post-trigger-sub,
+    .footer,
+    .script-stats,
+    .crafted-meta,
+    .step-nav .btn-skip,
+    .card .card-tagline,
+    .preset-card .preset-desc,
+    .tour-card p,
+    .safety-inner p,
+    .safety-check,
+    .history-item .h-meta,
+    .history-item .h-preview,
+    .history-item .h-no-script,
+    .transcript-toggle,
+    .live-row label,
+    .live-row select,
+    .phase-indicator,
+    .mood-label,
+    .session-time,
+    .audio-indicator,
+    .persona-indicator,
+    .method-indicator,
+    .detail-panel,
+    details summary,
+    .filter-tab,
+    .modal .field-label-sm,
+    .library-empty,
+    .brief-preview,
+    .disclaimer,
+    .script-text,
+    .journal-area,
+    .toggle-row label,
+    .toggle-row .hint {
+      font-size: 0.84rem !important;
+    }
+  }
+</style>
+
+
+<style id="workflow-and-focus-polish-v9">
+  :root {
+    --focus-ring: 0 0 0 3px rgba(0,229,255,0.22), 0 0 0 1px rgba(255,255,255,0.14);
+  }
+
+  button:focus-visible,
+  .btn:focus-visible,
+  .preview-btn:focus-visible,
+  .voice-preview-btn:focus-visible,
+  .filter-tab:focus-visible,
+  .sidebar-tab:focus-visible,
+  .profile-chip:focus-visible,
+  .transcript-toggle:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring) !important;
+  }
+
+  .preview-row {
+    gap: 8px;
+  }
+
+  #step5 .preview-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    align-items: stretch;
+  }
+
+  #step5 .preview-row .preview-btn {
+    min-height: 42px;
+    justify-content: center;
+    text-align: center;
+  }
+
+  #step5 .detail-panel {
+    margin-bottom: 14px;
+  }
+
+  .step-nav .btn-back,
+  .step-nav .btn-next,
+  .step-nav .btn-skip {
+    min-height: 44px;
+  }
+
+  .step-nav .btn-skip {
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.02);
+  }
+
+  .script-actions,
+  .crafted-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .script-actions .btn,
+  .crafted-actions .btn {
+    min-height: 42px;
+  }
+
+  .detail-title {
+    line-height: 1.35;
+  }
+
+  @media (max-width: 480px) {
+    #step5 .preview-row {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .script-actions,
+    .crafted-actions {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script id="workflow-copy-polish-v9">
+  (() => {
+    const setLabel = (id, label) => { const el = document.getElementById(id); if (el) el.setAttribute('aria-label', label); };
+    setLabel('jumpGuideBtn', 'Go back and change the guide');
+    setLabel('jumpMethodBtn', 'Go back and change the method');
+    setLabel('jumpIntentionBtn', 'Go back and change the intention');
+    setLabel('jumpConfigBtn', 'Go back and change the session settings');
+    setLabel('btnSkipToScript', 'Skip the guided builder and use your own script');
+    setLabel('returnToSetupBtn', 'Go back to the setup screens');
+    setLabel('restartBtn', 'Start another session with the current setup');
   })();
 </script>
