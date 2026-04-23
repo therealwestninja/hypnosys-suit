@@ -208,6 +208,60 @@
   .toggle-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
   .toggle-row input[type="range"] { flex: 1; max-width: 140px; }
 
+  .config-slider-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    align-items: start;
+  }
+  .config-slider-grid .toggle-row {
+    margin-bottom: 0;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .config-slider-grid .toggle-row label {
+    display: block;
+  }
+  .config-slider-grid .toggle-row input[type="range"] {
+    width: 100%;
+    max-width: none;
+  }
+  .config-slider-grid .toggle-row .hint {
+    margin-top: 0;
+    text-align: right;
+  }
+  .config-toggle-grid {
+    display: grid;
+    gap: 10px;
+  }
+  .config-toggle-grid--hud {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .config-toggle-grid .toggle-row {
+    margin-bottom: 0;
+    grid-template-columns: 1fr;
+    align-items: start;
+    min-height: 100%;
+  }
+  .config-toggle-grid .toggle-row label {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+  }
+  .config-toggle-grid .toggle-row input[type="checkbox"] {
+    margin-top: 2px;
+  }
+  @media (max-width: 980px) {
+    .config-slider-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .config-toggle-grid--hud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 640px) {
+    .config-slider-grid,
+    .config-toggle-grid--hud { grid-template-columns: 1fr; }
+  }
+
   /* ============ BUTTONS ============ */
   .btn { background: var(--neon-cyan); color: var(--bg); border: none; border-radius: var(--radius); padding: 13px 20px; font-size: 0.92rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; transition: all 0.25s; font-family: var(--font-body); text-shadow: none; }
   .btn:hover { box-shadow: var(--glow-cyan); filter: brightness(1.1); }
@@ -1134,6 +1188,14 @@ body.in-session .footer {
               </span>
             </label>
             <div class="sublabel" style="font-size:0.64rem;line-height:1.5;">If enabled, data may be sent to a remote server for backup and further processing. You can turn it off later.</div>
+            <label class="toggle-row" for="smartDirectorEnabled" style="align-items:flex-start;margin-top:8px;">
+              <input type="checkbox" id="smartDirectorEnabled">
+              <span>
+                Smart Director
+                <span class="hint"Track your overall mental health. All done locally, guide your interactions and set inject tailored personalization. Turn this off to disable all auto-personalization.</span>
+              </span>
+            </label>
+            <div class="sublabel" style="font-size:0.64rem;line-height:1.5;">When disabled, your profile still saves locally, but it is not silently injected into scripts.</div>
             <button class="sidebar-settings-btn" id="sidebarSettingsBtn" style="margin-top:8px;">help &amp; safety resources</button>
           </div>
         </details>
@@ -1335,7 +1397,7 @@ I return to myself easily"></textarea>
     </div>
 
     <!-- STEP 5: CONFIGURE -->
-    <div class="step-content" data-step="6">
+    <div class="step-content" data-step="5">
       <div class="step-header">
         <h2 class="step-title">Configure the Session</h2>
         <p class="step-subtitle">Fully customize your experience. Defaults are sensible — change only what you want.</p>
@@ -1416,11 +1478,13 @@ I return to myself easily"></textarea>
       <!-- ── AUDIO LEVELS ── -->
       <div class="field-group">
         <label class="field-label">audio levels</label>
-        <div class="toggle-row"><label for="droneVolume">Soundscape volume</label><input type="range" id="droneVolume" min="0" max="100" value="35"><span class="hint" id="droneVolVal" style="min-width:28px;text-align:right;">35</span></div>
-        <div class="toggle-row"><label for="speechRate">Voice speed</label><input type="range" id="speechRate" min="50" max="100" value="65"><span class="hint" id="speechRateVal" style="min-width:28px;text-align:right;">0.65×</span></div>
-        <div class="toggle-row"><label for="voicePitch">Voice pitch</label><input type="range" id="voicePitch" min="50" max="120" value="85"><span class="hint" id="voicePitchVal" style="min-width:28px;text-align:right;">0.85</span></div>
-        <div class="toggle-row"><label for="voiceVolume">Narration volume</label><input type="range" id="voiceVolume" min="0" max="100" value="100"><span class="hint" id="voiceVolVal" style="min-width:28px;text-align:right;">100</span></div>
-        <div class="toggle-row"><label for="tempoSlider">Pause tempo</label><input type="range" id="tempoSlider" min="50" max="200" value="100"><span class="hint" id="tempoVal" style="min-width:36px;text-align:right;">1.0×</span></div>
+        <div class="config-slider-grid">
+          <div class="toggle-row"><label for="droneVolume">Soundscape volume</label><input type="range" id="droneVolume" min="0" max="100" value="35"><span class="hint" id="droneVolVal" style="min-width:28px;text-align:right;">35</span></div>
+          <div class="toggle-row"><label for="speechRate">Voice speed</label><input type="range" id="speechRate" min="50" max="100" value="65"><span class="hint" id="speechRateVal" style="min-width:28px;text-align:right;">0.65×</span></div>
+          <div class="toggle-row"><label for="voicePitch">Voice pitch</label><input type="range" id="voicePitch" min="50" max="120" value="85"><span class="hint" id="voicePitchVal" style="min-width:28px;text-align:right;">0.85</span></div>
+          <div class="toggle-row"><label for="voiceVolume">Narration volume</label><input type="range" id="voiceVolume" min="0" max="100" value="100"><span class="hint" id="voiceVolVal" style="min-width:28px;text-align:right;">100</span></div>
+          <div class="toggle-row"><label for="tempoSlider">Pause tempo</label><input type="range" id="tempoSlider" min="50" max="200" value="100"><span class="hint" id="tempoVal" style="min-width:36px;text-align:right;">1.0×</span></div>
+        </div>
         <div class="sublabel" id="speechRateHint">Slower is more hypnotic. Tempo scales all pause durations.</div>
       </div>
 
@@ -1472,10 +1536,12 @@ I return to myself easily"></textarea>
         <!-- Visual Effect Tuning -->
         <div class="detail-panel" id="vizSettingsPanel" style="margin-top:10px;">
           <div class="detail-title" style="font-size:0.8rem;">visual effect tuning</div>
-          <div class="toggle-row"><label for="vizSpeed">Speed</label><input type="range" id="vizSpeed" min="10" max="200" value="100"><span class="hint" id="vizSpeedVal" style="min-width:32px;text-align:right;">1.0×</span></div>
-          <div class="toggle-row"><label for="vizIntensity">Intensity</label><input type="range" id="vizIntensity" min="10" max="200" value="100"><span class="hint" id="vizIntensityVal" style="min-width:32px;text-align:right;">1.0×</span></div>
-          <div class="toggle-row"><label for="vizComplexity">Complexity</label><input type="range" id="vizComplexity" min="20" max="200" value="100"><span class="hint" id="vizComplexityVal" style="min-width:32px;text-align:right;">1.0×</span></div>
-          <div class="toggle-row"><label for="vizTrail">Trail / Fade</label><input type="range" id="vizTrail" min="1" max="50" value="12"><span class="hint" id="vizTrailVal" style="min-width:32px;text-align:right;">0.12</span></div>
+          <div class="config-slider-grid">
+            <div class="toggle-row"><label for="vizSpeed">Speed</label><input type="range" id="vizSpeed" min="10" max="200" value="100"><span class="hint" id="vizSpeedVal" style="min-width:32px;text-align:right;">1.0×</span></div>
+            <div class="toggle-row"><label for="vizIntensity">Intensity</label><input type="range" id="vizIntensity" min="10" max="200" value="100"><span class="hint" id="vizIntensityVal" style="min-width:32px;text-align:right;">1.0×</span></div>
+            <div class="toggle-row"><label for="vizComplexity">Complexity</label><input type="range" id="vizComplexity" min="20" max="200" value="100"><span class="hint" id="vizComplexityVal" style="min-width:32px;text-align:right;">1.0×</span></div>
+            <div class="toggle-row"><label for="vizTrail">Trail / Fade</label><input type="range" id="vizTrail" min="1" max="50" value="12"><span class="hint" id="vizTrailVal" style="min-width:32px;text-align:right;">0.12</span></div>
+          </div>
           <div class="sublabel">Adjustments apply live to the current effect and are saved between sessions.</div>
         </div>
       </div>
@@ -1483,13 +1549,15 @@ I return to myself easily"></textarea>
       <!-- ── HUD ELEMENTS ── -->
       <div class="field-group">
         <label class="field-label">session display elements</label>
-        <div class="toggle-row"><label><input type="checkbox" id="cfgFixationDot" checked> Fixation dot<span class="hint">Central focus point</span></label></div>
-        <div class="toggle-row"><label><input type="checkbox" id="cfgTextDisplay" checked> Narration text<span class="hint">Shows what the voice is saying</span></label></div>
-        <div class="toggle-row"><label><input type="checkbox" id="cfgPhaseDots" checked> Phase dots<span class="hint">5-dot progress at top</span></label></div>
-        <div class="toggle-row"><label><input type="checkbox" id="cfgPhaseLabel" checked> Phase label<span class="hint">"settling", "going inward", etc.</span></label></div>
-        <div class="toggle-row"><label><input type="checkbox" id="cfgProgressBar" checked> Progress bar<span class="hint">Thin bar at bottom of stage</span></label></div>
-        <div class="toggle-row"><label><input type="checkbox" id="cfgSessionTime" checked> Elapsed time<span class="hint">Minutes:seconds counter</span></label></div>
-        <div class="toggle-row"><label><input type="checkbox" id="cfgLabels" checked> Persona/method labels<span class="hint">Corner labels on stage</span></label></div>
+        <div class="config-toggle-grid config-toggle-grid--hud">
+          <div class="toggle-row"><label><input type="checkbox" id="cfgFixationDot" checked> Fixation dot<span class="hint">Central focus point</span></label></div>
+          <div class="toggle-row"><label><input type="checkbox" id="cfgTextDisplay" checked> Narration text<span class="hint">Shows what the voice is saying</span></label></div>
+          <div class="toggle-row"><label><input type="checkbox" id="cfgPhaseDots" checked> Phase dots<span class="hint">5-dot progress at top</span></label></div>
+          <div class="toggle-row"><label><input type="checkbox" id="cfgPhaseLabel" checked> Phase label<span class="hint">"settling", "going inward", etc.</span></label></div>
+          <div class="toggle-row"><label><input type="checkbox" id="cfgProgressBar" checked> Progress bar<span class="hint">Thin bar at bottom of stage</span></label></div>
+          <div class="toggle-row"><label><input type="checkbox" id="cfgSessionTime" checked> Elapsed time<span class="hint">Minutes:seconds counter</span></label></div>
+          <div class="toggle-row"><label><input type="checkbox" id="cfgLabels" checked> Persona/method labels<span class="hint">Corner labels on stage</span></label></div>
+        </div>
       </div>
 
       <div class="disclaimer" id="configWarning" style="display:none;"></div>
@@ -1770,6 +1838,29 @@ I return to myself easily"></textarea>
   </div>
 </div>
  
+
+
+<div class="modal-backdrop" id="remoteConsentModal">
+  <div class="modal">
+    <h2>Enable remote backup + processing?</h2>
+    <div class="field">
+      <div style="font-size:0.9rem; line-height:1.6; color:var(--text-dim);">
+        If you turn this on, some of your data may be sent to a remote server for backup and further processing.
+        This is optional, disabled by default, and you can turn it off later.
+      </div>
+    </div>
+    <div class="field">
+      <div style="font-size:0.82rem; line-height:1.6; color:var(--text-faint);">
+        Only enable this if you understand and agree to that behavior.
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" id="remoteConsentCancelBtn">cancel</button>
+      <button class="btn" id="remoteConsentAgreeBtn">I Agree</button>
+    </div>
+  </div>
+</div>
+
 
 <div id="toastContainer"></div>
 
@@ -2098,6 +2189,7 @@ I return to myself easily"></textarea>
     generatedPhaseOrder: [],
     scriptSections: [],
     remoteProcessingOptIn: false,
+    smartDirectorEnabled: true,
   };
  
   const PHASE_DURATIONS = {
@@ -2141,7 +2233,7 @@ I return to myself easily"></textarea>
       if (analytics) await idbSet(ANALYTICS_KEY, normalizeAnalyticsData(analytics));
     } catch {}
     try {
-      const raw = localStorage.getItem('stillness_settings_v3') || localStorage.getItem('stillness_settings_v2');
+      const raw = localStorage.getItem('stillness_settings_v4') || localStorage.getItem('stillness_settings_v3') || localStorage.getItem('stillness_settings_v2');
       if (raw && !localStorage.getItem(SETTINGS_KEY)) {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(normalizeSettings(JSON.parse(raw))));
       }
@@ -2219,7 +2311,7 @@ I return to myself easily"></textarea>
   // ====================================================================
   // SETTINGS PERSISTENCE (auto-save/load to localStorage)
   // ====================================================================
-  const SETTINGS_KEY = 'stillness_settings_v4';
+  const SETTINGS_KEY = 'stillness_settings_v5';
   const _kv = (typeof root !== 'undefined' && root.kv) ? root.kv : null;
   let _saveTimeout = null;
 
@@ -2247,7 +2339,8 @@ I return to myself easily"></textarea>
       affirmationMode: $('affirmationMode')?.value || 'woven',
       voiceName: $('voiceSelect')?.value || '',
       remoteProcessingOptIn: !!$('remoteProcessingOptIn')?.checked,
-      settingsVersion: 4,
+      smartDirectorEnabled: !!$('smartDirectorEnabled')?.checked,
+      settingsVersion: 5,
     };
   }
 
@@ -2277,6 +2370,7 @@ I return to myself easily"></textarea>
     if (s.length == null && s.sessionLength) s.length = s.sessionLength;
     if (s.intentionInput == null && s.intentionText) s.intentionInput = s.intentionText;
     if (s.remoteProcessingOptIn == null) s.remoteProcessingOptIn = !!(s.remoteBackupOptIn || s.cloudSyncOptIn || s.serverConsent);
+    if (s.smartDirectorEnabled == null) s.smartDirectorEnabled = s.profileInjectionEnabled == null ? true : !!s.profileInjectionEnabled;
     if (s.settingsVersion == null) s.settingsVersion = 1;
     return s;
   }
@@ -2358,7 +2452,7 @@ I return to myself easily"></textarea>
       }
       // Fallback to localStorage
       if (!s) {
-        const raw = localStorage.getItem(SETTINGS_KEY) || localStorage.getItem('stillness_settings_v3') || localStorage.getItem('stillness_settings_v2');
+        const raw = localStorage.getItem(SETTINGS_KEY) || localStorage.getItem('stillness_settings_v4') || localStorage.getItem('stillness_settings_v3') || localStorage.getItem('stillness_settings_v2');
         if (raw) s = JSON.parse(raw);
       }
       if (!s) return false;
@@ -2397,6 +2491,8 @@ I return to myself easily"></textarea>
       if (s.voiceName) state._savedVoiceName = s.voiceName;
       state.remoteProcessingOptIn = !!s.remoteProcessingOptIn;
       const rpcb = $('remoteProcessingOptIn'); if (rpcb) rpcb.checked = !!state.remoteProcessingOptIn;
+      state.smartDirectorEnabled = s.smartDirectorEnabled !== false;
+      const sdcb = $('smartDirectorEnabled'); if (sdcb) sdcb.checked = state.smartDirectorEnabled;
       applySavedVoiceSelection();
       updateVoiceInfo();
       return true;
@@ -2465,6 +2561,7 @@ I return to myself easily"></textarea>
 
   /** Build an AI context string from the user's profile for prompt injection */
   function getProfileContext() {
+    if (state.smartDirectorEnabled === false) return '';
     const p = getProfile();
     const parts = [];
     if (p.name) parts.push(`The subject's name is ${p.name}.`);
@@ -5415,6 +5512,8 @@ ${s.text.trim()}`).join('\n\n').trim();
         if (_kv) { try { await _kv.settings.set(SETTINGS_KEY, merged); } catch {} }
         try {
           localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+          localStorage.removeItem('stillness_settings_v4');
+          localStorage.removeItem('stillness_settings_v3');
           localStorage.removeItem('stillness_settings_v2');
         } catch {}
         await loadUserSettings();
