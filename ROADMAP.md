@@ -7,6 +7,12 @@ user-visible impact and effort.
 
 ---
 
+## Recent bug fixes
+
+- **2026-04-24 — Phase progress indicators not refreshing when blocks added post-generation.** When a user generated a script then added a Work or Deepener block via the phase editor, the colored status indicators row (`#genPhases`) and its retry click-handlers stayed frozen at the original phase list. Users had no indicator or retry affordance for newly-added blocks. Fix: extracted `buildPhaseInstructions()` as a pure helper, added `syncGenStateWithPhases()` that reconciles `_genState` against the current phase list (kept phases preserve state + result, new phases start as `pending`, removed phases drop, `phaseInstructions` fully rebuilt since word budgets rebalance). Hooked into `setScriptFromSections()` so every add/remove refreshes the row. Pending phases are now clickable too (not just error/warn), so clicking a newly-added Work block triggers generation for it.
+
+---
+
 ## Smart Director — Passes 1 + 2 ✅
 
 Rebuilt from "static string concatenation with a misleading tooltip" into an actual behavioral layer.
