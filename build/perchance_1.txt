@@ -1,11 +1,12 @@
 $meta
   title = Advanced Hypnosis Narration Engine
-  description = Full-featured, FREE, science-based, high-quality hypnosis experience generator. Narrated voiceovers, ambient soundscapes, hypnotic visual effects, custom backgrounds (Ai image generation, local files, YouTube videos), mental health tracking tools, a adaptive personal profile system, and much more! Useful for relaxation, mindfulness, meditation, and hypnosis.
+  description = Full-featured, FREE, science-based, high-quality hypnosis experience generator. Narrated voiceovers, ambient soundscapes, hypnotic visual effects, custom backgrounds (Ai image generation, local files, YouTube videos), mental health tracking tools, adaptive personal profile system, and much more! Useful for relaxation, mindfulness, grounding, meditation, and hypnosis.
   header 
-    mode = minimal // VN mode needs room and ai chat button there will confuse first time perchance users
+    mode = minimal // More room for visuals
 
 aiTextPlugin = {import:ai-text-plugin}
 textToImagePlugin = {import:text-to-image-plugin}
+fullscreenButtonPlugin = {import:fullscreen-button-plugin}
 uploadPlugin = {import:upload-plugin}
 
 $output

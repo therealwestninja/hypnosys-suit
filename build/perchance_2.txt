@@ -1,7 +1,3 @@
-aiTextPlugin = {import:ai-text-plugin}
-textToImagePlugin = {import:text-to-image-plugin}
-fullscreenButtonPlugin = {import:fullscreen-button-plugin}
-
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
   :root {
@@ -2276,10 +2272,10 @@ I return to myself easily"></textarea>
     { id: 'spiral', name: 'Spiral Fixation', tagline: 'Rotating spiral; visual eye-fatigue mechanism.', tags: ['visual', 'classic'], category: 'therapeutic', detail: 'A logarithmic spiral rotates slowly. Sustained focus produces eye fatigue plus subtle perceptual artifacts (drift, expansion). Voice stays sparse to support the visual mechanism.', visual: 'spiral', drone: true, pacing: 'monotony' },
     { id: 'betty-erickson', name: 'Betty Erickson 3-2-1', tagline: 'Structured sensory countdown. Analytical-friendly.', tags: ['structured', 'analytical'], category: 'therapeutic', detail: 'Notice 3 things you see, 3 you hear, 3 you feel. Then 2 each. Then 1 each. The structure occupies the analytical mind while attention progressively narrows from external to internal.', visual: 'candle', drone: false, pacing: 'structured' },
     { id: 'staircase', name: 'Staircase Descent', tagline: 'Descend a staircase. Each step deeper.', tags: ['visual', 'classic'], category: 'therapeutic', detail: 'Eyes closed. Descend 10 stairs, each one deepening trance. At the bottom, arrive in a special place where the therapeutic suggestion is delivered.', visual: 'tunnel', drone: false, pacing: 'narrative' },
-    { id: 'hand-heaviness', name: 'Hand Heaviness', tagline: 'Hand becomes heavy. The convincer IS the induction.', tags: ['ideomotor', 'convincer'], category: 'therapeutic', detail: 'Dominant hand palm-down on thigh. Focus on it. Suggestions of heaviness build until the hand actually feels heavier — that real, physical experience IS the trance state.', visual: 'pulse', drone: false, pacing: 'focused' },
+    { id: 'hand-heaviness', name: 'Hand Heaviness', tagline: 'Hand becomes heavy. The convincer IS the induction.', tags: ['ideomotor', 'convincer'], category: 'therapeutic', detail: 'Dominant hand palm-down on thigh. Focus on it. Suggestions of heaviness build until the hand actually feels heavier — that real, physical experience IS the trance state.', visual: 'candle', drone: false, pacing: 'focused' },
     { id: 'confusion', name: 'Confusion Method', tagline: 'Overload analytical mind with paradoxes.', tags: ['analytical', 'resistant'], category: 'therapeutic', detail: 'Long sentences with embedded clauses, deliberate paradoxes, time distortion. The conscious mind tries to track and fails. When it gives up, trance happens by relief.', visual: 'vortex', drone: true, pacing: 'confusion' },
-    { id: 'fractionation', name: 'Fractionation', tagline: 'Induce, alert, re-induce. Each cycle deeper.', tags: ['skeptical'], category: 'therapeutic', detail: 'Light trance → alert → re-induce — each cycle deeper than the last. Good for doubters because you verify "alert" between cycles.', visual: 'pulse', drone: false, pacing: 'fractionation' },
-    { id: 'eye-roll', name: 'Eye-Roll (Spiegel)', tagline: 'Look up, eyes roll back. Fastest induction.', tags: ['rapid', 'physical'], category: 'therapeutic', detail: 'Spiegel method. Look up as high as possible, slowly close eyelids while keeping eyes rolled up. Physical strain triggers a state shift in seconds.', visual: 'pulse', drone: false, pacing: 'eye-roll' },
+    { id: 'fractionation', name: 'Fractionation', tagline: 'Induce, alert, re-induce. Each cycle deeper.', tags: ['skeptical'], category: 'therapeutic', detail: 'Light trance → alert → re-induce — each cycle deeper than the last. Good for doubters because you verify "alert" between cycles.', visual: 'aurora', drone: false, pacing: 'fractionation' },
+    { id: 'eye-roll', name: 'Eye-Roll (Spiegel)', tagline: 'Look up, eyes roll back. Fastest induction.', tags: ['rapid', 'physical'], category: 'therapeutic', detail: 'Spiegel method. Look up as high as possible, slowly close eyelids while keeping eyes rolled up. Physical strain triggers a state shift in seconds.', visual: 'none', drone: false, pacing: 'eye-roll' },
     { id: 'breath-478', name: '4-7-8 Breath', tagline: 'Pure physiology. Parasympathetic activation.', tags: ['anxiety', 'sleep'], category: 'therapeutic', detail: 'Inhale 4 counts, hold 7, exhale 8. The extended exhale activates the vagus nerve. Body shifts state regardless of mental cooperation.', visual: 'breathing', drone: false, pacing: 'breath' },
     { id: 'progressive', name: 'Progressive Relaxation', tagline: 'Body scan, head to toe. Best for sleep.', tags: ['sleep', 'somatic'], category: 'therapeutic', detail: 'Systematic relaxation of each muscle group from forehead to feet. Classic Jacobson method.', visual: 'colorwash', drone: false, pacing: 'body-scan' },
     { id: 'ericksonian', name: 'Ericksonian Conversational', tagline: 'Permissive language patterns. Open form.', tags: ['verbal'], category: 'therapeutic', detail: 'Indirect suggestions, presupposition, embedded commands, the yes-set. Most flexible approach — no fixed structure, just skilled language patterns.', visual: 'mandala', drone: false, pacing: 'permissive' },
@@ -2289,22 +2285,22 @@ I return to myself easily"></textarea>
     { id: 'tipsy', name: 'Tipsy Without Drinking', tagline: 'Warmth, floating, mild intoxication — sober.', tags: ['demonstration', 'state-shift', 'novelty'], category: 'demonstration', detail: 'State-alteration suggestion producing genuine feelings of mild intoxication: warmth, floating, slight giddy disinhibition. Works because the brain produces physiological markers of a state if it believes it\'s in that state.', visual: 'lissajous', drone: true, pacing: 'permissive' },
     { id: 'laughter-trigger', name: 'Laughter Trigger', tagline: 'Install a cue that triggers giggles.', tags: ['demonstration', 'post-hypnotic', 'party'], category: 'demonstration', detail: 'Install a specific cue — a word, a number, a gesture — that produces an involuntary giggle fit when it occurs after the session. Classic stage hypnosis staple.', visual: 'pulse', drone: false, pacing: 'permissive' },
     { id: 'number-amnesia', name: 'Number Amnesia', tagline: 'Forget the number 7. Count 1-10 and skip it.', tags: ['demonstration', 'amnesia', 'classic'], category: 'demonstration', detail: 'Classic demonstration effect. Suggest that a specific number no longer exists for the duration. When you count afterward, you either skip it, pause confused, or have to effortfully search for it.', visual: 'vortex', drone: false, pacing: 'permissive' },
-    { id: 'thermal-hand', name: 'Hot Hand / Cold Hand', tagline: 'Real temperature difference. Measurable.', tags: ['demonstration', 'hallucination', 'somatic'], category: 'demonstration', detail: 'Suggest one hand is in hot water, the other in ice water. Over minutes, the hands develop actual temperature differences through altered blood flow. Testable with a thermometer after the session.', visual: 'pulse', drone: false, pacing: 'focused' },
+    { id: 'thermal-hand', name: 'Hot Hand / Cold Hand', tagline: 'Real temperature difference. Measurable.', tags: ['demonstration', 'hallucination', 'somatic'], category: 'demonstration', detail: 'Suggest one hand is in hot water, the other in ice water. Over minutes, the hands develop actual temperature differences through altered blood flow. Testable with a thermometer after the session.', visual: 'aurora', drone: false, pacing: 'focused' },
     { id: 'stuck-to-seat', name: 'Stuck to Your Seat', tagline: 'Cannot stand up. Try it.', tags: ['demonstration', 'convincer', 'physical'], category: 'demonstration', detail: 'Stage-hypnosis classic. Suggestion that you are firmly attached to your seat and cannot rise. When attempted, you genuinely struggle — deep relaxation plus the suggestion overriding intent to stand.', visual: 'pulse', drone: false, pacing: 'focused' },
 
     // ── Somatic ────────────────────────────────────────────────────
     { id: 'body-awareness', name: 'Body Awareness Scan', tagline: 'Micro-sensations. Tissue-level focus.', tags: ['somatic', 'beginner'], category: 'somatic', detail: 'Enhanced body scan that goes beyond "relax your shoulders" into specific tissue-level awareness: fascia releasing, warmth flooding capillary beds, the weight of each individual finger. The depth of attention IS the induction.', visual: 'colorwash', drone: false, pacing: 'body-scan', recommended: true },
     { id: 'floating-body', name: 'Floating Body', tagline: 'Entire body becomes weightless. Levitation illusion.', tags: ['somatic', 'dissociation'], category: 'somatic', detail: 'Progressive lightness from feet upward. Each body part loses its weight until you feel like you are floating above the surface. A real perceptual shift — not just relaxation. Uses ideomotor suggestion to produce genuine weightlessness sensations.', visual: 'lissajous', drone: true, pacing: 'body-scan' },
-    { id: 'glove-anesthesia', name: 'Glove Anesthesia', tagline: 'Hand goes numb. Transfer numbness anywhere.', tags: ['somatic', 'pain', 'clinical'], category: 'somatic', detail: 'Clinical technique. Suggest one hand is being dipped into ice water. Numbness builds from fingertips inward. Once achieved, the numb hand can touch other body areas and transfer the numbness. Used in pain management for centuries.', visual: 'pulse', drone: false, pacing: 'focused' },
+    { id: 'glove-anesthesia', name: 'Glove Anesthesia', tagline: 'Hand goes numb. Transfer numbness anywhere.', tags: ['somatic', 'pain', 'clinical'], category: 'somatic', detail: 'Clinical technique. Suggest one hand is being dipped into ice water. Numbness builds from fingertips inward. Once achieved, the numb hand can touch other body areas and transfer the numbness. Used in pain management for centuries.', visual: 'smoke', drone: false, pacing: 'focused' },
     { id: 'heartbeat-sync', name: 'Heartbeat Synchronization', tagline: 'Slow your own heart rate. Feel it.', tags: ['somatic', 'autonomic'], category: 'somatic', detail: 'Place fingertips on pulse point (wrist or neck). Feel your heartbeat. Suggestions progressively slow the perceived rate. The body follows the mind — heart rate actually decreases. Deep parasympathetic activation. Can produce profound calm.', visual: 'canvas-pulse', drone: true, pacing: 'breath' },
     { id: 'automatic-writing', name: 'Automatic Writing', tagline: 'Your hand writes without your direction.', tags: ['somatic', 'ideomotor', 'advanced'], category: 'somatic', detail: 'Hold a pen on paper. Relax the hand completely. Suggest the hand has its own intelligence and will begin to write, draw, or move on its own. Classic ideomotor demonstration — the unconscious mind directing the hand independently of conscious intention.', visual: 'mandala', drone: false, pacing: 'permissive' },
-    { id: 'pain-dial', name: 'Pain Dial', tagline: 'Visualize a dial. Turn discomfort down.', tags: ['somatic', 'pain', 'clinical'], category: 'somatic', detail: 'Imagine a numbered dial (1-10) representing a sensation. Current level is whatever it is — no denial. Through suggestion, the dial turns down: 8 becomes 6 becomes 4 becomes 2. The brain\'s pain gate responds to focused attention and expectation.', visual: 'pulse', drone: false, pacing: 'narrative' },
+    { id: 'pain-dial', name: 'Pain Dial', tagline: 'Visualize a dial. Turn discomfort down.', tags: ['somatic', 'pain', 'clinical'], category: 'somatic', detail: 'Imagine a numbered dial (1-10) representing a sensation. Current level is whatever it is — no denial. Through suggestion, the dial turns down: 8 becomes 6 becomes 4 becomes 2. The brain\'s pain gate responds to focused attention and expectation.', visual: 'waveform', drone: false, pacing: 'narrative' },
 
     // ── Rapid ──────────────────────────────────────────────────────
     { id: 'handshake-interrupt', name: 'Handshake Interrupt', tagline: 'Break the handshake pattern. Instant confusion drop.', tags: ['rapid', 'physical', 'ericksonian'], category: 'rapid', detail: 'Milton Erickson\'s signature. Reach out to shake your own left hand with your right — mid-handshake, freeze. The pattern-interrupt creates a moment of total blankness. Immediate suggestion fills the gap. Requires commitment and speed.', visual: 'vortex', drone: false, pacing: 'rapid' },
-    { id: 'arm-drop', name: 'Arm Drop', tagline: 'Arm up, arm drops, you drop with it.', tags: ['rapid', 'physical', 'classic'], category: 'rapid', detail: 'Extend arm straight out, palm down. Stare at a spot on the back of the hand. When the arm is told to drop, close eyes simultaneously and drop INTO trance. The physical falling motion creates a kinesthetic anchor for mental "falling in." Simple, reliable, fast.', visual: 'pulse', drone: false, pacing: 'rapid' },
+    { id: 'arm-drop', name: 'Arm Drop', tagline: 'Arm up, arm drops, you drop with it.', tags: ['rapid', 'physical', 'classic'], category: 'rapid', detail: 'Extend arm straight out, palm down. Stare at a spot on the back of the hand. When the arm is told to drop, close eyes simultaneously and drop INTO trance. The physical falling motion creates a kinesthetic anchor for mental "falling in." Simple, reliable, fast.', visual: 'none', drone: false, pacing: 'rapid' },
     { id: 'magnetic-gaze', name: 'Magnetic Gaze', tagline: 'Lock eyes with a point. Cannot look away.', tags: ['rapid', 'visual', 'intense'], category: 'rapid', detail: 'Fix gaze on a single point (a thumbtack, a mark on the wall, the fixation dot). Do not blink. Suggestion that the point is pulling you in — magnetic attraction. Eye fatigue forces closure. The relief of closing IS the trance. One of the oldest induction methods known.', visual: 'candle', drone: true, pacing: 'monotony' },
-    { id: 'dave-elman', name: 'Dave Elman Induction', tagline: 'The clinical standard. Fast, reliable, deep.', tags: ['rapid', 'clinical', 'classic'], category: 'rapid', detail: 'The gold standard clinical induction (1-3 minutes). Eye closure test → relaxation doubling → arm drop → number block. Each step proves depth before going further. Used by medical/dental hypnotists worldwide because it is fast, reliable, and produces verifiable somnambulism.', visual: 'pulse', drone: false, pacing: 'elman', recommended: true },
+    { id: 'dave-elman', name: 'Dave Elman Induction', tagline: 'The clinical standard. Fast, reliable, deep.', tags: ['rapid', 'clinical', 'classic'], category: 'rapid', detail: 'The gold standard clinical induction (1-3 minutes). Eye closure test → relaxation doubling → arm drop → number block. Each step proves depth before going further. Used by medical/dental hypnotists worldwide because it is fast, reliable, and produces verifiable somnambulism.', visual: 'smoke', drone: false, pacing: 'elman', recommended: true },
     { id: 'shock-induction', name: 'Shock Induction', tagline: 'SLEEP! Instant authority drop.', tags: ['rapid', 'intense', 'stage'], category: 'rapid', detail: 'A sudden, authoritative command — "SLEEP!" — paired with a physical stimulus (a snap, a touch on the forehead, a hand pull). The startle response creates a momentary blank state. Immediate follow-up suggestions fill the void. Requires a highly suggestible state or prior conditioning. The most dramatic induction.', visual: 'starfield', drone: false, pacing: 'rapid' },
 
     // ── Advanced ───────────────────────────────────────────────────
@@ -2366,14 +2362,14 @@ I return to myself easily"></textarea>
 
   const BUILTIN_PERSONAS = [
     // ── Contemplative ──────────────────────────────────────────────
-    { id: 'driver', name: 'The Driver', tagline: 'Silent companion in the passenger seat.', category: 'contemplative', systemPrompt: `You are a quiet driving companion. The user is in the passenger seat watching the road. Sparse, declarative phrases. Reference the road, the engine, the lines, the hum. Long silences normal. Never ask questions. Never sound urgent. "We", "the road", "out there".` },
+    { id: 'driver', name: 'The Driver', tagline: 'Silent companion in the passenger seat.', category: 'contemplative', systemPrompt: `You are a quiet driving companion. The user is in the passenger seat watching the road at night. Sparse, declarative phrases. Reference the road, the engine hum, the lines disappearing beneath, the headlights cutting through dark. Long silences are natural. Never ask questions. Never sound urgent. "We", "the road", "out there", "nothing but miles". Let the monotony of the road do the work.` },
     { id: 'old-master', name: 'The Old Master', tagline: 'Wise teacher. Pithy, paradoxical.', category: 'contemplative', systemPrompt: `You are an old master of meditation and trance. Quiet certainty and economy. Short declarative phrases. Nature metaphors: water, mountain, breath, seasons, stone. You describe what is true. Slightly archaic phrasing fine. Never dramatic.` },
     { id: 'therapist', name: 'The Therapist', tagline: 'Skilled hypnotherapist. Warm, professional.', category: 'contemplative', systemPrompt: `You are a skilled hypnotherapist with decades of practice. Warm, professional, present. Permissive language: "allowing", "noticing", "discovering", "perhaps you can". Clear psychological framing. No mysticism.` },
     { id: 'inner-voice', name: 'The Inner Voice', tagline: 'Your own deeper self. Intimate.', category: 'contemplative', systemPrompt: `You ARE the user's own deeper, wiser self speaking back. Use "you" intimately, sometimes "we". Reference what they "already know", "remember now", "have always known". Recognition surfacing. Quiet, intimate.` },
     { id: 'scientist', name: 'The Scientist', tagline: 'Calm clinician. Demystifying.', category: 'contemplative', systemPrompt: `You are a calm clinician-scientist narrating the process as it happens. "You may notice your eyelids becoming heavier — that's a normal vestibular response to sustained fixation." Precise vocabulary, never mystical. Demystify everything.` },
-    { id: 'mystic', name: 'The Mystic', tagline: 'Spiritual guide. Archetypal language.', category: 'contemplative', systemPrompt: `You are a spiritual guide from contemplative traditions. Archetypal language: thresholds, descent, the deep well, the still point. Breath is sacred. Reverent but not preachy.` },
+    { id: 'mystic', name: 'The Mystic', tagline: 'Spiritual guide. Archetypal language.', category: 'contemplative', systemPrompt: `You are a spiritual guide from contemplative traditions. Archetypal language: thresholds, descent, the deep well, the still point, the sacred geometry of breath. Reference mandalas, labyrinths, the Flower of Life, spirals found in shells and galaxies alike. Breath is sacred. Reverent but not preachy. The universe is pattern, and you are helping the user find where their pattern connects to the larger one.` },
     { id: 'librarian', name: 'The Librarian', tagline: 'Hushed, precise, deeply patient.', category: 'contemplative', systemPrompt: `You are an old librarian in a vast silent library. You speak barely above a whisper. Every word chosen with care, as if noise itself were precious. Reference pages, ink, dust, lamplight, the weight of a book. Long silences are your native tongue. "Quietly now", "let us turn the page", "this chapter".` },
-    { id: 'astronomer', name: 'The Astronomer', tagline: 'Cosmic perspective. Vast, unhurried.', category: 'contemplative', systemPrompt: `You are an astronomer speaking from an observatory on a mountaintop at 3am. Reference the vastness of space, starlight traveling millions of years, the slow rotation of the earth beneath. Everything human is small and held. Unhurried. Perspective is the mechanism. "Out there", "from this distance", "all of it turning".` },
+    { id: 'astronomer', name: 'The Astronomer', tagline: 'Cosmic perspective. Vast, unhurried.', category: 'contemplative', systemPrompt: `You are an astronomer speaking from an observatory on a mountaintop at 3am. Reference the vastness of space, starlight traveling millions of years, the slow rotation of the earth beneath, nebulae glowing in colors the eye cannot see, the patient sweep of constellations across the dome. Everything human is small and held by gravity, by the same forces that shape galaxies. Unhurried. Perspective is the mechanism. "Out there", "from this distance", "all of it turning slowly, including you".` },
 
     // ── Showman ────────────────────────────────────────────────────
     { id: 'showman', name: 'The Showman', tagline: 'Stage hypnotist. Direct, theatrical.', category: 'showman', systemPrompt: `You are a charismatic stage hypnotist with decades on the Vegas circuit. Direct, authoritative, theatrical. Use DIRECT suggestions: "you ARE", "you WILL". Confident tempo. Showmanship. You're an entertainer. "Watch carefully now", "here's what happens". Build anticipation like a magician. "My friend" occasionally.` },
@@ -2381,7 +2377,7 @@ I return to myself easily"></textarea>
     { id: 'bartender', name: 'The Bartender', tagline: 'Conspiratorial warmth. Late-night bar vibe.', category: 'showman', systemPrompt: `You are a warm, knowing bartender. Conspiratorial: "alright friend, lean back..." Casual warmth. Voice sounds like late evening in a wood-paneled bar. You take your time, like someone mixing a cocktail carefully. Call the user "friend" and occasionally "pal". Reference having a drink, the quiet of the hour.` },
     { id: 'carnival-barker', name: 'The Carnival Barker', tagline: 'High-energy. Rhythmic, theatrical.', category: 'showman', systemPrompt: `You are a carnival barker at a traveling show. Rhythmic cadence — musical up-and-down. Hyperbole with a wink: "Step right up now, friend, you're about to experience something truly, genuinely, remarkable." Drop to near-whisper for dramatic moments. Build anticipation relentlessly. "Ladies and gentlemen" and "my friends".` },
     { id: 'magician', name: 'The Magician', tagline: 'Misdirection and wonder. The trick IS real.', category: 'showman', systemPrompt: `You are a close-up magician who has crossed over into hypnosis. You frame everything as a trick — but the trick is that it's real. Misdirection language: "now watch closely", "while you were paying attention to X, something else happened". Build reveals. "Here's the secret", "the part nobody sees". Playful astonishment.` },
-    { id: 'radio-host', name: 'The Late Night DJ', tagline: 'FM radio warmth. Smooth, low, intimate.', category: 'showman', systemPrompt: `You are a late-night FM radio DJ. Smooth, low, honeyed voice. Speak as if murmuring into a microphone in a dark booth, audience of one. "Coming up next...", "settling in now...", "this one's just for you". Occasional reference to the frequency, the signal, the airwaves. Musical rhythm to your phrasing.` },
+    { id: 'radio-host', name: 'The Late Night DJ', tagline: 'FM radio warmth. Smooth, low, intimate.', category: 'showman', systemPrompt: `You are a late-night FM radio DJ broadcasting from a dark booth in a city that never sleeps. Smooth, low, honeyed voice. Speak as if murmuring into a microphone, audience of one. Outside, distant traffic and the hum of the city. "Coming up next...", "settling in now...", "this one's just for you, out there in the dark". Reference the frequency, the signal cutting through static, the hour growing late, the city lights dimming one by one. Musical rhythm to your phrasing.` },
 
     // ── Somatic ────────────────────────────────────────────────────
     { id: 'bodyworker', name: 'The Bodyworker', tagline: 'Massage therapist energy. Tissue-level awareness.', category: 'somatic', systemPrompt: `You are an experienced bodyworker and somatic therapist. You speak in terms of tissue, fascia, warmth spreading, muscles releasing, breath opening spaces. Clinical knowledge of anatomy expressed gently. "Notice the trapezius softening", "that's the diaphragm unlocking". Hands-on metaphors. Warmth is your primary tool. Quiet confidence.` },
@@ -7733,29 +7729,37 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   // ====================================================================
   const PRESETS = [
     { id: 'sleep', icon: '🌙', name: 'Sleep', desc: 'Drift off naturally',
-      persona: 'therapist', method: 'progressive', intention: 'sleep', length: 'long', soundscape: 'ocean' },
+      persona: 'therapist', method: 'progressive', intention: 'sleep', length: 'long', soundscape: 'ocean', vizOverride: 'aurora' },
     { id: 'calm', icon: '🍃', name: 'Quick Calm', desc: '5-min anxiety reset',
-      persona: 'inner-voice', method: 'breath-478', intention: 'emotional', length: 'quick', soundscape: 'rain' },
+      persona: 'inner-voice', method: 'breath-478', intention: 'emotional', length: 'quick', soundscape: 'rain', vizOverride: 'breathing' },
     { id: 'focus', icon: '🎯', name: 'Deep Focus', desc: 'Lock in for hours',
-      persona: 'scientist', method: 'betty-erickson', intention: 'focus', length: 'medium', soundscape: 'brown' },
+      persona: 'scientist', method: 'betty-erickson', intention: 'focus', length: 'medium', soundscape: 'brown', vizOverride: 'waveform' },
     { id: 'demo', icon: '✋', name: 'Demo Night', desc: 'Prove it works',
       persona: 'showman', method: 'magnetic-hands', intention: 'convincer', length: 'short', soundscape: 'drone' },
     { id: 'pain', icon: '💊', name: 'Pain Relief', desc: 'Dial discomfort down',
-      persona: 'bodyworker', method: 'pain-dial', intention: 'pain', length: 'medium', soundscape: 'bowls' },
+      persona: 'bodyworker', method: 'pain-dial', intention: 'pain', length: 'medium', soundscape: 'bowls', vizOverride: 'waveform' },
     { id: 'micro', icon: '⚡', name: 'Micro Reset', desc: '2-min state shift',
-      persona: 'driver', method: 'highway', intention: 'trance', length: 'micro', soundscape: 'drone' },
+      persona: 'driver', method: 'highway', intention: 'trance', length: 'micro', soundscape: 'drone', vizOverride: 'highway' },
     { id: 'anxiety', icon: '🌊', name: 'Anxiety Relief', desc: 'Calm the nervous system',
-      persona: 'yoga-teacher', method: 'breath-478', intention: 'release', length: 'medium', soundscape: 'ocean' },
+      persona: 'yoga-teacher', method: 'breath-478', intention: 'release', length: 'medium', soundscape: 'underwater', vizOverride: 'smoke' },
     { id: 'confidence', icon: '🦁', name: 'Confidence', desc: 'Unshakable self-belief',
-      persona: 'commander', method: 'staircase', intention: 'emotional', length: 'medium', soundscape: 'drone' },
+      persona: 'commander', method: 'staircase', intention: 'emotional', length: 'medium', soundscape: 'drone', vizOverride: 'tunnel' },
     { id: 'flow', icon: '🏆', name: 'Peak Flow', desc: 'Sports & performance',
-      persona: 'martial-artist', method: 'ericksonian', intention: 'performance', length: 'medium', soundscape: 'heartbeat' },
+      persona: 'martial-artist', method: 'ericksonian', intention: 'performance', length: 'medium', soundscape: 'heartbeat', vizOverride: 'mandala' },
     { id: 'habits', icon: '🔄', name: 'Habit Change', desc: 'Break or build a habit',
-      persona: 'therapist', method: 'staircase', intention: 'behavior', length: 'medium', soundscape: 'rain' },
+      persona: 'therapist', method: 'staircase', intention: 'behavior', length: 'medium', soundscape: 'rain', vizOverride: 'tunnel' },
     { id: 'creativity', icon: '🎨', name: 'Creative Flow', desc: 'Dissolve creative blocks',
-      persona: 'mystic', method: 'ericksonian', intention: 'creativity', length: 'medium', soundscape: 'fire' },
+      persona: 'mystic', method: 'ericksonian', intention: 'creativity', length: 'medium', soundscape: 'fire', vizOverride: 'sacred-geo' },
     { id: 'energy', icon: '☀️', name: 'Energy Boost', desc: 'Wake up & activate',
       persona: 'drill-instructor', method: 'dave-elman', intention: 'energy', length: 'quick', soundscape: 'white' },
+    { id: 'deep-dive', icon: '🌀', name: 'Deep Dive', desc: 'Maximum depth trance',
+      persona: 'old-master', method: 'staircase', intention: 'trance', length: 'long', soundscape: 'cave', vizOverride: 'tunnel' },
+    { id: 'nightcap', icon: '🥃', name: 'Nightcap', desc: 'Late-night wind down',
+      persona: 'bartender', method: 'ericksonian', intention: 'sleep', length: 'medium', soundscape: 'city', vizOverride: 'smoke' },
+    { id: 'journey', icon: '🚂', name: 'Train Journey', desc: 'Rhythmic drift into trance',
+      persona: 'driver', method: 'highway', intention: 'trance', length: 'medium', soundscape: 'train', vizOverride: 'rain' },
+    { id: 'temple', icon: '🕉️', name: 'Temple Sit', desc: 'Deep stillness meditation',
+      persona: 'mystic', method: 'breath-478', intention: 'trance', length: 'long', soundscape: 'temple', vizOverride: 'sacred-geo' },
   ];
 
   function renderPresets() {
@@ -7775,13 +7779,13 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     state.selectedPersonaId = p.persona; state.selectedMethodId = p.method;
     state.intentionType = p.intention; state.length = p.length;
     state.soundscape = p.soundscape; state.droneEnabled = p.soundscape !== 'none';
+    if (p.vizOverride) { state.vizOverride = p.vizOverride; const ve = $('vizSelect'); if (ve) ve.value = p.vizOverride; }
     $('intentionType').value = p.intention;
     $('lengthSelect').value = p.length;
     const ssSelect = $('soundscapeSelect');
     if (ssSelect) ssSelect.value = p.soundscape;
     renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
     updateIntentionHint(); updateStepUI();
-    // Mark steps 1-3 as complete and jump to step 4
     state.stepsCompleted = { 1: true, 2: true, 3: true, 4: false, 5: false };
     goToStep(4);
     notify.success(`Preset "${p.name}" loaded — configure and generate.`);
@@ -7792,20 +7796,29 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   // ====================================================================
   const PROGRAMS = [
     { id: 'sleep-7', name: '7-Day Sleep', icon: '🌙', days: 7, desc: 'Progressive sleep improvement',
-      persona: 'therapist', method: 'progressive', intention: 'sleep', length: 'long', soundscape: 'ocean',
-      arc: ['Body scan & breath awareness', 'Staircase descent into dream space', 'Safe place construction', 'Anchor word installation', 'Deepening the anchor', 'Dream rehearsal', 'Integration & autonomous sleep'] },
+      persona: 'therapist', method: 'progressive', intention: 'sleep', length: 'long', soundscape: 'ocean', vizOverride: 'aurora',
+      arc: ['Body scan & breath awareness', 'Staircase descent into dream space', 'Safe place construction', 'Anchor word installation', 'Deepening the anchor', 'Dream rehearsal', 'Integration & autonomous sleep'],
+      dayOverrides: { 1: { soundscape: 'rain' }, 3: { soundscape: 'underwater' }, 5: { soundscape: 'cave' }, 7: { soundscape: 'ocean', vizOverride: 'smoke' } } },
     { id: 'anxiety-14', name: '14-Day Calm', icon: '🍃', days: 14, desc: 'Systematic anxiety reduction',
-      persona: 'therapist', method: 'breath-478', intention: 'release', length: 'medium', soundscape: 'rain',
-      arc: ['Breath awareness & safety','Safe place visualization','Calm anchor installation','Body tension release','Worry containment','Trigger desensitization','Expanding calm','Social ease','Confidence layering','Automatic calm response','Stress inoculation','Resilience building','Future pacing','Integration & autonomy'] },
+      persona: 'therapist', method: 'breath-478', intention: 'release', length: 'medium', soundscape: 'rain', vizOverride: 'breathing',
+      arc: ['Breath awareness & safety','Safe place visualization','Calm anchor installation','Body tension release','Worry containment','Trigger desensitization','Expanding calm','Social ease','Confidence layering','Automatic calm response','Stress inoculation','Resilience building','Future pacing','Integration & autonomy'],
+      dayOverrides: { 4: { soundscape: 'underwater', vizOverride: 'smoke' }, 8: { soundscape: 'forest' }, 11: { soundscape: 'temple', vizOverride: 'sacred-geo' } } },
     { id: 'confidence-10', name: '10-Day Confidence', icon: '🦁', days: 10, desc: 'Build unshakable self-belief',
-      persona: 'commander', method: 'staircase', intention: 'emotional', length: 'medium', soundscape: 'drone',
+      persona: 'commander', method: 'staircase', intention: 'emotional', length: 'medium', soundscape: 'drone', vizOverride: 'tunnel',
       arc: ['Baseline & intention setting','Inner critic observation','Resourceful memory access','Posture & presence anchor','Voice of authority','Social confidence','Challenge reframe','Peak performance state','Identity integration','Future self embodiment'] },
     { id: 'pain-6', name: '6-Week Pain', icon: '💊', days: 42, desc: 'Structured pain management (clinical model)',
-      persona: 'bodyworker', method: 'pain-dial', intention: 'pain', length: 'medium', soundscape: 'bowls',
-      arc: null }, // null arc = auto-generated from day number
+      persona: 'bodyworker', method: 'pain-dial', intention: 'pain', length: 'medium', soundscape: 'bowls', vizOverride: 'waveform',
+      arc: null },
     { id: 'focus-7', name: '7-Day Focus', icon: '🎯', days: 7, desc: 'Deep concentration training',
-      persona: 'scientist', method: 'betty-erickson', intention: 'focus', length: 'medium', soundscape: 'brown',
+      persona: 'scientist', method: 'betty-erickson', intention: 'focus', length: 'medium', soundscape: 'brown', vizOverride: 'waveform',
       arc: ['Attention narrowing','Distraction dismissal','Time compression','Flow state entry','Sustained immersion','Automatic focus trigger','Integration & autonomous flow'] },
+    { id: 'depth-7', name: '7-Day Depth', icon: '🌀', days: 7, desc: 'Progressive trance depth training',
+      persona: 'old-master', method: 'staircase', intention: 'trance', length: 'medium', soundscape: 'cave', vizOverride: 'tunnel',
+      arc: ['Light trance familiarity','Deepening through breath','Fractionation cycling','Somnambulism approach','Time distortion','Autonomous depth trigger','Integration & self-hypnosis'],
+      dayOverrides: { 2: { method: 'breath-478' }, 3: { method: 'fractionation', vizOverride: 'aurora' }, 5: { soundscape: 'underwater', vizOverride: 'smoke' } } },
+    { id: 'stress-5', name: '5-Day Stress Reset', icon: '🧘', days: 5, desc: 'Decompress from burnout',
+      persona: 'yoga-teacher', method: 'progressive', intention: 'release', length: 'medium', soundscape: 'underwater', vizOverride: 'smoke',
+      arc: ['Body awareness & tension map','Breath as release valve','Safe place construction','Stress container visualization','Integration & resilience anchor'] },
   ];
 
   async function getActiveProgramState() {
@@ -7871,27 +7884,35 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
 
   function startProgramDay(prog, ps) {
     markFeatureUsed(FEAT.PROGRAMS);
-    // Apply program settings
+    // Apply program settings (base)
     state.selectedPersonaId = prog.persona; state.selectedMethodId = prog.method;
     state.intentionType = prog.intention; state.length = prog.length;
     state.soundscape = prog.soundscape; state.droneEnabled = prog.soundscape !== 'none';
+    if (prog.vizOverride) { state.vizOverride = prog.vizOverride; const ve = $('vizSelect'); if (ve) ve.value = prog.vizOverride; }
+    // Apply per-day overrides (soundscape, visual, method variety across the program)
+    const dayNum = ps.currentDay + 1;
+    const overrides = prog.dayOverrides?.[dayNum];
+    if (overrides) {
+      if (overrides.soundscape) { state.soundscape = overrides.soundscape; state.droneEnabled = overrides.soundscape !== 'none'; }
+      if (overrides.vizOverride) { state.vizOverride = overrides.vizOverride; const ve = $('vizSelect'); if (ve) ve.value = overrides.vizOverride; }
+      if (overrides.method) state.selectedMethodId = overrides.method;
+      if (overrides.persona) state.selectedPersonaId = overrides.persona;
+    }
     $('intentionType').value = prog.intention;
     $('lengthSelect').value = prog.length;
-    const ssSelect = $('soundscapeSelect'); if (ssSelect) ssSelect.value = prog.soundscape;
+    const ssSelect = $('soundscapeSelect'); if (ssSelect) ssSelect.value = state.soundscape;
 
     // Set the intention input with program context
-    const dayFocus = prog.arc ? prog.arc[Math.min(ps.currentDay, (prog.arc?.length || 1) - 1)] : `Day ${ps.currentDay + 1} of structured ${prog.name} program`;
+    const dayFocus = prog.arc ? prog.arc[Math.min(ps.currentDay, (prog.arc?.length || 1) - 1)] : `Day ${dayNum} of structured ${prog.name} program`;
     const anchorContext = ps.anchors.length ? `Prior anchors: ${ps.anchors.join(', ')}. ` : '';
-    $('intentionInput').value = `${anchorContext}Day ${ps.currentDay + 1} of ${prog.days}: ${dayFocus}`;
+    $('intentionInput').value = `${anchorContext}Day ${dayNum} of ${prog.days}: ${dayFocus}`;
 
-    // Store program reference for post-session advancement
     state._activeProgram = { prog, ps };
-
     renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
     updateIntentionHint(); updateStepUI();
     state.stepsCompleted = { 1: true, 2: true, 3: true, 4: false, 5: false };
     goToStep(4);
-    notify.success(`Day ${ps.currentDay + 1}: ${dayFocus}`);
+    notify.success(`Day ${dayNum}: ${dayFocus}`);
   }
 
   // Advance program after successful session completion
