@@ -30,6 +30,10 @@
     --glow-amber: 0 0 8px rgba(255,179,0,0.4), 0 0 20px rgba(255,179,0,0.15);
     --glow-magenta: 0 0 8px rgba(255,45,149,0.4), 0 0 20px rgba(255,45,149,0.15);
     --glow-purple: 0 0 8px rgba(180,77,255,0.4), 0 0 20px rgba(180,77,255,0.15);
+    /* Legacy aliases — several post-session, stats, and grounding blocks reference these */
+    --text-muted: #9a8a70;
+    --f-head: 'Cinzel', 'Georgia', serif;
+    --f-body: 'Nunito', system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
   html, body {
@@ -383,7 +387,8 @@
     background: var(--glass); border: 1px solid var(--glass-border);
     border-radius: var(--radius); padding: 12px 14px;
   }
-  .summary-card .summary-label { font-family: var(--font-display); }  .summary-card .summary-label {
+  .summary-card .summary-label {
+    font-family: var(--font-display);
     font-size: 0.62rem; letter-spacing: 0.12em;
     text-transform: uppercase; color: var(--text-faint);
     margin-bottom: 4px;
@@ -2865,10 +2870,15 @@ I return to myself easily"></textarea>
       } catch { blob = new Blob([json], { type: 'application/json' }); }
       const fileName = (opts.fileName || 'share') + '.' + Date.now() + '.gz';
       const file = new File([blob], fileName, { type: 'application/gzip' });
-      const uploaded = await root.uploadPlugin.upload(file);
-      if (!uploaded || !uploaded.id) throw new Error('Upload did not return an ID');
+      // Per Perchance skill: uploadPlugin is called directly with a blob/file and returns { url, size, error }
+      const uploaded = await root.uploadPlugin(file);
+      if (!uploaded || !uploaded.url || uploaded.error) {
+        throw new Error('Upload failed: ' + (uploaded?.error || 'no url returned'));
+      }
+      // url is like "https://user.uploads.dev/file/<filename>" — extract the filename for the share URL
+      const uploadedFileName = uploaded.url.replace(/^https?:\/\/user\.uploads\.dev\/file\//, '');
       const base = window.location.origin + window.location.pathname;
-      return `${base}?data=${encodeURIComponent(uploaded.id)}`;
+      return `${base}?data=${encodeURIComponent(uploadedFileName)}`;
     } catch (e) {
       const msg = String(e?.message || e);
       if (msg.includes('disallowed_content')) {
@@ -3203,7 +3213,17 @@ I return to myself easily"></textarea>
       if (s.voicePitch != null) { state.voicePitch = s.voicePitch; const el = $('voicePitch'); if (el) el.value = Math.round(s.voicePitch * 100); const v = $('voicePitchVal'); if (v) v.textContent = s.voicePitch.toFixed(2); }
       if (s.voiceVolume != null) { state.voiceVolume = s.voiceVolume; const el = $('voiceVolume'); if (el) el.value = Math.round(s.voiceVolume * 100); const v = $('voiceVolVal'); if (v) v.textContent = Math.round(s.voiceVolume * 100); }
       if (s.tempoMultiplier != null) { state.tempoMultiplier = s.tempoMultiplier; const el = $('tempoSlider'); if (el) el.value = Math.round(s.tempoMultiplier * 100); const v = $('tempoVal'); if (v) v.textContent = s.tempoMultiplier.toFixed(1) + '×'; }
-      if (s.bgSource) { state.bgSource = s.bgSource; const el = $('bgSourceSelect'); if (el) { el.value = s.bgSource; el.dispatchEvent(new Event('change')); } }
+      if (s.bgSource) {
+        // File objects don't survive reload; if a local file source was saved
+        // but state._bgFile is missing, fall back to 'none' to avoid a broken bg at session start.
+        let restoredSource = s.bgSource;
+        if ((restoredSource === 'local-image' || restoredSource === 'local-video') && !state._bgFile) {
+          restoredSource = 'none';
+        }
+        state.bgSource = restoredSource;
+        const el = $('bgSourceSelect');
+        if (el) { el.value = restoredSource; el.dispatchEvent(new Event('change')); }
+      }
       if (s.bgPrompt) { state.bgPrompt = s.bgPrompt; const el = $('bgPromptInput'); if (el) el.value = s.bgPrompt; }
       if (s.bgYoutubeUrl) { state.bgYoutubeUrl = s.bgYoutubeUrl; const el = $('bgYoutubeUrl'); if (el) el.value = s.bgYoutubeUrl; }
       if (s.bgStaticUrl) { state.bgStaticUrl = s.bgStaticUrl; const el = $('bgUrlInput'); if (el) el.value = s.bgStaticUrl; }
@@ -3518,7 +3538,7 @@ I return to myself easily"></textarea>
     try {
       const existing = await getAnalytics();
       const feat = existing.feat || 0; // preserve feature flags
-      const a = { v: 2, p: {}, m: {}, i: {}, s: {}, z: {}, ln: {}, am: {}, vc: {},
+      const a = { v: 3, p: {}, m: {}, i: {}, s: {}, z: {}, ln: {}, am: {}, vc: {},
         hr: new Array(24).fill(0), dw: new Array(7).fill(0),
         mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0 },
         comp: { total: 0, finished: 0, emergency: 0 },
@@ -3531,7 +3551,9 @@ I return to myself easily"></textarea>
         const d = new Date(r.date); a.hr[d.getHours()]++; a.dw[d.getDay()]++;
         if (r.preMood != null) { a.mood.preSum += r.preMood; a.mood.n++; }
         if (r.postMood != null) { a.mood.postSum += r.postMood; a.mood.deltaSum += (r.postMood - (r.preMood || 5)); }
-        a.comp.total++; if (r.completed) a.comp.finished++;
+        a.comp.total++;
+        if (r.completed) a.comp.finished++;
+        else a.comp.emergency++; // history entries without completed=true were emergency-ended
         if (r.durationSec > 0) { a.dur.sum += r.durationSec; a.dur.n++; }
         a.cfg.rateSum += (r.speechRate || 0.65); a.cfg.pitchSum += (r.voicePitch || 0.85);
         a.cfg.volSum += (r.voiceVolume || 1.0); a.cfg.droneSum += (r.droneVolume || 0.35); a.cfg.n++;
@@ -3635,7 +3657,8 @@ I return to myself easily"></textarea>
     const lenTotal = lenEntries.reduce((s, [, v]) => s + v, 0) || 1;
     const avgLen = lenEntries.reduce((s, [k, v]) => s + (lenMap[k] ?? 0.5) * v, 0) / lenTotal;
     // Control preference — ratio of authoritarian persona usage
-    const authPersonas = ['drill-sergeant','dominatrix','hypnoboss','professor','commander','taskmaster'];
+    // IDs must match BUILTIN_PERSONAS entries with category 'authoritarian'
+    const authPersonas = ['commander','headmistress','interrogator','drill-instructor','dominatrix','surgeon'];
     const authCount = authPersonas.reduce((s, id) => s + (a.p[id] || 0), 0);
     const totalPersona = Object.values(a.p || {}).reduce((s, v) => s + v, 0) || 1;
     // Soundscape & visual usage rates
@@ -4115,7 +4138,11 @@ Practitioner profile (full, natural sentences):`;
     $('summaryGuide').textContent = getPersona().name;
     $('summaryMethod').textContent = getMethod().name;
     $('summaryLength').textContent = `${state.length.charAt(0).toUpperCase() + state.length.slice(1)} · ${getWorkBlockCount()} work block${getWorkBlockCount() === 1 ? '' : 's'}`;
-    const intent = $('intentionInput').value.trim() || '(trance only)';
+    const rawIntent = $('intentionInput').value.trim();
+    const intentFallback = state.intentionType === 'sleep' ? '(sleep induction)'
+      : state.intentionType === 'trance' ? '(pure trance)'
+      : '(no theme)';
+    const intent = rawIntent || intentFallback;
     const affCount = (($('userAffirmations')?.value || '').split(/\n+/).map(s => s.trim()).filter(Boolean)).length;
     if ($('summaryAffirmations')) $('summaryAffirmations').textContent = affCount ? `${affCount} custom · ${($('affirmationMode')?.value || 'woven')}` : 'none';
     $('summaryIntention').textContent = intent.length > 60 ? intent.substring(0, 57) + '...' : intent;
@@ -4212,7 +4239,11 @@ Practitioner profile (full, natural sentences):`;
   }
   function updateBriefPreview() {
     const p = getPersona(); const m = getMethod();
-    const intention = $('intentionInput').value.trim() || '[no theme]';
+    const rawIntent = $('intentionInput').value.trim();
+    const intentFallback = state.intentionType === 'sleep' ? '[sleep induction]'
+      : state.intentionType === 'trance' ? '[pure trance]'
+      : '[no theme]';
+    const intention = rawIntent || intentFallback;
     const el = $('briefPreview');
     if (!p) { el.textContent = ''; return; }
     const action = m.category === 'demonstration' ? `demonstrate the <strong>${escapeHtml(m.name)}</strong> effect` : `use the <strong>${escapeHtml(m.name)}</strong> method`;
@@ -4558,10 +4589,21 @@ Practitioner profile (full, natural sentences):`;
         const rain = mkNoise('highpass', 3000); const raing = mkGain(0.08); connect(rain, raing, m);
         const roll = () => {
           if (!this.running) return;
-          const o = mkNoise('lowpass', 80); const g = c.createGain(); o.connect(g).connect(m);
+          // Inline a self-contained noise burst so we can explicitly start/stop it.
+          // (mkNoise pushes its source into ns expecting startAll(), which has already run.)
+          const buf = c.createBuffer(1, Math.max(1, Math.floor(c.sampleRate * 0.2)), c.sampleRate);
+          const d = buf.getChannelData(0);
+          for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+          const src = c.createBufferSource(); src.buffer = buf; src.loop = true;
+          const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 80;
+          const g = c.createGain();
+          src.connect(f).connect(g).connect(m);
           const t = c.currentTime;
-          g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.5, t + 0.3);
-          g.gain.exponentialRampToValueAtTime(0.0001, t + 3 + Math.random() * 2);
+          const dur = 3 + Math.random() * 2;
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.5, t + 0.3);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+          try { src.start(t); src.stop(t + dur + 0.1); } catch {}
           setTimeout(roll, 8000 + Math.random() * 15000);
         };
         setTimeout(roll, 3000 + Math.random() * 5000);
@@ -4800,16 +4842,21 @@ Practitioner profile (full, natural sentences):`;
       // Load from Blob cache first
       const urls = await bgCacheGetAllUrls();
       if (urls.length > 0) this.queue = urls;
+      // Kick off rotation now if we have cached images and source is 'ai'
+      if (this.source === 'ai' && this.queue.length > 0) this.startRotation();
       // Generate new ones sequentially (Perchance queues concurrent requests)
       const needed = Math.max(0, count - this.queue.length);
       for (let i = 0; i < needed; i++) {
         if (state.abortFlag) break;
         await this.generateOne();
+        // Kick off rotation as soon as the first generated image is ready
+        if (this.source === 'ai' && this.queue.length > 0 && !this.interval) this.startRotation();
       }
     },
 
     startRotation() {
       if (this.source !== 'ai' || this.queue.length === 0) return;
+      if (this.interval) return; // already rotating — don't stack intervals
       this.crossfade(this.queue[0]);
       let idx = 0;
       this.interval = setInterval(() => {
@@ -5275,7 +5322,7 @@ Practitioner profile (full, natural sentences):`;
     // Render at reduced resolution for performance
     const rW = 192, rH = Math.round(rW * H / W);
     if (!renderPlasma._img || renderPlasma._img.width !== rW) {
-      renderPlasma._off = new OffscreenCanvas ? new OffscreenCanvas(rW, rH) : document.createElement('canvas');
+      renderPlasma._off = (typeof OffscreenCanvas !== 'undefined') ? new OffscreenCanvas(rW, rH) : document.createElement('canvas');
       renderPlasma._off.width = rW; renderPlasma._off.height = rH;
       renderPlasma._img = renderPlasma._off.getContext('2d').createImageData(rW, rH);
       // Precompute sine LUT
@@ -5622,6 +5669,7 @@ Practitioner profile (full, natural sentences):`;
       const id = 'custom_' + Date.now();
       custom.push({ id, name, tagline: tagline || '(custom)', systemPrompt, category });
       state.selectedPersonaId = id;
+      markFeatureUsed(FEAT.CUSTOM_PERSONA); // mark feature only when a NEW custom persona is created
     }
     if (!saveCustomPersonas(custom)) { notify.error('Could not save: browser storage may be full.'); return; }
     refreshPersonas(); renderPersonaGrid(); renderPersonaDetail(); closePersonaEditor();
@@ -6825,9 +6873,9 @@ ${s.text.trim()}`).join('\n\n').trim();
       // Script preview — first ~150 chars, strip markers
       let preview = '';
       if (hasScript) {
-        preview = s.script.replace(PHASE_MARKER_STRIP_RX, '').replace(/\x5BPAUSE\s+\d+\]/gi, '').trim();
-        preview = preview.substring(0, 150).replace(/\s+/g, ' ');
-        if (s.script.length > 150) preview += '…';
+        const cleaned = s.script.replace(PHASE_MARKER_STRIP_RX, '').replace(/\x5BPAUSE\s+\d+\]/gi, '').trim();
+        preview = cleaned.substring(0, 150).replace(/\s+/g, ' ');
+        if (cleaned.length > 150) preview += '…';
       }
 
       const item = document.createElement('div');
@@ -7416,8 +7464,8 @@ ${s.text.trim()}`).join('\n\n').trim();
         if (cfg.i) { state.intentionType = cfg.i; $('intentionType').value = cfg.i; }
         if (cfg.l) { state.length = cfg.l; $('lengthSelect').value = cfg.l; }
         renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail(); updateStepUI();
-        state.stepsCompleted = { 1: true, 2: true, 3: true, 4: false, 5: false, 6: false };
-        goToStep(4);
+        state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: false, 6: false };
+        goToStep(5); // Configure — let user review before generating
         notify.info('Shared config loaded (legacy format). Review and generate.');
         history.replaceState(null, '', window.location.pathname + window.location.search);
       } catch(e2) { console.error('Failed to parse shared config:', e2); }
@@ -8268,7 +8316,7 @@ ${s.text.trim()}`).join('\n\n').trim();
 $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('jumpMethodBtn')?.addEventListener('click', () => goToStep(2));
   $('jumpIntentionBtn')?.addEventListener('click', () => goToStep(3));
-  $('jumpConfigBtn')?.addEventListener('click', () => goToStep(4));
+  $('jumpConfigBtn')?.addEventListener('click', () => goToStep(5)); // Step 5 is Configure; step 4 is Affirmations
   $('btnSkipToScript').addEventListener('click', () => {
     state._skippedToScript = true;
     markFeatureUsed(FEAT.SKIP_SCRIPT);
@@ -8402,6 +8450,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   // Step 4 — visual controls
   $('vizSelect')?.addEventListener('change', e => {
     state.vizOverride = e.target.value;
+    saveUserSettings();
   });
 
   // Step 4 — HUD element toggles
@@ -8634,14 +8683,21 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('endBtn').addEventListener('click', emergencyEnd);
   $('backToEditBtn').addEventListener('click', async () => {
     if (!await confirmAsync('Stop the session and return to the script editor?')) return;
-    state.abortFlag = true; speechSynthesis.cancel();
+    state.abortFlag = true;
+    state._finishing = true;            // prevent playback loop from calling finishSession
+    clearInterval(state._timeInterval); // stop elapsed timer
+    clearTimeout(state._safetyTimeout); // prevent ghost post-screen switch
+    state._sessionStartTime = null;
+    speechSynthesis.cancel();
     drone.stop(); stopVisuals();
     setSleepOverlay(false);
     bgEngine.clear();
+    stopRecording();
+    closeLivePanel();
     try { state._wakeLock?.release(); } catch(e) {}
     document.body.classList.remove('in-session'); document.body.classList.remove('controls-hidden'); clearTimeout(_controlsTimer);
     switchScreen('setup-wizard');
-    goToStep(5);
+    goToStep(6); // Step 6 is Generate (holds scriptText); Step 5 is Configure
     notify.info('Session stopped. You can edit the script and restart.');
   });
   $('restartBtn').addEventListener('click', () => resetWizardForNewSession({ preserveSelections: true }));
@@ -8651,7 +8707,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   });
   $('postBackToScriptBtn')?.addEventListener('click', () => {
     switchScreen('setup-wizard');
-    goToStep(5);
+    goToStep(6); // Step 6 is Generate (holds scriptText); Step 5 is Configure
   });
   $('transcriptToggle')?.addEventListener('click', toggleTranscript);
   $('recordBtn')?.addEventListener('click', toggleRecording);
@@ -9049,7 +9105,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     if (ssSelect) ssSelect.value = p.soundscape;
     renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
     updateIntentionHint(); updateStepUI();
-    state.stepsCompleted = { 1: true, 2: true, 3: true, 4: false, 5: false };
+    state.stepsCompleted = { 1: true, 2: true, 3: true, 4: false, 5: false, 6: false };
     goToStep(4);
     notify.success(`Preset "${p.name}" loaded — configure and generate.`);
   }
@@ -9173,7 +9229,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     state._activeProgram = { prog, ps };
     renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
     updateIntentionHint(); updateStepUI();
-    state.stepsCompleted = { 1: true, 2: true, 3: true, 4: false, 5: false };
+    state.stepsCompleted = { 1: true, 2: true, 3: true, 4: false, 5: false, 6: false };
     goToStep(4);
     notify.success(`Day ${dayNum}: ${dayFocus}`);
   }
@@ -9255,15 +9311,16 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   const TOUR_KEY = 'stillness_tour_v2';
   const TOUR_STEPS = [
     { icon: '🌀', title: 'Welcome to the Hypnosis Engine', body: 'This tool creates personalised AI-generated hypnosis sessions with narration, visuals, and procedural soundscapes — all running locally in your browser. No data leaves your device. This quick tour shows you how.' },
-    { icon: '⚡', title: 'Quick-start or deep-customise', body: 'In a hurry? Use a <strong>Preset</strong> at the top of Step 1 — one click sets guide, method, intention, soundscape, and length. Or follow the 5-step wizard for full control. You can also click "I already have a script" to skip straight to the player.' },
-    { icon: '👤', title: 'Step 1 — Choose a Guide', body: '25 built-in personas across four temperaments: contemplative, showman, somatic, and authoritarian. Each has a distinct voice and therapeutic style. Create unlimited custom personas too.' },
-    { icon: '🔮', title: 'Step 2 — Choose a Method', body: '37 induction techniques from gentle progressive relaxation to dramatic shock inductions. Rapid and advanced methods unlock after 3 and 7 completed sessions — building your experience safely.' },
-    { icon: '🎯', title: 'Step 3 — Set an Intention', body: 'Describe what you want from the session. The AI crafts a precise hypnotic suggestion from your description. Add your own personal affirmations — they\'ll be woven verbatim into the script.' },
-    { icon: '⚙', title: 'Step 4 — Configure', body: '19 procedural soundscapes, 16 visual effects with live tuning sliders (speed, intensity, trail), voice controls, ducking toggle, and HUD element toggles. All settings auto-save between visits.' },
-    { icon: '▶', title: 'Step 5 — Generate & Begin', body: 'Each script phase is generated individually with live progress indicators. If a phase fails, click its red dot to retry just that one. Edit the script, fix timings if needed, then begin your session.' },
+    { icon: '⚡', title: 'Quick-start or deep-customise', body: 'In a hurry? Use a <strong>Preset</strong> at the top of Step 1 — one click sets guide, method, intention, soundscape, and length. Or follow the 6-step wizard for full control. You can also click "use my own script" to skip straight to the player.' },
+    { icon: '👤', title: 'Step 1 — Choose a Guide', body: 'Built-in personas across four temperaments — contemplative, showman, somatic, and authoritarian. Each has a distinct voice and therapeutic style. Create unlimited custom personas too.' },
+    { icon: '🔮', title: 'Step 2 — Choose a Method', body: 'Induction techniques from gentle progressive relaxation to dramatic shock inductions. Rapid and advanced methods unlock after 3 and 7 completed sessions — building your experience safely.' },
+    { icon: '🎯', title: 'Step 3 — Set an Intention', body: 'Describe what you want from the session. The AI crafts a precise hypnotic suggestion from your description.' },
+    { icon: '💬', title: 'Step 4 — Affirmations (optional)', body: 'Add your own personal affirmations — they\'ll be woven verbatim into the script. Pick how strongly they appear: woven through, dedicated moments, or light touch.' },
+    { icon: '⚙', title: 'Step 5 — Configure', body: 'Procedural soundscapes, visual effects with live tuning sliders (speed, intensity, trail), voice controls, ducking toggle, and HUD element toggles. All settings auto-save between visits.' },
+    { icon: '▶', title: 'Step 6 — Generate & Begin', body: 'Each script phase is generated individually with live progress indicators. If a phase fails, click its red dot to retry just that one. Edit the script, fix timings if needed, then begin your session.' },
     { icon: '📊', title: 'Your profile sidebar', body: 'The left sidebar tracks your stats, streak, activity heatmap, and full session history. Every session stores its complete script — click ▶ to replay any past session with identical settings.' },
     { icon: '🎵', title: 'During a session', body: '<strong>Space</strong> pauses everything (voice and soundscape). <strong>Escape</strong> triggers an emergency re-alert in your guide\'s voice. Use <strong>← back to script</strong> to return and edit mid-session. The ⚙ panel lets you adjust audio and visuals live.' },
-    { icon: '✨', title: 'You\'re ready', body: 'Pick a guide and method, or tap a preset. Your first session takes about 2 minutes to set up. Backup your data anytime from the sidebar. If you need help, the <strong>I NEED HELP</strong> button has crisis resources.' },
+    { icon: '✨', title: 'You\'re ready', body: 'Pick a guide and method, or tap a preset. Your first session takes about 2 minutes to set up. Backup your data anytime from the sidebar. The <strong>help &amp; safety resources</strong> button in the sidebar has crisis resources.' },
   ];
 
   function shouldShowTour() { try { return !localStorage.getItem(TOUR_KEY); } catch { return false; } }
@@ -9509,7 +9566,6 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('personaCancelBtn').addEventListener('click', closePersonaEditor);
   $('personaSaveBtn').addEventListener('click', savePersonaFromForm);
   $('personaShareBtn')?.addEventListener('click', shareCurrentPersona);
-    markFeatureUsed(FEAT.CUSTOM_PERSONA);
   $('personaModal').addEventListener('click', e => { if (e.target.id === 'personaModal') closePersonaEditor(); });
 
   // Hypnotic Induction Profile quiz
@@ -9774,19 +9830,19 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     gap: 8px;
   }
 
-  #step5 .preview-row {
+  .step-content[data-step="5"] .preview-row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     align-items: stretch;
   }
 
-  #step5 .preview-row .preview-btn {
+  .step-content[data-step="5"] .preview-row .preview-btn {
     min-height: 42px;
     justify-content: center;
     text-align: center;
   }
 
-  #step5 .detail-panel {
+  .step-content[data-step="5"] .detail-panel {
     margin-bottom: 14px;
   }
 
@@ -9817,7 +9873,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   }
 
   @media (max-width: 480px) {
-    #step5 .preview-row {
+    .step-content[data-step="5"] .preview-row {
       grid-template-columns: 1fr 1fr;
     }
 
