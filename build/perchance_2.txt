@@ -16,7 +16,6 @@
     --accent-green: #39ff8e;
     --accent-purple: #b44dff;
     --fixation: #00e5ff;
-    /* Legacy aliases — kept so existing rules still resolve, now flat */
     --neon-cyan: #00e5ff;
     --neon-magenta: #ff2d95;
     --neon-amber: #ffb300;
@@ -28,12 +27,8 @@
     --radius: 0;
     --font-display: 'Nunito', system-ui, -apple-system, sans-serif;
     --font-body: 'Nunito', system-ui, -apple-system, sans-serif;
-    /* Glows collapsed to none — every rule referencing these goes flat */
     --glow-cyan: none;
     --glow-amber: none;
-    --glow-magenta: none;
-    --glow-purple: none;
-    /* Legacy aliases referenced in post-session and stats blocks */
     --text-muted: #8a8680;
     --f-head: 'Nunito', system-ui, -apple-system, sans-serif;
     --f-body: 'Nunito', system-ui, -apple-system, sans-serif;
@@ -103,8 +98,6 @@
   .step-item.current .step-label, .step-item.completed .step-label { color: var(--text-dim); }
   .step-value { font-size: clamp(0.52rem, 1.9vw, 0.68rem); color: var(--neon-amber); text-align: center; max-width: 100%; line-height: 1.15; font-style: italic; margin-top: -2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .step-num { font-size: clamp(0.72rem, 2.4vw, 0.85rem); }
-  .step-connector { display: none; }
-  .step-connector.completed { background: var(--neon-amber); box-shadow: 0 0 6px rgba(255,179,0,0.3); }
 
   /* ============ STEP CONTENT ============ */
   .step-content { display: none; animation: stepIn 0.5s ease-out; }
@@ -491,7 +484,7 @@
   .gen-stream-box.done .gen-stream-text::after { display: none; }
   @keyframes streamBlink { 0%,100% { opacity: 0.2; } 50% { opacity: 1; } }
 
-  /* ============ PHASE DIFF MODAL (item #12) ============ */
+  /* ============ PHASE DIFF MODAL ============ */
   .diff-modal { max-width: 860px !important; }
   .diff-compare {
     display: grid; grid-template-columns: 1fr; gap: 10px; margin: 12px 0;
@@ -573,8 +566,9 @@
   /* ============ SESSION SCREEN ============ */
   #session-screen { text-align: center; padding-top: 8px; position: relative; }
   .bg-layer { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
-  .bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 3s ease-in-out; }
+  .bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 3s ease-in-out; will-change: opacity, transform, filter, clip-path; }
   .bg-img.active { opacity: 0.35; }
+  .bg-flash { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 3; transition: opacity 0.5s ease; }
   .bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.3; }
   .phase-dots, .phase-indicator, .stage, .text-display, .session-controls, .session-time, .kb-hint { position: relative; z-index: 1; }
   body.in-session { background: #000; }
@@ -1188,6 +1182,50 @@ body.in-session .footer {
     .ai-controls-grid { grid-template-columns: 1fr; }
   }
 
+  /* Playback + transition controls (backported from Slideshow spinoff) */
+  .segmented-small { display: inline-flex; border: 1px solid var(--glass-border); }
+  .segmented-small button {
+    background: transparent; color: var(--text-dim); border: none;
+    padding: 6px 12px; font-family: var(--font-body);
+    font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
+    font-weight: 600; cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+  }
+  .segmented-small button:hover { color: var(--neon-amber); }
+  .segmented-small button.active {
+    background: var(--neon-amber); color: #000; cursor: default;
+  }
+  .segmented-small button.active:hover { color: #000; }
+  .bg-transition-grid {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px; margin-top: 6px;
+  }
+  @media (max-width: 560px) { .bg-transition-grid { grid-template-columns: repeat(2, 1fr); } }
+  .bg-transition-grid label {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 8px; background: var(--bg);
+    border: 1px solid var(--glass-border);
+    font-size: 0.72rem; color: var(--text-dim);
+    cursor: pointer; user-select: none;
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
+  }
+  .bg-transition-grid label:hover { border-color: var(--neon-amber); color: var(--text); }
+  .bg-transition-grid input[type="checkbox"] {
+    width: 13px; height: 13px; accent-color: var(--neon-amber);
+    cursor: pointer; margin: 0; flex-shrink: 0;
+  }
+  .bg-transition-grid label:has(input:checked) {
+    border-color: var(--neon-amber); background: rgba(255,179,0,0.06); color: var(--text);
+  }
+  .bg-transition-bulk { display: flex; gap: 6px; margin-top: 6px; }
+  .bg-transition-bulk button {
+    background: transparent; border: 1px solid var(--glass-border);
+    color: var(--text-faint); padding: 3px 9px;
+    font-family: var(--font-body); font-size: 0.66rem;
+    letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+  }
+  .bg-transition-bulk button:hover { color: var(--neon-amber); border-color: var(--neon-amber); }
+
   .sidebar-toggle {
     display: none; position: fixed; top: 12px; left: 12px; z-index: 100;
     background: var(--glass); border: 1px solid var(--glass-border);
@@ -1292,7 +1330,7 @@ body.in-session .footer {
     .spiral-svg { animation: none; }
     .pulse-ring { animation: none; }
     @keyframes stepIn { from { opacity: 1; transform: none; } }
-    .step-circle, .step-connector { transition: none; }
+    .step-circle { transition: none; }
   }
   /* ── Stats Charts Modal ── */
   .stats-modal-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.88); display: flex; align-items: flex-start; justify-content: center; padding: 12px; overflow-y: auto; }
@@ -1322,6 +1360,271 @@ body.in-session .footer {
     .stats-tile canvas { height: 120px; }
     .stats-tile.expanded canvas { height: 200px; }
   }
+
+  /* ═══ merged: theme layer ═══ */
+  /* ─── palette overrides — amber-tinted borders unify with amber headings ─── */
+  :root {
+    --text-dim: #b9ab91;
+    --text-faint: #96876f;
+    --border: rgba(255,180,80,0.18);
+    --glass-border: rgba(255,180,80,0.18);
+  }
+
+  /* ─── universal resets: no rounding, no text-shadows, no backdrop blur ─── */
+  *, *::before, *::after { border-radius: 0 !important; }
+  * { text-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+
+  /* ─── surfaces: solid bg, 1px amber-tinted border, no decorative shadow ─── */
+  .card, .detail-panel, .summary-card, .post-card, .toggle-row, .crafted-preview,
+  .script-preview, .modal, .modal-content, .brief-preview, .disclaimer, .history-item,
+  .preset-card, .tour-card, .safety-inner, .program-card, .sidebar, .stats-panel,
+  .live-panel, .post-trigger, .sparkline-wrap, .heatmap-wrap {
+    box-shadow: none !important;
+    border: 1px solid var(--border) !important;
+    background: var(--bg-soft) !important;
+  }
+
+  /* ─── inputs: crisp square, hard focus ─── */
+  .pf-input, .pf-select, .pf-textarea,
+  input[type="text"], input[type="number"], input[type="url"], input[type="email"],
+  select, textarea {
+    box-shadow: none !important;
+    border: 1px solid var(--border) !important;
+    background: var(--bg) !important;
+  }
+  .pf-input:focus, .pf-select:focus, .pf-textarea:focus,
+  input:focus, select:focus, textarea:focus {
+    outline: none !important;
+    border-color: var(--accent) !important;
+  }
+  input::placeholder, textarea::placeholder { color: #a89982; opacity: 1; }
+
+  /* ─── headings: uppercase, wide-tracked, amber ─── */
+  h1, h2,
+  .field-label, .pf-label, .sidebar-section-title,
+  .card-title, .post-card-title, .summary-card .summary-label,
+  .stats-chart-title, .stats-kpi-label {
+    font-family: var(--font-display) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    color: var(--neon-amber) !important;
+  }
+  h1 { letter-spacing: 0.14em; font-weight: 700; }
+  h3 {
+    font-family: var(--font-display) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+
+  /* ─── magenta accents — badges, phase active, warnings ─── */
+  .card-badge, .post-trigger-title, .phase-dot.active,
+  .warning, .alert-danger, .post-warn, .notify.warn {
+    color: var(--neon-magenta) !important;
+    border-color: var(--neon-magenta) !important;
+  }
+  .phase-dot.active { background: var(--neon-magenta) !important; }
+
+  /* ─── buttons: amber fill, black text, soft orange glow halo ─── */
+  .btn, button, .preview-btn, .filter-tab {
+    transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s !important;
+  }
+  .btn, .preview-btn,
+  button:not(.icon-btn):not(.filter-tab):not(.toggle-btn):not([class*="close"]) {
+    background: var(--neon-amber) !important;
+    color: #000 !important;
+    border: 1px solid var(--neon-amber) !important;
+    box-shadow: 0 0 10px rgba(255,140,0,0.28) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+  }
+  .btn:hover:not(:disabled), .preview-btn:hover:not(:disabled),
+  button:not(.icon-btn):not(.filter-tab):not(.toggle-btn):not([class*="close"]):hover:not(:disabled) {
+    background: #ffc940 !important;
+    color: #000 !important;
+    border-color: #ffc940 !important;
+    box-shadow: 0 0 16px rgba(255,140,0,0.5) !important;
+  }
+  .btn:active, .preview-btn:active,
+  button:not(.icon-btn):not(.filter-tab):not(.toggle-btn):not([class*="close"]):active {
+    box-shadow: 0 0 6px rgba(255,140,0,0.3) !important;
+    transform: translateY(1px);
+  }
+  .btn:disabled, .preview-btn:disabled, button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none !important;
+  }
+  .btn.primary, button.primary { box-shadow: 0 0 14px rgba(255,140,0,0.45) !important; }
+  .btn.primary:hover:not(:disabled), button.primary:hover:not(:disabled) {
+    box-shadow: 0 0 22px rgba(255,140,0,0.65) !important;
+  }
+
+  /* ─── focus ring: crisp amber outline + halo ─── */
+  :focus-visible {
+    outline: 2px solid var(--accent) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 10px rgba(255,140,0,0.28) !important;
+  }
+
+  /* ─── stepper: amber circles + lit-trail markers between steps ─── */
+  .step-item.current .step-circle {
+    border-color: var(--neon-amber) !important;
+    color: var(--neon-amber) !important;
+    background: var(--bg) !important;
+    box-shadow: 0 0 12px rgba(255,179,0,0.5), 0 0 24px rgba(255,179,0,0.22) !important;
+  }
+  .step-item.completed .step-circle {
+    background: var(--neon-amber) !important;
+    border-color: var(--neon-amber) !important;
+    color: #000 !important;
+    box-shadow: 0 0 10px rgba(255,179,0,0.45) !important;
+  }
+  .step-item.clickable:hover .step-circle {
+    border-color: var(--neon-amber) !important;
+    box-shadow: 0 0 12px rgba(255,179,0,0.45) !important;
+  }
+  .stepper { position: relative; }
+  .step-item::after {
+    content: '';
+    position: absolute;
+    top: clamp(13px, 4vw, 18px);
+    left: calc(50% + clamp(18px, 4.5vw, 23px));
+    width: calc(100% - clamp(36px, 9vw, 46px));
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .step-item:last-child::after { display: none !important; }
+  .step-item.completed::after {
+    background: var(--neon-amber);
+    box-shadow: 0 0 6px rgba(255,179,0,0.4);
+  }
+
+  /* ─── a11y: legible base sizes, 40px+ touch targets, 42px step circles ─── */
+  html { font-size: 16px; }
+  body { line-height: 1.5; }
+  button, .btn, .filter-tab, .preview-btn, .voice-preview-btn, .transcript-toggle, .sidebar-tab, .profile-chip {
+    min-height: 40px;
+  }
+  .step-nav .btn-back, .step-nav .btn-next, .step-nav .btn-skip { min-height: 44px; }
+  .script-actions .btn, .crafted-actions .btn { min-height: 42px; }
+  .step-circle { width: 42px; height: 42px; }
+  .history-item .h-btn { width: 36px; height: 32px; }
+  input, select, textarea { font-size: 1rem !important; }
+
+  /* Small-label readability (was losing to micro-sizing in cramped viewports) */
+  .step-label,
+  .summary-card .summary-label,
+  .post-card-title,
+  .post-trigger-title,
+  .field-label,
+  .sidebar-section-title,
+  .pf-label,
+  .stats-kpi-label,
+  .stats-chart-title,
+  .card .card-badge {
+    font-size: 0.75rem !important;
+    line-height: 1.35;
+  }
+  .step-value,
+  .hint, .sublabel, .preview-hint, .kb-hint,
+  .sidebar-profile-sub, .live-small, .post-trigger-sub,
+  .footer, .script-stats, .crafted-meta, .step-nav .btn-skip,
+  .card .card-tagline, .preset-card .preset-desc,
+  .tour-card p, .safety-inner p, .safety-check,
+  .history-item .h-meta, .history-item .h-preview, .history-item .h-no-script,
+  .transcript-toggle, .live-row label, .live-row select,
+  .phase-indicator, .mood-label, .session-time,
+  .audio-indicator, .persona-indicator, .method-indicator,
+  .detail-panel, details summary, .filter-tab,
+  .modal .field-label-sm, .library-empty,
+  .brief-preview, .disclaimer, .script-text, .journal-area,
+  .toggle-row label, .toggle-row .hint {
+    font-size: 0.875rem !important;
+    line-height: 1.5;
+  }
+  .card .card-tag, .post-checkin-label, .state-scale-labels span, .stats-expand-icon {
+    font-size: 0.75rem !important;
+  }
+  .tour-skip, .tour-next, .post-checkin-ends, .history-item .h-btn,
+  .step-circle, .step-nav .btn-back, .step-nav .btn-next,
+  .btn, .btn.secondary, .btn.warm, .btn.green,
+  .preview-btn, .voice-preview-btn, .filter-tab, .sidebar-tab, .profile-chip {
+    font-size: 0.95rem !important;
+  }
+  .card .card-action-btn, .live-btn, .transcript-toggle {
+    font-size: 0.85rem !important;
+  }
+  .post-checkin-val, .step-title, .summary-card .summary-value, .card .card-name {
+    letter-spacing: normal;
+  }
+
+  /* ─── workflow layout — grid tweaks for step 5 preview + action rows ─── */
+  .preview-row { gap: 8px; }
+  .step-content[data-step="5"] .preview-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    align-items: stretch;
+  }
+  .step-content[data-step="5"] .preview-row .preview-btn {
+    min-height: 42px;
+    justify-content: center;
+    text-align: center;
+  }
+  .step-content[data-step="5"] .detail-panel { margin-bottom: 14px; }
+  .step-nav .btn-skip { color: var(--text-dim); background: rgba(255,255,255,0.02); }
+  .script-actions, .crafted-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+  .detail-title { line-height: 1.35; }
+
+  /* ─── responsive: narrower sizes under 480px ─── */
+  @media (max-width: 480px) {
+    .step-label, .summary-card .summary-label, .post-card-title, .post-trigger-title,
+    .field-label, .sidebar-section-title, .pf-label,
+    .stats-kpi-label, .stats-chart-title, .card .card-badge {
+      font-size: 0.72rem !important;
+    }
+    .step-value, .hint, .sublabel, .preview-hint, .kb-hint,
+    .sidebar-profile-sub, .live-small, .post-trigger-sub,
+    .footer, .script-stats, .crafted-meta, .step-nav .btn-skip,
+    .card .card-tagline, .preset-card .preset-desc,
+    .tour-card p, .safety-inner p, .safety-check,
+    .history-item .h-meta, .history-item .h-preview, .history-item .h-no-script,
+    .transcript-toggle, .live-row label, .live-row select,
+    .phase-indicator, .mood-label, .session-time,
+    .audio-indicator, .persona-indicator, .method-indicator,
+    .detail-panel, details summary, .filter-tab,
+    .modal .field-label-sm, .library-empty,
+    .brief-preview, .disclaimer, .script-text, .journal-area,
+    .toggle-row label, .toggle-row .hint {
+      font-size: 0.84rem !important;
+    }
+    .step-content[data-step="5"] .preview-row { grid-template-columns: 1fr 1fr; }
+    .script-actions, .crafted-actions { grid-template-columns: 1fr; }
+  }
+
+  /* ─── scrollbars: flat, thin, match the palette ─── */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+  /* ─── bug fixes ─── */
+  /* Hint spans inside .config-toggle-grid labels were auto-placing to grid col 1
+     row 2 (the 18px checkbox column), causing one-word-per-line wrapping.
+     Force them into col 2 so they flow under the title text at full width. */
+  .config-toggle-grid .toggle-row label .hint { grid-column: 2; }
+
+  /* Consent modal must render on top of the Options modal that contains its
+     triggering checkbox. Both modals share z-index: 100 by default and DOM order
+     would otherwise put Options on top. */
+  #remoteConsentModal { z-index: 200; }
 </style>
 
 <div class="container">
@@ -1401,31 +1704,26 @@ body.in-session .footer {
         <div class="step-label">Guide</div>
         <div class="step-value" id="stepValue1"></div>
       </div>
-      <div class="step-connector" data-connector="1-2"></div>
       <div class="step-item" data-step="2">
         <div class="step-circle"><span class="step-num"><span class="step-num-text">2</span></span></div>
         <div class="step-label">Method</div>
         <div class="step-value" id="stepValue2"></div>
       </div>
-      <div class="step-connector" data-connector="2-3"></div>
       <div class="step-item" data-step="3">
         <div class="step-circle"><span class="step-num"><span class="step-num-text">3</span></span></div>
         <div class="step-label">Intention</div>
         <div class="step-value" id="stepValue3"></div>
       </div>
-      <div class="step-connector" data-connector="3-4"></div>
       <div class="step-item" data-step="4">
         <div class="step-circle"><span class="step-num"><span class="step-num-text">4</span></span></div>
         <div class="step-label">Affirmations</div>
         <div class="step-value" id="stepValue4"></div>
       </div>
-      <div class="step-connector" data-connector="4-5"></div>
       <div class="step-item" data-step="5">
         <div class="step-circle"><span class="step-num"><span class="step-num-text">5</span></span></div>
         <div class="step-label">Configure</div>
         <div class="step-value" id="stepValue5"></div>
       </div>
-      <div class="step-connector" data-connector="5-6"></div>
       <div class="step-item" data-step="6">
         <div class="step-circle"><span class="step-num"><span class="step-num-text">6</span></span></div>
         <div class="step-label">Generate</div>
@@ -1784,7 +2082,35 @@ I return to myself easily"></textarea>
               <input type="range" id="bgStepsSlider" min="15" max="50" step="1" value="30">
             </div>
           </div>
-          <div class="sublabel">Generates up to 4 images in parallel. Crossfades every 45 seconds during sessions.</div>
+          <!-- Playback + transitions — backported from Slideshow spinoff. -->
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--glass-border);">
+            <label class="ai-sublabel" style="margin-bottom:6px;display:block;">playback during session</label>
+            <div class="ai-controls-grid">
+              <div class="ai-control">
+                <label class="ai-sublabel">order</label>
+                <div class="segmented-small" id="bgOrderSeg" role="tablist">
+                  <button type="button" data-order="sequential" class="active">Sequential</button>
+                  <button type="button" data-order="random">Random</button>
+                </div>
+              </div>
+              <div class="ai-control">
+                <label class="ai-sublabel">rotation interval <span class="ai-slider-val" id="bgRotationVal">45</span>s</label>
+                <input type="range" id="bgRotationSlider" min="10" max="120" step="1" value="45">
+              </div>
+              <div class="ai-control">
+                <label class="ai-sublabel">transition duration <span class="ai-slider-val" id="bgTransitionDurVal">3.0</span>s</label>
+                <input type="range" id="bgTransitionDurSlider" min="0.1" max="6" step="0.1" value="3">
+              </div>
+            </div>
+            <label class="ai-sublabel" style="margin-top:10px;display:block;">transition effects <span style="color:var(--text-faint);font-weight:400;letter-spacing:0;text-transform:none;">(random pick when multiple enabled)</span></label>
+            <div class="bg-transition-grid" id="bgTransitionGrid"><!-- populated by buildBgTransitionGrid() --></div>
+            <div class="bg-transition-bulk">
+              <button type="button" id="bgTxAll">All</button>
+              <button type="button" id="bgTxNone">None</button>
+              <button type="button" id="bgTxInvert">Invert</button>
+            </div>
+          </div>
+          <div class="sublabel" style="margin-top:10px;">Generates up to 4 images in parallel. Cycles through every <span id="bgRotationHint">45</span>s during sessions.</div>
           <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
             <button class="preview-btn" id="bgPreviewBtn">generate image</button>
             <button class="preview-btn" id="bgPreviewBatchBtn">generate 4 (parallel)</button>
@@ -2025,6 +2351,7 @@ I return to myself easily"></textarea>
     <div id="bgLayer" class="bg-layer" style="display:none;">
       <img id="bgImg0" class="bg-img active" alt="">
       <img id="bgImg1" class="bg-img" alt="">
+      <div id="bgFlash" class="bg-flash"></div>
       <video id="bgLocalVideo" class="bg-video" muted loop playsinline style="display:none;"></video>
       <div id="bgYoutubeWrap" class="bg-video" style="display:none;"><iframe id="bgYoutube" allow="autoplay; encrypted-media" frameborder="0" style="width:100%;height:100%;pointer-events:none;"></iframe></div>
     </div>
@@ -2212,9 +2539,7 @@ I return to myself easily"></textarea>
         </span>
       </label>
       <div class="sublabel" style="font-size:0.62rem;line-height:1.4;margin-top:2px;">When off: history still saves, but no digests/embeddings/adaptive updates are written, and no profile/memory/adaptive context is injected into AI prompts.</div>
-      <!-- DIRECTOR CALIBRATION — single slider that shifts both rule thresholds (recovery
-           mode, depth caps, re-entry treatment) AND AI tone directive. Persisted with
-           settings; disabled visually when Smart Director is off. -->
+      <!-- Director calibration — shifts every rule threshold + AI tone directive. -->
       <div id="directorBiasRow" style="margin-top:12px;padding:10px 12px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
           <span style="font-size:0.82rem;color:var(--text);">Director calibration</span>
@@ -2232,9 +2557,7 @@ I return to myself easily"></textarea>
           <button type="button" id="directorBiasResetBtn" style="background:none;border:none;color:var(--neon-cyan);cursor:pointer;font-size:0.66rem;padding:0;margin-left:4px;text-decoration:underline;">reset to balanced</button>
         </div>
       </div>
-      <!-- DEBUG SECTION — session-only, NEVER persisted. All flags reset on reload.
-           Intentionally excluded from _buildSettingsObj so these never leak to production users
-           via cloud sync, backup/restore, or share links. -->
+      <!-- Debug section — session-only, NEVER persisted (excluded from _buildSettingsObj). -->
       <hr style="border:none;border-top:1px solid var(--glass-border);margin:14px 0 8px;">
       <div class="pf-label" style="margin-bottom:6px;">Debug (session only, never saved)</div>
       <label class="toggle-row" for="debugSkipRescue" style="align-items:flex-start;margin-top:4px;">
@@ -2635,6 +2958,12 @@ I return to myself easily"></textarea>
     bgOrientation: 'landscape', // default | square | portrait | landscape
     bgGuidance: 7,               // 1-20, controls prompt adherence
     bgSteps: 30,                 // 15-50, quality/detail
+    // Playback + transition controls — backported from Slideshow spinoff.
+    // Calm defaults enabled; user can pick any subset via checkbox grid.
+    bgRotationSec: 45,           // seconds between slides (10-120)
+    bgTransitionDuration: 3,     // seconds per transition (0.1-6)
+    bgPlaybackOrder: 'sequential', // sequential | random
+    bgEnabledTransitions: ['crossfade', 'fadeBlack', 'kenburns', 'blur'],
     bgYoutubeUrl: '',
     bgStaticUrl: '',
     droneVolume: 0.35,
@@ -2758,7 +3087,7 @@ I return to myself easily"></textarea>
   const saveCustomPersonas = arr => { _personaCache = arr; idbSet(PERSONA_KEY, arr); return true; };
 
   /**
-   * Load personas from community packs exposed via `root.communityPacks` (item #3).
+   * Load personas from community packs exposed via `root.communityPacks`.
    * Packs are lazy-loaded generators with a top-level `personas` list whose
    * items are JSON objects or serialisable list entries. Silent on failure.
    * @returns {Array} Array of persona objects (possibly empty)
@@ -2857,7 +3186,7 @@ I return to myself easily"></textarea>
   }
 
   // ====================================================================
-  // TOKEN BUDGET (item #5) — priority-based trimming so long profiles,
+  // TOKEN BUDGET — priority-based trimming so long profiles,
   // adaptive context, and semantic memory don't silently exceed the
   // context window and cause quality cliffs.
   // ====================================================================
@@ -2902,7 +3231,7 @@ I return to myself easily"></textarea>
   }
 
   // ====================================================================
-  // SEMANTIC MEMORY (item #4) — augments the existing recency-based
+  // SEMANTIC MEMORY — augments the existing recency-based
   // 3-tier memory with embedding-based retrieval so "what worked for
   // this intention before" beats "what happened most recently."
   // Gracefully degrades when embedTexts isn't available.
@@ -2980,7 +3309,7 @@ I return to myself easily"></textarea>
   }
 
   // ====================================================================
-  // SHARE LINKS via uploadPlugin (item #1) — publishes custom personas
+  // SHARE LINKS via uploadPlugin — publishes custom personas
   // and full session configs as shareable URLs. Falls back to hash-URL
   // for simple configs when uploadPlugin isn't available.
   // ====================================================================
@@ -3135,7 +3464,7 @@ I return to myself easily"></textarea>
   }
 
   // ====================================================================
-  // PHASE REGEN DIFF (item #12) — when a user retries a phase, show the
+  // PHASE REGEN DIFF — when a user retries a phase, show the
   // old and new text side-by-side so they can pick the better one rather
   // than blindly overwriting.
   // ====================================================================
@@ -3208,6 +3537,10 @@ I return to myself easily"></textarea>
       bgOrientation: state.bgOrientation,
       bgGuidance: state.bgGuidance,
       bgSteps: state.bgSteps,
+      bgRotationSec: state.bgRotationSec,
+      bgTransitionDuration: state.bgTransitionDuration,
+      bgPlaybackOrder: state.bgPlaybackOrder,
+      bgEnabledTransitions: state.bgEnabledTransitions,
       bgYoutubeUrl: state.bgYoutubeUrl,
       bgStaticUrl: state.bgStaticUrl,
       droneVolume: state.droneVolume,
@@ -3384,6 +3717,27 @@ I return to myself easily"></textarea>
         const el = $('bgStepsSlider'); if (el) el.value = state.bgSteps;
         const lbl = $('bgStepsVal'); if (lbl) lbl.textContent = state.bgSteps;
       }
+      if (s.bgRotationSec != null) {
+        state.bgRotationSec = Number(s.bgRotationSec);
+        const el = $('bgRotationSlider'); if (el) el.value = state.bgRotationSec;
+        const lbl = $('bgRotationVal'); if (lbl) lbl.textContent = state.bgRotationSec;
+        const hint = $('bgRotationHint'); if (hint) hint.textContent = state.bgRotationSec;
+      }
+      if (s.bgTransitionDuration != null) {
+        state.bgTransitionDuration = Number(s.bgTransitionDuration);
+        const el = $('bgTransitionDurSlider'); if (el) el.value = state.bgTransitionDuration;
+        const lbl = $('bgTransitionDurVal'); if (lbl) lbl.textContent = state.bgTransitionDuration.toFixed(1);
+      }
+      if (s.bgPlaybackOrder) {
+        state.bgPlaybackOrder = s.bgPlaybackOrder;
+        const seg = $('bgOrderSeg');
+        if (seg) seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.order === s.bgPlaybackOrder));
+      }
+      if (Array.isArray(s.bgEnabledTransitions)) {
+        // Filter against the current registry — keys may have been renamed/removed
+        state.bgEnabledTransitions = s.bgEnabledTransitions.filter(k => BG_TRANSITIONS[k]);
+        if (typeof buildBgTransitionGrid === 'function') buildBgTransitionGrid();
+      }
       if (s.bgYoutubeUrl) { state.bgYoutubeUrl = s.bgYoutubeUrl; const el = $('bgYoutubeUrl'); if (el) el.value = s.bgYoutubeUrl; }
       if (s.bgStaticUrl) { state.bgStaticUrl = s.bgStaticUrl; const el = $('bgUrlInput'); if (el) el.value = s.bgStaticUrl; }
       if (s.droneVolume != null) { state.droneVolume = s.droneVolume; const el = $('droneVolume'); if (el) el.value = Math.round(s.droneVolume * 100); const v = $('droneVolVal'); if (v) v.textContent = Math.round(s.droneVolume * 100); }
@@ -3507,17 +3861,14 @@ I return to myself easily"></textarea>
   }
 
   // ====================================================================
-  // PASS 2 — LIVING PROFILE + DIRECTOR BRIEF
+  // LIVING PROFILE + DIRECTOR BRIEF
   // ====================================================================
-  // Merges three independent stores into one unified view of the practitioner,
-  // then runs rule-based logic to produce an actionable brief for the next
-  // session. Both are computed on-demand (no new persistence layer introduced);
-  // the source stores (profile, memory, adaptive, history, analytics) continue
-  // to own their data.
+  // Merges profile + memory + adaptive + history into one on-demand view, then
+  // runs rule-based logic over it to produce a session brief. No new persistence
+  // layer — source stores own their data.
   //
-  // Keep the director logic RULE-BASED, not AI-inferred. Rules are auditable
-  // and testable; AI-reasoned clinical judgment is a slippery slope this app
-  // should not take.
+  // IMPORTANT: director logic stays RULE-BASED. AI-inferred clinical judgment is
+  // a slippery slope this app should not take.
 
   /**
    * Build a unified "living profile" by merging user-edited profile + AI-observed
@@ -4213,7 +4564,7 @@ I return to myself easily"></textarea>
     if (!history.length || adaptive.memorySessCount < 5) return adaptive.memorySummary;
     const recent = history.slice(0, 8).map(s => `${s.guide}/${s.method} ${s.length} mood:${s.preMood ?? '?'}→${s.postMood ?? '?'} ${s.completed ? '✓' : '✗'}`).join('; ');
     try {
-      // Item #9 — route through hardened aiGenerate wrapper (consistent HTTP/empty-text handling).
+      // route through hardened aiGenerate wrapper (consistent HTTP/empty-text handling).
       const data = await aiGenerate(
         `You are analyzing a hypnosis user's recent sessions. Write a 1-2 sentence behavioral summary noting: what works best, what to avoid, emotional trajectory. Be concise and clinical.\n\nRecent sessions: ${recent}\n\nPrevious summary: ${adaptive.memorySummary || 'none'}\n\nNew summary:`,
         { stopSequences: ['\n\n'] }
@@ -4224,7 +4575,7 @@ I return to myself easily"></textarea>
     } catch { return adaptive.memorySummary; }
   }
 
-  // ── Phase 9: Master update — called after each session ──
+  // Master update — called after each completed session
   async function updateAdaptiveProfile(sessionRecord, wasEmergency) {
     if (state.smartDirectorEnabled === false) {
       sdLog('updateAdaptiveProfile skipped — Smart Director off');
@@ -4296,7 +4647,7 @@ I return to myself easily"></textarea>
     const provider = state.extAiProvider || 'perchance';
     // Helper — ensure a returned object always has a usable shape and
     // surfaces empty/failed generations as errors rather than silent empty
-    // strings that propagate into scripts (item #9).
+    // strings that propagate into scripts.
     const asResult = (text, stopReason, note) => {
       const t = (text || '').trim();
       if (!t || stopReason === 'error') return { generatedText: '', stopReason: 'error', _note: note || 'empty or errored' };
@@ -4445,7 +4796,7 @@ Practitioner profile (full, natural sentences):`;
         const entry = { sessionId: record.date, date: record.date, digest, depth: record.depth, moodDelta: (record.postMood ?? 5) - (record.preMood ?? 5) };
         memory.sessionDigests.unshift(entry);
         while (memory.sessionDigests.length > 30) memory.sessionDigests.pop();
-        // Item #4 — also persist an embedding vector so future sessions can
+        // also persist an embedding vector so future sessions can
         // retrieve semantically relevant digests (not just recent ones).
         // Guarded — silent no-op if embedTexts isn't available in this browser.
         embedAndStoreDigest(entry.sessionId, digest).catch(() => {});
@@ -4548,12 +4899,6 @@ Practitioner profile (full, natural sentences):`;
       el.classList.toggle('completed', n < state.currentStep && !isSkipped);
       el.classList.toggle('skipped', isSkipped);
       el.classList.toggle('clickable', n < state.currentStep && !isSkipped);
-    });
-    // Connectors
-    document.querySelectorAll('.step-connector').forEach(el => {
-      const [from] = el.dataset.connector.split('-').map(Number);
-      const isSkipped = state._skippedToScript && !state.stepsCompleted[from];
-      el.classList.toggle('completed', from < state.currentStep && !isSkipped);
     });
     // Step values under circles — show "Skipped" for bypassed steps
     if (state._skippedToScript) {
@@ -5286,6 +5631,260 @@ Practitioner profile (full, natural sentences):`;
     landscape: '768x512',
   };
 
+  // ====================================================================
+  // BG TRANSITION REGISTRY — 12 effects, backported from Slideshow spinoff.
+  // Adapted for <img> elements (not background-image divs) and for the
+  // session-bg dim cap of 0.35 (so text stays readable over the images).
+  //
+  // Each entry: { label, run(oldEl, newEl, url, durSec) }
+  //   • Sets newEl.src, arranges z-index, and starts the visual transition.
+  //   • Safe to call concurrently — scheduleCleanup guards against clobber.
+  //
+  // Fade-through-black/white use the #bgFlash overlay inside #bgLayer,
+  // which dims/lightens everything below it (images) without touching UI.
+  // ====================================================================
+  const BG_ACTIVE_OPACITY = 0.35;
+
+  function _bgPrep(oldEl, newEl) {
+    // Reset newEl state so the next transition starts clean
+    newEl.style.transition = 'none';
+    newEl.style.transform = '';
+    newEl.style.filter = '';
+    newEl.style.clipPath = '';
+    newEl.style.opacity = '0';
+    newEl.style.zIndex = '2';
+    oldEl.style.zIndex = '1';
+    void newEl.offsetWidth; // force reflow so subsequent transitions animate
+  }
+  function _bgScheduleCleanup(el, delayMs) {
+    setTimeout(() => {
+      if (el.style.zIndex !== '2') { // don't clobber a slide the next transition just promoted
+        el.style.transition = 'none';
+        el.style.transform = '';
+        el.style.filter = '';
+        el.style.clipPath = '';
+        el.style.opacity = '0';
+        el.classList.remove('active');
+      }
+    }, delayMs);
+  }
+
+  const BG_TRANSITIONS = {
+    cut: {
+      label: 'Cut',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.classList.add('active');
+        oldEl.classList.remove('active');
+        oldEl.style.opacity = '0';
+      },
+    },
+    crossfade: {
+      label: 'Crossfade',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease`;
+        oldEl.style.transition = `opacity ${dur}s ease`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.classList.add('active');
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+      },
+    },
+    fadeBlack: {
+      label: 'Fade → black',
+      async run(oldEl, newEl, url, dur) {
+        const flash = $('bgFlash');
+        if (flash) {
+          flash.style.background = '#000';
+          flash.style.transition = `opacity ${dur / 2}s ease`;
+          flash.style.opacity = '1';
+        }
+        await new Promise(r => setTimeout(r, dur * 500));
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.classList.add('active');
+        oldEl.classList.remove('active');
+        oldEl.style.opacity = '0';
+        await new Promise(r => setTimeout(r, 50));
+        if (flash) flash.style.opacity = '0';
+      },
+    },
+    fadeWhite: {
+      label: 'Fade → white',
+      async run(oldEl, newEl, url, dur) {
+        const flash = $('bgFlash');
+        if (flash) {
+          flash.style.background = '#fff';
+          flash.style.transition = `opacity ${dur / 2}s ease`;
+          flash.style.opacity = '1';
+        }
+        await new Promise(r => setTimeout(r, dur * 500));
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.classList.add('active');
+        oldEl.classList.remove('active');
+        oldEl.style.opacity = '0';
+        await new Promise(r => setTimeout(r, 50));
+        if (flash) {
+          flash.style.opacity = '0';
+          setTimeout(() => { flash.style.background = '#000'; }, dur * 1000 + 300);
+        }
+      },
+    },
+    slideLeft: {
+      label: 'Slide left',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'translateX(100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateX(0)';
+        oldEl.style.transform = 'translateX(-100%)';
+        newEl.classList.add('active');
+        _bgScheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    slideUp: {
+      label: 'Slide up',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'translateY(100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateY(0)';
+        oldEl.style.transform = 'translateY(-100%)';
+        newEl.classList.add('active');
+        _bgScheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    zoomIn: {
+      label: 'Zoom in',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.transform = 'scale(0.3)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'scale(1)';
+        newEl.classList.add('active');
+        oldEl.style.transition = `opacity ${dur}s ease`;
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+      },
+    },
+    zoomOut: {
+      label: 'Zoom out',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.transform = 'scale(1.8)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'scale(1)';
+        newEl.classList.add('active');
+        oldEl.style.transition = `opacity ${dur}s ease`;
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+      },
+    },
+    kenburns: {
+      label: 'Ken Burns',
+      run(oldEl, newEl, url, dur) {
+        // Crossfade in, then slow zoom over the full rotation interval
+        const intervalSec = Number(state.bgRotationSec) || 45;
+        const zooms = [
+          { from: 'scale(1.0) translate(0, 0)',      to: 'scale(1.18) translate(-3%, -2%)' },
+          { from: 'scale(1.18) translate(-3%, -2%)', to: 'scale(1.0) translate(0, 0)'      },
+          { from: 'scale(1.0) translate(0, 0)',      to: 'scale(1.15) translate(3%, -2%)'  },
+          { from: 'scale(1.12) translate(2%, 2%)',   to: 'scale(1.0) translate(0, 0)'      },
+        ];
+        const z = zooms[Math.floor(Math.random() * zooms.length)];
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.transform = z.from;
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${intervalSec}s ease-in-out`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = z.to;
+        newEl.classList.add('active');
+        oldEl.style.transition = `opacity ${dur}s ease`;
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+      },
+    },
+    blur: {
+      label: 'Blur',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.filter = 'blur(30px)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, filter ${dur}s ease`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.filter = 'blur(0px)';
+        newEl.classList.add('active');
+        oldEl.style.transition = `opacity ${dur}s ease, filter ${dur}s ease`;
+        oldEl.style.filter = 'blur(30px)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+        setTimeout(() => { oldEl.style.filter = ''; }, dur * 1000 + 150);
+      },
+    },
+    iris: {
+      label: 'Iris',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.clipPath = 'circle(0% at 50% 50%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `clip-path ${dur}s ease`;
+        newEl.style.clipPath = 'circle(150% at 50% 50%)';
+        newEl.classList.add('active');
+        setTimeout(() => {
+          oldEl.classList.remove('active');
+          oldEl.style.opacity = '0';
+        }, dur * 1000 + 50);
+      },
+    },
+    wipe: {
+      label: 'Wipe',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.clipPath = 'inset(0 100% 0 0)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `clip-path ${dur}s ease`;
+        newEl.style.clipPath = 'inset(0 0 0 0)';
+        newEl.classList.add('active');
+        setTimeout(() => {
+          oldEl.classList.remove('active');
+          oldEl.style.opacity = '0';
+        }, dur * 1000 + 50);
+      },
+    },
+  };
+
+  // Default-enabled transition keys — calm ones that suit a hypnosis session.
+  // User can toggle any subset via the checkbox grid in Step 5.
+  const BG_DEFAULT_ENABLED = ['crossfade', 'fadeBlack', 'kenburns', 'blur'];
+
   const bgEngine = {
     source: 'none',
     prompt: '',
@@ -5385,30 +5984,68 @@ Practitioner profile (full, natural sentences):`;
     startRotation() {
       if (this.source !== 'ai' || this.queue.length === 0) return;
       if (this.interval) return; // already rotating — don't stack intervals
-      this.crossfade(this.queue[0]);
-      let idx = 0;
+      this._playOrder = this._buildPlayOrder();
+      this._playCursor = 0;
+      this.swap(this.queue[this._playOrder[0]]);
+      const secs = Number(state.bgRotationSec) || this.rotationSec;
       this.interval = setInterval(() => {
         if (state.paused) return;
-        idx = (idx + 1) % this.queue.length;
-        this.crossfade(this.queue[idx]);
-        // Silently generate more in background
+        this._playCursor = (this._playCursor + 1) % this._playOrder.length;
+        // Rebuild order at each full wrap — picks up new queue items + re-shuffles
+        if (this._playCursor === 0) this._playOrder = this._buildPlayOrder();
+        const idx = this._playOrder[this._playCursor];
+        if (idx != null && this.queue[idx]) this.swap(this.queue[idx]);
+        // Silently generate more in background while under the cap
         if (!this.generating && this.queue.length < 20) this.generateOne();
-      }, this.rotationSec * 1000);
+      }, secs * 1000);
+    },
+
+    /** Rebuild the play-order array — identity for sequential, shuffled for random */
+    _buildPlayOrder() {
+      const order = this.queue.map((_, i) => i);
+      if (state.bgPlaybackOrder === 'random') {
+        for (let i = order.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [order[i], order[j]] = [order[j], order[i]];
+        }
+      }
+      return order;
     },
 
     stopRotation() {
       if (this.interval) { clearInterval(this.interval); this.interval = null; }
     },
 
-    crossfade(dataUrl) {
+    /** Swap to a new image using a random enabled transition.
+     *  Replaces the old single-style crossfade(). Falls back to crossfade if
+     *  the randomly-picked one throws or no transitions are enabled. */
+    swap(src) {
       const imgs = [$('bgImg0'), $('bgImg1')];
-      if (!imgs[0] || !imgs[1]) return;
-      const next = 1 - this.currentSlot;
-      imgs[next].src = dataUrl;
-      imgs[next].classList.add('active');
-      imgs[this.currentSlot].classList.remove('active');
-      this.currentSlot = next;
+      if (!imgs[0] || !imgs[1] || !src) return;
+      const oldEl = imgs[this.currentSlot];
+      const newEl = imgs[1 - this.currentSlot];
+      const enabled = Array.isArray(state.bgEnabledTransitions) && state.bgEnabledTransitions.length
+        ? state.bgEnabledTransitions
+        : BG_DEFAULT_ENABLED;
+      const validEnabled = enabled.filter(k => BG_TRANSITIONS[k]);
+      const pick = validEnabled.length
+        ? validEnabled[Math.floor(Math.random() * validEnabled.length)]
+        : 'crossfade';
+      const tx = BG_TRANSITIONS[pick] || BG_TRANSITIONS.crossfade;
+      const dur = Number(state.bgTransitionDuration) || 3;
+      try {
+        Promise.resolve(tx.run(oldEl, newEl, src, dur)).catch(e => {
+          console.error('bg transition async fail:', pick, e);
+        });
+      } catch (e) {
+        console.error('bg transition sync fail:', pick, e);
+        try { BG_TRANSITIONS.crossfade.run(oldEl, newEl, src, dur); } catch {}
+      }
+      this.currentSlot = 1 - this.currentSlot;
     },
+
+    /** Legacy alias — some callers still reference crossfade() directly. */
+    crossfade(src) { this.swap(src); },
 
     setStaticImage(src) {
       const img = $('bgImg0');
@@ -6230,7 +6867,7 @@ Practitioner profile (full, natural sentences):`;
     progressLabel.textContent = 'crafting your suggestion — about 2–3 minutes...';
     const stopTimer = makeElapsedTimer(s => { progressLabel.textContent = `crafting... ${s}s elapsed`; });
 
-    // Token-budgeted prompt assembly (item #5). The JSON-output schema and
+    // Token-budgeted prompt assembly. The JSON-output schema and
     // universal rules are priority-5 (never trimmed); profile context trims
     // first if we're near the context limit.
     const headerBlock = `You are a master hypnotherapist converting a user's rough intention into a technically-precise hypnotic suggestion.
@@ -6268,7 +6905,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
     try {
       const data = await root.aiTextPlugin({ instruction, startWith: '{', stopSequences: ['\n\n\n'], hideStartWith: true });
-      // Item #9 — guard against error status AND empty output
+      // guard against error status AND empty output
       if (!data || data.stopReason === 'error') throw new Error('AI generation encountered an error.');
       let text = (data.generatedText || '').trim();
       if (!text) throw new Error('AI returned empty text — please try again.');
@@ -6519,7 +7156,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       return `<div class="gen-phase ${st}" data-phase-idx="${i}"><div class="gen-dot"></div><span>${label}</span></div>`;
     }).join('');
     if (etaEl) etaEl.textContent = eta || '';
-    // Streaming preview box (item #6) — ensure it exists under the phase list.
+    // Streaming preview box — ensure it exists under the phase list.
     if (!$('genStreamBox')) {
       const box = document.createElement('div');
       box.id = 'genStreamBox';
@@ -6600,7 +7237,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       try { const ap = await getAdaptive(); adaptiveCtx = getAdaptivePromptBlock(ap); } catch {}
     } else { sdLog('adaptiveCtx skipped — Smart Director off'); }
 
-    // Pass 2 — Director Brief. Built once per session generation (not per phase)
+    // Director Brief — built once per session generation (not per phase)
     // so it adds ≤ 1 extra round-trip of IDB reads, no AI call. Formatted block
     // is short (≤ 300 chars) and takes priority 3 alongside profile.
     let directorBriefCtx = '';
@@ -6620,7 +7257,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       } catch (e) { console.warn('Director brief build failed:', e); }
     } else { sdLog('directorBriefCtx skipped — Smart Director off'); }
 
-    // Memory context — prefer semantic retrieval (item #4) over pure recency.
+    // Memory context — prefer semantic retrieval over pure recency.
     // Fall back to rolling window + long-term profile when embeddings aren't
     // available or no relevant matches exist.
     let memoryCtx = '';
@@ -6641,7 +7278,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       } catch (e) { console.warn('Memory context build failed:', e); }
     } else { sdLog('memoryCtx skipped — Smart Director off'); }
 
-    // Build sharedContext under a token budget (item #5) — priority order
+    // Build sharedContext under a token budget — priority order
     // determines what gets dropped first if the user has a huge profile +
     // long memory + many affirmations.
     const headerBlock = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"`;
@@ -6650,7 +7287,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       { name: 'crafted',   text: craftedBlock,      priority: 4 },
       { name: 'affirm',    text: affirmBlock,       priority: 4 },
       { name: 'demoNote',  text: demoNote,          priority: 4 },
-      { name: 'director',  text: directorBriefCtx,  priority: 3 }, // Pass 2 — short, actionable, high-value
+      { name: 'director',  text: directorBriefCtx,  priority: 3 }, // short, actionable, high-value
       { name: 'profile',   text: profileCtx,        priority: 3 },
       { name: 'adaptive',  text: adaptiveCtx,       priority: 2 },
       { name: 'memory',    text: memoryCtx,         priority: 1 }, // first to drop
@@ -6737,7 +7374,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       const gs = _genState;
       const phaseId = gs.phases[idx];
       // Capture the current (original) phase text BEFORE regenerating so we can
-      // offer a diff comparison after (item #12). Empty original = first-time
+      // offer a diff comparison after. Empty original = first-time
       // generation, no diff needed.
       const originalText = gs.phaseResults[phaseId] || '';
       _aiInProgress = true;
@@ -6827,7 +7464,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       setLoading('generateScriptBtn', false, 'generate full script');
       setLoading('regenScriptBtn', false);
       if (scriptBuildProgress) scriptBuildProgress.style.display = 'none';
-      // Hide streaming preview once generation completes (item #6)
+      // Hide streaming preview once generation completes
       setStreamingPreview('', '', { hide: true });
     }
   }
@@ -6839,7 +7476,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const summaryBlock = gs.priorSummary ? `\n\nSO FAR (summary — continue seamlessly, DO NOT repeat):\n${gs.priorSummary}` : '';
     const taskBlock = `\n\n═══ YOUR TASK ═══\n${gs.phaseInstructions[phase]}\n\nStay in ${gs.persona.name}'s voice. Continue naturally. No ===PHASE=== markers. Start immediately:`;
 
-    // Token budget (item #5) — drop the prior-summary block first if we're over budget.
+    // Token budget — drop the prior-summary block first if we're over budget.
     // The sharedContext + task block are priority 5 (never trimmed).
     const finalInstruction = trimToTokenBudget([
       { name: 'sharedContext', text: gs.sharedContext, priority: 5 },
@@ -6847,7 +7484,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       { name: 'taskBlock',     text: taskBlock,        priority: 5 },
     ], 900);
 
-    // Streaming (item #6) — render text as it arrives so users see progress
+    // Streaming — render text as it arrives so users see progress
     // within ~1s instead of waiting ~30-60s for the full phase.
     let accumulated = '';
     const onChunk = (data) => {
@@ -6874,7 +7511,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       throw new Error('AI call threw: ' + (e?.message || e));
     }
 
-    // Item #9 — explicit error-before-text check
+    // explicit error-before-text check
     if (!data || data.stopReason === 'error') {
       setStreamingPreview(phaseLabel, accumulated, { done: true });
       throw new Error('AI returned an error');
@@ -7970,7 +8607,7 @@ ${s.text.trim()}`).join('\n\n').trim();
   }
 
   async function loadSharedConfig() {
-    // Item #1 — new uploadPlugin-backed share links (`?data=<fileId>.gz`)
+    // new uploadPlugin-backed share links (`?data=<fileId>.gz`)
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const dataId = urlParams.get('data');
@@ -8779,7 +9416,7 @@ ${s.text.trim()}`).join('\n\n').trim();
     if (history.length > 50) history.length = 50; // Keep last 50
     await idbSet('stillness_history_v1', history);
     await recordAnalytics(sessionRecord, wasEmergency);
-    updateAdaptiveProfile(sessionRecord, wasEmergency); // Phase 9 — non-blocking
+    updateAdaptiveProfile(sessionRecord, wasEmergency); // non-blocking
     updateSessionMemory(state.fullScript, sessionRecord); // Memory system — non-blocking
     renderHeatmap(); // Refresh activity heatmap
     renderSparkline(); // Refresh rising-score sparkline
@@ -9142,6 +9779,62 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const lbl = $('bgStepsVal'); if (lbl) lbl.textContent = state.bgSteps;
   });
   $('bgStepsSlider')?.addEventListener('change', saveUserSettings);
+
+  // ── Playback + transition controls (backported from Slideshow) ──
+  function buildBgTransitionGrid() {
+    const grid = $('bgTransitionGrid');
+    if (!grid) return;
+    const enabled = new Set(state.bgEnabledTransitions || BG_DEFAULT_ENABLED);
+    grid.innerHTML = Object.keys(BG_TRANSITIONS).map(k => {
+      const checked = enabled.has(k) ? ' checked' : '';
+      return `<label>
+        <input type="checkbox" value="${k}"${checked}>
+        <span>${BG_TRANSITIONS[k].label}</span>
+      </label>`;
+    }).join('');
+  }
+  function syncBgEnabledFromGrid() {
+    const boxes = document.querySelectorAll('#bgTransitionGrid input[type="checkbox"]');
+    state.bgEnabledTransitions = Array.from(boxes).filter(b => b.checked).map(b => b.value);
+    saveUserSettings();
+  }
+  buildBgTransitionGrid();
+
+  $('bgTransitionGrid')?.addEventListener('change', syncBgEnabledFromGrid);
+  $('bgTxAll')?.addEventListener('click', () => {
+    document.querySelectorAll('#bgTransitionGrid input[type="checkbox"]').forEach(b => b.checked = true);
+    syncBgEnabledFromGrid();
+  });
+  $('bgTxNone')?.addEventListener('click', () => {
+    document.querySelectorAll('#bgTransitionGrid input[type="checkbox"]').forEach(b => b.checked = false);
+    syncBgEnabledFromGrid();
+  });
+  $('bgTxInvert')?.addEventListener('click', () => {
+    document.querySelectorAll('#bgTransitionGrid input[type="checkbox"]').forEach(b => b.checked = !b.checked);
+    syncBgEnabledFromGrid();
+  });
+
+  $('bgOrderSeg')?.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-order]');
+    if (!btn) return;
+    state.bgPlaybackOrder = btn.dataset.order;
+    $('bgOrderSeg').querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+    saveUserSettings();
+  });
+
+  $('bgRotationSlider')?.addEventListener('input', e => {
+    state.bgRotationSec = Number(e.target.value);
+    const lbl = $('bgRotationVal'); if (lbl) lbl.textContent = state.bgRotationSec;
+    const hint = $('bgRotationHint'); if (hint) hint.textContent = state.bgRotationSec;
+  });
+  $('bgRotationSlider')?.addEventListener('change', saveUserSettings);
+
+  $('bgTransitionDurSlider')?.addEventListener('input', e => {
+    state.bgTransitionDuration = Number(e.target.value);
+    const lbl = $('bgTransitionDurVal'); if (lbl) lbl.textContent = state.bgTransitionDuration.toFixed(1);
+  });
+  $('bgTransitionDurSlider')?.addEventListener('change', saveUserSettings);
+
   // Background generate handler — single image.
   async function _bgGenerate() {
     const btn = $('bgPreviewBtn');
@@ -10404,430 +11097,6 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     _updateDirectorBiasUI();
   })();
 </script>
-
-<style id="accessibility-contrast-overrides-v8">
-  :root {
-    --text-dim: #b9ab91;
-    --text-faint: #96876f;
-    --glass-border: rgba(255,180,80,0.18);
-    --border: rgba(255,180,80,0.18);
-  }
-
-  html { font-size: 16px; }
-  body { line-height: 1.5; }
-  button, .btn, .filter-tab, .preview-btn, .voice-preview-btn, .transcript-toggle, .sidebar-tab, .profile-chip {
-    min-height: 40px;
-  }
-  .step-label,
-  .summary-card .summary-label,
-  .post-card-title,
-  .post-trigger-title,
-  .field-label,
-  .sidebar-section-title,
-  .pf-label,
-  .stats-kpi-label,
-  .stats-chart-title,
-  .card .card-badge {
-    font-size: 0.75rem !important;
-    line-height: 1.35;
-  }
-  .step-value,
-  .hint,
-  .sublabel,
-  .preview-hint,
-  .kb-hint,
-  .sidebar-profile-sub,
-  .live-small,
-  .post-trigger-sub,
-  .footer,
-  .script-stats,
-  .crafted-meta,
-  .step-nav .btn-skip,
-  .card .card-tagline,
-  .preset-card .preset-desc,
-  .tour-card p,
-  .safety-inner p,
-  .safety-check,
-  .history-item .h-meta,
-  .history-item .h-preview,
-  .history-item .h-no-script,
-  .transcript-toggle,
-  .live-row label,
-  .live-row select,
-  .phase-indicator,
-  .mood-label,
-  .session-time,
-  .audio-indicator,
-  .persona-indicator,
-  .method-indicator,
-  .detail-panel,
-  details summary,
-  .filter-tab,
-  .modal .field-label-sm,
-  .library-empty,
-  .brief-preview,
-  .disclaimer,
-  .script-text,
-  .journal-area,
-  .toggle-row label,
-  .toggle-row .hint {
-    font-size: 0.875rem !important;
-    line-height: 1.5;
-  }
-  .card .card-tag,
-  .post-checkin-label,
-  .state-scale-labels span,
-  .stats-expand-icon {
-    font-size: 0.75rem !important;
-  }
-  .tour-skip,
-  .tour-next,
-  .post-checkin-ends,
-  .history-item .h-btn,
-  .step-circle,
-  .step-nav .btn-back,
-  .step-nav .btn-next,
-  .btn,
-  .btn.secondary,
-  .btn.warm,
-  .btn.green,
-  .preview-btn,
-  .voice-preview-btn,
-  .filter-tab,
-  .sidebar-tab,
-  .profile-chip {
-    font-size: 0.95rem !important;
-  }
-  .card .card-action-btn,
-  .live-btn,
-  .transcript-toggle {
-    font-size: 0.85rem !important;
-  }
-  .post-checkin-val,
-  .step-title,
-  .summary-card .summary-value,
-  .card .card-name {
-    letter-spacing: normal;
-  }
-  .step-circle { width: 42px; height: 42px; }
-  .history-item .h-btn { width: 36px; height: 32px; }
-  .filter-tab.active,
-  .btn:hover,
-  .btn.secondary:hover,
-  .preview-btn.active,
-  .voice-preview-btn.active,
-  .sidebar-tab.active,
-  .profile-chip.active {
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.08), 0 0 12px rgba(0,229,255,0.18);
-  }
-  input, select, textarea {
-    font-size: 1rem !important;
-  }
-  input::placeholder, textarea::placeholder {
-    color: #a89982;
-    opacity: 1;
-  }
-  .card, .detail-panel, .summary-card, .post-card, .toggle-row, .crafted-preview, .script-preview, .modal, .brief-preview, .disclaimer, .history-item {
-    border-color: rgba(255,180,80,0.2);
-  }
-  @media (max-width: 480px) {
-    .step-label,
-    .summary-card .summary-label,
-    .post-card-title,
-    .post-trigger-title,
-    .field-label,
-    .sidebar-section-title,
-    .pf-label,
-    .stats-kpi-label,
-    .stats-chart-title,
-    .card .card-badge {
-      font-size: 0.72rem !important;
-    }
-    .step-value,
-    .hint,
-    .sublabel,
-    .preview-hint,
-    .kb-hint,
-    .sidebar-profile-sub,
-    .live-small,
-    .post-trigger-sub,
-    .footer,
-    .script-stats,
-    .crafted-meta,
-    .step-nav .btn-skip,
-    .card .card-tagline,
-    .preset-card .preset-desc,
-    .tour-card p,
-    .safety-inner p,
-    .safety-check,
-    .history-item .h-meta,
-    .history-item .h-preview,
-    .history-item .h-no-script,
-    .transcript-toggle,
-    .live-row label,
-    .live-row select,
-    .phase-indicator,
-    .mood-label,
-    .session-time,
-    .audio-indicator,
-    .persona-indicator,
-    .method-indicator,
-    .detail-panel,
-    details summary,
-    .filter-tab,
-    .modal .field-label-sm,
-    .library-empty,
-    .brief-preview,
-    .disclaimer,
-    .script-text,
-    .journal-area,
-    .toggle-row label,
-    .toggle-row .hint {
-      font-size: 0.84rem !important;
-    }
-  }
-</style>
-
-<style id="workflow-and-focus-polish-v9">
-  :root {
-    --focus-ring: 0 0 0 3px rgba(0,229,255,0.22), 0 0 0 1px rgba(255,255,255,0.14);
-  }
-
-  button:focus-visible,
-  .btn:focus-visible,
-  .preview-btn:focus-visible,
-  .voice-preview-btn:focus-visible,
-  .filter-tab:focus-visible,
-  .sidebar-tab:focus-visible,
-  .profile-chip:focus-visible,
-  .transcript-toggle:focus-visible,
-  input:focus-visible,
-  select:focus-visible,
-  textarea:focus-visible {
-    outline: none;
-    box-shadow: var(--focus-ring) !important;
-  }
-
-  .preview-row {
-    gap: 8px;
-  }
-
-  .step-content[data-step="5"] .preview-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    align-items: stretch;
-  }
-
-  .step-content[data-step="5"] .preview-row .preview-btn {
-    min-height: 42px;
-    justify-content: center;
-    text-align: center;
-  }
-
-  .step-content[data-step="5"] .detail-panel {
-    margin-bottom: 14px;
-  }
-
-  .step-nav .btn-back,
-  .step-nav .btn-next,
-  .step-nav .btn-skip {
-    min-height: 44px;
-  }
-
-  .step-nav .btn-skip {
-    color: var(--text-dim);
-    background: rgba(255,255,255,0.02);
-  }
-
-  .script-actions,
-  .crafted-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  }
-
-  .script-actions .btn,
-  .crafted-actions .btn {
-    min-height: 42px;
-  }
-
-  .detail-title {
-    line-height: 1.35;
-  }
-
-  @media (max-width: 480px) {
-    .step-content[data-step="5"] .preview-row {
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .script-actions,
-    .crafted-actions {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>
-
-<style id="minimal-edgy-override">
-  /* Minimal-edgy theme override. Appended last so it wins the cascade.
-     Squares every corner, strips decorative shadows from surfaces/text, but keeps
-     a deliberate amber-on-amber button treatment with a soft orange glow halo.
-     Amber drives headings; magenta surfaces for active/warning states; cyan for focus. */
-
-  /* Nuke all rounded corners globally — last word on the subject. */
-  *, *::before, *::after { border-radius: 0 !important; }
-
-  /* Flatten — no text shadows, no backdrop filters anywhere. */
-  * { text-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
-
-  /* Surfaces: solid bg, 1px border, no shadow. */
-  .card, .detail-panel, .summary-card, .post-card, .toggle-row, .crafted-preview,
-  .script-preview, .modal, .modal-content, .brief-preview, .disclaimer, .history-item,
-  .preset-card, .tour-card, .safety-inner, .program-card, .sidebar, .stats-panel,
-  .live-panel, .post-trigger, .sparkline-wrap, .heatmap-wrap {
-    box-shadow: none !important;
-    border: 1px solid var(--border) !important;
-    background: var(--bg-soft) !important;
-  }
-
-  /* Inputs: crisp square, hard focus. */
-  .pf-input, .pf-select, .pf-textarea,
-  input[type="text"], input[type="number"], input[type="url"], input[type="email"],
-  select, textarea {
-    box-shadow: none !important;
-    border: 1px solid var(--border) !important;
-    background: var(--bg) !important;
-  }
-  .pf-input:focus, .pf-select:focus, .pf-textarea:focus,
-  input:focus, select:focus, textarea:focus {
-    outline: none !important;
-    border-color: var(--accent) !important;
-  }
-
-  /* Headings: uppercase, wide-tracked, sans-serif, amber for visual warmth. */
-  h1, h2,
-  .field-label, .pf-label, .sidebar-section-title,
-  .card-title, .post-card-title, .summary-card .summary-label,
-  .stats-chart-title, .stats-kpi-label {
-    font-family: var(--font-display) !important;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 600;
-    color: var(--neon-amber) !important;
-  }
-  h1 { letter-spacing: 0.14em; font-weight: 700; }
-  h3 {
-    font-family: var(--font-display) !important;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 600;
-  }
-
-  /* Magenta as a secondary accent — pills, badges, phase active state, warnings. */
-  .card-badge, .post-trigger-title, .phase-dot.active,
-  .warning, .alert-danger, .post-warn, .notify.warn {
-    color: var(--neon-magenta) !important;
-    border-color: var(--neon-magenta) !important;
-  }
-  .phase-dot.active { background: var(--neon-magenta) !important; }
-
-  /* Buttons: amber fill, black text, soft orange glow. All buttons get this treatment
-     unless they're explicitly icon-only or a filter tab. Filter tabs keep their own
-     selected/unselected logic; icon-only buttons stay transparent. */
-  .btn, button, .preview-btn, .filter-tab {
-    transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s !important;
-  }
-  .btn, .preview-btn,
-  button:not(.icon-btn):not(.filter-tab):not(.toggle-btn):not([class*="close"]) {
-    background: var(--neon-amber) !important;
-    color: #000 !important;
-    border: 1px solid var(--neon-amber) !important;
-    box-shadow: 0 0 10px rgba(255,140,0,0.28) !important;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 700;
-  }
-  .btn:hover:not(:disabled), .preview-btn:hover:not(:disabled),
-  button:not(.icon-btn):not(.filter-tab):not(.toggle-btn):not([class*="close"]):hover:not(:disabled) {
-    background: #ffc940 !important;
-    color: #000 !important;
-    border-color: #ffc940 !important;
-    box-shadow: 0 0 16px rgba(255,140,0,0.5) !important;
-  }
-  .btn:active, .preview-btn:active,
-  button:not(.icon-btn):not(.filter-tab):not(.toggle-btn):not([class*="close"]):active {
-    box-shadow: 0 0 6px rgba(255,140,0,0.3) !important;
-    transform: translateY(1px);
-  }
-  .btn:disabled, .preview-btn:disabled, button:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    box-shadow: none !important;
-  }
-
-  /* Primary buttons — slightly more intense halo to read as emphasis. */
-  .btn.primary, button.primary {
-    box-shadow: 0 0 14px rgba(255,140,0,0.45) !important;
-  }
-  .btn.primary:hover:not(:disabled), button.primary:hover:not(:disabled) {
-    box-shadow: 0 0 22px rgba(255,140,0,0.65) !important;
-  }
-
-  /* Focus ring: crisp outline, not glow. */
-  :focus-visible {
-    outline: 2px solid var(--accent) !important;
-    outline-offset: 2px !important;
-    box-shadow: 0 0 10px rgba(255,140,0,0.28) !important;
-  }
-
-  /* ---- STEP COUNTER — amber glow + trail markers ---- */
-  /* Current step: amber glow (was cyan before the rewrite; now matches the amber language). */
-  .step-item.current .step-circle {
-    border-color: var(--neon-amber) !important;
-    color: var(--neon-amber) !important;
-    background: var(--bg) !important;
-    box-shadow: 0 0 12px rgba(255,179,0,0.5), 0 0 24px rgba(255,179,0,0.22) !important;
-  }
-  /* Completed step: solid amber pill with a softer halo. */
-  .step-item.completed .step-circle {
-    background: var(--neon-amber) !important;
-    border-color: var(--neon-amber) !important;
-    color: #000 !important;
-    box-shadow: 0 0 10px rgba(255,179,0,0.45) !important;
-  }
-  /* Hover on clickable (past) steps reuses the amber glow tone. */
-  .step-item.clickable:hover .step-circle {
-    border-color: var(--neon-amber) !important;
-    box-shadow: 0 0 12px rgba(255,179,0,0.45) !important;
-  }
-
-  /* Trail markers between steps. Drawn as ::after on each .step-item except the last.
-     The original .step-connector <div>s stay display:none — they were orphaned by the
-     6-column grid. Pseudo-elements are the right tool here: they overlay on top of the
-     grid cells without needing any layout surgery. */
-  .stepper { position: relative; }
-  .step-item::after {
-    content: '';
-    position: absolute;
-    top: clamp(13px, 4vw, 18px);                  /* vertical center of circle */
-    left: calc(50% + clamp(18px, 4.5vw, 23px));   /* past circle right edge + small gap */
-    width: calc(100% - clamp(36px, 9vw, 46px));   /* to next circle's left edge */
-    height: 2px;
-    background: var(--border);
-    z-index: 0;
-    pointer-events: none;
-  }
-  .step-item:last-child::after { display: none !important; }
-  /* Completed step's outgoing trail → amber. "Path taken" reads as lit. */
-  .step-item.completed::after {
-    background: var(--neon-amber);
-    box-shadow: 0 0 6px rgba(255,179,0,0.4);
-  }
-
-  /* Progress/phase dots, sliders, other accents kept flat. */
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border); }
-  ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
-</style>
 
 <script id="workflow-copy-polish-v9">
   (() => {

@@ -7,6 +7,81 @@ user-visible impact and effort.
 
 ---
 
+## Smart Director — Passes 1 + 2 ✅
+
+Rebuilt from "static string concatenation with a misleading tooltip" into an actual behavioral layer.
+
+- **Pass 1 — honest toggle.** `smartDirectorEnabled` now gates every derived system: `recordAnalytics`, `updateAdaptiveProfile`, `updateSessionMemory` (digests + embeddings + rolling + long-term), and the `adaptiveCtx`/`memoryCtx` prompt injections. History still records regardless (base log, not a derivation). Label + sublabel rewritten to match actual behavior. Zero persistence leaks into `_buildSettingsObj`.
+- **Pass 2 — living profile + director brief.** New `buildLivingProfile()` merges user-edited profile + AI-synthesized memory + adaptive signals + history snapshot into one structured object. `computeDirectorBrief()` runs rule-based logic over it — cold-start handling, recovery-mode detection, completion-rate triggers, emergency-exit caps, beginner depth caps, positive-pacing reinforcement, long-gap re-entry. Emits `{ coldStart, recoveryMode, recommendations, warnings, reasoning, bias }`. Injected into full-script prompt at priority 3 via `formatDirectorBriefForPrompt()`.
+- **Director calibration slider.** Seven-position (−3..+3, default 0, synced via settings) that shifts every rule threshold AND injects a tone directive into the AI prompt. Safety floors preserved: beginner cap lifts only at +3, emergency-exit cap requires 3+ exits (not 2) at +3 but never disappears entirely. Greys out when Smart Director is off.
+- **Debug bypasses** for development: skip rescue, skip cooldown, skip safety gate, unlock all methods, verbose logging. Session-only, never persisted, floating "⚠ DEBUG" pill when any are on.
+
+**Deferred to Pass 3:**
+
+- **Transparency panel — "what does the Director know about me, and why is it suggesting this?"** Surfaces the current living profile (merged view), the last director brief, and the reasoning per recommendation. Per-item "forget" buttons (delete one digest, one preference weight) so users have granular data control.
+- **Per-session bias override.** Current bias is global — one off session doesn't reset it. A pre-flight "nudge cautious / forward for this session" control on the Configure step, consuming the global bias as default. State is session-scoped, not persisted.
+- **"Because:" UI on director suggestions.** When the director recommends a depth/length change, show the one-line reasoning next to the field with a one-click "override" button. Currently the brief influences the AI prompt but the user never sees that it did.
+- **Per-field profile granularity.** Today profile is all-or-nothing apart from the `useFirstName` carve-out. Checkboxes per field ("share age but not name", "share goals but not about") with per-site policy (use profile when crafting suggestions, skip for full script).
+- **Per-call-site gating.** Some users may want memory-and-adaptive injection but no raw profile fields, or vice versa. A small matrix of toggles in the transparency panel.
+- **Rule-based guardrails expansion.** Age-based method filtering (regression methods unavailable for under-18 via profile, not experience gating). Trauma-keyword detection in `about` that flips the system prompt to trauma-informed directives. Depth-tolerance enforcement based on recent emergency exit reasons.
+- **Store director brief per session.** Add `brief` to the `sessionRecord` so retrospective debugging can answer "why did session 27 feel different?" later. Zero extra cost — `state._lastDirectorBrief` is already cached at generation time.
+- **"Forget everything and start fresh."** Single button that clears adaptive weights, memory digests, embeddings, and analytics while preserving history. Useful after major life changes or if the director drifts unhelpfully. Currently users have to export / edit / import to reset.
+- **Profile content length clamping.** `trimToTokenBudget` drops the whole profile block when over budget; finer-grained truncation within `about` (500 chars max) and `goals` (300 chars max) would keep the signal without losing the block.
+- **Prompt-injection sanitization for profile fields.** `about`, `goals`, `appearance` are interpolated unescaped. A shared persona config that sets `about: "Ignore previous instructions..."` would execute. Strip injection patterns before building the string.
+- **Sync director state cross-device.** Living profile currently computes from IDB sources per device; settings (including bias) sync but not memory / adaptive / embeddings. Natural pair with roadmap item #10.
+
+---
+
+## Image generation — Round 2 ✅
+
+Rebuilt the AI background system from "hardcoded landscape with fixed negative prompt" into a proper user-facing control surface. (Round 1 was the original shipping of the background system — single prompt field, generate button, gallery, 45s crossfade during sessions.)
+
+- **POS / NEG textareas** — positive and negative prompts in a two-column grid. Both persist; responsive collapse to single column under 560px.
+- **Orientation dropdown** — Default / Square 1:1 / Portrait 2:3 / Landscape 3:2 — maps to plugin `resolution` with `default` omitting the key so Perchance picks.
+- **Weight sliders** — Prompt strength (guidance scale, 1–20, default 7) and quality steps (15–50, default 30, passed under both `numInferenceSteps` and `steps` for backend tolerance).
+- **Parallel generation (4-up).** `bgEngine` rewritten from `generating` boolean to `activeGenerations` counter with `BG_MAX_PARALLEL = 4`. `generateBatch(n)` fires up to 4 concurrent via `Promise.all`. `pregenerate` runs parallel batches instead of sequential — cold-boot 5-image warm-up drops from ~100s to ~40s.
+- **Preview grid.** "Generate 4 (parallel)" button populates a responsive thumbnail grid as each completes. Single-image preview still works via the existing "Generate image" button.
+
+**Next up — Round 3 (next session):** scope to be confirmed. Candidate ideas parked here so we don't lose them:
+
+- **Seed control** — expose the `seed` parameter so users can reproduce an image they liked (currently hardcoded to `-1`).
+- **Style presets dropdown** — "dreamlike", "cinematic", "watercolor", "oil painting", "dark fantasy", etc. — prepend / append curated fragments to the POS prompt without the user having to memorize modifier conventions.
+- **Auto-prompt from session content.** Derive a background prompt from current `persona.name + method.detail + intention`. A "use session context" button that fills POS with something like "dreamlike ocean mist, soft indigo light, calm" for a sleep/ocean session.
+- **img2img variations.** Use a generated image as the seed for 4 variations. Requires confirming the Perchance plugin accepts `initImage` or equivalent.
+- **Per-phase imagery.** Different background per phase (settling vs deepener vs work) rather than one rotating pool. Would pair well with the existing phase structure.
+- **Prompt templates.** Save / load POS+NEG+settings as named presets alongside the per-session config.
+- **A/B comparison picker.** After a `generate 4` batch, let the user click their favorite to keep; discard the rest. Currently all 4 go to cache regardless.
+- **Resolution picker beyond the 4 orientations.** Numeric width/height fields for users who want to exact-match a display.
+- **Proper error surfacing with retry.** When `textToImagePlugin` fails, show a retry button inline rather than just a toast. Distinguish between "plugin missing" (configuration error) and "server busy" (transient) in the UI.
+- **Export manifest.** When downloading from the gallery, include a JSON sidecar with the prompts and settings used so the user (or a recipient) can re-generate.
+- **Character / persona portraits.** Originally in backlog item #7 — generate a stylised portrait per persona and cache via the existing `bgCacheStore` pattern. Would use the same upgraded engine.
+- **Crafted-suggestion symbols.** Also from #7 — generate a 512×512 symbol representing a crafted suggestion's trigger + coreResponse for post-hypnotic recall.
+
+---
+
+## Image playback — Round 3 ✅ (Slideshow backport)
+
+Replaced the single "crossfade every 45s" with a user-controllable playback system, backported from the standalone `Slideshow.txt` spinoff.
+
+- **12 transition effects** — Cut, Crossfade, Fade→black, Fade→white, Slide left, Slide up, Zoom in, Zoom out, Ken Burns, Blur, Iris, Wipe. Each is a function in the `BG_TRANSITIONS` registry with signature `(oldEl, newEl, url, durSec)`; adapted for `<img>` elements with the 0.35 opacity cap preserved (session backgrounds stay readable).
+- **Checkbox grid** — one checkbox per transition in Step 5's AI options. When multiple are checked, the player picks uniformly random for each slide change. Defaults to calm set (Crossfade, Fade→black, Ken Burns, Blur). Bulk `[All] / [None] / [Invert]` buttons.
+- **Rotation interval slider** — 10–120s (was hardcoded 45s). Label in the sub-description auto-updates.
+- **Transition duration slider** — 0.1–6s, independent of rotation interval. Ken Burns uses rotation interval for its slow-zoom but transition duration for the opacity crossfade.
+- **Playback order** — segmented `[Sequential] [Random]` button group. Random reshuffles at each full queue wrap.
+- **Flash overlay** — new `#bgFlash` div inside `#bgLayer` at z-index 3; used by Fade→black and Fade→white without covering session UI (UI is at z-index 1 above the whole bg-layer).
+- **All persisted** through `_buildSettingsObj` + `normalizeSettings`. `bgEnabledTransitions` is validated against the registry on load — keys that no longer exist are dropped silently.
+- **Legacy `bgEngine.crossfade(url)`** kept as an alias to `swap(url)` so any older callers still work.
+
+**Deferred to Round 4:**
+
+- **Live Settings panel integration** — during-session controls to toggle transitions on/off without leaving the session. Runtime changes to `state.bgEnabledTransitions` already work; just needs UI in `.live-panel`.
+- **Per-transition weights** — instead of uniform random, let users weight favorites (e.g. Crossfade 70% / Ken Burns 20% / Blur 10%). Needs a compact UI.
+- **Manual advance** — keyboard shortcut (e.g. `→`) during sessions to skip to the next image. Currently tied to the interval only.
+- **Per-phase transition hints** — Induction uses calmer transitions (Crossfade, Fade→black); Peak allows more active ones (Zoom, Slide). Would let the Smart Director bias transition selection, not just content.
+- **Transition preview in Step 5** — hover a checkbox to see a quick demo using the first two cached images.
+
+---
+
 ## Script Block Editor — Round 2 ✅
 
 Session structure editor rework. **Shipped:**
@@ -51,9 +126,12 @@ Session structure editor rework. **Shipped:**
 
 ### High impact
 
-#### 7 · `textToImagePlugin` beyond backgrounds
-The plugin is already imported for background generation. It's currently
-under-leveraged. Candidate uses:
+#### 7 · `textToImagePlugin` beyond backgrounds — *partly addressed*
+The plugin is already imported for background generation. Round 2 of the image
+rework shipped real POS/NEG fields, orientation, weight sliders, and 4-way
+parallel generation (see "Image generation — Round 2" above). The three
+original proposals here remain open and have been merged into the Round 3
+candidate list:
 
 - **Personal symbols for crafted suggestions.** When `craftSuggestion()` finishes,
   generate a small (512×512) image representing the `trigger` and `coreResponse`
@@ -247,4 +325,4 @@ Running the §14 checklist from the `perchance-api` skill against the current co
 
 ---
 
-Last updated: 2026-04-24
+Last updated: 2026-04-24 (Smart Director Passes 1+2, Director calibration, Image generation Round 2)
