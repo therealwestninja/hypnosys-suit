@@ -1334,7 +1334,11 @@ body.in-session .footer {
           </div>
         </div>
         <div class="profile-form">
-          <div class="pf-row"><label class="pf-label">Display Name</label><input type="text" id="pfName" class="pf-input" maxlength="30" placeholder="Practitioner"></div>
+          <div class="pf-row"><label class="pf-label">First Name</label><input type="text" id="pfName" class="pf-input" maxlength="30" placeholder="(What do you call yourself?)"></div>
+          <div class="pf-row" style="flex-direction:row;align-items:center;gap:8px;">
+            <input type="checkbox" id="pfUseFirstName" style="width:auto;margin:0;">
+            <label for="pfUseFirstName" class="pf-label" style="margin:0;cursor:pointer;">Use first name in scripts?</label><br>
+          </div>
           <div class="pf-row"><label class="pf-label">Pronouns</label>
             <select id="pfPronouns" class="pf-select"><option value="">prefer not to say</option><option value="he/him">he / him</option><option value="she/her">she / her</option><option value="they/them">they / them</option><option value="other">other</option></select>
           </div>
@@ -1855,8 +1859,15 @@ I return to myself easily"></textarea>
             <button class="preview-btn" id="normalizePhaseOrderBtn">reset to default order</button>
           </div>
           <div class="sublabel" id="phaseStructureHint" style="margin-top:8px; font-size:0.72rem; color:var(--text-faint);">
-            Default structure: <span style="color:var(--text-dim);">[Settling][Induction][Deepener] → (Work, Affirmation)… → [Lightener][Wake][Reintroduction]</span>.
+            Default structure: <span style="color:var(--text-dim);">\{\{Settling\}\} \{\{Induction\}\} \{\{Deepener\}\} &rarr; (\{\{Work\}\}, \{\{Affirmation\}\}) &times; N &rarr; \{\{Lightener\}\} \{\{Wake\}\} \{\{Reintroduction\}\}</span>.
             Deepener / Lightener pairs can be nested for progressive deepening.
+          </div>
+          <div class="sublabel" id="tokensLegend" style="margin-top:6px; font-size:0.7rem; color:var(--text-faint);">
+            <strong style="color:var(--text-dim);">Script tokens</strong> (resolved at generation &amp; playback):
+            <span style="color:var(--text-dim);">\{\{user\}\}</span> first name or &ldquo;you&rdquo; &middot;
+            <span style="color:var(--text-dim);">\{\{nar\}\}</span> persona name &middot;
+            <span style="color:var(--text-dim);">\{\{intention\}\}</span> your intention &middot;
+            <span style="color:var(--text-dim);">\{\{affirmation\}\}</span> a random affirmation
           </div>
         </div>
       </div>
@@ -3237,6 +3248,7 @@ I return to myself easily"></textarea>
   function getProfile() {
     return {
       name: $('pfName')?.value?.trim() || '',
+      useFirstName: !!$('pfUseFirstName')?.checked,
       pronouns: $('pfPronouns')?.value || '',
       age: $('pfAge')?.value || '',
       experience: $('pfExperience')?.value || 'beginner',
@@ -3253,6 +3265,9 @@ I return to myself easily"></textarea>
       if (el) el.value = value ?? fallback;
     };
     setVal('pfName', p.name, '');
+    // Backward-compat: older profiles without useFirstName default to false (privacy-safe).
+    const useName = $('pfUseFirstName');
+    if (useName) useName.checked = !!p.useFirstName;
     setVal('pfPronouns', p.pronouns, '');
     setVal('pfAge', p.age, '');
     setVal('pfExperience', p.experience, 'beginner');
@@ -3293,13 +3308,90 @@ I return to myself easily"></textarea>
     if (state.smartDirectorEnabled === false) return '';
     const p = getProfile();
     const parts = [];
-    if (p.name) parts.push(`The subject's name is ${p.name}.`);
+    // Only pass the subject's name to the AI when the user has opted in.
+    if (p.name && p.useFirstName) parts.push(`The subject's name is ${p.name}. You may address them by name occasionally; do not overuse it.`);
     if (p.pronouns) parts.push(`Pronouns: ${p.pronouns}.`);
     if (p.age) parts.push(`Age range: ${p.age}.`);
     if (p.experience) parts.push(`Experience: ${p.experience}.`);
     if (p.appearance) parts.push(`Appearance: ${p.appearance}.`);
     if (p.goals) parts.push(`Goals: ${p.goals}.`);
     return parts.length > 0 ? '\nSUBJECT PROFILE: ' + parts.join(' ') : '';
+  }
+
+  // ====================================================================
+  // TOKEN SUBSTITUTION — Perchance-chat-style \{\{placeholder\}\} system
+  // ====================================================================
+  /**
+   * Replaces double-curly-brace tokens in text with real values. Inspired by
+   * Perchance AI Character Chat's \{\{user\}\} / \{\{char\}\} convention so users
+   * writing or editing hypnosis scripts have a familiar substitution syntax.
+   *
+   * Supported tokens:
+   *   \{\{user\}\}        -> the listener's first name (if checkbox on) or "you" (generic)
+   *   \{\{nar\}\} / \{\{guide\}\} / \{\{persona\}\}
+   *                   -> the active persona's name ("Aria", "Dr. Vale", etc.)
+   *   \{\{intention\}\}   -> the short intention phrase from the intention step
+   *   \{\{affirmation\}\} -> one of the user's affirmations (picked for variety —
+   *                     multiple \{\{affirmation\}\} tokens rotate through the list)
+   *
+   * Unresolved tokens are left alone so a downstream pass (or the AI itself)
+   * can handle them. Called both pre-prompt (so AI sees resolved values in
+   * the generation context) and pre-TTS (so user edits with live tokens work).
+   *
+   * @param {string} text   Source text possibly containing \{\{...\}\} tokens.
+   * @param {object} [opts] Overrides: { user, persona, intention, affirmations[] }.
+   * @returns {string}
+   */
+  function resolveTokens(text, opts = {}) {
+    if (!text || typeof text !== 'string') return text || '';
+    if (text.indexOf('\u007B\u007B') === -1) return text; // fast path — no tokens present
+
+    // Profile → \{\{user\}\}
+    const profile = opts.profile || getProfile();
+    const useName = !!profile.useFirstName && !!profile.name;
+    const userValue = opts.user != null ? String(opts.user) : (useName ? profile.name : 'you');
+
+    // Persona → \{\{nar\}\} \{\{guide\}\} \{\{persona\}\}
+    let narValue = opts.persona;
+    if (narValue == null) {
+      try { narValue = getPersona()?.name || ''; } catch { narValue = ''; }
+    }
+    narValue = narValue || 'the narrator';
+
+    // Intention → \{\{intention\}\}
+    let intentionValue = opts.intention;
+    if (intentionValue == null) {
+      intentionValue = ($('intentionInput')?.value || '').trim();
+    }
+
+    // Affirmations → \{\{affirmation\}\} (rotates through list)
+    let affirmArr = opts.affirmations;
+    if (!Array.isArray(affirmArr)) {
+      const raw = ($('userAffirmations')?.value || '').trim();
+      affirmArr = raw ? raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean) : [];
+    }
+    let affirmIdx = 0;
+    const nextAffirm = () => {
+      if (!affirmArr.length) return '';
+      const v = affirmArr[affirmIdx % affirmArr.length];
+      affirmIdx++;
+      return v;
+    };
+
+    // Replace using a single-pass regex. Token names are case-insensitive and
+    // tolerate surrounding whitespace: \{\{ user \}\} works the same as \{\{user\}\}.
+    return text.replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, (match, rawName) => {
+      const name = rawName.toLowerCase();
+      switch (name) {
+        case 'user':        return userValue;
+        case 'nar':
+        case 'guide':
+        case 'persona':     return narValue;
+        case 'intention':   return intentionValue || match; // leave if empty
+        case 'affirmation': return nextAffirm() || match;
+        default:            return match; // unknown token — pass through for upstream handling
+      }
+    });
   }
 
   // ====================================================================
@@ -5548,7 +5640,8 @@ Practitioner profile (full, natural sentences):`;
 
   async function craftSuggestion() {
     if (_aiInProgress) { notify.info('An AI call is already in progress.'); return; }
-    const rough = $('intentionInput').value.trim();
+    // Resolve \{\{...\}\} tokens before feeding the AI so the model sees concrete text.
+    const rough = resolveTokens($('intentionInput').value.trim());
     const skipTypes = ['trance', 'sleep'];
     if (!rough && !skipTypes.includes(state.intentionType)) { notify.warn('Describe what you want first.'); return; }
     const type = INTENTION_TYPES[state.intentionType];
@@ -5738,7 +5831,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
   /**
    * Default structure per spec:
-   *   [Settling][Induction][Deepener] → (Work, Affirm)×N → [Lightener][Wake][Reintroduction]
+   *   \{\{Settling\}\} \{\{Induction\}\} \{\{Deepener\}\} -> (\{\{Work\}\}, \{\{Affirm\}\}) x N -> \{\{Lightener\}\} \{\{Wake\}\} \{\{Reintroduction\}\}
    * Sleep intention skips the ending trio (drifts into sleep).
    */
   function getSessionPhaseBlueprint() {
@@ -5897,7 +5990,10 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const persona = getPersona();
     const method = getMethod();
     const durations = PHASE_DURATIONS[state.length];
-    const rough = $('intentionInput').value.trim();
+    // Resolve \{\{...\}\} tokens in user-written text BEFORE feeding the AI, so
+    // the model sees real values. Any token the AI later emits in its output
+    // will be caught again at TTS-time by the resolver in speakScript.
+    const rough = resolveTokens($('intentionInput').value.trim());
     const wpm = 50;
     const targetWords = Object.fromEntries(Object.entries(durations).map(([k,v]) => [k, Math.round(v * wpm / 60)]));
     const scriptBuildProgress = $('scriptBuildProgress');
@@ -5912,8 +6008,10 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const phaseResults = {};
 
     const craftedBlock = state.craftedSuggestion ? `\nCRAFTED SUGGESTION: "${state.craftedSuggestion.craftedSuggestion}"\nTRIGGER: ${state.craftedSuggestion.trigger}\nEFFECT: ${state.craftedSuggestion.coreResponse}` : '';
-    const userAff = $('userAffirmations')?.value?.trim();
-    const affirmLines = userAff ? userAff.split('\n').filter(l => l.trim()).map(l => l.trim()) : [];
+    const userAffRaw = $('userAffirmations')?.value?.trim();
+    // Resolve tokens in user affirmations line-by-line so \{\{user\}\} etc. in
+    // affirmations become concrete text before being injected into prompts.
+    const affirmLines = userAffRaw ? userAffRaw.split('\n').filter(l => l.trim()).map(l => resolveTokens(l.trim())) : [];
     const affirmBlock = affirmLines.length ? `\nUSER AFFIRMATIONS:\n${affirmLines.map(l => `"${l}"`).join('\n')}` : '';
     const demoNote = method.category === 'demonstration' ? '\nDEMONSTRATION METHOD: direct suggestions, build effect, include TEST.' : '';
 
@@ -7424,11 +7522,11 @@ ${s.text.trim()}`).join('\n\n').trim();
   // ====================================================================
   /**
    * Validate that the current script has a safe ending structure.
-   * Per spec: [Lightener][Wake][Reintroduction] must exist before session playback.
+   * Per spec: \{\{Lightener\}\} + \{\{Wake\}\} + \{\{Reintroduction\}\} must exist before session playback.
    * Sleep intention type is exempt — it deliberately drifts into sleep.
    * Also flags unbalanced Deepener/Lightener nesting.
    *
-   * @returns {{ ok: boolean, missing: string[], unbalanced: object|null, isSleep: boolean }}
+   * @returns \{\{ ok: boolean, missing: string[], unbalanced: object|null, isSleep: boolean \}\}
    */
   function validateSessionSafety() {
     const isSleep = state.intentionType === 'sleep';
@@ -7758,8 +7856,12 @@ ${s.text.trim()}`).join('\n\n').trim();
   }
 
   async function speakScript(text, bypassAbort = false) {
+    // Resolve \{\{user\}\}, \{\{nar\}\}, \{\{intention\}\}, \{\{affirmation\}\} tokens before
+    // speech. Runs BEFORE sanitization so any expanded content (e.g. a
+    // pasted affirmation with punctuation) is normalized by the passes below.
+    let canonical = resolveTokens(text);
     // Sanitize: strip phase markers and malformed pause markers
-    let canonical = text.replace(PHASE_MARKER_STRIP_RX, '');
+    canonical = canonical.replace(PHASE_MARKER_STRIP_RX, '');
     canonical = canonical.replace(/\[\s*pause[^\]]*\]/gi, (m) => {
       const num = m.match(/\d+/);
       return num ? `\x5BPAUSE ${num[0]}\x5D` : '';
@@ -9359,7 +9461,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   ['pfName', 'pfAbout', 'pfAppearance', 'pfGoals'].forEach(id => {
     $(id)?.addEventListener('input', saveProfile);
   });
-  ['pfPronouns', 'pfAge', 'pfExperience'].forEach(id => {
+  ['pfPronouns', 'pfAge', 'pfExperience', 'pfUseFirstName'].forEach(id => {
     $(id)?.addEventListener('change', saveProfile);
   });
   // Session daily cap — max 3 sessions per day to prevent compulsive use
