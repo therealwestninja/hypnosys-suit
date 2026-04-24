@@ -331,6 +331,12 @@
   }
   .gen-phase.warn { color: var(--neon-amber); cursor: pointer; }
   .gen-phase.warn:hover { text-decoration: underline; }
+  /* Pending = not yet generated. Only shows as clickable after initial
+     generation (when the row is already visible). Click-handler is bound
+     unconditionally in renderGenProgress to keep behavior consistent. */
+  .gen-phase.pending { cursor: pointer; }
+  .gen-phase.pending:hover { text-decoration: underline; color: var(--text-dim); }
+  .gen-phase.pending:hover .gen-dot { border-color: var(--text-dim); }
   @keyframes gen-pulse { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
   .gen-eta {
     text-align: center; font-size: 0.72rem; color: var(--text-dim);
@@ -1166,6 +1172,15 @@ body.in-session .footer {
   }
   .pf-input:focus, .pf-select:focus, .pf-textarea:focus { border-color: var(--neon-cyan); outline: none; }
   .pf-textarea { resize: vertical; min-height: 36px; line-height: 1.35; }
+  .pf-changelog-entry { padding:6px 8px; border-left:2px solid var(--glass-border); margin-bottom:6px; background:rgba(255,255,255,0.02); border-radius:3px; }
+  .pf-changelog-entry .cl-head { display:flex; gap:6px; align-items:baseline; font-size:0.68rem; }
+  .pf-changelog-entry .cl-ts { color: var(--text-faint); flex-shrink:0; }
+  .pf-changelog-entry .cl-src { color: var(--neon-cyan); font-weight:500; flex-shrink:0; }
+  .pf-changelog-entry .cl-body { margin-top:3px; color: var(--text); font-size:0.72rem; }
+  .pf-changelog-entry .cl-chip { display:inline-block; padding:1px 5px; margin:2px 3px 2px 0; background:rgba(120,180,240,0.14); border-radius:3px; font-size:0.68rem; }
+  .pf-changelog-entry .cl-chip.cl-add { color:#8fd98f; background:rgba(143,217,143,0.12); }
+  .pf-changelog-entry .cl-chip.cl-rem { color:#d98f8f; background:rgba(217,143,143,0.12); text-decoration:line-through; opacity:0.85; }
+  .pf-changelog-entry em { color: var(--text-faint); font-style:italic; }
 
   /* AI background controls — POS/NEG + orientation + weight sliders */
   .ai-prompt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -1677,6 +1692,11 @@ body.in-session .footer {
           <div id="sessionStatsPanel"></div>
           <div class="history-list" id="sessionHistoryList"></div>
         </details>
+        <details id="pfChangeLogDetails">
+          <summary>change log <span id="pfChangeLogCount" class="sublabel" style="font-weight:normal;opacity:0.6;"></span></summary>
+          <div id="pfChangeLogList" style="margin-top:8px;max-height:400px;overflow-y:auto;font-size:0.78rem;"></div>
+          <div class="sublabel" style="margin-top:6px;font-size:0.58rem;">Oldest 200 changes retained. Image entries use LLM tags when remote processing is on, local tags otherwise.</div>
+        </details>
         <details>
           <summary>backup</summary>
           <div style="display:flex;gap:6px;margin-top:4px;">
@@ -2017,6 +2037,9 @@ I return to myself easily"></textarea>
             <option value="pulse">CSS pulse rings (lightest)</option>
             <option value="none">None — black screen only</option>
           </optgroup>
+          <optgroup label="Flagship">
+            <option value="neural-bloom">Neural Bloom ✨ — WebGL, audio-reactive</option>
+          </optgroup>
         </select>
         <div class="viz-preview-wrap" id="vizPreviewWrap" style="display:none;">
           <canvas class="viz-preview-canvas" id="vizPreviewCanvas"></canvas>
@@ -2027,6 +2050,19 @@ I return to myself easily"></textarea>
           <button class="preview-btn stop" id="vizStopBtn" style="display:none;">⏹ stop</button>
           <span class="preview-hint">Live preview of the selected effect.</span>
         </div>
+        <!-- Audio reactivity: shared with the Live panel via [data-audio-mode] selector -->
+        <div class="field-group" style="margin-top:12px;">
+          <label class="ai-sublabel">audio reactivity</label>
+          <div class="segmented-small" id="audioReactiveSeg">
+            <button type="button" data-audio-mode="off"      class="active">Off</button>
+            <button type="button" data-audio-mode="subtle">Subtle</button>
+            <button type="button" data-audio-mode="dramatic">Dramatic</button>
+          </div>
+          <div class="sublabel" style="margin-top:4px;">
+            Visualizers pulse and flow with the narrator's voice + soundscape. Subtle is calm; Dramatic is showy.
+          </div>
+        </div>
+
 
         <!-- Visual Effect Tuning -->
         <div class="detail-panel" id="vizSettingsPanel" style="margin-top:10px;">
@@ -2426,7 +2462,18 @@ I return to myself easily"></textarea>
             <option value="pulse">CSS pulse</option>
             <option value="none">None (black)</option>
           </optgroup>
+          <optgroup label="Flagship">
+            <option value="neural-bloom">Neural Bloom ✨</option>
+          </optgroup>
         </select>
+      </div>
+      <div class="live-row">
+        <label>audio reactivity</label>
+        <div class="segmented-small" id="liveAudioReactiveSeg">
+          <button type="button" data-audio-mode="off"      class="active">Off</button>
+          <button type="button" data-audio-mode="subtle">Subtle</button>
+          <button type="button" data-audio-mode="dramatic">Dramatic</button>
+        </div>
       </div>
     </div>
 
@@ -2969,6 +3016,21 @@ I return to myself easily"></textarea>
     droneVolume: 0.35,
     affirmationMode: 'woven',
     vizOverride: 'auto',
+    audioReactiveMode: 'off', // 'off' | 'subtle' | 'dramatic'
+    audioReactive: {
+      gain:          0,       // 0 | 0.3 | 1.0 — derived from audioReactiveMode
+      active:        false,
+      bass:          0,
+      mid:           0,
+      treble:        0,
+      overall:       0,
+      voicePulse:    0,
+      voiceEnvelope: 0,
+      _voicePulseSpawnedAt: 0,
+      _fftBuffer:    null,    // lazy-allocated Uint8Array(128) when AnalyserNode tap runs
+      _lastBurstAt:  0,       // for 3Hz burst rate limiter (Neural Bloom)
+      _rafHandle:    null,    // RAF id for the audio update loop
+    },
     hud: { fixationDot: true, textDisplay: true, phaseDots: true, phaseLabel: true, progressBar: true, sessionTime: true, labels: true },
     vizSettings: { speed: 1.0, intensity: 1.0, complexity: 1.0, trail: 0.12 },
     duckingEnabled: true,
@@ -3085,6 +3147,119 @@ I return to myself easily"></textarea>
 
   const loadCustomPersonas = () => _personaCache || [];
   const saveCustomPersonas = arr => { _personaCache = arr; idbSet(PERSONA_KEY, arr); return true; };
+
+  // ====================================================================
+  // AUDIO-REACTIVE VISUALIZER — mode/gain mapping + setter
+  // ====================================================================
+  // The user-facing toggle is 3-state: off / subtle / dramatic. Each maps
+  // to a gain multiplier applied at visualizer read-time (not write-time)
+  // so flipping modes takes effect on the next frame with no engine restart.
+  // ====================================================================
+  const GAIN_FOR_MODE = { off: 0, subtle: 0.3, dramatic: 1.0 };
+  function setAudioReactiveMode(mode) {
+    if (!(mode in GAIN_FOR_MODE)) mode = 'off';
+    state.audioReactiveMode = mode;
+    state.audioReactive.gain = GAIN_FOR_MODE[mode];
+    // Live-panel + Step 5 segmented controls re-render
+    document.querySelectorAll('[data-audio-mode]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.audioMode === mode);
+    });
+  }
+
+  // ====================================================================
+  // AUDIO UPDATE LOOP — single RAF producing state.audioReactive
+  // ====================================================================
+  // Polls the soundscape AnalyserNode + ticks the voice envelope. Started
+  // by startAudioReactiveLoop() when entering a session; stopped on
+  // session end. Cheap — ~0.3ms per frame.
+  // ====================================================================
+
+  // Bin ranges at fftSize 256, 48kHz sample rate (typical):
+  //   bins 0..5    → ~0–1050Hz (bass)
+  //   bins 6..40   → ~1050–7500Hz (mid)
+  //   bins 41..100 → ~7500–18750Hz (treble)
+  const BASS_BINS   = [0, 5];
+  const MID_BINS    = [6, 40];
+  const TREBLE_BINS = [41, 100];
+
+  function _avgBins(buf, lo, hi) {
+    let sum = 0, count = 0;
+    const end = Math.min(hi, buf.length - 1);
+    for (let i = lo; i <= end; i++) { sum += buf[i]; count++; }
+    return count > 0 ? sum / (count * 255) : 0;  // normalize 0..1
+  }
+  function _rmsBins(buf) {
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+    return Math.sqrt(sum / buf.length) / 255;
+  }
+
+  function updateAudioReactiveFrame() {
+    const a = state.audioReactive;
+    // `drone` is the main SoundscapeEngine instance defined later in this IIFE.
+    // We reference it lazily via the enclosing scope — it's non-null once a
+    // session has started and the soundscape has begun.
+    const haveSoundscape = (typeof drone !== 'undefined') && drone && drone.analyser && a._fftBuffer;
+    const now = performance.now();
+
+    // FFT signals (soundscape)
+    if (haveSoundscape) {
+      drone.analyser.getByteFrequencyData(a._fftBuffer);
+      a.bass    = _avgBins(a._fftBuffer, BASS_BINS[0],   BASS_BINS[1]);
+      a.mid     = _avgBins(a._fftBuffer, MID_BINS[0],    MID_BINS[1]);
+      a.treble  = _avgBins(a._fftBuffer, TREBLE_BINS[0], TREBLE_BINS[1]);
+      a.overall = _rmsBins(a._fftBuffer);
+    } else {
+      a.bass = a.mid = a.treble = a.overall = 0;
+    }
+
+    // Voice pulse envelope (synthesized from speechSynthesis boundary events).
+    //   voicePulse   — instant spike that decays linearly over 300ms
+    //   voiceEnvelope — 1-pole low-pass of voicePulse (smoother, for visuals)
+    const dt = (now - a._voicePulseSpawnedAt) / 300;
+    a.voicePulse = Math.max(0, 1 - dt);
+    a.voiceEnvelope = a.voiceEnvelope * 0.85 + a.voicePulse * 0.15;
+
+    // active = any signal source producing meaningful data
+    a.active = haveSoundscape || a.voiceEnvelope > 0.02;
+  }
+
+  function startAudioReactiveLoop() {
+    const a = state.audioReactive;
+    if (a._rafHandle) return; // already running
+    const tick = () => {
+      if (!a._rafHandle) return; // stopped
+      updateAudioReactiveFrame();
+      a._rafHandle = requestAnimationFrame(tick);
+    };
+    a._rafHandle = requestAnimationFrame(tick);
+  }
+
+  function stopAudioReactiveLoop() {
+    const a = state.audioReactive;
+    if (a._rafHandle) { cancelAnimationFrame(a._rafHandle); a._rafHandle = null; }
+    a.bass = a.mid = a.treble = a.overall = 0;
+    a.voicePulse = 0; a.voiceEnvelope = 0; a.active = false;
+  }
+
+  /** Per-frame modulation values for visualizers. Returns all-zeros when
+   *  inactive or mode=off, so retrofitted visualizers are zero-regression.
+   *  Callers should keep their existing autonomous motion and treat these
+   *  as ADDITIVE modulators, not replacements. */
+  function getAudioMod() {
+    const a = state.audioReactive;
+    if (!a || !a.active || a.gain === 0) {
+      return { overall: 0, bass: 0, mid: 0, treble: 0, pulse: 0, envelope: 0 };
+    }
+    return {
+      overall:  a.overall       * a.gain,
+      bass:     a.bass          * a.gain,
+      mid:      a.mid           * a.gain,
+      treble:   a.treble        * a.gain,
+      pulse:    a.voicePulse    * a.gain,
+      envelope: a.voiceEnvelope * a.gain,
+    };
+  }
 
   /**
    * Load personas from community packs exposed via `root.communityPacks`.
@@ -3545,6 +3720,7 @@ I return to myself easily"></textarea>
       bgStaticUrl: state.bgStaticUrl,
       droneVolume: state.droneVolume,
       vizOverride: state.vizOverride,
+      audioReactiveMode: state.audioReactiveMode,
       vizSettings: state.vizSettings,
       hud: state.hud,
       personaFilter: state.personaFilter,
@@ -3742,6 +3918,13 @@ I return to myself easily"></textarea>
       if (s.bgStaticUrl) { state.bgStaticUrl = s.bgStaticUrl; const el = $('bgUrlInput'); if (el) el.value = s.bgStaticUrl; }
       if (s.droneVolume != null) { state.droneVolume = s.droneVolume; const el = $('droneVolume'); if (el) el.value = Math.round(s.droneVolume * 100); const v = $('droneVolVal'); if (v) v.textContent = Math.round(s.droneVolume * 100); }
       if (s.vizOverride != null) { state.vizOverride = s.vizOverride; const el = $('vizSelect'); if (el) el.value = s.vizOverride; }
+      // Audio reactive mode — with prefers-reduced-motion OS honor on first load
+      if (s.audioReactiveMode == null) {
+        const prm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        if (prm && typeof setAudioReactiveMode === 'function') setAudioReactiveMode('off');
+      } else if (typeof setAudioReactiveMode === 'function') {
+        setAudioReactiveMode(s.audioReactiveMode);
+      }
       if (s.hud) state.hud = { ...state.hud, ...s.hud };
       if (s.duckingEnabled != null) { state.duckingEnabled = s.duckingEnabled; const el = $('duckingToggle'); if (el) el.checked = s.duckingEnabled; }
       if (s.vizSettings) {
@@ -3776,10 +3959,299 @@ I return to myself easily"></textarea>
   }
 
   // ====================================================================
+  // DIFF-BOUNCE — change tracking for user inputs
+  // ====================================================================
+  // Each tracked input has a DiffBouncer instance. On any edit, .ping()
+  // resets an idle timer. When the idle period elapses, a magnitude check
+  // decides whether the accumulated change is worth logging. Raises the
+  // signal-to-noise ratio of profile.changeLog.
+  // ====================================================================
+
+  // Tunable thresholds — SINGLE SOURCE OF TRUTH. Change values here to
+  // adjust sensitivity. Read at check-time, so live tuning works:
+  //   DIFF_BOUNCE_THRESHOLDS.idleMs = 3000   // takes effect on next ping
+  const DIFF_BOUNCE_THRESHOLDS = {
+    idleMs:               8000,   // 8s idle before magnitude check
+    textChangePct:        0.10,   // 10% of chars changed (long-text)
+    csvChangeCount:       2,      // ≥2 entries shifted (CSV / newline-list)
+    imageSimilarityMax:   0.70,   // Jaccard ≥ this = same exploration, skip
+    commitOnSessionStart: true,   // hard-commit anchor at session start
+    logCap:               200,    // max entries in profile.changeLog
+  };
+
+  class DiffBouncer {
+    /**
+     * @param {object} cfg
+     * @param {string} cfg.source    Identifier (e.g. 'pfGoals', 'bgImage')
+     * @param {'text'|'csv'|'image'} cfg.type
+     * @param {Function} cfg.getState () => current snapshot for this source
+     * @param {Function} cfg.onCommit (diffDetail, currentState, meta) => void
+     */
+    constructor(cfg) {
+      this.source = cfg.source;
+      this.type = cfg.type;
+      this.getState = cfg.getState;
+      this.onCommit = cfg.onCommit;
+      this.lastSnapshot = null;
+      this._idleTimer = null;
+      this._latestState = null; // convenience slot for push-based sources (image)
+    }
+
+    ping() {
+      const current = this.getState();
+      if (current === undefined || current === null) return; // defensive
+      if (this.lastSnapshot === null) {
+        // First observation seeds the baseline — don't commit yet.
+        // Exception: image type always seeds via the first-snapshot branch
+        // inside _diffImage, which is handled in _check below.
+        if (this.type === 'image') {
+          // Run the check immediately so the first-snapshot commit lands
+          if (this._idleTimer) clearTimeout(this._idleTimer);
+          this._idleTimer = setTimeout(() => { this._idleTimer = null; this._check('idle'); }, DIFF_BOUNCE_THRESHOLDS.idleMs);
+          return;
+        }
+        this.lastSnapshot = current;
+        return;
+      }
+      if (this._idleTimer) clearTimeout(this._idleTimer);
+      this._idleTimer = setTimeout(() => {
+        this._idleTimer = null;
+        this._check('idle');
+      }, DIFF_BOUNCE_THRESHOLDS.idleMs);
+    }
+
+    /** Bypass magnitude gate — used at session start to seed baselines */
+    hardCommit(reason) {
+      if (this._idleTimer) { clearTimeout(this._idleTimer); this._idleTimer = null; }
+      const current = this.getState();
+      if (current === undefined || current === null) return;
+      if (this.lastSnapshot === null) {
+        this.lastSnapshot = current;
+        return;
+      }
+      const diff = this._computeDiff(this.lastSnapshot, current);
+      if (diff && diff.hasChange) {
+        this.onCommit(diff.detail, current, { trigger: reason, force: true });
+        this.lastSnapshot = current;
+      }
+    }
+
+    _check(trigger) {
+      const current = this.getState();
+      if (current === undefined || current === null) return;
+      if (this.lastSnapshot === null) {
+        // Image type: first-snapshot seed path
+        if (this.type === 'image') {
+          const seed = _diffImage(null, current);
+          if (seed && seed.meetsThreshold) {
+            this.onCommit(seed.detail, current, { trigger });
+          }
+          this.lastSnapshot = current;
+          return;
+        }
+        this.lastSnapshot = current;
+        return;
+      }
+      const result = this._computeDiff(this.lastSnapshot, current);
+      if (!result) return;
+      if (result.meetsThreshold) {
+        this.onCommit(result.detail, current, { trigger });
+        this.lastSnapshot = current;
+      }
+      // Sub-threshold: keep lastSnapshot unchanged so small changes
+      // accumulate until one crosses the threshold.
+    }
+
+    _computeDiff(before, after) {
+      if (this.type === 'text')  return _diffText(before, after);
+      if (this.type === 'csv')   return _diffCSV(before, after);
+      if (this.type === 'image') return _diffImage(before, after);
+      return null;
+    }
+  }
+
+  // Capped Levenshtein — inputs truncated to 1500 chars each to bound cost
+  function _lev(a, b) {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    const A = a.length > 1500 ? a.slice(0, 1500) : a;
+    const B = b.length > 1500 ? b.slice(0, 1500) : b;
+    const m = A.length, n = B.length;
+    let prev = new Array(n + 1); for (let j = 0; j <= n; j++) prev[j] = j;
+    let curr = new Array(n + 1);
+    for (let i = 1; i <= m; i++) {
+      curr[0] = i;
+      for (let j = 1; j <= n; j++) {
+        const cost = A.charCodeAt(i - 1) === B.charCodeAt(j - 1) ? 0 : 1;
+        curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+      }
+      [prev, curr] = [curr, prev];
+    }
+    return prev[n];
+  }
+
+  function _diffText(before, after) {
+    before = before || ''; after = after || '';
+    if (before === after) return { hasChange: false, meetsThreshold: false };
+    const denom = Math.max(before.length, after.length, 1);
+    const dist = _lev(before, after);
+    const pct = dist / denom;
+    return {
+      hasChange: true,
+      meetsThreshold: pct >= DIFF_BOUNCE_THRESHOLDS.textChangePct,
+      detail: {
+        beforeLen: before.length,
+        afterLen: after.length,
+        changePct: +pct.toFixed(3),
+        preview: after.slice(0, 80),
+      },
+    };
+  }
+
+  function _parseCSVEntries(raw) {
+    if (!raw) return [];
+    // Splits on newline AND comma — handles userAffirmations (newline-delimited)
+    // and bgPromptInput / pfGoals (comma-separated) uniformly.
+    return String(raw)
+      .split(/[\n,]+/)
+      .map(s => s.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  function _diffCSV(before, after) {
+    const a = new Set(_parseCSVEntries(before));
+    const b = new Set(_parseCSVEntries(after));
+    const added = [...b].filter(x => !a.has(x));
+    const removed = [...a].filter(x => !b.has(x));
+    const kept = [...a].filter(x => b.has(x));
+    const changeCount = added.length + removed.length;
+    if (changeCount === 0) return { hasChange: false, meetsThreshold: false };
+    return {
+      hasChange: true,
+      meetsThreshold: changeCount >= DIFF_BOUNCE_THRESHOLDS.csvChangeCount,
+      detail: { added, removed, kept },
+    };
+  }
+
+  function _diffImage(before, after) {
+    // State shape: { tags: [...], summary: '...', prompt: '...', ts: 0 }
+    const lastTags = (before && before.tags) || [];
+    const newTags  = (after  && after.tags)  || [];
+    const a = new Set(lastTags);
+    const b = new Set(newTags);
+    if (!a.size && !b.size) return { hasChange: false, meetsThreshold: false };
+    if (!a.size) {
+      // First-snapshot seed — always commit so the user has an initial anchor.
+      return {
+        hasChange: true,
+        meetsThreshold: true,
+        detail: {
+          summary: after.summary || '',
+          tags: newTags,
+          prompt: (after.prompt || '').slice(0, 200),
+          reason: 'first-snapshot',
+        },
+      };
+    }
+    const inter = [...a].filter(x => b.has(x));
+    const union = new Set([...a, ...b]);
+    const jaccard = inter.length / union.size;
+    if (jaccard >= DIFF_BOUNCE_THRESHOLDS.imageSimilarityMax) {
+      return { hasChange: false, meetsThreshold: false };
+    }
+    return {
+      hasChange: true,
+      meetsThreshold: true,
+      detail: {
+        summary: after.summary || '',
+        tags: newTags,
+        prompt: (after.prompt || '').slice(0, 200),
+        similarity: +jaccard.toFixed(3),
+      },
+    };
+  }
+
+  // Map holding active DiffBouncer instances — one per source id
+  const diffBouncers = {};
+
+  /** Derive a 6-10 word aesthetic summary + 3-6 tags from an image prompt.
+   *  Consent-aware. Uses LLM when remote processing is enabled; otherwise
+   *  falls back to rule-based tokenization. Never throws. */
+  async function summarizeImagePrompt({ prompt, negativePrompt }) {
+    // Stop-list for rule-based fallback — common filler words
+    const STOP = new Set(['the','and','with','for','that','this','from','into','over','very','more','less','really','some','just','only','also','than','then','when','make','made','very','highly']);
+
+    const fallback = () => {
+      const words = String(prompt || '').toLowerCase().match(/[a-z][a-z-]{2,}/g) || [];
+      const tags = [...new Set(words.filter(w => !STOP.has(w)))].slice(0, 6);
+      return {
+        summary: tags.slice(0, 6).join(', ') || 'untagged image',
+        tags,
+        prompt: String(prompt || '').slice(0, 200),
+        source: 'fallback',
+      };
+    };
+
+    // No consent → skip LLM, use local tokenization only
+    if (!state.remoteProcessingOptIn) return fallback();
+    if (typeof root === 'undefined' || !root.aiTextPlugin) return fallback();
+
+    const instruction = [
+      'Summarize this image generation prompt in exactly 6-10 words, focusing on visual aesthetic.',
+      'Output STRICT JSON only: {"summary":"…","tags":["…","…"]}',
+      'Tags: 3-6 short aesthetic descriptors (adjectives + subject nouns). Lowercase, no prose.',
+      `Prompt: ${String(prompt || '').slice(0, 400)}`,
+      negativePrompt ? `Negative: ${String(negativePrompt).slice(0, 200)}` : '',
+    ].filter(Boolean).join('\n');
+
+    try {
+      const data = await root.aiTextPlugin({
+        instruction,
+        startWith: '{',
+        stopSequences: ['\n\n\n'],
+        hideStartWith: false,
+      });
+      const raw = String(data?.text || data || '').trim();
+      // Salvage parse — find outermost { } in the response
+      const s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+      if (s < 0 || e <= s) return fallback();
+      const parsed = JSON.parse(raw.slice(s, e + 1));
+      if (!parsed.summary || !Array.isArray(parsed.tags)) return fallback();
+      return {
+        summary: String(parsed.summary).slice(0, 120),
+        tags: parsed.tags.map(t => String(t).toLowerCase().trim()).filter(Boolean).slice(0, 6),
+        prompt: String(prompt || '').slice(0, 200),
+        source: 'llm',
+      };
+    } catch (e) {
+      console.warn('[DB] image summary LLM failed, using fallback:', e);
+      return fallback();
+    }
+  }
+
+  // ====================================================================
   // USER PROFILE (bio, appearance, goals — for AI personalization)
   // ====================================================================
   const PROFILE_KEY = 'stillness_profile_v1';
   let _profileSaveTimeout = null;
+  let _profileChangeLog = []; // in-memory mirror of profile.changeLog
+
+  /** Commit a diff entry to the change log (ring buffer, newest-first). */
+  function commitChangeLogEntry(source, type, diff, meta = {}) {
+    const entry = {
+      ts: Date.now(),
+      source,
+      type,
+      diff,
+      meta: { trigger: meta.trigger || 'idle' },
+    };
+    _profileChangeLog.unshift(entry);
+    if (_profileChangeLog.length > DIFF_BOUNCE_THRESHOLDS.logCap) {
+      _profileChangeLog.length = DIFF_BOUNCE_THRESHOLDS.logCap;
+    }
+    saveProfile();
+  }
 
   function getProfile() {
     return {
@@ -3820,6 +4292,8 @@ I return to myself easily"></textarea>
     _profileSaveTimeout = setTimeout(async () => {
       try {
         const profile = getProfile();
+        // Attach the in-memory change log (ring-buffered, newest-first)
+        profile.changeLog = _profileChangeLog.slice(0, DIFF_BOUNCE_THRESHOLDS.logCap);
         if (_kv) await _kv.settings.set(PROFILE_KEY, profile);
         localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
         // Update sidebar display name
@@ -3835,8 +4309,110 @@ I return to myself easily"></textarea>
       if (_kv) { try { p = await _kv.settings.get(PROFILE_KEY); } catch {} }
       if (!p) { const raw = localStorage.getItem(PROFILE_KEY); if (raw) p = JSON.parse(raw); }
       if (!p) return;
+      // Additive migration — seed changeLog for old profiles missing the field
+      _profileChangeLog = Array.isArray(p.changeLog) ? p.changeLog : [];
       applyProfileToForm(p, { save: false });
     } catch {}
+  }
+
+  /** Tracked fields for DiffBouncer coverage.
+   *  type: 'text' for prose-ish fields (pct-of-chars threshold)
+   *        'csv'  for list-ish fields (entry-count threshold) */
+  const TRACKED_FIELDS = [
+    { id: 'pfGoals',          type: 'csv'  }, // "Goals" textarea
+    { id: 'pfAbout',          type: 'text' }, // "About You" freeform
+    { id: 'intentionInput',   type: 'text' }, // per-session intention
+    { id: 'userAffirmations', type: 'csv'  }, // newline-delimited affirmations
+    { id: 'bgPromptInput',    type: 'csv'  }, // image-gen prompt tags
+  ];
+
+  function initDiffBouncers() {
+    // Text/CSV field bouncers — one per TRACKED_FIELD
+    TRACKED_FIELDS.forEach(({ id, type }) => {
+      const el = document.getElementById(id);
+      if (!el) return; // defensive — missing field means no coverage, no crash
+      const bouncer = new DiffBouncer({
+        source: id,
+        type,
+        getState: () => el.value || '',
+        onCommit: (diff, _current, meta) => commitChangeLogEntry(id, type, diff, meta),
+      });
+      // Seed baseline from current value — hardCommit is a no-op here
+      // because lastSnapshot is null and the impl returns without committing.
+      bouncer.lastSnapshot = el.value || '';
+      diffBouncers[id] = bouncer;
+      el.addEventListener('input', () => bouncer.ping());
+    });
+
+    // Image generation — single bouncer for all image-gen events.
+    // State shape is set by the bgEngine hook (Task 6).
+    diffBouncers.bgImage = new DiffBouncer({
+      source: 'bgImage',
+      type: 'image',
+      getState: () => diffBouncers.bgImage._latestState || null,
+      onCommit: (diff, _current, meta) => commitChangeLogEntry('bgImage', 'image', diff, meta),
+    });
+
+    // Timeline UI — render on Profile modal expand (details toggle)
+    document.getElementById('pfChangeLogDetails')?.addEventListener('toggle', e => {
+      if (e.target.open) renderChangeLog();
+    });
+
+    console.log('[DB] diff bouncers initialized:', Object.keys(diffBouncers).length);
+  }
+
+  // HTML escape for user-generated content shown in the changelog view
+  function _escDB(s) { return String(s).replace(/[<>&"']/g, c => ({ '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":'&#39;' }[c])); }
+
+  function _relTimeDB(ts) {
+    const now = Date.now();
+    const d = Math.floor((now - ts) / 1000);
+    if (d < 60) return 'just now';
+    if (d < 3600) return Math.floor(d / 60) + 'm ago';
+    if (d < 86400) return Math.floor(d / 3600) + 'h ago';
+    if (d < 86400 * 2) return 'yesterday';
+    if (d < 86400 * 7) return Math.floor(d / 86400) + 'd ago';
+    return new Date(ts).toISOString().slice(0, 10);
+  }
+
+  function renderChangeLog() {
+    const list = document.getElementById('pfChangeLogList');
+    const count = document.getElementById('pfChangeLogCount');
+    if (!list) return;
+    const entries = _profileChangeLog || [];
+    if (count) count.textContent = entries.length ? `(${entries.length})` : '';
+    if (!entries.length) {
+      list.innerHTML = '<div class="sublabel" style="padding:8px 4px;">no changes logged yet — edit a tracked field or generate an image.</div>';
+      return;
+    }
+    const srcLabel = id => ({
+      pfGoals: 'goals',
+      pfAbout: 'about',
+      intentionInput: 'intention',
+      userAffirmations: 'affirmations',
+      bgPromptInput: 'bg prompt',
+      bgImage: 'image',
+    }[id] || id);
+    const html = entries.slice(0, DIFF_BOUNCE_THRESHOLDS.logCap).map(e => {
+      const ts = _relTimeDB(e.ts);
+      const src = srcLabel(e.source);
+      let body = '';
+      if (e.type === 'csv' && e.diff) {
+        const addHtml = (e.diff.added || []).map(a => `<span class="cl-chip cl-add">+${_escDB(a)}</span>`).join('');
+        const remHtml = (e.diff.removed || []).map(r => `<span class="cl-chip cl-rem">−${_escDB(r)}</span>`).join('');
+        body = addHtml + remHtml || '<em>no entries shifted</em>';
+      } else if (e.type === 'text' && e.diff) {
+        const pct = Math.round((e.diff.changePct || 0) * 100);
+        body = `<span class="sublabel">${pct}% changed</span> — <em>${_escDB(e.diff.preview || '')}…</em>`;
+      } else if (e.type === 'image' && e.diff) {
+        const tags = (e.diff.tags || []).map(t => `<span class="cl-chip">${_escDB(t)}</span>`).join('');
+        body = `<div>${_escDB(e.diff.summary || '')}</div><div style="margin-top:3px;">${tags}</div>`;
+      } else {
+        body = '<em>(unknown entry type)</em>';
+      }
+      return `<div class="pf-changelog-entry"><div class="cl-head"><span class="cl-ts">${_escDB(ts)}</span> · <span class="cl-src">${_escDB(src)}</span></div><div class="cl-body">${body}</div></div>`;
+    }).join('');
+    list.innerHTML = html;
   }
 
   /** Build an AI context string from the user's profile for prompt injection */
@@ -3855,9 +4431,101 @@ I return to myself easily"></textarea>
     if (p.about) parts.push(`About the subject: ${p.about}.`);
     if (p.appearance) parts.push(`Appearance: ${p.appearance}.`);
     if (p.goals) parts.push(`Goals: ${p.goals}.`);
+
+    // Recent change signals from the diff-bounce log — gives the director
+    // a time-aware view of what the user's been exploring lately.
+    const srcLabel = id => ({ pfGoals:'goals', pfAbout:'about', intentionInput:'intention', userAffirmations:'affirmations', bgPromptInput:'bg-prompt', bgImage:'image-gen' }[id] || id);
+    try {
+      const recent = (_profileChangeLog || []).slice(0, 10);
+      if (recent.length) {
+        const lines = recent.map(e => {
+          const rel = _relTimeDB(e.ts);
+          if (e.type === 'csv' && e.diff) {
+            const add = (e.diff.added || []).slice(0, 3).join(',');
+            const rem = (e.diff.removed || []).slice(0, 3).join(',');
+            const bits = [];
+            if (add) bits.push('+' + add);
+            if (rem) bits.push('-' + rem);
+            return `${rel} · ${srcLabel(e.source)}: ${bits.join(' ')}`.trim();
+          } else if (e.type === 'text' && e.diff) {
+            return `${rel} · ${srcLabel(e.source)}: ${Math.round((e.diff.changePct || 0) * 100)}% text change`;
+          } else if (e.type === 'image' && e.diff) {
+            const tags = (e.diff.tags || []).slice(0, 4).join(',');
+            const sum = e.diff.summary || (tags ? `[${tags}]` : '');
+            return `${rel} · image: ${sum}`;
+          }
+          return `${rel} · ${srcLabel(e.source)}`;
+        }).filter(Boolean);
+        if (lines.length) parts.push('Recent changes: ' + lines.join(' | '));
+      }
+    } catch (e) { /* never break context assembly */ }
+
     const result = parts.length > 0 ? '\nSUBJECT PROFILE: ' + parts.join(' ') : '';
     sdLog('getProfileContext built', { fieldCount: parts.length, charCount: result.length });
     return result;
+  }
+
+  // ====================================================================
+  // FRESHNESS INJECTION — combinatorial anchor phrases via Perchance DSL
+  // ====================================================================
+  // Breaks AI mode-collapse by injecting a small set of profile-filtered
+  // sensory anchors into sharedContext on each script generation. The DSL
+  // picker is stateless; rotation memory (last-used phrases) lives here.
+  // ====================================================================
+  const FRESHNESS_COUNT = 4;              // phrases per script generation
+  const FRESHNESS_MIN_TAGS = 0;           // min profile tags required (0 = always)
+  const FRESHNESS_ROTATION_CAP = 30;      // max "recent" entries remembered
+  let _recentAnchors = [];                // FIFO buffer of recently-picked phrases
+
+  function deriveProfileTags() {
+    const tags = new Set();
+    const p = getProfile();
+    // Experience → pacing tag
+    if (p.experience === 'beginner') tags.add('slow');
+    if (p.experience === 'advanced') tags.add('dense');
+    // Goals text → simple keyword map (deliberately broad)
+    const goals = (p.goals || '').toLowerCase();
+    if (/(sleep|insomnia|bedtime)/.test(goals)) tags.add('sleep');
+    if (/(calm|relax|anxiety|stress)/.test(goals)) tags.add('calm');
+    if (/(focus|concentration|productivity)/.test(goals)) tags.add('focus');
+    if (/(creative|art|write)/.test(goals)) tags.add('creative');
+    if (/(confidence|self)/.test(goals)) tags.add('confidence');
+    // Intention → imagery tag (intention text comes from the intention input)
+    const intention = ($('intentionInput')?.value || '').toLowerCase();
+    if (/(water|ocean|river|rain)/.test(intention)) tags.add('water');
+    if (/(warm|sun|fire|glow)/.test(intention)) tags.add('warm');
+    if (/(cool|cold|ice|winter)/.test(intention)) tags.add('cool');
+    // Aesthetic preferences from the diff-bounce image log, if populated
+    try {
+      const imgEntries = (_profileChangeLog || []).filter(e => e.source === 'bgImage').slice(0, 5);
+      imgEntries.forEach(e => (e.diff?.tags || []).forEach(t => tags.add(t)));
+    } catch {}
+    return [...tags];
+  }
+
+  function buildFreshnessBlock() {
+    if (state.smartDirectorEnabled === false) return '';
+    if (typeof root === 'undefined' || !root.freshSeeds || typeof root.freshSeeds.pick !== 'function') return '';
+    try {
+      const tags = deriveProfileTags();
+      if (tags.length < FRESHNESS_MIN_TAGS) return '';
+      const phrases = root.freshSeeds.pick({
+        profileTags: tags,
+        n: FRESHNESS_COUNT,
+        excludeSet: _recentAnchors,
+      });
+      if (!phrases || !phrases.length) return '';
+      // Update rotation state (FIFO cap)
+      _recentAnchors.push(...phrases);
+      if (_recentAnchors.length > FRESHNESS_ROTATION_CAP) {
+        _recentAnchors = _recentAnchors.slice(-FRESHNESS_ROTATION_CAP);
+      }
+      sdLog('freshness block built', { count: phrases.length, tags });
+      return `\nOPTIONAL ANCHORS (use only if they fit the moment — ignore otherwise):\n${phrases.map(p => '  • ' + p).join('\n')}`;
+    } catch (e) {
+      console.warn('[freshSeeds] pick failed:', e);
+      return '';
+    }
   }
 
   // ====================================================================
@@ -5273,8 +5941,18 @@ Practitioner profile (full, natural sentences):`;
       this.compressor.connect(this.ctx.destination);
       this._duckGain = this.ctx.createGain(); this._duckGain.gain.value = 1.0;
       this._duckGain.connect(this.compressor);
+
+      // Audio-reactive tap — AnalyserNode between master and _duckGain.
+      // Tap reads the mixed signal before ducking, so soundscape reactivity
+      // isn't muted during narrator speech. Doesn't disturb the signal path.
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 256;             // 128 frequency bins
+      this.analyser.smoothingTimeConstant = 0.7;
+      state.audioReactive._fftBuffer = new Uint8Array(this.analyser.frequencyBinCount);
+
       this.master = this.ctx.createGain(); this.master.gain.value = 0;
-      this.master.connect(this._duckGain);
+      this.master.connect(this.analyser);
+      this.analyser.connect(this._duckGain);
 
       const c = this.ctx, m = this.master, ns = this.nodes;
       const mkNoise = (filterType, freq, q) => {
@@ -5609,6 +6287,8 @@ Practitioner profile (full, natural sentences):`;
       this.master.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 2);
       await new Promise(r => setTimeout(r, 2100));
       this.nodes.forEach(n => { try { n.stop?.(); n.disconnect?.(); } catch(e) {} });
+      if (this.analyser) { try { this.analyser.disconnect(); } catch {} this.analyser = null; }
+      state.audioReactive._fftBuffer = null;
       try { this.ctx.suspend(); } catch(e) {}
       this.ctx = null; this.master = null; this._duckGain = null; this.compressor = null; this.nodes = []; this.running = false;
     }
@@ -5944,6 +6624,25 @@ Practitioner profile (full, natural sentences):`;
           const blob = await fetch(dataUrl).then(r => r.blob());
           const objectUrl = URL.createObjectURL(blob);
           this.queue.push(objectUrl);
+          // Diff-bounce ingestion — summarize + ping the image bouncer.
+          // Fire-and-forget; never block the image return on this.
+          (async () => {
+            try {
+              const summary = await summarizeImagePrompt({
+                prompt: params.prompt,
+                negativePrompt: params.negativePrompt,
+              });
+              if (diffBouncers.bgImage) {
+                diffBouncers.bgImage._latestState = {
+                  tags: summary.tags,
+                  summary: summary.summary,
+                  prompt: summary.prompt,
+                  ts: Date.now(),
+                };
+                diffBouncers.bgImage.ping();
+              }
+            } catch (e) { console.warn('[DB] bgImage ingestion failed:', e); }
+          })();
           return objectUrl;
         }
         return null;
@@ -6210,11 +6909,34 @@ Practitioner profile (full, natural sentences):`;
 
   function renderTunnel(ctx, W, H, t, color) {
     const cx = W/2, cy = H/2, rgb = hexToRgb(color), maxR = Math.hypot(cx,cy)*1.1, RINGS = 18;
+    const mod = getAudioMod();
+    // Bass adds forward velocity (rings rush toward viewer faster on bass hits)
+    const velMul = 1 + mod.bass * 1.2;
     ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
     for (let i = RINGS; i >= 0; i--) {
-      const frac = ((i/RINGS) + (t*0.18)) % 1, r = frac*maxR, alpha = (1-frac)*0.65+0.05;
+      const frac = ((i/RINGS) + (t*0.18*velMul)) % 1, r = frac*maxR, alpha = (1-frac)*0.65+0.05;
       ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
       ctx.strokeStyle = `rgba(${rgb},${alpha})`; ctx.lineWidth = 1.5+(1-frac)*3; ctx.stroke();
+    }
+    // Voice-pulse light rings — fresh ring spawned on each voicePulse (3Hz cap)
+    // Stored on the function itself to persist across frames
+    if (!renderTunnel._voiceRings) { renderTunnel._voiceRings = []; renderTunnel._lastSpawn = 0; }
+    const now = performance.now();
+    if (mod.pulse > 0.6 && now - renderTunnel._lastSpawn > 333) {
+      renderTunnel._lastSpawn = now;
+      renderTunnel._voiceRings.push({ t: now });
+      if (renderTunnel._voiceRings.length > 8) renderTunnel._voiceRings.shift();
+    }
+    for (const ring of renderTunnel._voiceRings) {
+      const age = (now - ring.t) / 1000; // 0..2s lifetime
+      if (age > 2) continue;
+      const prog = age / 2; // 0..1
+      const rr = prog * maxR;
+      const ra = (1 - prog) * 0.7 * mod.pulse + (1 - prog) * 0.3;
+      ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI*2);
+      ctx.strokeStyle = `rgba(255,215,140,${ra})`;
+      ctx.lineWidth = 2 + (1-prog) * 2;
+      ctx.stroke();
     }
     const g = ctx.createRadialGradient(cx,cy,0,cx,cy,maxR*0.15);
     g.addColorStop(0,`rgba(${rgb},0.7)`); g.addColorStop(1,`rgba(${rgb},0)`);
@@ -6252,12 +6974,17 @@ Practitioner profile (full, natural sentences):`;
 
   function renderMandala(ctx, W, H, t, color) {
     const cx = W/2, cy = H/2, petals = 8, rgb = hexToRgb(color);
+    const mod = getAudioMod();
+    // Rotation speed × (1 + overall), arm brightness on voice pulse, petal scale on bass
+    const speedMul = 1 + mod.overall;
+    const armBright = 0.7 + mod.pulse * 0.3;
+    const petalScale = 1 + mod.bass * 0.35;
     ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fillRect(0,0,W,H);
-    ctx.strokeStyle = `rgba(${rgb},0.7)`; ctx.shadowColor = color; ctx.shadowBlur = 12;
+    ctx.strokeStyle = `rgba(${rgb},${armBright})`; ctx.shadowColor = color; ctx.shadowBlur = 12 + mod.pulse * 18;
     for (let layer = 0; layer < 4; layer++) {
-      const R = (layer+1)*Math.min(W,H)*0.1;
-      const spin = t*(layer%2===0 ? 0.2 : -0.15) + layer*0.4;
-      ctx.globalAlpha = 0.6-layer*0.1; ctx.lineWidth = 1.8-layer*0.3;
+      const R = (layer+1)*Math.min(W,H)*0.1 * petalScale;
+      const spin = t*(layer%2===0 ? 0.2 : -0.15)*speedMul + layer*0.4;
+      ctx.globalAlpha = (0.6-layer*0.1); ctx.lineWidth = 1.8-layer*0.3;
       for (let p = 0; p < petals; p++) {
         const base = (p/petals)*Math.PI*2 + spin, tip = base + Math.PI/petals;
         ctx.beginPath(); ctx.moveTo(cx,cy);
@@ -6313,6 +7040,8 @@ Practitioner profile (full, natural sentences):`;
   function renderBreathingCircle(ctx, W, H, t, color) {
     const cx = W/2, cy = H/2, maxR = Math.min(W,H)*0.38, rgb = hexToRgb(color);
     // 4-7-8 cycle: 4s inhale, 7s hold, 8s exhale = 19s total
+    // TEMPO IS LOCKED — audio reactivity ONLY modulates color warmth + halo alpha.
+    // Do not introduce any audio-derived multiplier into phase/cycle/frac.
     const cycle = 19, phase = t % cycle;
     // Haptic at cycle start (once per 19s)
     if (phase < 0.05 && t > 0.1) vibrateBreath();
@@ -6322,6 +7051,11 @@ Practitioner profile (full, natural sentences):`;
     else frac = 1 - (phase - 11) / 8; // exhale: contract
     frac = frac * frac * (3 - 2 * frac); // smoothstep ease
 
+    // Audio reactivity — color/halo only
+    const mod = getAudioMod();
+    const warmthShift = mod.envelope * 25; // pulls hue toward warm amber (lower) on voice
+    const haloBoost = mod.bass * 0.35;      // outer halo gains alpha on bass
+
     ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(0,0,W,H);
     const r = maxR * 0.3 + maxR * 0.7 * frac;
 
@@ -6330,14 +7064,22 @@ Practitioner profile (full, natural sentences):`;
       const ringFrac = Math.max(0, Math.min(1, frac - ring * 0.04));
       const rr = maxR * 0.3 + maxR * 0.7 * ringFrac * (3 - 2 * ringFrac);
       const alpha = 0.08 + ring * 0.04;
-      // Color shift: cool blue inhale → warm amber exhale
-      const hue = 210 - frac * 30; // 210 (blue) → 180 (teal) at full
+      // Color shift: cool blue inhale → warm amber exhale (+ warmth from voice envelope)
+      const hue = 210 - frac * 30 - warmthShift; // 210 (blue) → 180 (teal) + voice warmth
       ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI*2);
       ctx.strokeStyle = `hsla(${hue}, 50%, 60%, ${alpha})`; ctx.lineWidth = 1.5; ctx.stroke();
     }
 
+    // Outer halo ring — reacts to bass, sits outside maxR. Does NOT change breath tempo.
+    if (haloBoost > 0.02) {
+      ctx.beginPath(); ctx.arc(cx, cy, maxR * (1.05 + haloBoost * 0.25), 0, Math.PI * 2);
+      ctx.strokeStyle = `hsla(${210 - warmthShift}, 55%, 62%, ${haloBoost * 0.8})`;
+      ctx.lineWidth = 3 + haloBoost * 4;
+      ctx.stroke();
+    }
+
     // Main circle
-    const mainHue = 210 - frac * 40;
+    const mainHue = 210 - frac * 40 - warmthShift;
     const grad = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r);
     grad.addColorStop(0, `hsla(${mainHue}, 55%, 55%, 0.35)`);
     grad.addColorStop(1, `hsla(${mainHue}, 45%, 40%, 0.08)`);
@@ -6554,13 +7296,20 @@ Practitioner profile (full, natural sentences):`;
   function renderAurora(ctx, W, H, t, color) {
     ctx.fillStyle = 'rgba(0,0,0,0.04)'; ctx.fillRect(0,0,W,H);
     const rgb = hexToRgb(color);
+    const mod = getAudioMod();
+    // Wave crest height on voice envelope; color-band vertical shift on bass; opacity waves on treble
+    const crestMul = 1 + mod.envelope * 1.8;      // 1× base → 2.8× on full envelope
+    const bandShift = mod.bass * 60;              // pixel shift upward
+    const opacityBoost = mod.treble * 0.4;        // additive alpha boost
     for (let b = 0; b < 4; b++) {
       const ph = b * 1.7 + t * 0.0004;
-      const y = H * 0.25 + Math.sin(ph) * H * 0.12 + Math.sin(ph * 0.7 + b) * H * 0.06;
-      const grad = ctx.createLinearGradient(0, y - 100, 0, y + 140);
+      const baseY = H * 0.25 - bandShift
+        + Math.sin(ph) * H * 0.12 * crestMul
+        + Math.sin(ph * 0.7 + b) * H * 0.06 * crestMul;
+      const grad = ctx.createLinearGradient(0, baseY - 100, 0, baseY + 140);
       grad.addColorStop(0, 'transparent');
-      grad.addColorStop(0.3, `rgba(${rgb},${0.035 + b * 0.008})`);
-      grad.addColorStop(0.7, `rgba(${rgb},${0.05 - b * 0.008})`);
+      grad.addColorStop(0.3, `rgba(${rgb},${(0.035 + b * 0.008 + opacityBoost).toFixed(3)})`);
+      grad.addColorStop(0.7, `rgba(${rgb},${(0.05 - b * 0.008 + opacityBoost).toFixed(3)})`);
       grad.addColorStop(1, 'transparent');
       ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
     }
@@ -6595,26 +7344,54 @@ Practitioner profile (full, natural sentences):`;
   function renderWaveform(ctx, W, H, t, color) {
     ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(0,0,W,H);
     const rgb = hexToRgb(color), cy = H/2;
-    const freq = 0.02 + Math.sin(t * 0.0003) * 0.015; // shifts over time
+    const mod = getAudioMod();
+    const a = state.audioReactive;
+    const haveAudio = a && a.active && a._fftBuffer && mod.overall > 0.01;
     ctx.beginPath(); ctx.moveTo(0, cy);
-    for (let x = 0; x < W; x++) {
-      const amp = H * 0.15 * (1 + Math.sin(t * 0.0005) * 0.3);
-      ctx.lineTo(x, cy + Math.sin(x * freq + t * 0.002) * amp * Math.sin(x / W * Math.PI));
+    if (haveAudio) {
+      // Real FFT — sampled evenly across the width
+      const buf = a._fftBuffer;
+      const step = Math.max(1, Math.floor(buf.length / Math.min(W, 128)));
+      const ampScale = H * 0.35 * (0.6 + mod.overall);
+      for (let x = 0; x < W; x++) {
+        const idx = Math.floor((x / W) * buf.length / step) * step;
+        const v = (buf[idx] / 255) - 0.5; // -0.5..0.5
+        const y = cy + v * ampScale * Math.sin(x / W * Math.PI); // window envelope
+        ctx.lineTo(x, y);
+      }
+    } else {
+      // Idle sine — unchanged legacy behavior
+      const freq = 0.02 + Math.sin(t * 0.0003) * 0.015;
+      for (let x = 0; x < W; x++) {
+        const amp = H * 0.15 * (1 + Math.sin(t * 0.0005) * 0.3);
+        ctx.lineTo(x, cy + Math.sin(x * freq + t * 0.002) * amp * Math.sin(x / W * Math.PI));
+      }
     }
-    ctx.strokeStyle = `rgba(${rgb},0.4)`; ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = `rgba(${rgb},${0.4 + mod.envelope * 0.4})`;
+    ctx.lineWidth = 2 + mod.bass * 1.2;
+    ctx.stroke();
   }
 
   // Smoke / fog — drifting translucent circles
   function renderSmoke(ctx, W, H, t, color) {
     const rgb = hexToRgb(color);
+    const mod = getAudioMod();
     if (!renderSmoke._puffs) { renderSmoke._puffs = []; for (let i = 0; i < 20; i++) renderSmoke._puffs.push({ x: Math.random() * W, y: Math.random() * H, r: 60 + Math.random() * 120, vx: (Math.random()-0.5)*0.3, vy: (Math.random()-0.5)*0.2 }); }
     ctx.fillStyle = 'rgba(0,0,0,0.02)'; ctx.fillRect(0,0,W,H);
+    // Turbulence strength on overall — jitters velocities; density increases with envelope
+    const turbMul = 1 + mod.overall * 1.5;
+    const densityBoost = 1 + mod.envelope * 0.6; // brighter puffs when narrator speaks
     for (const p of renderSmoke._puffs) {
+      // Apply turbulence to velocity each frame
+      p.vx += (Math.random() - 0.5) * 0.015 * turbMul;
+      p.vy += (Math.random() - 0.5) * 0.012 * turbMul;
+      // Mild damping so velocities don't explode
+      p.vx *= 0.985; p.vy *= 0.985;
       p.x += p.vx; p.y += p.vy;
       if (p.x < -p.r) p.x = W + p.r; if (p.x > W + p.r) p.x = -p.r;
       if (p.y < -p.r) p.y = H + p.r; if (p.y > H + p.r) p.y = -p.r;
       const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-      grad.addColorStop(0, `rgba(${rgb},0.025)`); grad.addColorStop(1, 'transparent');
+      grad.addColorStop(0, `rgba(${rgb},${(0.025 * densityBoost).toFixed(4)})`); grad.addColorStop(1, 'transparent');
       ctx.fillStyle = grad; ctx.fillRect(p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
     }
   }
@@ -6727,17 +7504,510 @@ Practitioner profile (full, natural sentences):`;
   // Voice preview state
   let _voicePreviewing = false;
 
+  // ====================================================================
+  // NEURAL BLOOM — flagship audio-reactive visualizer (spec §4)
+  // ====================================================================
+  // WebGL2-first, WebGL1 fallback, canvas 2D last-resort. All three share
+  // the same JS per-frame tick with getAudioMod()/state._currentPhase
+  // inputs; only the draw details differ.
+  //
+  // Visual composition (back → front):
+  //   1. Background shader     — fBM gradient, phase-colored, near-static
+  //   2. Central breathing orb — size modulated by overall + voiceEnvelope
+  //   3. Radial particle ring  — 300 orbiting points, radius on bass
+  //   4. Bloom bursts          — 20 petals per voicePulse, 3Hz rate cap
+  //
+  // Safety: bloom bursts throttled to ≥333ms spacing; orb radius smoothed
+  // so it cannot complete a cycle faster than ~500ms; burst fade is
+  // asymmetric (150ms in, 850ms out) so no strobe-like flashes.
+  // ====================================================================
+
+  const NB_PHASE_PALETTES = {
+    settling:        { a: [0.10, 0.15, 0.35], b: [0.15, 0.40, 0.45] },
+    induction:       { a: [0.15, 0.40, 0.45], b: [0.30, 0.15, 0.45] },
+    deepener:        { a: [0.30, 0.15, 0.45], b: [0.50, 0.10, 0.40] },
+    work:            { a: [0.50, 0.10, 0.40], b: [0.80, 0.60, 0.20] },
+    affirmation:     { a: [0.50, 0.10, 0.40], b: [0.80, 0.60, 0.20] },
+    affirm:          { a: [0.50, 0.10, 0.40], b: [0.80, 0.60, 0.20] },
+    lightener:       { a: [0.80, 0.60, 0.20], b: [0.85, 0.55, 0.25] },
+    wake:            { a: [0.85, 0.55, 0.25], b: [0.30, 0.70, 0.85] },
+    reintroduction:  { a: [0.30, 0.70, 0.85], b: [0.90, 0.95, 1.00] },
+    _default:        { a: [0.10, 0.20, 0.40], b: [0.30, 0.10, 0.50] },
+  };
+
+  // Shader sources — WebGL2 (GLSL ES 3.0). GL1 variants derived at load time.
+  const NB_VS_BG = `#version 300 es
+    in vec2 aPos;
+    out vec2 vUv;
+    void main() { vUv = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }
+  `;
+  const NB_FS_BG = `#version 300 es
+    precision highp float;
+    in vec2 vUv;
+    uniform float uTime;
+    uniform vec3  uColorA;
+    uniform vec3  uColorB;
+    out vec4 fragColor;
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float noise(vec2 p){
+      vec2 i = floor(p), f = fract(p);
+      float a = hash(i), b = hash(i+vec2(1,0)), c = hash(i+vec2(0,1)), d = hash(i+vec2(1,1));
+      vec2 u = f*f*(3.0-2.0*f);
+      return mix(a,b,u.x) + (c-a)*u.y*(1.0-u.x) + (d-b)*u.x*u.y;
+    }
+    float fbm(vec2 p){ float v=0.0, a=0.5; for(int i=0;i<4;i++){ v+=a*noise(p); p*=2.0; a*=0.5; } return v; }
+    void main() {
+      vec2 p = vUv * 3.0;
+      float n = fbm(p + uTime*0.05);
+      vec3 c = mix(uColorA, uColorB, smoothstep(0.3, 0.7, n));
+      fragColor = vec4(c, 1.0);
+    }
+  `;
+  const NB_VS_ORB = `#version 300 es
+    in vec2 aPos;
+    uniform vec2  uResolution;
+    uniform vec2  uCenter;       // pixel offset from canvas center
+    uniform float uRadius;
+    out vec2 vPos;
+    void main() {
+      vec2 scaled = aPos * uRadius;
+      vec2 pixel = scaled + uCenter;
+      vec2 ndc = pixel / uResolution * 2.0;
+      gl_Position = vec4(ndc.x, -ndc.y, 0.0, 1.0);
+      vPos = aPos;
+    }
+  `;
+  const NB_FS_ORB = `#version 300 es
+    precision highp float;
+    in vec2 vPos;
+    uniform vec3  uColor;
+    uniform float uGlow;
+    out vec4 fragColor;
+    void main() {
+      float r = length(vPos);
+      if (r > 1.0) discard;
+      float core = smoothstep(0.6, 0.0, r);
+      float halo = smoothstep(1.0, 0.5, r) * uGlow;
+      vec3 c = uColor * (core + halo * 0.6);
+      fragColor = vec4(c, core + halo * 0.4);
+    }
+  `;
+  const NB_VS_PARTICLE = `#version 300 es
+    in float aPhase;
+    uniform float uTime;
+    uniform float uRadius;
+    uniform float uPtSize;
+    uniform vec2  uResolution;
+    uniform float uSpin;
+    out float vFade;
+    void main() {
+      float angle = aPhase * 6.2831853 + uTime * uSpin;
+      vec2 pos = vec2(cos(angle), sin(angle)) * uRadius;
+      vec2 ndc = pos / uResolution * 2.0;
+      gl_Position = vec4(ndc.x, -ndc.y, 0.0, 1.0);
+      gl_PointSize = uPtSize;
+      vFade = 0.5 + 0.5 * sin(aPhase * 30.0 + uTime * 0.7);
+    }
+  `;
+  const NB_FS_PARTICLE = `#version 300 es
+    precision highp float;
+    in float vFade;
+    uniform vec3 uColor;
+    out vec4 fragColor;
+    void main() {
+      vec2 c = gl_PointCoord * 2.0 - 1.0;
+      float r = length(c);
+      if (r > 1.0) discard;
+      float glow = smoothstep(1.0, 0.2, r);
+      fragColor = vec4(uColor * glow * vFade, glow * vFade);
+    }
+  `;
+
+  // WebGL1 shader variants — strip #version, convert in/out, gl_FragColor
+  function _nbToGL1(src, isFrag) {
+    let s = src.replace(/#version 300 es\s*\n?/, '').replace(/in /g, isFrag ? 'varying ' : 'attribute ');
+    if (isFrag) {
+      s = s.replace(/out vec4 fragColor;/, '').replace(/fragColor/g, 'gl_FragColor');
+    } else {
+      s = s.replace(/out /g, 'varying ');
+    }
+    return s;
+  }
+
+  function _nbCompile(gl, vsSrc, fsSrc, isGL2) {
+    const vs = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vs, isGL2 ? vsSrc : _nbToGL1(vsSrc, false));
+    gl.compileShader(vs);
+    if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) { console.error('[NB] vs compile:', gl.getShaderInfoLog(vs)); return null; }
+    const fs = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fs, isGL2 ? fsSrc : _nbToGL1(fsSrc, true));
+    gl.compileShader(fs);
+    if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) { console.error('[NB] fs compile:', gl.getShaderInfoLog(fs)); return null; }
+    const p = gl.createProgram();
+    gl.attachShader(p, vs); gl.attachShader(p, fs); gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { console.error('[NB] link:', gl.getProgramInfoLog(p)); return null; }
+    return p;
+  }
+
+  const neuralBloomRenderer = {
+    canvas: null,
+    gl: null,
+    ctx2d: null,
+    mode: null, // 'webgl2' | 'webgl1' | 'canvas2d' | null
+    _rafHandle: null,
+    _ro: null,
+    _smoothRadius: null,
+    _frameTimes: [],
+    _degraded: false,
+    _particleCount: 300,
+    _lastPhase: null,
+    _targetColorA: null,
+    _targetColorB: null,
+    colorA: null,
+    colorB: null,
+    bursts: null,
+    burstCursor: 0,
+    startMs: 0,
+    _lastFrameAt: 0,
+
+    start(stage) {
+      this.canvas = document.createElement('canvas');
+      this.canvas.className = 'neural-bloom-canvas';
+      this.canvas.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; pointer-events:none; background:#000;';
+      this.canvas.width = stage.clientWidth;
+      this.canvas.height = stage.clientHeight;
+      stage.insertBefore(this.canvas, stage.firstChild);
+
+      // Context acquisition chain: WebGL2 → WebGL1 → canvas2d
+      this.gl = this.canvas.getContext('webgl2');
+      if (this.gl) { this.mode = 'webgl2'; this._initGL(); }
+      else {
+        this.gl = this.canvas.getContext('webgl') || this.canvas.getContext('experimental-webgl');
+        if (this.gl) {
+          this.mode = 'webgl1';
+          // WebGL1 needs OES_point_size for custom gl_PointSize — try to enable
+          try { this.gl.getExtension('OES_standard_derivatives'); } catch {}
+          this._initGL();
+        } else {
+          this.ctx2d = this.canvas.getContext('2d');
+          this.mode = 'canvas2d';
+          this._initCanvas2D();
+        }
+      }
+      console.log('[NB] renderer mode:', this.mode);
+
+      // Shared state for all modes
+      this._smoothRadius = null;
+      this._frameTimes = [];
+      this._degraded = false;
+      this._particleCount = 300;
+      this.bursts = Array.from({ length: 5 }, () => ({ spawnTime: -1, angleBase: 0 }));
+      this.burstCursor = 0;
+      this._lastPhase = null;
+      this._targetColorA = null;
+      this._targetColorB = null;
+      this.startMs = performance.now();
+      this._lastFrameAt = this.startMs;
+
+      this._ro = new ResizeObserver(() => {
+        this.canvas.width = stage.clientWidth;
+        this.canvas.height = stage.clientHeight;
+        if (this.gl) this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      });
+      this._ro.observe(stage);
+
+      this._startLoop();
+    },
+
+    _initGL() {
+      const gl = this.gl;
+      const isGL2 = this.mode === 'webgl2';
+      gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      this.bgProg       = _nbCompile(gl, NB_VS_BG,       NB_FS_BG,       isGL2);
+      this.orbProg      = _nbCompile(gl, NB_VS_ORB,      NB_FS_ORB,      isGL2);
+      this.particleProg = _nbCompile(gl, NB_VS_PARTICLE, NB_FS_PARTICLE, isGL2);
+      if (!this.bgProg || !this.orbProg || !this.particleProg) {
+        // Shader compilation failed — fall back to canvas2d on the same element
+        console.warn('[NB] GL shader compile failed — falling back to canvas2d');
+        this.gl = null;
+        this.mode = 'canvas2d';
+        this.ctx2d = this.canvas.getContext('2d');
+        this._initCanvas2D();
+        return;
+      }
+      this.bgUniforms = {
+        uTime:   gl.getUniformLocation(this.bgProg, 'uTime'),
+        uColorA: gl.getUniformLocation(this.bgProg, 'uColorA'),
+        uColorB: gl.getUniformLocation(this.bgProg, 'uColorB'),
+      };
+      this.orbUniforms = {
+        uResolution: gl.getUniformLocation(this.orbProg, 'uResolution'),
+        uCenter:     gl.getUniformLocation(this.orbProg, 'uCenter'),
+        uRadius:     gl.getUniformLocation(this.orbProg, 'uRadius'),
+        uColor:      gl.getUniformLocation(this.orbProg, 'uColor'),
+        uGlow:       gl.getUniformLocation(this.orbProg, 'uGlow'),
+      };
+      this.particleUniforms = {
+        uTime:       gl.getUniformLocation(this.particleProg, 'uTime'),
+        uRadius:     gl.getUniformLocation(this.particleProg, 'uRadius'),
+        uPtSize:     gl.getUniformLocation(this.particleProg, 'uPtSize'),
+        uResolution: gl.getUniformLocation(this.particleProg, 'uResolution'),
+        uSpin:       gl.getUniformLocation(this.particleProg, 'uSpin'),
+        uColor:      gl.getUniformLocation(this.particleProg, 'uColor'),
+      };
+      // Fullscreen quad (bg + orb both use it)
+      this.quad = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.quad);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+      // Particle phases (static; orbit math is in shader)
+      const phases = new Float32Array(300);
+      for (let i = 0; i < 300; i++) phases[i] = i / 300;
+      this.particleBuf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.particleBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, phases, gl.STATIC_DRAW);
+
+      // Default palette (overridden on first frame by phase logic)
+      this.colorA = [0.10, 0.20, 0.40];
+      this.colorB = [0.30, 0.10, 0.50];
+    },
+
+    _initCanvas2D() {
+      this.ctx2d.fillStyle = '#0a0a0c';
+      this.ctx2d.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      this.colorA = [0.10, 0.20, 0.40];
+      this.colorB = [0.30, 0.10, 0.50];
+    },
+
+    _startLoop() {
+      const tick = () => {
+        if (state.abortFlag) { this.stop(); return; }
+        if (!this._rafHandle) return; // stopped externally
+        this._renderFrame();
+        this._rafHandle = requestAnimationFrame(tick);
+      };
+      this._rafHandle = requestAnimationFrame(tick);
+    },
+
+    // Phase → palette smooth crossfade; per-frame, nudges colorA/B toward the
+    // target palette (3s full transition). Shared by GL and canvas2d modes.
+    _updatePalette() {
+      const target = NB_PHASE_PALETTES[state._currentPhase] || NB_PHASE_PALETTES._default;
+      if (!this._targetColorA) {
+        this._targetColorA = target.a.slice(); this._targetColorB = target.b.slice();
+        this.colorA = target.a.slice(); this.colorB = target.b.slice();
+      }
+      if (this._lastPhase !== state._currentPhase) {
+        this._lastPhase = state._currentPhase;
+        this._targetColorA = target.a.slice(); this._targetColorB = target.b.slice();
+      }
+      // Lerp at ~60fps for a 3s full transition — k ≈ 1/(180 frames)
+      const k = 0.0055;
+      for (let i = 0; i < 3; i++) {
+        this.colorA[i] += (this._targetColorA[i] - this.colorA[i]) * k;
+        this.colorB[i] += (this._targetColorB[i] - this.colorB[i]) * k;
+      }
+    },
+
+    // Shared: spawn/track bloom bursts (3Hz-capped)
+    _updateBursts(mod) {
+      if (mod.pulse > 0.6) {
+        const a = state.audioReactive;
+        if (performance.now() - a._lastBurstAt >= 333) {
+          a._lastBurstAt = performance.now();
+          this.bursts[this.burstCursor] = { spawnTime: performance.now(), angleBase: Math.random() * Math.PI * 2 };
+          this.burstCursor = (this.burstCursor + 1) % 5;
+        }
+      }
+    },
+
+    // Shared: frame-time watchdog (auto-degrade under 30fps sustained)
+    _tickFrameGuard() {
+      const now = performance.now();
+      const dt = now - this._lastFrameAt;
+      this._lastFrameAt = now;
+      this._frameTimes.push(dt);
+      if (this._frameTimes.length > 30) this._frameTimes.shift();
+      if (!this._degraded && this._frameTimes.length === 30) {
+        const avg = this._frameTimes.reduce((a, b) => a + b, 0) / 30;
+        if (avg > 33) {
+          console.log('[NB] frame time degraded (avg ' + avg.toFixed(1) + 'ms) — reducing particles');
+          this._degraded = true;
+          this._particleCount = 150;
+        }
+      }
+    },
+
+    _renderFrame() {
+      this._tickFrameGuard();
+      this._updatePalette();
+      const mod = getAudioMod();
+      this._updateBursts(mod);
+
+      if (this.mode === 'webgl2' || this.mode === 'webgl1') this._renderGL(mod);
+      else if (this.mode === 'canvas2d') this._renderCanvas2D(mod);
+    },
+
+    _renderGL(mod) {
+      const gl = this.gl;
+      gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      gl.clearColor(0, 0, 0, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      // ── Background gradient ──
+      gl.useProgram(this.bgProg);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.quad);
+      const bgAPos = gl.getAttribLocation(this.bgProg, 'aPos');
+      gl.enableVertexAttribArray(bgAPos);
+      gl.vertexAttribPointer(bgAPos, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform1f(this.bgUniforms.uTime, (performance.now() - this.startMs) / 1000);
+      gl.uniform3fv(this.bgUniforms.uColorA, this.colorA);
+      gl.uniform3fv(this.bgUniforms.uColorB, this.colorB);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+      // ── Blended layers (orb + particles + bursts) ──
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+
+      // Orb (size-smoothed so breathe cycle can't exceed 2Hz)
+      const targetRadius = Math.min(this.canvas.width, this.canvas.height) * 0.12
+        * (1 + mod.overall * 0.5 + mod.envelope * 0.3);
+      this._smoothRadius = this._smoothRadius == null
+        ? targetRadius
+        : this._smoothRadius + (targetRadius - this._smoothRadius) * 0.08;
+      gl.useProgram(this.orbProg);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.quad);
+      const orbAPos = gl.getAttribLocation(this.orbProg, 'aPos');
+      gl.enableVertexAttribArray(orbAPos);
+      gl.vertexAttribPointer(orbAPos, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform2f(this.orbUniforms.uResolution, this.canvas.width, this.canvas.height);
+      gl.uniform2f(this.orbUniforms.uCenter, 0, 0);
+      gl.uniform1f(this.orbUniforms.uRadius, this._smoothRadius);
+      gl.uniform3f(this.orbUniforms.uColor, 0.6 + mod.bass * 0.4, 0.8, Math.max(0, 1.0 - mod.bass * 0.3));
+      gl.uniform1f(this.orbUniforms.uGlow, 0.4 + mod.envelope * 0.6);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+      // Particle ring
+      gl.useProgram(this.particleProg);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.particleBuf);
+      const partAPhase = gl.getAttribLocation(this.particleProg, 'aPhase');
+      gl.enableVertexAttribArray(partAPhase);
+      gl.vertexAttribPointer(partAPhase, 1, gl.FLOAT, false, 0, 0);
+      gl.uniform1f(this.particleUniforms.uTime, (performance.now() - this.startMs) / 1000);
+      gl.uniform1f(this.particleUniforms.uRadius, Math.min(this.canvas.width, this.canvas.height) * 0.28 + mod.bass * 80);
+      gl.uniform1f(this.particleUniforms.uPtSize, 4);
+      gl.uniform2f(this.particleUniforms.uResolution, this.canvas.width, this.canvas.height);
+      gl.uniform1f(this.particleUniforms.uSpin, 0.1 + mod.overall * 0.8);
+      gl.uniform3f(this.particleUniforms.uColor, 0.8, 0.9, 1.0);
+      gl.drawArrays(gl.POINTS, 0, this._particleCount);
+
+      // Bloom bursts — reuse orb shader for each petal
+      gl.useProgram(this.orbProg);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.quad);
+      gl.enableVertexAttribArray(orbAPos);
+      gl.vertexAttribPointer(orbAPos, 2, gl.FLOAT, false, 0, 0);
+      for (const burst of this.bursts) {
+        if (burst.spawnTime < 0) continue;
+        const age = (performance.now() - burst.spawnTime) / 1000;
+        if (age >= 1.0) { burst.spawnTime = -1; continue; }
+        // Asymmetric fade — 150ms in, 850ms out (strobe-safe per spec §7)
+        const alpha = age < 0.15 ? age / 0.15 : (1 - (age - 0.15) / 0.85);
+        const dist = age * Math.min(this.canvas.width, this.canvas.height) * 0.45;
+        for (let i = 0; i < 20; i++) {
+          const theta = burst.angleBase + (i / 20) * Math.PI * 2;
+          gl.uniform2f(this.orbUniforms.uCenter, Math.cos(theta) * dist, Math.sin(theta) * dist);
+          gl.uniform1f(this.orbUniforms.uRadius, 8);
+          gl.uniform3f(this.orbUniforms.uColor, 1.0, 0.85, 0.6);
+          gl.uniform1f(this.orbUniforms.uGlow, alpha * 1.5);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
+      }
+      gl.uniform2f(this.orbUniforms.uCenter, 0, 0); // reset for next frame
+
+      gl.disable(gl.BLEND);
+    },
+
+    _renderCanvas2D(mod) {
+      const ctx = this.ctx2d;
+      const W = this.canvas.width, H = this.canvas.height;
+      // Soft trail
+      ctx.fillStyle = 'rgba(10,10,12,0.15)';
+      ctx.fillRect(0, 0, W, H);
+      // Background radial gradient
+      const rgb = (c) => `rgb(${Math.round(c[0]*255)},${Math.round(c[1]*255)},${Math.round(c[2]*255)})`;
+      const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W, H) * 0.7);
+      grad.addColorStop(0, rgb(this.colorA));
+      grad.addColorStop(1, rgb(this.colorB));
+      ctx.fillStyle = grad;
+      ctx.globalAlpha = 0.12;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+      // Central orb
+      const targetR = Math.min(W, H) * 0.12 * (1 + mod.overall * 0.5 + mod.envelope * 0.3);
+      this._smoothRadius = this._smoothRadius == null ? targetR : this._smoothRadius + (targetR - this._smoothRadius) * 0.08;
+      const orbR = this._smoothRadius;
+      const orbGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, orbR);
+      orbGrad.addColorStop(0, 'rgba(220,240,255,0.9)');
+      orbGrad.addColorStop(1, 'rgba(120,180,240,0)');
+      ctx.fillStyle = orbGrad;
+      ctx.beginPath(); ctx.arc(W/2, H/2, orbR, 0, Math.PI * 2); ctx.fill();
+      // Orbiting particles (50, half the WebGL count — perf parity)
+      const t = (performance.now() - this.startMs) / 1000;
+      const spin = 0.1 + mod.overall * 0.8;
+      const particleR = Math.min(W, H) * 0.28 + mod.bass * 60;
+      ctx.fillStyle = 'rgba(200,230,255,0.7)';
+      const count = Math.min(50, this._particleCount);
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2 + t * spin;
+        const x = W/2 + Math.cos(angle) * particleR;
+        const y = H/2 + Math.sin(angle) * particleR;
+        ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
+      }
+      // Bursts
+      for (const burst of this.bursts) {
+        if (burst.spawnTime < 0) continue;
+        const age = (performance.now() - burst.spawnTime) / 1000;
+        if (age >= 1.0) { burst.spawnTime = -1; continue; }
+        const alpha = age < 0.15 ? age / 0.15 : (1 - (age - 0.15) / 0.85);
+        const dist = age * Math.min(W, H) * 0.45;
+        ctx.strokeStyle = `rgba(255,210,140,${alpha})`;
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 20; i++) {
+          const theta = burst.angleBase + (i / 20) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(W/2 + Math.cos(theta) * 40, H/2 + Math.sin(theta) * 40);
+          ctx.lineTo(W/2 + Math.cos(theta) * (40 + dist), H/2 + Math.sin(theta) * (40 + dist));
+          ctx.stroke();
+        }
+      }
+    },
+
+    stop() {
+      if (this._rafHandle) { cancelAnimationFrame(this._rafHandle); this._rafHandle = null; }
+      if (this._ro) { this._ro.disconnect(); this._ro = null; }
+      if (this.canvas && this.canvas.parentNode) this.canvas.parentNode.removeChild(this.canvas);
+      this.canvas = this.gl = this.ctx2d = null;
+      this.mode = null;
+    },
+  };
+
   function setupVisual(visualType) {
     const stage = $('stage');
     // Clean up previous visuals
     if (vizRAF) { cancelAnimationFrame(vizRAF); vizRAF = null; }
     if (highwayRAF) { cancelAnimationFrame(highwayRAF); highwayRAF = null; }
     if (stageResizeObs) { stageResizeObs.disconnect(); stageResizeObs = null; }
+    if (neuralBloomRenderer && neuralBloomRenderer.mode) neuralBloomRenderer.stop();
     Array.from(stage.children).forEach(c => {
       if (!c.classList.contains('fixation-dot') && !c.classList.contains('audio-indicator')
         && !c.classList.contains('persona-indicator') && !c.classList.contains('method-indicator')
         && !c.classList.contains('session-progress-wrap')) c.remove();
     });
+
+    // Neural Bloom — WebGL flagship (spec §4)
+    if (visualType === 'neural-bloom') {
+      neuralBloomRenderer.start(stage);
+      return;
+    }
 
     // Canvas-based renderer (new visual types)
     const renderer = VIZ_RENDERERS[visualType];
@@ -6770,10 +8040,14 @@ Practitioner profile (full, natural sentences):`;
       const lines = []; for (let i = 0; i < 8; i++) lines.push({ y: (canvas.height / 8) * i, speed: 1.2 + Math.random() * 0.4 });
       (function draw() {
         if (state.abortFlag) return;
+        const mod = getAudioMod();
         const W = canvas.width, H = canvas.height;
         ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(0,0,W,H);
-        ctx.strokeStyle = 'rgba(212,220,232,0.55)'; ctx.lineWidth = 4;
-        lines.forEach(l => { l.y += l.speed; if (l.y > H + 40) l.y = -40; ctx.globalAlpha = Math.min(1,(l.y/H)*1.2)*0.7; ctx.beginPath(); ctx.moveTo(W/2, l.y); ctx.lineTo(W/2, l.y+28); ctx.stroke(); });
+        // Line width pulses with bass (base 4, max +2.4 with full bass)
+        ctx.strokeStyle = 'rgba(212,220,232,0.55)'; ctx.lineWidth = 4 + mod.bass * 2.4;
+        // Line speed × (1 + overall * 0.6)
+        const speedMul = 1 + mod.overall * 0.6;
+        lines.forEach(l => { l.y += l.speed * speedMul; if (l.y > H + 40) l.y = -40; ctx.globalAlpha = Math.min(1,(l.y/H)*1.2)*0.7; ctx.beginPath(); ctx.moveTo(W/2, l.y); ctx.lineTo(W/2, l.y+28); ctx.stroke(); });
         ctx.globalAlpha = 1;
         const g = ctx.createRadialGradient(W/2, H*0.38, 20, W/2, H*0.38, H*0.5); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,0.5)');
         ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
@@ -6798,6 +8072,7 @@ Practitioner profile (full, natural sentences):`;
     if (highwayRAF) cancelAnimationFrame(highwayRAF); highwayRAF = null;
     if (vizRAF) cancelAnimationFrame(vizRAF); vizRAF = null;
     if (stageResizeObs) { stageResizeObs.disconnect(); stageResizeObs = null; }
+    if (neuralBloomRenderer && neuralBloomRenderer.mode) neuralBloomRenderer.stop();
   };
 
   // ====================================================================
@@ -7165,7 +8440,9 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       container.parentNode.insertBefore(box, container.nextSibling);
     }
     if (retryCallback) {
-      container.querySelectorAll('.gen-phase.error, .gen-phase.warn').forEach(el => {
+      // error/warn phases are clickable to retry; pending phases become clickable too
+      // (for phases added to the list after initial generation — user can trigger them on demand)
+      container.querySelectorAll('.gen-phase.error, .gen-phase.warn, .gen-phase.pending').forEach(el => {
         el.addEventListener('click', () => retryCallback(parseInt(el.dataset.phaseIdx)));
       });
     }
@@ -7192,6 +8469,131 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
   // Generation state held outside so retry can access it
   let _genState = null;
+
+  /**
+   * Build per-phase instruction strings from a phase list + context.
+   * Pure function — same inputs produce same outputs.
+   *
+   * Extracted from generateFullScript so it can be called again by
+   * syncGenStateWithPhases() when the user adds/removes blocks after
+   * the initial generation.
+   *
+   * @param {string[]} phases       ordered phase IDs (e.g. ['settling','induction','deepener','work-1','affirm-1',...])
+   * @param {object}   targetWords  { settling: n, induction: n, ... } word budgets
+   * @param {object}   persona      current persona object
+   * @param {object}   method       current method object
+   * @param {string[]} affirmLines  affirmations (already token-resolved, line-per-entry)
+   */
+  function buildPhaseInstructions(phases, targetWords, persona, method, affirmLines) {
+    const deepenerPhases = phases.filter(p => phaseBase(p) === 'deepener');
+    const lightenerPhases = phases.filter(p => phaseBase(p) === 'lightener');
+    const totalDepth = deepenerPhases.length;
+
+    const phaseInstructions = {
+      settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user. Open naturally — don't say "hello". Use \x5BPAUSE n\x5D markers. Output ONLY the script text.`,
+      induction: `Write the INDUCTION phase (~${targetWords.induction} words). Move from awareness toward trance using ${method.name}. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
+      wake: `Write the WAKE phase (~${targetWords.wake} words). Bring the user fully awake and alert. Use a distinct upward count or direct waking sequence. Re-alert clearly. Eyes open. Fully awake. This is the actual wake-up phase and must not be replaced by reintroduction. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
+      reintroduction: `Write the REINTRODUCTION phase (~${targetWords.reintroduction} words). This phase happens AFTER wake. The user is already awake. Include a warm welcome-back, a suggestion to slowly get up only when ready, stretch, shake it off, and continue the day. If this is a demonstration method, the test can be mentioned after wake and before the final welcome-back, but the ending must fully reintroduce the user. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
+    };
+
+    const deepenerWordsEach = totalDepth > 0 ? Math.round(targetWords.deepener / totalDepth) : targetWords.deepener;
+    deepenerPhases.forEach((p, i) => {
+      const depth = i + 1;
+      let intensity;
+      if (totalDepth === 1) intensity = 'light-to-medium trance';
+      else if (depth === 1) intensity = 'light trance (first layer)';
+      else if (depth === totalDepth) intensity = 'deep trance (innermost layer)';
+      else intensity = `medium trance (layer ${depth} of ${totalDepth})`;
+      phaseInstructions[p] = `Write DEEPENER phase ${depth} of ${totalDepth} (~${deepenerWordsEach} words). Target state: ${intensity}. ${depth === 1 ? 'Move from post-induction awareness into the first layer of trance.' : `The user is already at layer ${depth - 1}; take them ONE LEVEL deeper, not all the way from waking.`}${state.craftedSuggestion && depth === totalDepth ? ' Foreshadow the crafted suggestion at this innermost layer.' : ''}${affirmLines.length && depth === totalDepth ? ' Begin weaving affirmations.' : ''} Use \x5BPAUSE n\x5D. Output ONLY script text.`;
+    });
+
+    const lightenerWordsEach = lightenerPhases.length > 0 ? Math.round(targetWords.lightener / lightenerPhases.length) : targetWords.lightener;
+    lightenerPhases.forEach((p, i) => {
+      const closesDepth = lightenerPhases.length - i;
+      const fromDepth = closesDepth;
+      const toDepth = closesDepth - 1;
+      phaseInstructions[p] = fromDepth === 1
+        ? `Write the LIGHTENER phase (~${lightenerWordsEach} words). Ease intensity down gradually from light trance toward waking awareness. Keep the same narrator voice and continuity — this phase works with the narrator rather than stopping them. Use gentle return language, body awareness, orientation, breath, movement, and upward pacing. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`
+        : `Write LIGHTENER phase for level ${fromDepth} → ${toDepth} (~${lightenerWordsEach} words). The user is currently at depth ${fromDepth}; bring them up ONE LEVEL toward depth ${toDepth}, not all the way. Subsequent lighteners will continue the ascent. Gentle upward language, breath, light. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`;
+    });
+
+    const workCount = phases.filter(p => phaseBase(p) === 'work').length;
+    const workWordsEach = workCount > 0 ? Math.round(targetWords.work / workCount) : targetWords.work;
+    phases.forEach(p => {
+      const base = phaseBase(p);
+      if (base === 'affirm') {
+        phaseInstructions[p] = `Write a brief affirmation interlude (~40-60 words). Deliver these affirmations in ${persona.name}'s voice, woven into flowing, hypnotic language:\n${affirmLines.map(l => `"${l}"`).join('\n')}\nUse the user's exact words. Add \x5BPAUSE 3\x5D between each. Poetic, rhythmic, repetitive. Output ONLY script text.`;
+      } else if (base === 'work') {
+        const workIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
+        let role;
+        if (workCount === 1) role = 'single-block: deliver and consolidate.';
+        else if (workIdx === 1) role = state.craftedSuggestion ? 'INTRODUCE: deliver the crafted suggestion verbatim for the first time. Plant the seed.' : method.category === 'demonstration' ? 'INTRODUCE: begin building the demonstration effect.' : 'INTRODUCE: establish the core therapeutic theme.';
+        else if (workIdx === workCount) role = state.craftedSuggestion ? 'CONSOLIDATE + FUTURE-PACE: final reinforcement at peak intensity. Project the effect forward in time.' : 'CONSOLIDATE: bring the work to its peak and anchor it for the future.';
+        else if (workIdx === workCount - 1) role = state.craftedSuggestion ? 'PEAK: most intense reinforcement of the crafted suggestion. Highest suggestibility.' : 'PEAK: highest intensity — the crux of the work.';
+        else {
+          const midRoles = ['DEVELOP: expand with a fresh metaphor you have not yet used.', 'INTENSIFY: deliver the suggestion at higher conviction and specificity.', 'REINFORCE: a different angle on the same core effect.'];
+          role = midRoles[(workIdx - 2) % midRoles.length];
+        }
+        phaseInstructions[p] = `Write WORK phase ${workIdx} of ${workCount} (~${workWordsEach} words). ROLE: ${role}${state.craftedSuggestion ? '' : ' Therapeutic deepening tied to the intention.'} Do not repeat imagery or phrasing from earlier work blocks. Use \x5BPAUSE n\x5D. Output ONLY script text.`;
+      }
+    });
+
+    return phaseInstructions;
+  }
+
+  /**
+   * Reconcile _genState with the current phase list. Called after the user
+   * edits the phase editor (add/remove blocks) so the status indicator row
+   * and retry affordances stay in sync.
+   *
+   * - New phases (no existing phaseResults entry) start as 'pending'
+   * - Removed phases have their state + result dropped
+   * - Existing phases keep their state + result
+   * - phaseInstructions are rebuilt fully (word budgets rebalance across
+   *   new work/deepener counts)
+   *
+   * No-op if _genState is null (user hasn't generated yet) or if the phase
+   * list is identical to what's already tracked.
+   */
+  function syncGenStateWithPhases() {
+    if (!_genState) return;
+    const newPhases = getPhaseList();
+    const gs = _genState;
+    // Cheap identity check — same order, same ids → nothing to do
+    if (newPhases.length === gs.phases.length && newPhases.every((p, i) => p === gs.phases[i])) return;
+
+    const newStateMask = newPhases.map(p => {
+      const oldIdx = gs.phases.indexOf(p);
+      if (oldIdx === -1) return 'pending';
+      return gs.stateMask[oldIdx] || 'pending';
+    });
+    // Keep only phaseResults for phases that still exist
+    const newPhaseResults = {};
+    newPhases.forEach(p => { if (gs.phaseResults[p] != null) newPhaseResults[p] = gs.phaseResults[p]; });
+
+    // Rebuild phaseInstructions — word budgets rebalance across new work/deepener counts.
+    // Recompute targetWords since state.length might also have changed via a different path.
+    const durations = PHASE_DURATIONS[state.length] || PHASE_DURATIONS.medium;
+    const wpm = 50;
+    const targetWords = Object.fromEntries(Object.entries(durations).map(([k, v]) => [k, Math.round(v * wpm / 60)]));
+    const userAffRaw = $('userAffirmations')?.value?.trim();
+    const affirmLines = userAffRaw ? userAffRaw.split('\n').filter(l => l.trim()).map(l => resolveTokens(l.trim())) : [];
+
+    gs.phases = newPhases;
+    gs.stateMask = newStateMask;
+    gs.phaseResults = newPhaseResults;
+    gs.phaseInstructions = buildPhaseInstructions(newPhases, targetWords, gs.persona, gs.method, affirmLines);
+
+    // Re-render the progress indicators; retry handler closure from the initial
+    // render is re-bound here so clicks on newly-appeared phases work.
+    if ($('genProgress') && $('genProgress').style.display !== 'none') {
+      renderGenProgress(gs.phases, gs.stateMask, null, _genStateRetryHandler);
+    }
+  }
+
+  // Captured when generateFullScript sets up _genState. syncGenStateWithPhases
+  // uses it to re-bind retry clicks on phases added after initial generation.
+  let _genStateRetryHandler = null;
 
   async function generateFullScript() {
     if (_aiInProgress) { notify.info('An AI call is already in progress.'); return; }
@@ -7282,87 +8684,24 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     // determines what gets dropped first if the user has a huge profile +
     // long memory + many affirmations.
     const headerBlock = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"`;
+    const freshBlock = buildFreshnessBlock();
     const sharedContext = trimToTokenBudget([
-      { name: 'header',    text: headerBlock,       priority: 5 }, // persona + method + theme — never drop
-      { name: 'crafted',   text: craftedBlock,      priority: 4 },
-      { name: 'affirm',    text: affirmBlock,       priority: 4 },
-      { name: 'demoNote',  text: demoNote,          priority: 4 },
-      { name: 'director',  text: directorBriefCtx,  priority: 3 }, // short, actionable, high-value
-      { name: 'profile',   text: profileCtx,        priority: 3 },
-      { name: 'adaptive',  text: adaptiveCtx,       priority: 2 },
-      { name: 'memory',    text: memoryCtx,         priority: 1 }, // first to drop
+      { name: 'header',     text: headerBlock,       priority: 5 }, // persona + method + theme — never drop
+      { name: 'crafted',    text: craftedBlock,      priority: 4 },
+      { name: 'affirm',     text: affirmBlock,       priority: 4 },
+      { name: 'demoNote',   text: demoNote,          priority: 4 },
+      { name: 'director',   text: directorBriefCtx,  priority: 3 }, // short, actionable, high-value
+      { name: 'profile',    text: profileCtx,        priority: 3 },
+      { name: 'freshSeeds', text: freshBlock,        priority: 2 }, // optional anchors — drops before adaptive
+      { name: 'adaptive',   text: adaptiveCtx,       priority: 2 },
+      { name: 'memory',     text: memoryCtx,         priority: 1 }, // first to drop
     ], 1200); // leave generous headroom for per-phase task block + output
 
     // Count nested Deepener/Lightener pairs so we can produce depth-aware prompts.
     // getSessionPhaseBlueprint yields 'deepener' (unnumbered) when there's one, otherwise
     // 'deepener-1', 'deepener-2', etc. Post-blueprint edits (user add/remove) can also
     // produce arbitrary configurations; we look at the actual phase list.
-    const deepenerPhases = phases.filter(p => phaseBase(p) === 'deepener');
-    const lightenerPhases = phases.filter(p => phaseBase(p) === 'lightener');
-    const totalDepth = deepenerPhases.length;
-
-    // Phase-specific instructions (base kinds — expanded below for nested/numbered variants)
-    const phaseInstructions = {
-      settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user. Open naturally — don't say "hello". Use \x5BPAUSE n\x5D markers. Output ONLY the script text.`,
-      induction: `Write the INDUCTION phase (~${targetWords.induction} words). Move from awareness toward trance using ${method.name}. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
-      wake: `Write the WAKE phase (~${targetWords.wake} words). Bring the user fully awake and alert. Use a distinct upward count or direct waking sequence. Re-alert clearly. Eyes open. Fully awake. This is the actual wake-up phase and must not be replaced by reintroduction. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
-      reintroduction: `Write the REINTRODUCTION phase (~${targetWords.reintroduction} words). This phase happens AFTER wake. The user is already awake. Include a warm welcome-back, a suggestion to slowly get up only when ready, stretch, shake it off, and continue the day. If this is a demonstration method, the test can be mentioned after wake and before the final welcome-back, but the ending must fully reintroduce the user. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
-    };
-
-    // Deepener instructions — depth-aware. Each level takes the user one step deeper.
-    // Total words for the deepener phase are divided across the nested deepeners.
-    const deepenerWordsEach = totalDepth > 0 ? Math.round(targetWords.deepener / totalDepth) : targetWords.deepener;
-    deepenerPhases.forEach((p, i) => {
-      const depth = i + 1; // 1-based: first deepener = depth 1
-      let intensity;
-      if (totalDepth === 1) intensity = 'light-to-medium trance';
-      else if (depth === 1) intensity = 'light trance (first layer)';
-      else if (depth === totalDepth) intensity = 'deep trance (innermost layer)';
-      else intensity = `medium trance (layer ${depth} of ${totalDepth})`;
-      const note = `Write DEEPENER phase ${depth} of ${totalDepth} (~${deepenerWordsEach} words). Target state: ${intensity}. ${depth === 1 ? 'Move from post-induction awareness into the first layer of trance.' : `The user is already at layer ${depth - 1}; take them ONE LEVEL deeper, not all the way from waking.`}${state.craftedSuggestion && depth === totalDepth ? ' Foreshadow the crafted suggestion at this innermost layer.' : ''}${affirmLines.length && depth === totalDepth ? ' Begin weaving affirmations.' : ''} Use \x5BPAUSE n\x5D. Output ONLY script text.`;
-      phaseInstructions[p] = note;
-    });
-
-    // Lightener instructions — LIFO unwind. Phases appear in the order they'll play
-    // (outermost-last), but each is paired with its deepener at the same depth.
-    const lightenerWordsEach = lightenerPhases.length > 0 ? Math.round(targetWords.lightener / lightenerPhases.length) : targetWords.lightener;
-    lightenerPhases.forEach((p, i) => {
-      // lightener[0] pairs with the DEEPEST deepener (LIFO: innermost closes first).
-      const closesDepth = lightenerPhases.length - i; // first lightener closes innermost
-      const fromDepth = closesDepth;
-      const toDepth = closesDepth - 1;
-      const note = fromDepth === 1
-        ? `Write the LIGHTENER phase (~${lightenerWordsEach} words). Ease intensity down gradually from light trance toward waking awareness. Keep the same narrator voice and continuity — this phase works with the narrator rather than stopping them. Use gentle return language, body awareness, orientation, breath, movement, and upward pacing. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`
-        : `Write LIGHTENER phase for level ${fromDepth} → ${toDepth} (~${lightenerWordsEach} words). The user is currently at depth ${fromDepth}; bring them up ONE LEVEL toward depth ${toDepth}, not all the way. Subsequent lighteners will continue the ascent. Gentle upward language, breath, light. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`;
-      phaseInstructions[p] = note;
-    });
-
-    // Work phase instructions — role-tagged by position for long sessions.
-    const workCount = phases.filter(p => phaseBase(p) === 'work').length;
-    const workWordsEach = workCount > 0 ? Math.round(targetWords.work / workCount) : targetWords.work;
-    phases.forEach(p => {
-      const base = phaseBase(p);
-      if (base === 'affirm') {
-        // Affirmation interlude — short, poetic, uses the user's exact words.
-        // Follows its paired Work block per the default (Work, Affirm) structure.
-        phaseInstructions[p] = `Write a brief affirmation interlude (~40-60 words). Deliver these affirmations in ${persona.name}'s voice, woven into flowing, hypnotic language:\n${affirmLines.map(l => `"${l}"`).join('\n')}\nUse the user's exact words. Add \x5BPAUSE 3\x5D between each. Poetic, rhythmic, repetitive. Output ONLY script text.`;
-      } else if (base === 'work') {
-        const workIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
-        // Role assignment scales with workCount — prevents 10 blocks sounding identical.
-        let role;
-        if (workCount === 1) role = 'single-block: deliver and consolidate.';
-        else if (workIdx === 1) role = state.craftedSuggestion ? 'INTRODUCE: deliver the crafted suggestion verbatim for the first time. Plant the seed.' : method.category === 'demonstration' ? 'INTRODUCE: begin building the demonstration effect.' : 'INTRODUCE: establish the core therapeutic theme.';
-        else if (workIdx === workCount) role = state.craftedSuggestion ? 'CONSOLIDATE + FUTURE-PACE: final reinforcement at peak intensity. Project the effect forward in time.' : 'CONSOLIDATE: bring the work to its peak and anchor it for the future.';
-        else if (workIdx === workCount - 1) role = state.craftedSuggestion ? 'PEAK: most intense reinforcement of the crafted suggestion. Highest suggestibility.' : 'PEAK: highest intensity — the crux of the work.';
-        else {
-          // Middle blocks — rotate through DEVELOP / INTENSIFY / REINFORCE
-          const midRoles = ['DEVELOP: expand with a fresh metaphor you have not yet used.', 'INTENSIFY: deliver the suggestion at higher conviction and specificity.', 'REINFORCE: a different angle on the same core effect.'];
-          role = midRoles[(workIdx - 2) % midRoles.length];
-        }
-        const note = `Write WORK phase ${workIdx} of ${workCount} (~${workWordsEach} words). ROLE: ${role}${state.craftedSuggestion ? '' : ' Therapeutic deepening tied to the intention.'} Do not repeat imagery or phrasing from earlier work blocks. Use \x5BPAUSE n\x5D. Output ONLY script text.`;
-        phaseInstructions[p] = note;
-      }
-    });
+    const phaseInstructions = buildPhaseInstructions(phases, targetWords, persona, method, affirmLines);
 
     // Save gen state for retry access
     _genState = { phases, stateMask, phaseResults, phaseTimes, sharedContext, phaseInstructions, persona, method, genStartTime: Date.now(), priorSummary: '' };
@@ -7407,6 +8746,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     };
 
     // Show initial progress
+    _genStateRetryHandler = retryPhase; // captured so syncGenStateWithPhases can re-bind clicks
     renderGenProgress(phases, stateMask, `Estimated: ~${phases.length * 60}s remaining`, retryPhase);
     const genStartTime = Date.now();
     const stopTimer = makeElapsedTimer(s => {
@@ -7621,6 +8961,10 @@ ${s.text.trim()}`).join('\n\n').trim();
     state.parsedScript = parseScript(state.fullScript);
     if (!opts.skipRender) showScript();
     updateStepUI();
+    // Keep the progress indicator row (#genPhases) in sync with the new phase
+    // list so users can generate / retry for newly added blocks. No-op if
+    // the user hasn't generated yet.
+    syncGenStateWithPhases();
   }
 
   /**
@@ -8922,6 +10266,18 @@ ${s.text.trim()}`).join('\n\n').trim();
     state._pausedTotalMs = 0;      // cumulative time spent paused
     state._pauseStartedAt = null;  // wallclock of current pause start (if paused)
     state._currentPhase = 'settling';
+
+    // Start the audio-reactive RAF loop. It polls the soundscape FFT + ticks
+    // the voice envelope. Zero-impact if audioReactiveMode is 'off' — the
+    // getAudioMod() read-time helper short-circuits to zeros.
+    startAudioReactiveLoop();
+
+    // Hard-commit any pending diffs — session start is a durable anchor point.
+    // Bypasses the magnitude gate but still requires hasChange, so identical
+    // states won't generate noise entries.
+    if (DIFF_BOUNCE_THRESHOLDS.commitOnSessionStart) {
+      Object.values(diffBouncers).forEach(b => { try { b.hardCommit('sessionStart'); } catch(e) { console.warn('[DB] hardCommit failed for', b.source, e); } });
+    }
     const method = getMethod();
 
     // Double induction: pick a contrasting second voice
@@ -9247,6 +10603,10 @@ ${s.text.trim()}`).join('\n\n').trim();
     u.onboundary = (e) => {
       lastBoundaryAt = Date.now();
       boundaryEverFired = true;
+      // Fire voicePulse for audio-reactive visualizers (spec §2.2)
+      if (e.name === 'word') {
+        state.audioReactive._voicePulseSpawnedAt = performance.now();
+      }
       if (e.name === 'word' && display) {
         const before = text.slice(0, e.charIndex);
         const word = text.slice(e.charIndex, e.charIndex + e.charLength);
@@ -9256,6 +10616,29 @@ ${s.text.trim()}`).join('\n\n').trim();
     };
 
     speechSynthesis.speak(u);
+
+    // Pseudo-envelope fallback for browsers where onboundary never fires
+    // (some Android Firefox builds, some TTS engines). Fires a synthetic
+    // ~3.5Hz pulse after 500ms if no real boundary has arrived. Stops the
+    // moment a real onboundary fires.
+    const pseudoStart = setTimeout(() => {
+      if (boundaryEverFired || settled) return;
+      const baseTime = performance.now();
+      const estDurMs = Math.max(500, text.length * 60); // ~60ms per char estimate
+      const pulseInterval = 286; // ~3.5Hz
+      const pulseTick = () => {
+        if (boundaryEverFired || settled) return;
+        const elapsed = performance.now() - baseTime;
+        if (elapsed >= estDurMs) return;
+        state.audioReactive._voicePulseSpawnedAt = performance.now();
+        setTimeout(pulseTick, pulseInterval);
+      };
+      pulseTick();
+    }, 500);
+    const _origDone = done;
+    const _doneWithCleanup = () => { clearTimeout(pseudoStart); _origDone(); };
+    u.onend = _doneWithCleanup;
+    u.onerror = _doneWithCleanup;
 
     // Double induction: fire a second utterance simultaneously
     if (state._doubleInduction && state._secondVoice) {
@@ -9351,6 +10734,7 @@ ${s.text.trim()}`).join('\n\n').trim();
     clearInterval(state._timeInterval);
     clearTimeout(state._safetyTimeout);
     state.paused = false; // don't leak paused state into the next session
+    stopAudioReactiveLoop(); // stop the audio-reactive RAF loop
     closeLivePanel();
     stopRecording(); // Stop any active recording before tearing down audio
     await drone.stop(); stopVisuals(); speechSynthesis.cancel();
@@ -9731,6 +11115,16 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   // Step 5 — visual controls
   $('vizSelect')?.addEventListener('change', e => {
     state.vizOverride = e.target.value;
+    saveUserSettings();
+  });
+
+  // Audio reactivity — segmented control click handler (delegated).
+  // setAudioReactiveMode() syncs the active class on ALL [data-audio-mode]
+  // buttons so the Step 5 + Live panel controls stay in lockstep.
+  $('audioReactiveSeg')?.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-audio-mode]');
+    if (!btn) return;
+    setAudioReactiveMode(btn.dataset.audioMode);
     saveUserSettings();
   });
 
@@ -10192,6 +11586,15 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     } else {
       stopVisuals(); setupVisual(viz);
     }
+  });
+
+  // Live audio-reactive toggle — mirrors the Step 5 control.
+  // setAudioReactiveMode() handles syncing both UIs via [data-audio-mode].
+  $('liveAudioReactiveSeg')?.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-audio-mode]');
+    if (!btn) return;
+    setAudioReactiveMode(btn.dataset.audioMode);
+    saveUserSettings();
   });
 
   // Live soundscape switch — stop and restart with new type
@@ -11047,6 +12450,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     refreshPersonas();
     const hadSavedSettings = await loadUserSettings();
     await loadProfile();
+    initDiffBouncers(); // wire DiffBouncer coverage to tracked fields
     if (typeof loadVoices === 'function') { loadVoices(); applySavedVoiceSelection(); updateVoiceInfo(); }
     renderPersonaGrid();
     renderPersonaDetail();
