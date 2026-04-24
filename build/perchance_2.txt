@@ -1,3 +1,7 @@
+aiTextPlugin = {import:ai-text-plugin}
+textToImagePlugin = {import:text-to-image-plugin}
+fullscreenButtonPlugin = {import:fullscreen-button-plugin}
+
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
   :root {
@@ -208,9 +212,9 @@
   .sublabel { font-size: 0.74rem; color: var(--text-faint); margin-top: 6px; line-height: 1.5; }
   .hint { font-size: 0.72rem; color: var(--text-faint); font-weight: 400; }
 
-  .toggle-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(120px, 1fr) auto; align-items: center; gap: 8px; background: var(--glass); padding: 10px 10px; border-radius: var(--radius); border: 1px solid var(--glass-border); margin-bottom: 5px; }
+  .toggle-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(120px, 1fr) auto; align-items: center; gap: 12px; background: var(--glass); padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--glass-border); margin-bottom: 8px; }
   .toggle-row label { min-width: 0; font-size: 0.88rem; color: var(--text); cursor: pointer; }
-  .toggle-row .hint { width: 150px; font-size: 0.74rem; color: var(--text-dim); display: block; margin-top: 0px; }
+  .toggle-row .hint { font-size: 0.74rem; color: var(--text-dim); display: block; margin-top: 2px; }
   .toggle-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
   .toggle-row input[type="range"] { flex: 1; max-width: 140px; }
 
@@ -239,7 +243,7 @@
   }
   .config-toggle-grid {
     display: grid;
-    gap: 5px;
+    gap: 10px;
   }
   .config-toggle-grid--hud {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -450,7 +454,17 @@
   .bg-gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s; }
   .bg-gallery-item:hover img { transform: scale(1.05); }
   .bg-gallery-item .bg-del { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.7); color: #f88; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 0.7rem; cursor: pointer; display: none; line-height: 22px; text-align: center; }
-  .bg-gallery-item:hover .bg-del { display: block; }
+  .bg-gallery-item .bg-dl { position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.7); color: var(--text-faint); border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 0.65rem; cursor: pointer; display: none; line-height: 22px; text-align: center; }
+  .bg-gallery-item:hover .bg-del, .bg-gallery-item:hover .bg-dl { display: block; }
+  .memories-list { max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .memory-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px 12px; position: relative; }
+  .memory-card .mem-tier { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--neon-amber); margin-bottom: 4px; }
+  .memory-card .mem-date { font-size: 0.58rem; color: var(--text-faint); }
+  .memory-card textarea { width: 100%; box-sizing: border-box; background: transparent; border: 1px solid transparent; border-radius: 4px; color: var(--text-dim); font-size: 0.72rem; line-height: 1.5; padding: 4px 6px; resize: vertical; min-height: 28px; font-family: var(--font-body); }
+  .memory-card textarea:focus { border-color: var(--glass-border); outline: none; background: var(--bg); }
+  .memory-card .mem-actions { position: absolute; top: 6px; right: 8px; display: flex; gap: 4px; }
+  .memory-card .mem-del { background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 0.7rem; padding: 2px 4px; opacity: 0.4; }
+  .memory-card .mem-del:hover { opacity: 1; color: #f88; }
 
   /* ============ SAVED SCRIPTS DETAILS ============ */
   details summary { cursor: pointer; color: var(--text-dim); font-size: 0.85rem; padding: 6px 0; }
@@ -813,6 +827,24 @@ body.in-session .footer {
   .tour-skip { background: none; border: none; color: var(--text-faint); font-size: 0.68rem; cursor: pointer; padding: 0; }
   .tour-next { background: var(--accent-soft); border: none; color: var(--text); border-radius: 6px; padding: 6px 16px; font-size: 0.75rem; cursor: pointer; font-weight: 500; }
 
+  /* ============ FIRST-RUN SAFETY SCREEN ============ */
+  .safety-screen {
+    position: fixed; inset: 0; z-index: 2000;
+    background: var(--bg); overflow-y: auto; padding: 24px 16px 40px;
+    display: flex; flex-direction: column; align-items: center;
+    text-align: left;
+  }
+  .safety-inner { max-width: 520px; width: 100%; text-align: left; }
+  .safety-inner h2 { font-size: 1rem; color: var(--text); font-weight: 500; margin: 0 0 12px; text-align: left; }
+  .safety-inner p { font-size: 0.78rem; color: var(--text-dim); line-height: 1.6; margin: 0 0 10px; text-align: left; }
+  .safety-check {
+    display: grid; grid-template-columns: 20px 1fr; gap: 8px; padding: 10px 0;
+    font-size: 0.78rem; color: var(--text-dim); border-bottom: 1px solid var(--glass-border);
+    text-align: left; align-items: start;
+  }
+  .safety-check input[type="checkbox"] { width: 16px; height: 16px; margin: 2px 0 0 0; }
+  .safety-check label { text-align: left; line-height: 1.5; }
+
   /* ============ 0-10 STATE SCALE ============ */
   .state-scale { margin: 12px 0 6px; text-align: center; }
   .state-scale input[type="range"] { width: 200px; max-width: 80%; }
@@ -833,6 +865,17 @@ body.in-session .footer {
   .sleep-overlay.active { display: block; }
 
   .mood-label { font-size: 0.7rem; color: var(--text-faint); text-align: center; margin-bottom: 10px; }
+  .pre-checkin { text-align: center; margin-top: 16px; }
+  .pre-checkin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 500px; margin: 0 auto; }
+  .pre-checkin-item { text-align: center; }
+  .pre-checkin-label { font-size: 0.68rem; color: var(--text-dim); margin-bottom: 6px; letter-spacing: 0.04em; }
+  .pre-val { color: var(--text-faint); font-family: ui-monospace, monospace; font-size: 0.65rem; }
+  .pre-checkin-item input[type="range"] { width: 100%; }
+  .pre-emoji-row { display: flex; gap: 6px; justify-content: center; }
+  .mood-emoji { background: none; border: 1px solid var(--glass-border); border-radius: 8px; font-size: 1.3rem; padding: 6px 8px; cursor: pointer; transition: all 0.2s; opacity: 0.5; }
+  .mood-emoji:hover { opacity: 0.8; transform: scale(1.1); }
+  .mood-emoji.selected { opacity: 1; border-color: var(--accent); background: var(--accent-soft); transform: scale(1.15); }
+  @media (max-width: 480px) { .pre-checkin-grid { grid-template-columns: 1fr; max-width: 260px; } }
 
   /* ============ SESSION STATS ============ */
   .history-list { margin-top: 10px; }
@@ -1225,39 +1268,11 @@ body.in-session .footer {
             <label class="btn secondary" style="flex:1;font-size:0.72rem;padding:6px;text-align:center;cursor:pointer;">import .gz<input type="file" id="restoreInput" accept=".gz,.json" style="display:none;"></label>
           </div>
         </details>
-        <details>
-          <summary>options</summary>
-          <div class="profile-form" style="padding-top:6px;">
-            <label class="toggle-row" for="remoteProcessingOptIn" style="align-items:flex-start;">
-              <input type="checkbox" id="remoteProcessingOptIn">
-              <span>
-                Enable remote backup + processing
-                <span class="hint">Off by default. Requires explicit consent before anything is enabled.</span>
-              </span>
-            </label>
-            <div class="sublabel" style="font-size:0.64rem;line-height:1.5;">If enabled, data may be sent to a remote server for backup and further processing. You can turn it off later.</div>
-            <label class="toggle-row" for="smartDirectorEnabled" style="align-items:flex-start;margin-top:8px;">
-              <input type="checkbox" id="smartDirectorEnabled">
-              <span>
-                Smart Director
-                <span class="hint">Track your overall mental health. All done locally. Enable to Guardrail your interactions, or use tailored personalization. Turn this off to disable all auto-personalization. (Not Recommended).</span>
-              </span>
-            </label>
-            <div class="sublabel" style="font-size:0.64rem;line-height:1.5;">When disabled, your profile still saves locally, but it is not silently injected into scripts.</div>
-            <!-- DEBUG: Disable emergency/rescue sequence after aborted sessions.
-                 Always defaults to OFF. Intentionally NOT saved with settings.
-                 This exists solely for development/testing — production users
-                 should always have the safety re-alert sequence enabled. -->
-            <label class="toggle-row" for="debugSkipRescue" style="align-items:flex-start;margin-top:8px;">
-              <input type="checkbox" id="debugSkipRescue">
-              <span>
-                Debug: skip rescue sequence
-                <span class="hint">Skips the emergency re-alert narration when ending a session early. For testing only.</span>
-              </span>
-            </label>
-          </div>
-        </details>
-        <button class="sidebar-settings-btn" id="sidebarSettingsBtn" style="margin-top:8px;">help &amp; safety resources</button>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+          <button class="sidebar-settings-btn" id="openOptionsBtn">⚙ options</button>
+          <button class="sidebar-settings-btn" id="viewMemoriesBtn" style="display:none;">🧠 view / edit memories</button>
+          <button class="sidebar-settings-btn" id="sidebarSettingsBtn">💛 help &amp; safety resources</button>
+        </div>
       </div>
     </aside>
     <div class="main-content">
@@ -1519,6 +1534,10 @@ I return to myself easily"></textarea>
             <option value="crickets">Night crickets — chirping insects</option>
             <option value="temple">Temple — deep bell, tonal drones</option>
             <option value="spaceship">Spaceship — low engine, subtle bleeps</option>
+            <option value="underwater">Underwater — deep submersion, bubbles</option>
+            <option value="clock">Grandfather clock — tick-tock, chime</option>
+            <option value="train">Train — rhythmic clack, rumble</option>
+            <option value="city">City night — distant traffic, ambient</option>
           </optgroup>
         </select>
         <div class="sublabel" id="soundscapeHint">Procedurally generated — never loops. Use headphones for binaural.</div>
@@ -1576,6 +1595,13 @@ I return to myself easily"></textarea>
             <option value="kaleidoscope-flow">Kaleidoscope (flow field)</option>
             <option value="kaleidoscope-plasma">Kaleidoscope (plasma)</option>
           </optgroup>
+          <optgroup label="Atmospheric">
+            <option value="aurora">Aurora — undulating light curtains</option>
+            <option value="rain">Rain — falling streaks</option>
+            <option value="smoke">Smoke — drifting fog layers</option>
+            <option value="sacred-geo">Sacred geometry — Flower of Life</option>
+            <option value="waveform">Waveform — oscillating EEG line</option>
+          </optgroup>
           <optgroup label="Minimal">
             <option value="pulse">CSS pulse rings (lightest)</option>
             <option value="none">None — black screen only</option>
@@ -1617,13 +1643,17 @@ I return to myself easily"></textarea>
         </select>
         <div id="bgAiOptions" class="bg-options" style="display:none;margin-top:8px;">
           <textarea id="bgPromptInput" class="pf-textarea" rows="2" placeholder="dark ethereal misty landscape, dreamlike, soft focus..."></textarea>
-          <div class="sublabel">Describe the mood/scene. Images pre-generate before session starts, then continue silently during playback.</div>
-          <div style="display:flex;gap:6px;margin-top:6px;">
-            <button class="preview-btn" id="bgPreviewBtn">preview image</button>
-            <button class="preview-btn" id="bgManageBtn">manage cache (<span id="bgCacheCount">0</span>)</button>
+          <div class="sublabel">Describe the mood/scene. Images generate before and during sessions, crossfading every 45 seconds.</div>
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+            <button class="preview-btn" id="bgPreviewBtn">generate image</button>
+            <button class="preview-btn" id="bgManageBtn">gallery (<span id="bgCacheCount">0</span>)</button>
           </div>
           <div id="bgPreviewWrap" style="display:none;margin-top:8px;text-align:center;">
             <img id="bgPreviewImg" style="max-width:100%;max-height:200px;border-radius:6px;opacity:0.7;">
+            <div style="display:flex;gap:6px;justify-content:center;margin-top:6px;">
+              <button class="preview-btn" id="bgSaveLastBtn" style="display:none;">save to device</button>
+              <button class="preview-btn" id="bgPreviewBtn2">generate another</button>
+            </div>
             <div class="sublabel" id="bgPreviewStatus"></div>
           </div>
         </div>
@@ -1725,12 +1755,29 @@ I return to myself easily"></textarea>
         </div>
       </div>
 
-      <div style="text-align:center; margin-top: 16px;" id="preMoodSection">
-        <div class="mood-label"> Before you start: To best judge your current mood and mental health, please adjust the slider below. <br>How are you feeling right now? (0 = worst, 10 = best)</div>
-        <div class="state-scale">
-          <div class="state-scale-value" id="preStateVal">5</div>
-          <input type="range" id="preStateSlider" min="0" max="10" value="5">
-          <div class="state-scale-labels"><span>worst</span><span>best</span></div>
+      <div class="pre-checkin" id="preMoodSection">
+        <div class="mood-label">how are you right now?</div>
+        <div class="pre-checkin-grid">
+          <div class="pre-checkin-item">
+            <div class="pre-checkin-label">mood</div>
+            <div class="pre-emoji-row" id="preMoodEmojis">
+              <button class="mood-emoji" data-val="1" title="very low">😞</button>
+              <button class="mood-emoji" data-val="3" title="low">😕</button>
+              <button class="mood-emoji" data-val="5" title="neutral">😐</button>
+              <button class="mood-emoji" data-val="7" title="good">🙂</button>
+              <button class="mood-emoji" data-val="9" title="great">😊</button>
+            </div>
+          </div>
+          <div class="pre-checkin-item">
+            <div class="pre-checkin-label">tension <span class="pre-val" id="preTensionVal">5</span></div>
+            <input type="range" id="preTensionSlider" min="0" max="10" value="5">
+            <div class="post-checkin-ends"><span>relaxed</span><span>very tense</span></div>
+          </div>
+          <div class="pre-checkin-item">
+            <div class="pre-checkin-label">energy <span class="pre-val" id="preEnergyVal">5</span></div>
+            <input type="range" id="preEnergySlider" min="0" max="10" value="5">
+            <div class="post-checkin-ends"><span>exhausted</span><span>energized</span></div>
+          </div>
         </div>
       </div>
 
@@ -1775,20 +1822,26 @@ I return to myself easily"></textarea>
         <div class="post-card" id="postTriggerBox" style="display:none;"></div>
       </div>
 
-      <!-- Check-in row: mood + alertness side by side -->
+      <!-- Check-in row: mood + alertness + depth -->
       <div class="post-checkin">
         <div class="post-checkin-item">
           <div class="post-checkin-label">how do you feel?</div>
           <div class="post-checkin-val" id="postStateVal">5</div>
           <input type="range" id="postStateSlider" min="0" max="10" value="5">
-          <div class="post-checkin-ends"><span>worst</span><span>best</span></div>
+          <div class="post-checkin-ends"><span>😞 worse</span><span>much better 😊</span></div>
           <div class="post-checkin-feedback" id="moodFeedback"></div>
         </div>
         <div class="post-checkin-item">
           <div class="post-checkin-label">how alert are you?</div>
           <div class="post-checkin-val" id="alertnessVal">7</div>
           <input type="range" id="alertnessSlider" min="0" max="10" value="7">
-          <div class="post-checkin-ends"><span>drowsy</span><span>alert</span></div>
+          <div class="post-checkin-ends"><span>😴 drowsy</span><span>fully alert ⚡</span></div>
+        </div>
+        <div class="post-checkin-item">
+          <div class="post-checkin-label">how deep did it feel?</div>
+          <div class="post-checkin-val" id="depthVal">5</div>
+          <input type="range" id="depthSlider" min="0" max="10" value="5">
+          <div class="post-checkin-ends"><span>surface</span><span>very deep 🌊</span></div>
         </div>
       </div>
 
@@ -1973,6 +2026,7 @@ I return to myself easily"></textarea>
     <div id="bgGalleryGrid" class="bg-gallery-grid"></div>
     <div class="sublabel" id="bgGalleryInfo" style="text-align:center;margin:8px 0;"></div>
     <div class="modal-actions">
+      <button class="btn secondary" id="bgDownloadAllBtn">download all</button>
       <button class="btn secondary" id="bgClearAllBtn">clear all</button>
       <button class="btn" id="bgGalleryCloseBtn">close</button>
     </div>
@@ -1980,6 +2034,67 @@ I return to myself easily"></textarea>
 </div>
 
 <div id="toastContainer"></div>
+
+<!-- OPTIONS MODAL -->
+<div class="modal-backdrop" id="optionsModal">
+  <div class="modal" style="max-width:480px;">
+    <h2>options</h2>
+    <div class="profile-form" style="padding-top:4px;">
+      <label class="toggle-row" for="remoteProcessingOptIn" style="align-items:flex-start;">
+        <input type="checkbox" id="remoteProcessingOptIn">
+        <span>
+          Enable remote backup + processing
+          <span class="hint">Off by default. Requires explicit consent.</span>
+        </span>
+      </label>
+      <label class="toggle-row" for="smartDirectorEnabled" style="align-items:flex-start;margin-top:8px;">
+        <input type="checkbox" id="smartDirectorEnabled">
+        <span>
+          Smart Director
+          <span class="hint">Local mental health tracking. Enables auto-personalization and guardrails.</span>
+        </span>
+      </label>
+      <div class="sublabel" style="font-size:0.62rem;line-height:1.4;margin-top:2px;">When disabled, your profile saves locally but isn't injected into scripts.</div>
+      <!-- DEBUG: Always defaults to OFF. Intentionally NOT saved with settings.
+           For development/testing only — production users should always have safety re-alert enabled. -->
+      <label class="toggle-row" for="debugSkipRescue" style="align-items:flex-start;margin-top:10px;">
+        <input type="checkbox" id="debugSkipRescue">
+        <span>
+          Debug: skip rescue sequence
+          <span class="hint">For testing only. Skips emergency re-alert narration.</span>
+        </span>
+      </label>
+      <hr style="border:none;border-top:1px solid var(--glass-border);margin:12px 0;">
+      <div class="pf-label" style="margin-bottom:4px;">external AI provider</div>
+      <select id="extAiProvider" class="pf-select">
+        <option value="perchance">Perchance AI (default, free)</option>
+        <option value="anthropic">Anthropic Claude</option>
+        <option value="openai">OpenAI GPT</option>
+      </select>
+      <div id="extAiKeyRow" style="display:none;margin-top:6px;">
+        <input type="password" id="extAiKey" class="pf-input" placeholder="API key (sk-...)">
+        <div class="sublabel">Stored locally. Only sent to the selected API endpoint.</div>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn" id="optionsCloseBtn">done</button>
+    </div>
+  </div>
+</div>
+
+<!-- MEMORIES MODAL (Perchance-chat style) -->
+<div class="modal-backdrop" id="memoriesModal">
+  <div class="modal" style="max-width:600px;">
+    <h2>🧠 session memories</h2>
+    <div class="sublabel" style="margin-bottom:12px;">AI-generated summaries from your sessions. These personalize future scripts. You can edit or delete any memory.</div>
+    <div id="memoriesContainer" class="memories-list"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn secondary" id="memAddBtn">+ add memory</button>
+      <button class="btn secondary" id="memRefreshBtn">regenerate</button>
+      <button class="btn" id="memCloseBtn">done</button>
+    </div>
+  </div>
+</div>
 
 <!-- Warm overlay for sleep sessions (blue-light reduction) -->
 <div class="sleep-overlay" id="sleepOverlay"></div>
@@ -2322,12 +2437,17 @@ I return to myself easily"></textarea>
     personaFilter: 'all',
     methodFilter: 'all',
     _preMood: 5,
+    _preTension: 5,
+    _preEnergy: 5,
+    _depth: 5,
     _skippedToScript: false,
     vizSpeed: 1.0,
     generatedPhaseOrder: [],
     scriptSections: [],
     remoteProcessingOptIn: false,
     smartDirectorEnabled: true,
+    extAiProvider: 'perchance',
+    _extAiKey: null,
   };
 
   const PHASE_DURATIONS = {
@@ -3073,6 +3193,7 @@ I return to myself easily"></textarea>
         instruction: `You are analyzing a hypnosis user's recent sessions. Write a 1-2 sentence behavioral summary noting: what works best, what to avoid, emotional trajectory. Be concise and clinical.\n\nRecent sessions: ${recent}\n\nPrevious summary: ${adaptive.memorySummary || 'none'}\n\nNew summary:`,
         stopSequences: ['\n\n'], hideStartWith: true,
       });
+      if (data.stopReason === 'error') return adaptive.memorySummary;
       const text = (data.generatedText || '').trim().slice(0, 250);
       return text || adaptive.memorySummary;
     } catch { return adaptive.memorySummary; }
@@ -3137,6 +3258,127 @@ I return to myself easily"></textarea>
     if ($('genProgress')) $('genProgress').style.display = 'none';
     if ($('scriptBuildProgress')) $('scriptBuildProgress').style.display = 'none';
     if ($('generateScriptBtn')) showEl('generateScriptBtn', true);
+  }
+
+  // ====================================================================
+  // EXTERNAL AI ROUTER — wraps Perchance AI, Anthropic, OpenAI
+  // ====================================================================
+  async function aiGenerate(instruction, opts = {}) {
+    const provider = state.extAiProvider || 'perchance';
+    if (provider === 'anthropic' && state._extAiKey) {
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': state._extAiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+          body: JSON.stringify({ model: opts.model || 'claude-sonnet-4-20250514', max_tokens: opts.maxTokens || 2048, messages: [{ role: 'user', content: instruction }] }),
+        });
+        const data = await res.json();
+        return { generatedText: data.content?.[0]?.text || '', stopReason: data.stop_reason === 'end_turn' ? 'stop' : (data.error ? 'error' : 'stop') };
+      } catch (e) { console.warn('Anthropic API failed, falling back to Perchance:', e); }
+    }
+    if (provider === 'openai' && state._extAiKey) {
+      try {
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state._extAiKey}` },
+          body: JSON.stringify({ model: opts.model || 'gpt-4o-mini', messages: [{ role: 'user', content: instruction }], max_tokens: opts.maxTokens || 2048 }),
+        });
+        const data = await res.json();
+        return { generatedText: data.choices?.[0]?.message?.content || '', stopReason: data.choices?.[0]?.finish_reason === 'stop' ? 'stop' : 'error' };
+      } catch (e) { console.warn('OpenAI API failed, falling back to Perchance:', e); }
+    }
+    // Default: Perchance AI
+    if (typeof root !== 'undefined' && root.aiTextPlugin) {
+      return root.aiTextPlugin({ instruction, stopSequences: opts.stopSequences || ['\n\n\n'], hideStartWith: true, ...opts });
+    }
+    return { generatedText: '', stopReason: 'error' };
+  }
+
+  // ====================================================================
+  // 3-TIER HIERARCHICAL MEMORY SYSTEM
+  // ====================================================================
+  const MEMORY_KEY = 'stillness_memory_v1';
+  async function getMemory() {
+    const m = await idbGet(MEMORY_KEY);
+    return m || { sessionDigests: [], rollingWindow: '', longTermProfile: '', lastRollingAt: 0, lastProfileAt: 0 };
+  }
+  async function saveMemory(m) { await idbSet(MEMORY_KEY, m); }
+
+  // Tier 1: Per-session script digest (called in finishSession)
+  async function digestSessionScript(script, record) {
+    if (!script || script.length < 100) return null;
+    const truncated = script.slice(0, 2000);
+    const instruction = `Summarize this hypnosis session script in 2-3 sentences. Note: key imagery/metaphors, specific suggestions delivered, induction method, emotional tone. Be clinical and specific — this feeds a personalization system.
+
+TIP: Ensure summaries use full, natural, readable sentences with correct grammar.
+NOTE: Don't append commentary or word counts. Just do the task and end your response.
+
+Script excerpt:
+${truncated}
+
+Session: guide=${record.guide || '?'}, method=${record.method || '?'}, mood Δ=${(record.postMood||5) - (record.preMood||5)}, depth=${record.depth||'?'}/10
+
+Summary:`;
+    try {
+      const data = await aiGenerate(instruction, { stopSequences: ['\n\n', '\n---'] });
+      if (data.stopReason === 'error') return null;
+      return (data.generatedText || '').trim().replace(/\n+/g, ' ').replace(/---$/, '').trim().slice(0, 300);
+    } catch { return null; }
+  }
+
+  // Tier 2: Rolling window summary (every 5 sessions)
+  async function updateRollingMemory(memory) {
+    if (memory.sessionDigests.length - memory.lastRollingAt < 5) return;
+    const recent = memory.sessionDigests.slice(0, 10).map(d => d.digest).filter(Boolean).join('\n- ');
+    if (!recent) return;
+    const instruction = `You are analyzing a hypnosis user's recent session summaries. Write a 3-4 sentence behavioral analysis: what imagery/methods produce the best results, what to emphasize in future sessions, what to avoid. Previous analysis: "${memory.rollingWindow || 'none'}"
+
+Recent sessions:
+- ${recent}
+
+Updated analysis (full, natural, readable sentences with correct grammar):`;
+    try {
+      const data = await aiGenerate(instruction, { stopSequences: ['\n\n'] });
+      if (data.stopReason !== 'error') {
+        memory.rollingWindow = (data.generatedText || '').trim().replace(/\n+/g, ' ').trim().slice(0, 500);
+        memory.lastRollingAt = memory.sessionDigests.length;
+      }
+    } catch {}
+  }
+
+  // Tier 3: Long-term profile (every 15 sessions)
+  async function updateLongTermProfile(memory) {
+    if (memory.sessionDigests.length - memory.lastProfileAt < 15) return;
+    const profile = getProfileContext();
+    const instruction = `Write a ~150 word practitioner profile for a hypnosis user based on their data. Note: primary use case, best methods/guides, imagery preferences, depth patterns, session length preference, key insights about what works.
+
+Profile data: ${profile}
+Rolling analysis: ${memory.rollingWindow || 'none'}
+Total sessions: ${memory.sessionDigests.length}
+
+Practitioner profile (full, natural sentences):`;
+    try {
+      const data = await aiGenerate(instruction, { stopSequences: ['\n\n\n'] });
+      if (data.stopReason !== 'error') {
+        memory.longTermProfile = (data.generatedText || '').trim().slice(0, 600);
+        memory.lastProfileAt = memory.sessionDigests.length;
+      }
+    } catch {}
+  }
+
+  // Master memory update — called after each completed session
+  async function updateSessionMemory(script, record) {
+    try {
+      const memory = await getMemory();
+      const digest = await digestSessionScript(script, record);
+      if (digest) {
+        memory.sessionDigests.unshift({ sessionId: record.date, date: record.date, digest, depth: record.depth, moodDelta: (record.postMood||5) - (record.preMood||5) });
+        while (memory.sessionDigests.length > 30) memory.sessionDigests.pop();
+      }
+      await updateRollingMemory(memory);
+      await updateLongTermProfile(memory);
+      await saveMemory(memory);
+    } catch (e) { console.error('Memory update failed:', e); }
   }
 
   function resetWizardForNewSession(opts = {}) {
@@ -3530,6 +3772,27 @@ I return to myself easily"></textarea>
     }
   }
 
+  // ── Voice Pack System — persona-matched voice recommendations ──
+  const VOICE_PACKS = {
+    contemplative: { names: ['Samantha', 'Karen', 'Moira', 'Fiona', 'Google UK English Female', 'Microsoft Hazel'], hints: ['Female', 'en-GB'], rate: 0.58, pitch: 0.8 },
+    authoritarian: { names: ['Alex', 'Daniel', 'James', 'Google UK English Male', 'Microsoft George'], hints: ['Male', 'en-GB', 'en-US'], rate: 0.63, pitch: 0.75 },
+    showman: { names: ['Tom', 'Rishi', 'Google US English', 'Microsoft Mark'], hints: ['Male', 'en-US'], rate: 0.68, pitch: 0.9 },
+    somatic: { names: ['Samantha', 'Moira', 'Fiona', 'Google UK English Female'], hints: ['Female', 'en-GB'], rate: 0.55, pitch: 0.82 },
+  };
+  function getVoicePackFor(personaCategory) {
+    return VOICE_PACKS[personaCategory] || VOICE_PACKS.contemplative;
+  }
+  function autoSelectVoiceForPersona() {
+    if (state._savedVoiceName) return; // user manually chose — don't override
+    const persona = getPersona();
+    const pack = getVoicePackFor(persona.category);
+    const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+    for (const name of pack.names) {
+      const match = voices.find(v => v.name.includes(name));
+      if (match) { $('voiceSelect').value = match.name; state.speechRate = pack.rate; state.voicePitch = pack.pitch; break; }
+    }
+  }
+
   function updateVoiceInfo() {
     const select = $('voiceSelect');
     const info = $('voiceInfo');
@@ -3784,6 +4047,85 @@ I return to myself easily"></textarea>
           setTimeout(bleep, 4000 + Math.random() * 12000);
         };
         bleep(); setTimeout(bleep, 6000);
+      } else if (type === 'underwater') {
+        // Deep submerged ambience with bubble chirps
+        const noise = mkNoise('brown'); const ng = mkGain(0.35);
+        const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400; ns.push(lp);
+        connect(noise, ng, lp, m);
+        const drone = mkOsc(55, 'sine'); const dg = mkGain(0.08); connect(drone, dg, m);
+        const bubble = () => {
+          if (!this.running) return;
+          const f = 1200 + Math.random() * 2000;
+          const o = c.createOscillator(); o.frequency.value = f; o.type = 'sine';
+          const g = c.createGain(); o.connect(g).connect(m);
+          const t = c.currentTime;
+          g.gain.setValueAtTime(0.015, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+          o.start(t); o.stop(t + 0.1);
+          setTimeout(bubble, 800 + Math.random() * 4000);
+        };
+        bubble(); setTimeout(bubble, 2000); setTimeout(bubble, 4500);
+      } else if (type === 'clock') {
+        // Grandfather clock — tick-tock + periodic chime
+        const tick = () => {
+          if (!this.running) return;
+          const o = c.createOscillator(); o.frequency.value = 800; o.type = 'sine';
+          const g = c.createGain(); o.connect(g).connect(m);
+          const t = c.currentTime;
+          g.gain.setValueAtTime(0.06, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+          o.start(t); o.stop(t + 0.05);
+          setTimeout(tick, 1000);
+        };
+        tick();
+        const roomNoise = mkNoise('brown'); const rg = mkGain(0.04);
+        const rlp = c.createBiquadFilter(); rlp.type = 'lowpass'; rlp.frequency.value = 200; ns.push(rlp);
+        connect(roomNoise, rg, rlp, m);
+        const chime = () => {
+          if (!this.running) return;
+          [220, 330, 440].forEach((f, i) => {
+            const o = c.createOscillator(); o.frequency.value = f; o.type = 'sine';
+            const g = c.createGain(); o.connect(g).connect(m);
+            const t = c.currentTime + i * 0.3;
+            g.gain.setValueAtTime(0.04, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 2);
+            o.start(t); o.stop(t + 2.5);
+          });
+          setTimeout(chime, 90000 + Math.random() * 60000);
+        };
+        setTimeout(chime, 30000);
+      } else if (type === 'train') {
+        // Railway car — rhythmic clack + rumble
+        const rumble = mkNoise('brown'); const rg = mkGain(0.3);
+        const rlp = c.createBiquadFilter(); rlp.type = 'lowpass'; rlp.frequency.value = 180; ns.push(rlp);
+        connect(rumble, rg, rlp, m);
+        const clack = () => {
+          if (!this.running) return;
+          const o = mkNoise('white'); const g = mkGain(0.08);
+          const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2000; bp.Q.value = 3; ns.push(bp);
+          o.connect(g).connect(bp).connect(m);
+          const t = c.currentTime;
+          g.gain.setValueAtTime(0.08, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+          try { o.start(t); o.stop(t + 0.08); } catch {}
+          setTimeout(clack, 450 + Math.random() * 100);
+        };
+        clack(); setTimeout(clack, 225);
+      } else if (type === 'city') {
+        // City night — distant traffic + ambient
+        const traffic = mkNoise('brown'); const tg = mkGain(0.15);
+        const tlp = c.createBiquadFilter(); tlp.type = 'lowpass'; tlp.frequency.value = 150; ns.push(tlp);
+        connect(traffic, tg, tlp, m);
+        const hum = mkOsc(60, 'sine'); const hg = mkGain(0.03); connect(hum, hg, m);
+        const siren = () => {
+          if (!this.running) return;
+          const o = c.createOscillator(); o.type = 'sine';
+          const g = c.createGain(); o.connect(g).connect(m);
+          const t = c.currentTime;
+          o.frequency.setValueAtTime(600, t); o.frequency.linearRampToValueAtTime(800, t + 1);
+          o.frequency.linearRampToValueAtTime(600, t + 2);
+          g.gain.setValueAtTime(0.005, t); g.gain.linearRampToValueAtTime(0.012, t + 0.5);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 3);
+          o.start(t); o.stop(t + 3.5);
+          setTimeout(siren, 30000 + Math.random() * 60000);
+        };
+        setTimeout(siren, 15000 + Math.random() * 20000);
       }
 
       startAll();
@@ -3843,9 +4185,12 @@ I return to myself easily"></textarea>
         });
         const dataUrl = result.dataUrl || String(result);
         if (dataUrl && dataUrl.startsWith('data:')) {
-          this.queue.push(dataUrl);
           await bgCacheStore(dataUrl, this.prompt);
-          return dataUrl;
+          // Convert to object URL for display (lighter than keeping data URL in memory)
+          const blob = await fetch(dataUrl).then(r => r.blob());
+          const objectUrl = URL.createObjectURL(blob);
+          this.queue.push(objectUrl);
+          return objectUrl;
         }
         return null;
       } catch(e) { console.error('bgEngine generate:', e); return null; }
@@ -3853,11 +4198,9 @@ I return to myself easily"></textarea>
     },
 
     async pregenerate(count = 5) {
-      // Load from cache first
-      const cached = await bgCacheGet();
-      if (cached.length > 0) {
-        this.queue = cached.map(c => c.dataUrl).filter(Boolean);
-      }
+      // Load from Blob cache first
+      const urls = await bgCacheGetAllUrls();
+      if (urls.length > 0) this.queue = urls;
       // Generate new ones sequentially (Perchance queues concurrent requests)
       const needed = Math.max(0, count - this.queue.length);
       for (let i = 0; i < needed; i++) {
@@ -3937,6 +4280,9 @@ I return to myself easily"></textarea>
 
     clear() {
       this.stopRotation();
+      // Revoke object URLs from queue to free memory
+      this.queue.forEach(u => { try { URL.revokeObjectURL(u); } catch {} });
+      this.queue = [];
       const imgs = [$('bgImg0'), $('bgImg1')];
       imgs.forEach(i => { if (i) { i.src = ''; i.classList.remove('active'); } });
       const vid = $('bgLocalVideo'); if (vid) { vid.pause(); vid.src = ''; vid.style.display = 'none'; }
@@ -3948,39 +4294,93 @@ I return to myself easily"></textarea>
     }
   };
 
-  // ── Background IDB cache ──
+  // ── Background image cache — per-image Blob storage ──
+  // Manifest at 'bg_manifest' holds metadata [{id, prompt, createdAt}]
+  // Each image stored separately at 'bg_img_<id>' as a Blob (no base64 overhead)
+  const BG_MANIFEST_KEY = 'bg_manifest';
+  const BG_MAX_IMAGES = 50;
+
   async function bgCacheStore(dataUrl, prompt) {
-    const cache = (await idbGet('stillness_bgcache_v1')) || [];
-    cache.push({ id: 'bg_' + Date.now(), prompt: prompt || '', dataUrl, createdAt: Date.now() });
-    while (cache.length > 50) cache.shift();
-    await idbSet('stillness_bgcache_v1', cache);
+    const id = 'bg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    const blob = await fetch(dataUrl).then(r => r.blob());
+    const manifest = (await idbGet(BG_MANIFEST_KEY)) || [];
+    manifest.push({ id, prompt: prompt || '', createdAt: Date.now() });
+    // Evict oldest if over limit
+    while (manifest.length > BG_MAX_IMAGES) {
+      const old = manifest.shift();
+      await idbDel('bg_img_' + old.id);
+    }
+    await idbSet('bg_img_' + id, blob);
+    await idbSet(BG_MANIFEST_KEY, manifest);
+    return id;
   }
-  async function bgCacheGet() { return (await idbGet('stillness_bgcache_v1')) || []; }
+  async function bgCacheGetManifest() { return (await idbGet(BG_MANIFEST_KEY)) || []; }
+  async function bgCacheGetUrl(id) {
+    const blob = await idbGet('bg_img_' + id);
+    return blob ? URL.createObjectURL(blob) : null;
+  }
+  async function bgCacheGetAllUrls() {
+    const manifest = await bgCacheGetManifest();
+    const urls = [];
+    for (const entry of manifest) {
+      const url = await bgCacheGetUrl(entry.id);
+      if (url) urls.push(url);
+    }
+    return urls;
+  }
   async function bgCacheDelete(id) {
-    const cache = (await idbGet('stillness_bgcache_v1')) || [];
-    await idbSet('stillness_bgcache_v1', cache.filter(c => c.id !== id));
+    await idbDel('bg_img_' + id);
+    const manifest = (await idbGet(BG_MANIFEST_KEY)) || [];
+    await idbSet(BG_MANIFEST_KEY, manifest.filter(m => m.id !== id));
   }
-  async function bgCacheClear() { await idbSet('stillness_bgcache_v1', []); }
+  async function bgCacheClear() {
+    const manifest = (await idbGet(BG_MANIFEST_KEY)) || [];
+    for (const entry of manifest) await idbDel('bg_img_' + entry.id);
+    await idbSet(BG_MANIFEST_KEY, []);
+  }
+  async function bgCacheDownload(id) {
+    const blob = await idbGet('bg_img_' + id);
+    if (!blob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = id + '.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
 
   async function renderBgGallery() {
     const grid = $('bgGalleryGrid');
     const info = $('bgGalleryInfo');
     const countEl = $('bgCacheCount');
     if (!grid) return;
-    const cache = await bgCacheGet();
-    if (countEl) countEl.textContent = cache.length;
-    if (info) info.textContent = `${cache.length} image${cache.length === 1 ? '' : 's'} cached`;
-    if (!cache.length) { grid.innerHTML = '<div class="sublabel" style="text-align:center;padding:20px;">No cached images yet. Generate some with the preview button or during a session.</div>'; return; }
-    grid.innerHTML = cache.map(c => `
+    const manifest = await bgCacheGetManifest();
+    if (countEl) countEl.textContent = manifest.length;
+    if (info) info.textContent = `${manifest.length} image${manifest.length === 1 ? '' : 's'} · stored as binary blobs (no base64 overhead)`;
+    if (!manifest.length) { grid.innerHTML = '<div class="sublabel" style="text-align:center;padding:20px;">No cached images yet. Generate some with the preview button or during a session.</div>'; return; }
+    // Build grid with placeholder thumbnails, load blobs lazily
+    grid.innerHTML = manifest.map(c => `
       <div class="bg-gallery-item" data-id="${c.id}">
-        <img src="${c.dataUrl}" alt="" loading="lazy">
+        <img alt="" loading="lazy" style="background:#111;">
         <button class="bg-del" data-id="${c.id}" title="delete">✕</button>
+        <button class="bg-dl" data-id="${c.id}" title="download">⬇</button>
       </div>`).join('');
+    // Load thumbnails lazily
+    for (const entry of manifest) {
+      const url = await bgCacheGetUrl(entry.id);
+      const img = grid.querySelector(`.bg-gallery-item[data-id="${entry.id}"] img`);
+      if (img && url) img.src = url;
+    }
     grid.querySelectorAll('.bg-del').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         await bgCacheDelete(btn.dataset.id);
         renderBgGallery();
+      });
+    });
+    grid.querySelectorAll('.bg-dl').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        bgCacheDownload(btn.dataset.id);
       });
     });
   }
@@ -4339,6 +4739,75 @@ I return to myself easily"></textarea>
     };
   }
 
+  // Aurora borealis — undulating gradient curtains
+  function renderAurora(ctx, W, H, t, color) {
+    ctx.fillStyle = 'rgba(0,0,0,0.04)'; ctx.fillRect(0,0,W,H);
+    const rgb = hexToRgb(color);
+    for (let b = 0; b < 4; b++) {
+      const ph = b * 1.7 + t * 0.0004;
+      const y = H * 0.25 + Math.sin(ph) * H * 0.12 + Math.sin(ph * 0.7 + b) * H * 0.06;
+      const grad = ctx.createLinearGradient(0, y - 100, 0, y + 140);
+      grad.addColorStop(0, 'transparent');
+      grad.addColorStop(0.3, `rgba(${rgb},${0.035 + b * 0.008})`);
+      grad.addColorStop(0.7, `rgba(${rgb},${0.05 - b * 0.008})`);
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  // Rain drops — falling streaks with splash
+  function renderRain(ctx, W, H, t, color) {
+    const rgb = hexToRgb(color);
+    if (!renderRain._drops) { renderRain._drops = []; for (let i = 0; i < 120; i++) renderRain._drops.push({ x: Math.random() * W, y: Math.random() * H, len: 8 + Math.random() * 18, speed: 4 + Math.random() * 6 }); }
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle = `rgba(${rgb},0.25)`; ctx.lineWidth = 1;
+    for (const d of renderRain._drops) {
+      d.y += d.speed; if (d.y > H) { d.y = -d.len; d.x = Math.random() * W; }
+      ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - 0.5, d.y + d.len); ctx.stroke();
+    }
+  }
+
+  // Sacred geometry — Flower of Life
+  function renderSacredGeo(ctx, W, H, t, color) {
+    ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fillRect(0,0,W,H);
+    const rgb = hexToRgb(color), cx = W/2, cy = H/2, R = Math.min(W,H) * 0.18;
+    const rot = t * 0.00015;
+    ctx.strokeStyle = `rgba(${rgb},${0.15 + Math.sin(t * 0.001) * 0.05})`; ctx.lineWidth = 0.8;
+    const pts = [[0,0]]; for (let i = 0; i < 6; i++) pts.push([Math.cos(i * Math.PI/3) * R, Math.sin(i * Math.PI/3) * R]);
+    for (let ring = 0; ring < 2; ring++) for (const [px,py] of pts) {
+      const r = R * (ring === 0 ? 1 : 1.73);
+      ctx.beginPath(); ctx.arc(cx + px * (ring+1) * Math.cos(rot) - py * Math.sin(rot), cy + px * (ring+1) * Math.sin(rot) + py * Math.cos(rot), r, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  // Waveform — phase-aware frequency shift (beta→theta)
+  function renderWaveform(ctx, W, H, t, color) {
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(0,0,W,H);
+    const rgb = hexToRgb(color), cy = H/2;
+    const freq = 0.02 + Math.sin(t * 0.0003) * 0.015; // shifts over time
+    ctx.beginPath(); ctx.moveTo(0, cy);
+    for (let x = 0; x < W; x++) {
+      const amp = H * 0.15 * (1 + Math.sin(t * 0.0005) * 0.3);
+      ctx.lineTo(x, cy + Math.sin(x * freq + t * 0.002) * amp * Math.sin(x / W * Math.PI));
+    }
+    ctx.strokeStyle = `rgba(${rgb},0.4)`; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  // Smoke / fog — drifting translucent circles
+  function renderSmoke(ctx, W, H, t, color) {
+    const rgb = hexToRgb(color);
+    if (!renderSmoke._puffs) { renderSmoke._puffs = []; for (let i = 0; i < 20; i++) renderSmoke._puffs.push({ x: Math.random() * W, y: Math.random() * H, r: 60 + Math.random() * 120, vx: (Math.random()-0.5)*0.3, vy: (Math.random()-0.5)*0.2 }); }
+    ctx.fillStyle = 'rgba(0,0,0,0.02)'; ctx.fillRect(0,0,W,H);
+    for (const p of renderSmoke._puffs) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < -p.r) p.x = W + p.r; if (p.x > W + p.r) p.x = -p.r;
+      if (p.y < -p.r) p.y = H + p.r; if (p.y > H + p.r) p.y = -p.r;
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+      grad.addColorStop(0, `rgba(${rgb},0.025)`); grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad; ctx.fillRect(p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
+    }
+  }
+
   const VIZ_RENDERERS = {
     tunnel: renderTunnel,
     'pendulum-viz': renderPendulumViz,
@@ -4355,6 +4824,11 @@ I return to myself easily"></textarea>
     plasma: renderPlasma,
     'kaleidoscope-flow': makeKaleidoscope(renderFlowField, 6),
     'kaleidoscope-plasma': makeKaleidoscope(renderPlasma, 8),
+    aurora: renderAurora,
+    rain: renderRain,
+    'sacred-geo': renderSacredGeo,
+    waveform: renderWaveform,
+    smoke: renderSmoke,
   };
 
   // Phase-based speed multipliers for visuals
@@ -4798,7 +5272,9 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const profileCtx = getProfileContext();
     let adaptiveCtx = '';
     try { const ap = await getAdaptive(); adaptiveCtx = getAdaptivePromptBlock(ap); } catch {}
-    const sharedContext = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"${craftedBlock}${affirmBlock}${demoNote}${profileCtx}${adaptiveCtx}`;
+    let memoryCtx = '';
+    try { const mem = await getMemory(); if (mem.rollingWindow || mem.longTermProfile) memoryCtx = `\nPRACTITIONER MEMORY:${mem.longTermProfile ? '\nProfile: ' + mem.longTermProfile : ''}${mem.rollingWindow ? '\nRecent patterns: ' + mem.rollingWindow : ''}`; } catch {}
+    const sharedContext = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"${craftedBlock}${affirmBlock}${demoNote}${profileCtx}${adaptiveCtx}${memoryCtx}`;
 
     // Phase-specific instructions
     const phaseInstructions = {
@@ -4917,7 +5393,24 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const summaryBlock = gs.priorSummary ? `\n\nSO FAR (summary — continue seamlessly, DO NOT repeat):\n${gs.priorSummary}` : '';
     const instruction = `${gs.sharedContext}${summaryBlock}\n\n═══ YOUR TASK ═══\n${gs.phaseInstructions[phase]}\n\nStay in ${gs.persona.name}'s voice. Continue naturally. No ===PHASE=== markers. Start immediately:`;
 
-    const data = await root.aiTextPlugin({ instruction, stopSequences: ['\n\n\n\n'], hideStartWith: true });
+    // Token budget guard — trim summary if instruction is too long
+    let finalInstruction = instruction;
+    if (typeof root !== 'undefined' && root.aiTextPlugin) {
+      try {
+        const { countTokens, idealMaxContextTokens } = root.aiTextPlugin({ getMetaObject: true });
+        if (countTokens && idealMaxContextTokens) {
+          const tokens = countTokens(finalInstruction);
+          if (tokens > idealMaxContextTokens - 800) {
+            // Trim the summary to fit
+            const withoutSummary = `${gs.sharedContext}\n\n═══ YOUR TASK ═══\n${gs.phaseInstructions[phase]}\n\nStay in ${gs.persona.name}'s voice. Continue naturally. No ===PHASE=== markers. Start immediately:`;
+            finalInstruction = withoutSummary;
+            console.warn(`Phase ${phase}: trimmed summary — instruction was ${tokens} tokens (limit ~${idealMaxContextTokens})`);
+          }
+        }
+      } catch {}
+    }
+
+    const data = await root.aiTextPlugin({ instruction: finalInstruction, stopSequences: ['\n\n\n\n'], hideStartWith: true });
     if (data.stopReason === 'error') throw new Error('AI returned an error');
 
     let raw = (data.generatedText || '').trim();
@@ -5999,6 +6492,8 @@ ${s.text.trim()}`).join('\n\n').trim();
     const postVal = $('postStateVal'); if (postVal) postVal.textContent = '5';
     const alertSlider = $('alertnessSlider'); if (alertSlider) { alertSlider.value = 7; }
     const alertVal = $('alertnessVal'); if (alertVal) alertVal.textContent = '7';
+    const depthSl = $('depthSlider'); if (depthSl) { depthSl.value = 5; }
+    const depthV = $('depthVal'); if (depthV) depthV.textContent = '5';
     const journal = $('journalText'); if (journal) journal.value = '';
 
     // Wake Lock — prevent screen timeout during session
@@ -6326,6 +6821,8 @@ ${s.text.trim()}`).join('\n\n').trim();
       durationSec: elapsed,
       completed: !wasEmergency,
       preMood: state._preMood || null,
+      preTension: state._preTension || null,
+      preEnergy: state._preEnergy || null,
       // Full reproducibility data
       script: state.fullScript || '',
       personaId: state.selectedPersonaId,
@@ -6355,6 +6852,7 @@ ${s.text.trim()}`).join('\n\n').trim();
     await idbSet('stillness_history_v1', history);
     await recordAnalytics(sessionRecord, wasEmergency);
     updateAdaptiveProfile(sessionRecord, wasEmergency); // Phase 9 — non-blocking
+    updateSessionMemory(state.fullScript, sessionRecord); // Memory system — non-blocking
     renderHeatmap(); // Refresh activity heatmap
     renderSparkline(); // Refresh rising-score sparkline
     renderSidebarStats(); // Refresh sidebar stats
@@ -6677,22 +7175,62 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     bgEngine.prompt = e.target.value;
     saveUserSettings();
   });
-  $('bgPreviewBtn')?.addEventListener('click', async () => {
+  // Background generate handler (shared by both generate buttons)
+  async function _bgGenerate() {
+    const btn = $('bgPreviewBtn');
+    const btn2 = $('bgPreviewBtn2');
     const wrap = $('bgPreviewWrap');
     const status = $('bgPreviewStatus');
     const img = $('bgPreviewImg');
-    if (!wrap || !status || !img) return;
+    const saveBtn = $('bgSaveLastBtn');
+    if (!wrap || !status || !img || !btn) return;
+    if (bgEngine.generating) { notify.warn('Already generating — please wait.'); return; }
+    btn.disabled = true; btn.textContent = 'generating...';
+    if (btn2) { btn2.disabled = true; btn2.textContent = 'generating...'; }
     wrap.style.display = '';
-    status.textContent = 'Generating preview... (10-30 seconds)';
+    status.textContent = 'Sending to Perchance AI... (typically 10-30 seconds)';
     img.src = '';
+    if (saveBtn) saveBtn.style.display = 'none';
     bgEngine.prompt = $('bgPromptInput')?.value || '';
-    const dataUrl = await bgEngine.generateOne();
-    if (dataUrl) { img.src = dataUrl; status.textContent = 'Preview generated. Image cached.'; renderBgGallery(); }
-    else status.textContent = 'Generation failed. Is text-to-image-plugin imported?';
+    const url = await bgEngine.generateOne();
+    btn.disabled = false; btn.textContent = 'generate image';
+    if (btn2) { btn2.disabled = false; btn2.textContent = 'generate another'; }
+    if (url) {
+      img.src = url;
+      if (saveBtn) saveBtn.style.display = '';
+      const manifest = await bgCacheGetManifest();
+      status.textContent = `Saved. ${manifest.length} image${manifest.length === 1 ? '' : 's'} in cache.`;
+      renderBgGallery();
+    } else {
+      status.textContent = typeof root !== 'undefined' && root.textToImagePlugin
+        ? 'Generation failed — server may be busy. Try again.'
+        : 'Plugin not found. Add textToImagePlugin = {import:text-to-image-plugin} to the top editor.';
+    }
+  }
+  $('bgPreviewBtn')?.addEventListener('click', _bgGenerate);
+  $('bgPreviewBtn2')?.addEventListener('click', _bgGenerate);
+  $('bgSaveLastBtn')?.addEventListener('click', async () => {
+    const manifest = await bgCacheGetManifest();
+    if (manifest.length > 0) {
+      await bgCacheDownload(manifest[manifest.length - 1].id);
+      notify.success('Image saved to your device.');
+    }
   });
   $('bgManageBtn')?.addEventListener('click', () => { renderBgGallery(); $('bgGalleryModal')?.classList.add('visible'); });
   $('bgGalleryCloseBtn')?.addEventListener('click', () => $('bgGalleryModal')?.classList.remove('visible'));
-  $('bgClearAllBtn')?.addEventListener('click', async () => { await bgCacheClear(); renderBgGallery(); notify.info('Background cache cleared.'); });
+  $('bgClearAllBtn')?.addEventListener('click', async () => {
+    if (!await confirmAsync('Clear all cached background images?')) return;
+    await bgCacheClear(); renderBgGallery(); notify.info('Background cache cleared.');
+  });
+  $('bgDownloadAllBtn')?.addEventListener('click', async () => {
+    const manifest = await bgCacheGetManifest();
+    if (!manifest.length) { notify.info('No images to download.'); return; }
+    notify.info(`Downloading ${manifest.length} image${manifest.length === 1 ? '' : 's'}...`);
+    for (const entry of manifest) {
+      await bgCacheDownload(entry.id);
+      await new Promise(r => setTimeout(r, 300)); // stagger to avoid browser blocking
+    }
+  });
   $('bgFileInput')?.addEventListener('change', e => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -6736,13 +7274,25 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('addReintroPhaseBtn')?.addEventListener('click', () => addPhaseSection('reintroduction'));
   $('normalizePhaseOrderBtn')?.addEventListener('click', resetPhaseOrderToDefault);
 
-  // Pre-session state scale (0-10)
-  $('preStateSlider')?.addEventListener('input', e => {
-    state._preMood = parseInt(e.target.value, 10);
-    const el = $('preStateVal'); if (el) el.textContent = e.target.value;
+  // Pre-session mood emoji buttons
+  document.querySelectorAll('.mood-emoji').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mood-emoji').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      state._preMood = parseInt(btn.dataset.val, 10);
+    });
+  });
+  // Pre-session tension and energy sliders
+  $('preTensionSlider')?.addEventListener('input', e => {
+    state._preTension = parseInt(e.target.value, 10);
+    const el = $('preTensionVal'); if (el) el.textContent = e.target.value;
+  });
+  $('preEnergySlider')?.addEventListener('input', e => {
+    state._preEnergy = parseInt(e.target.value, 10);
+    const el = $('preEnergyVal'); if (el) el.textContent = e.target.value;
   });
 
-  // Post-session state scale (0-10)
+  // Post-session mood slider (0-10)
   $('postStateSlider')?.addEventListener('input', async e => {
     const val = parseInt(e.target.value, 10);
     const el = $('postStateVal'); if (el) el.textContent = e.target.value;
@@ -6751,7 +7301,14 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     if (fb) fb.textContent = delta > 0 ? `+${delta} improvement` : delta === 0 ? 'same as before' : `${delta} — be gentle with yourself`;
     // Save to most recent session record
     const history = (await idbGet('stillness_history_v1')) || [];
-    if (history.length > 0) { history[0].postMood = val; history[0].preMood = state._preMood ?? null; await idbSet('stillness_history_v1', history); }
+    if (history.length > 0) {
+      history[0].postMood = val;
+      history[0].preMood = state._preMood ?? null;
+      history[0].preTension = state._preTension ?? null;
+      history[0].preEnergy = state._preEnergy ?? null;
+      history[0].depth = parseInt($('depthSlider')?.value ?? 5, 10);
+      await idbSet('stillness_history_v1', history);
+    }
     recordPostMood(val);
     // Retroactively correct adaptive reward now that real postMood is known
     try {
@@ -6759,7 +7316,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       const h = (await idbGet('stillness_history_v1')) || [];
       if (h.length > 0 && adaptive.ts > 0) {
         const rec = h[0];
-        const oldReward = ((5) - (rec.preMood ?? 5)) + (rec.completed ? 1 : -1); // original assumed postMood=5
+        const oldReward = ((5) - (rec.preMood ?? 5)) + (rec.completed ? 1 : -1);
         const newReward = (val - (rec.preMood ?? 5)) + (rec.completed ? 1 : -1);
         const correction = newReward - oldReward;
         if (Math.abs(correction) > 0.01) {
@@ -6770,6 +7327,11 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
         }
       }
     } catch {}
+  });
+
+  // Depth slider
+  $('depthSlider')?.addEventListener('input', e => {
+    const el = $('depthVal'); if (el) el.textContent = e.target.value;
   });
 
   // Alertness check — auto-trigger grounding if low
@@ -7096,6 +7658,10 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   // ====================================================================
   // QUICK-START PRESETS
   // ====================================================================
+  // ====================================================================
+  // FIRST-RUN SAFETY / CONTRAINDICATION SCREEN
+  // ====================================================================
+  // Safety contraindication info moved to Help & Safety Resources button in sidebar
 
   // ====================================================================
   // RISING-SCORE SPARKLINE (renders pre/post improvement over sessions)
@@ -7490,6 +8056,92 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   function openRemoteConsentModal() { $('remoteConsentModal')?.classList.add('visible'); }
   function closeRemoteConsentModal() { $('remoteConsentModal')?.classList.remove('visible'); }
 
+  // Options modal
+  $('openOptionsBtn')?.addEventListener('click', () => $('optionsModal')?.classList.add('visible'));
+  $('optionsCloseBtn')?.addEventListener('click', () => $('optionsModal')?.classList.remove('visible'));
+
+  // External AI provider selection
+  $('extAiProvider')?.addEventListener('change', e => {
+    state.extAiProvider = e.target.value;
+    $('extAiKeyRow').style.display = e.target.value === 'perchance' ? 'none' : '';
+  });
+  $('extAiKey')?.addEventListener('input', e => { state._extAiKey = e.target.value || null; });
+
+  // Debug mode → show/hide memories button
+  $('debugSkipRescue')?.addEventListener('change', () => {
+    const memBtn = $('viewMemoriesBtn');
+    if (memBtn) memBtn.style.display = $('debugSkipRescue')?.checked ? '' : 'none';
+  });
+
+  // ── Memories modal (Perchance-chat style: editable cards) ──
+  async function renderMemoriesModal() {
+    const memory = await getMemory();
+    const container = $('memoriesContainer');
+    if (!container) return;
+    const cards = [];
+    // Tier 3 — long-term profile
+    cards.push({ tier: 'long-term profile', key: 'longTermProfile', text: memory.longTermProfile || '', placeholder: 'Generated after 15+ sessions. Describes your overall practice patterns.', nodelet: false });
+    // Tier 2 — rolling analysis
+    cards.push({ tier: 'rolling analysis', key: 'rollingWindow', text: memory.rollingWindow || '', placeholder: 'Generated after 5+ sessions. What works and what to avoid.', nodelet: false });
+    // Tier 1 — session digests (individual cards)
+    memory.sessionDigests.forEach((d, i) => {
+      cards.push({ tier: `session · ${new Date(d.date).toLocaleDateString()}`, key: 'digest', idx: i, text: d.digest || '', placeholder: 'Session summary...', date: d.date, depth: d.depth, moodDelta: d.moodDelta, nodelet: true });
+    });
+    container.innerHTML = cards.map((c, ci) => `
+      <div class="memory-card" data-ci="${ci}" data-key="${c.key}" data-idx="${c.idx ?? ''}">
+        <div class="mem-tier">${c.tier}${c.depth != null ? ` · depth:${c.depth}` : ''}${c.moodDelta != null ? ` · Δ${c.moodDelta > 0 ? '+' : ''}${c.moodDelta}` : ''}</div>
+        <div class="mem-actions">${c.nodelet ? `<button class="mem-del" data-idx="${c.idx}" title="delete">✕</button>` : ''}</div>
+        <textarea rows="${c.text.length > 150 ? 3 : 2}" placeholder="${c.placeholder}">${escapeHtml(c.text)}</textarea>
+      </div>
+    `).join('') || '<div class="sublabel" style="text-align:center;padding:20px;">No memories yet. Complete some sessions to build your memory profile.</div>';
+    // Wire delete buttons
+    container.querySelectorAll('.mem-del').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        const mem = await getMemory();
+        mem.sessionDigests.splice(idx, 1);
+        await saveMemory(mem);
+        renderMemoriesModal();
+      });
+    });
+    // Wire auto-save on textarea blur
+    container.querySelectorAll('textarea').forEach(ta => {
+      ta.addEventListener('blur', async () => {
+        const card = ta.closest('.memory-card');
+        const key = card.dataset.key;
+        const idx = card.dataset.idx;
+        const mem = await getMemory();
+        if (key === 'longTermProfile') mem.longTermProfile = ta.value;
+        else if (key === 'rollingWindow') mem.rollingWindow = ta.value;
+        else if (key === 'digest' && idx !== '') mem.sessionDigests[parseInt(idx, 10)].digest = ta.value;
+        await saveMemory(mem);
+      });
+    });
+  }
+
+  $('viewMemoriesBtn')?.addEventListener('click', async () => {
+    await renderMemoriesModal();
+    $('memoriesModal')?.classList.add('visible');
+  });
+  $('memCloseBtn')?.addEventListener('click', () => $('memoriesModal')?.classList.remove('visible'));
+  $('memAddBtn')?.addEventListener('click', async () => {
+    const memory = await getMemory();
+    memory.sessionDigests.unshift({ sessionId: Date.now(), date: Date.now(), digest: '', depth: null, moodDelta: null });
+    await saveMemory(memory);
+    renderMemoriesModal();
+    notify.info('New memory added. Type to edit, it auto-saves on blur.');
+  });
+  $('memRefreshBtn')?.addEventListener('click', async () => {
+    const memory = await getMemory();
+    notify.info('Regenerating summaries...');
+    memory.lastRollingAt = 0; memory.lastProfileAt = 0;
+    await updateRollingMemory(memory);
+    await updateLongTermProfile(memory);
+    await saveMemory(memory);
+    renderMemoriesModal();
+    notify.success('Memory summaries regenerated.');
+  });
+
   $('sidebarSettingsBtn')?.addEventListener('click', () => {
     $('crisisLink')?.click();
   });
@@ -7542,6 +8194,8 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     }
     return true;
   }
+
+  // Monthly safety re-check — re-display contraindication screen every 30 days
 
   // Practice-unlock gating — methods unlock with experience
   async function getSessionCount() {
@@ -7597,7 +8251,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     renderSidebarStats();
     updateIntentionHint();
     // Update bg cache count
-    bgCacheGet().then(cache => { const el = $('bgCacheCount'); if (el) el.textContent = cache.length; });
+    bgCacheGetManifest().then(m => { const el = $('bgCacheCount'); if (el) el.textContent = m.length; });
     // Set soundscape default based on method — but only if no saved settings
     if (!hadSavedSettings) {
       const defaultMethod = getMethod();
@@ -7669,6 +8323,8 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   .card .card-tagline,
   .preset-card .preset-desc,
   .tour-card p,
+  .safety-inner p,
+  .safety-check,
   .history-item .h-meta,
   .history-item .h-preview,
   .history-item .h-no-script,
@@ -7779,6 +8435,8 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     .card .card-tagline,
     .preset-card .preset-desc,
     .tour-card p,
+    .safety-inner p,
+    .safety-check,
     .history-item .h-meta,
     .history-item .h-preview,
     .history-item .h-no-script,
