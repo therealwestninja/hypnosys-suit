@@ -1,451 +1,225 @@
-# Stillness Adaptive Intelligence System
+# Advanced Hypnosis Narration Engine — Roadmap
 
-### ROADMAP.md (Claude.ai Implementation Guide)
-
----
-
-## 🧭 Vision
-
-Transform the existing analytics + history system into a **self-evolving personalization engine** that:
-
-* Learns from user behavior over time
-* Adapts sessions dynamically
-* Reinforces what works
-* Gently evolves the user’s experience
-
-> The system should feel *intuitive, invisible, and alive* — never mechanical.
+This file tracks improvements not yet shipped. Items 1–6, 9, and 12 from the
+original review have already been implemented in `perchance_1.txt` and
+`perchance_2.txt`. What follows is the backlog, ordered roughly by a mix of
+user-visible impact and effort.
 
 ---
 
-## 🧠 Core Concept
+## Already shipped ✅
 
-A hidden **Adaptive Profile Layer** sits between:
-
-* stored stats (`stillness_analytics_v1`)
-* session history (`stillness_history_v1`)
-* AI generation (Perchance `aiTextPlugin`)
-
-It continuously:
-
-```
-OBSERVE → INFER → ADAPT → REINFORCE → EVOLVE
-```
-
----
-
-# 🧱 PHASE 1 — FOUNDATION (Data → Signals)
-
-## Goal
-
-Turn raw analytics into meaningful behavioral signals.
-
-### 1.1 Build Derived Metrics Layer
-
-Create a function:
-
-```js
-function deriveProfileSignals(analytics, history) {
-  return {
-    completionRate,
-    avgImprovement,
-    consistencyScore,
-    sessionVariance,
-    preferredTime,
-    dropoutRate,
-  };
-}
-```
-
-### Signals to compute:
-
-* Completion rate
-* Mood improvement trend
-* Session consistency
-* Time-of-day preference
-* Dropout / emergency rate
-* Method/persona entropy (variety vs repetition)
+| # | Item | Shipped change |
+|---|------|---------------|
+| 1 | `uploadPlugin` share links | `createShareUpload`, `shareCurrentConfig`, `shareCurrentPersona`, `loadUploadedSharePayload`; share buttons on script preview + persona editor |
+| 2 | `$meta.dynamic` | Inline method/intention/preset maps in `perchance_1.txt` for tailored link previews |
+| 3 | `dynamicImport` community packs | `communityPacks` lane in DSL; `loadCommunityPackPersonas` merges them into `refreshPersonas` |
+| 4 | Semantic memory via `embedTexts` | `embedAndStoreDigest`, `findRelevantDigests`, `cosineDistance`; `generateFullScript` now surfaces top-K semantically relevant digests alongside the rolling/long-term memory |
+| 5 | Token budgeting | `trimToTokenBudget` helper with priority-based dropping; applied to `generateSinglePhase`, `generateFullScript` sharedContext, and `craftSuggestion` |
+| 6 | Streaming phase generation | `onChunk` streaming in `generateSinglePhase`; `setStreamingPreview` renders live text into a new `#genStreamBox` between the phase dots and the script preview |
+| 9 | `stopReason === 'error'` audit | Hardened `aiGenerate` (HTTP status, error field, empty-text detection); routed `updateMemorySummary` through it; explicit error + empty-text guards in `generateSinglePhase` and `craftSuggestion` |
+| 12 | Regeneration diff | `showPhaseDiffModal` with side-by-side compare; `retryPhase` now captures original text and asks the user to pick |
 
 ---
 
-## 1.2 Normalize Signals (0 → 1)
+## Backlog
 
-```js
-function normalize(val, min, max) {
-  return (val - min) / (max - min);
-}
-```
+### High impact
 
-All downstream systems depend on normalized values.
+#### 7 · `textToImagePlugin` beyond backgrounds
+The plugin is already imported for background generation. It's currently
+under-leveraged. Candidate uses:
 
----
+- **Personal symbols for crafted suggestions.** When `craftSuggestion()` finishes,
+  generate a small (512×512) image representing the `trigger` and `coreResponse`
+  keywords. Show it in the `#craftedPreview` card and in the post-session trigger
+  reminder. Symbols aid post-hypnotic recall — a visual anchor the user can revisit.
+- **Persona portraits.** The guide picker cards in step 1 are currently all
+  identical. Generating a stylised portrait per persona (on first view, cached
+  to IDB via the existing `bgCacheStore` pattern) dramatically improves scannability.
+  Builtin personas can be pre-generated server-side and shipped as static URLs;
+  custom personas generate on demand.
+- **Program-day achievement badges.** When a user completes day N of a
+  multi-day program, generate a unique badge. Display in the heatmap sidebar.
 
-# 🧬 PHASE 2 — HIDDEN PROFILE MODEL
+Implementation notes: cache aggressively — these are one-shot generations that
+shouldn't regenerate on every view. Reuse `bgCacheGetUrl` / `bgCacheStore`
+infrastructure. Gate behind `state.remoteProcessingOptIn` since image gen hits
+a remote endpoint. Add a `personaImageUrl`, `suggestionSymbolUrl`,
+`programBadgeUrl` field to the respective IDB records.
 
-## Goal
+#### 10 · Cross-device sync via `root.kv`
+Settings already mirror to `_kv.settings`. History, adaptive profile, the 3-tier
+memory, and embedding vectors are IDB-only, so a user on their phone loses all
+continuity from desktop. The adaptive system only pays dividends with long
+continuity, so this matters more than it looks.
 
-Create a persistent internal “user model”
+Scope:
 
-### 2.1 Profile Structure
+- Mirror `stillness_history_v1`, `stillness_memory_v1`, `stillness_embed_v1`,
+  `stillness_adaptive_v1`, and `stillness_analytics_v3` to `_kv.user.*` on write.
+- On load, do a last-write-wins merge based on a `_syncedAt` timestamp per record.
+- Conflict resolution for history: union by `id` (already deduplicated in
+  `importBackup`). For the adaptive profile: server newer wins. For memory
+  digests: union with dedup.
+- Size cap: `root.kv` has per-value limits. Embeddings store could get large —
+  spill oldest vectors first.
+- Gate behind `state.remoteProcessingOptIn` with clear wording about what syncs.
 
-```js
-adaptiveProfile = {
-  compliance: 0.0,        // finishes sessions?
-  sensitivity: 0.0,       // responds strongly to sessions?
-  stability: 0.0,         // consistent improvement?
-  noveltySeeking: 0.0,    // explores vs repeats?
-  depthTolerance: 0.0,    // handles long/deep sessions?
-  controlPreference: 0.0, // authoritative vs gentle
-  sensoryBias: {
-    audio: 0.0,
-    visual: 0.0
-  },
-  lastUpdated: timestamp
-}
-```
+Dependency: this pairs naturally with item #8's API-key concerns since any
+sync plumbing that runs against user config should also be audited.
 
----
+#### 11 · Offline session package
+Users on a commute or flight can't regenerate if AI fails mid-session.
 
-## 2.2 Derivation Rules
+Current blocker: the comment at line ~6752 says "TTS can't be captured via
+Web Audio." Not quite true — you can pipe `SpeechSynthesisUtterance` through a
+`MediaStreamDestination` on some browsers, and more reliably use a remote TTS
+that returns a blob (ElevenLabs, OpenAI TTS, or the Web Speech API via
+`speechSynthesis.speak()` → `MediaRecorder` on iOS Safari 17+ and Chrome 115+).
 
-```js
-compliance = completionRate
-sensitivity = avgImprovement / 10
-stability = 1 - variance(moodDelta)
-noveltySeeking = entropy(methodsUsed)
-depthTolerance = avgSessionLengthNormalized
-controlPreference = dominancePersonaUsageRatio
-```
+Deliverable: a "download offline package" button on the script preview that
+bundles:
 
----
+- Script text (+ phase markers preserved)
+- Pre-synthesised TTS audio per sentence as `.webm` blobs
+- One ambient loop (procedural soundscape rendered to a ~30s looping .ogg)
+- A minimal `index.html` player that stitches everything together and runs
+  fully offline
 
-## 2.3 Storage
+Store the zip via `Blob` + `JSZip` (or hand-rolled zip — the format is
+simple). File size target: under 30 MB for a medium session.
 
-Store in:
+#### 13 · Live adaptive pacing via mic
+Most paced-breathing methods assume a 4-7-8 rhythm and run on a fixed timer.
+With `getUserMedia({audio: true})` + a simple amplitude envelope, the session
+can detect the user's actual exhale timing and adjust `interruptibleSleep`
+durations to match.
 
-```js
-IndexedDB: "stillness_adaptive_profile_v1"
-```
+Approach:
 
-* small (< 300 bytes)
-* updated after each session
-* versioned for migration
+- On session start, if method is breath-paced and the user opts in, request
+  mic permission.
+- Create an `AnalyserNode` over the mic stream; track windowed RMS at 50 Hz.
+- A falling edge below a noise-floor threshold for >200ms marks an exhale end.
+- During breath phases, instead of `interruptibleSleep(targetMs)`, wait for
+  the next exhale + a small buffer, with a hard ceiling of 1.5× target so a
+  silent user doesn't stall.
+- Never send audio off-device. State the no-upload promise clearly in the
+  opt-in modal.
 
----
+Edge cases: noisy environments (fall back to timer after 3 failed
+detections); user breathing through nose inaudibly (same fallback).
 
-# 🔁 PHASE 3 — REINFORCEMENT ENGINE
+### Medium impact
 
-## Goal
+#### 14 · Pre-generate tomorrow's program session
+Programs build day-over-day, so latency at the start of each day's session is
+especially annoying. While the current session plays (long idle window for
+AI), generate tomorrow's script in the background.
 
-Learn what works using reward signals
+Implementation:
 
----
+- At session start, if `!_aiInProgress` and a program is active and tomorrow's
+  script isn't cached, kick off an async generation using tomorrow's program
+  parameters.
+- Cache by `(programId, dayIndex)` in IDB under `stillness_pregen_v1`.
+- Gate on mobile: skip if `navigator.connection?.effectiveType === 'slow-2g'`
+  or `navigator.getBattery?().level < 0.2`.
+- Expire cached pre-gens after 48 hours so stale scripts don't leak.
 
-## 3.1 Reward Function
+#### 15 · `prefers-reduced-motion` audit
+The canvas renderers (tunnel, spiral, vortex, kaleidoscope, plasma, flow-field)
+are genuinely seizure-risk-adjacent for some users and motion-sickness-inducing
+for others.
 
-```js
-reward =
-  (postMood - preMood)
-  + (completed ? +1 : -1)
-  - (emergency ? 2 : 0)
-```
+Deliverable:
 
----
+- Check `matchMedia('(prefers-reduced-motion: reduce)').matches` once at init.
+- If true, default `state.vizOverride` to `'candle'` or `'colorwash'` (slow,
+  gentle) and halve `vizSettings.intensity` and `vizSettings.speed`.
+- Hide or warn on the aggressive visuals (mark with a "⚠ motion" badge in
+  `state.vizOverride` dropdown).
+- Honor the preference on every `setupVisual()` call, not just first paint,
+  since the user may toggle it mid-session in OS settings.
 
-## 3.2 Weight Tables
+### Security / technical debt
 
-```js
-weights = {
-  persona: {},
-  method: {},
-  sound: {},
-  length: {}
-}
-```
+#### 8 · Browser API key exposure
+Lines in `aiGenerate` put `x-api-key` (Anthropic) and `Authorization: Bearer`
+(OpenAI) directly in a browser `fetch`, relying on
+`anthropic-dangerous-direct-browser-access: true` to bypass CORS. Any XSS or
+injected script in a shared persona's `systemPrompt` could exfiltrate the key.
 
----
+Mitigations to add:
 
-## 3.3 Update Rule
+- **Explicit warning on key entry.** Current UI lets users paste a key silently.
+  Add a modal that lists the risks ("anyone who can run JS in this tab can read
+  this key — never use your primary account key here").
+- **Sanitise shared content strictly.** Shared personas' `systemPrompt` /
+  `tagline` / `name` should be rendered via `textContent` only, never `innerHTML`.
+  Audit every place these cross into the DOM.
+- **Scrub keys after inactivity.** If the page has been idle > 30 days, clear
+  `_extAiKey` from storage and require re-entry.
+- **Separate keys per provider.** Currently `_extAiKey` is a single field. Store
+  anthropic/openai keys separately so users aren't tempted to paste the wrong one.
+- **Consider a server-side proxy option.** For users who care, document how to
+  run a tiny proxy (Cloudflare Worker, Vercel function) that holds their key and
+  gates it behind an origin check. Perchance can't host this but can link to a
+  template.
 
-```js
-weights.persona[id] += reward
-weights.method[id] += reward
-```
+### Perchance skill-checklist items
 
-Decay over time:
+Running the §14 checklist from the `perchance-api` skill against the current code:
 
-```js
-weights[key] *= 0.98
-```
-
----
-
-## 3.4 Output
-
-A ranked preference system:
-
-```js
-getPreferred("method") → ["highway", "spiral", ...]
-```
-
----
-
-# 🧠 PHASE 4 — MEMORY & SUMMARIZATION
-
-## Goal
-
-Let AI form **semantic understanding** of the user
-
----
-
-## 4.1 Session Summaries
-
-After every ~5 sessions:
-
-```js
-summary = await aiTextPlugin({
-  instruction: `
-Summarize the user's behavioral patterns:
-- what works best
-- what fails
-- emotional trajectory
-- preferences
-`,
-  startWith: recentSessionData
-});
-```
-
----
-
-## 4.2 Store Summary
-
-```js
-profile.memorySummary = "User responds strongly to slow pacing..."
-```
-
----
-
-## 4.3 Inject Into Prompts
-
-```txt
-[USER PROFILE]
-- Responds well to slow pacing
-- Prefers rain soundscapes
-- Avoid rapid transitions
-```
-
----
-
-# ⚙️ PHASE 5 — ADAPTATION ENGINE
-
-## Goal
-
-Modify experience in real time
+- [ ] `stopSequences` in all phase calls should include `"\n\n[["` as a safety
+      net against chat-format bleed. Currently uses `['\n\n\n\n']`. Low risk
+      for this app since we never use the `[[Name]]:` completion format, but
+      the defensive addition is cheap.
+- [ ] **iOS Safari `maximum-scale=1` viewport patch** is present (line ~2260) ✅
+- [ ] **`tryPersistBrowserStorageData()`** — `navigator.storage.persist()` is
+      called inside `_initStorage` ✅ but only on first run. Per the skill it
+      should be called once at end of page load too, to catch the case where
+      IDB was initialised but persistence was denied; after user interaction,
+      browsers are more likely to grant it.
+- [ ] **Mobile AI preload delay** is correctly implemented:
+      `if(window.innerWidth < 500) setTimeout(..., 5000)` ✅
+- [ ] **Emergency export timer** — the skill recommends a 10-second failsafe
+      that shows an export button if page load stalls. Worth adding given this
+      app has a lot of IDB migration on first load.
+- [ ] **`exportRawDb`** fallback pattern — current `exportBackup` assumes
+      clean data. For users with corrupt records (rare but reported), the
+      skill's `corruptItemReplacer` pattern saves the export from aborting.
 
 ---
 
-## 5.1 Pre-Session Adaptation
+## Open questions / ideas for later
 
-Auto-adjust:
-
-* default persona
-* default method
-* soundscape
-* session length
-
-```js
-recommended = getTopWeightedCombination()
-```
-
----
-
-## 5.2 Prompt Shaping
-
-```js
-instruction = `
-${basePrompt}
-
-User adaptation profile:
-- Compliance: ${profile.compliance}
-- Sensitivity: ${profile.sensitivity}
-
-Guidelines:
-- Match pacing to tolerance
-- Reinforce familiar patterns
-- Introduce slight novelty
-`
-```
+- **Script diff for phase retries — beyond side-by-side.** Current
+  implementation shows both in full. Actual Myers diff with highlighted
+  inserts/deletes per sentence would be nicer for long phases.
+- **Share-link expiry.** `uploadPlugin` content is permanent; for sensitive
+  personas users might want a 24-hour link. Not natively supported — would
+  require a wrapper format that includes an `expiresAt` and client-side enforcement.
+- **Community pack registry.** Once item #3 has real content, a discovery UI
+  that browses available packs (not just hardcoded generator IDs) becomes
+  valuable. Could be a separate Perchance generator that exposes a curated list.
+- **Multi-language narration.** The `aiTextPlugin` accepts any language.
+  Detecting browser locale + auto-switching wizard strings + finding a
+  matching voice pack would open the app to non-English users. Non-trivial
+  because the system prompts are currently all English.
+- **Voice cloning hook.** ElevenLabs or OpenAI TTS via user-provided key
+  slots into the same architecture as the Anthropic/OpenAI AI provider. Adds
+  "premium narration" without Anthropic running the compute. Must address
+  item #8 first.
+- **Post-session journaling via Web Speech API.** `webkitSpeechRecognition`
+  to transcribe spoken reflections. Pair with `finishSession` and feed into
+  the memory digest.
+- **A/B experiment mode.** The adaptive system already learns. An explicit
+  experiment mode randomises persona/method within a shortlist and reports
+  which produced the largest mood delta over N sessions — useful for power
+  users.
 
 ---
 
-## 5.3 UI Nudging
-
-* highlight recommended choices
-* pre-select optimal options
-* subtle glow / emphasis
-
----
-
-# 📈 PHASE 6 — RAMPING SYSTEM
-
-## Goal
-
-Gradually deepen experience
-
----
-
-## 6.1 Difficulty Score
-
-```js
-difficulty =
-  avgImprovement * completionRate
-```
-
----
-
-## 6.2 Behavior
-
-| Level  | Behavior                    |
-| ------ | --------------------------- |
-| Low    | short, simple, gentle       |
-| Medium | structured, moderate pacing |
-| High   | deep trance, longer pauses  |
-
----
-
-## 6.3 Apply To
-
-* script pacing
-* pause duration
-* complexity
-* session length
-
----
-
-# ⚖️ PHASE 7 — EQUILIBRIUM SYSTEM
-
-## Goal
-
-Prevent stagnation or overload
-
----
-
-## 7.1 Overuse Detection
-
-```js
-if (methodUsedTooOften("highway"))
-  reduceWeight("highway")
-```
-
----
-
-## 7.2 Plateau Detection
-
-```js
-if (avgImprovement decreasing)
-  shift strategy
-```
-
----
-
-## 7.3 Recovery Mode
-
-Trigger if:
-
-* high emergency rate
-* low completion
-* declining mood
-
-Then:
-
-* simplify sessions
-* reduce intensity
-* increase grounding
-
----
-
-# 🔮 PHASE 8 — PREDICTIVE ENGINE
-
-## Goal
-
-Anticipate best session before user chooses
-
----
-
-## 8.1 Prediction Model
-
-```js
-score =
-  weight(persona) *
-  weight(method) *
-  timeAffinity *
-  recentSuccess
-```
-
----
-
-## 8.2 Output
-
-* recommended session config
-* optional “Quick Start” presets
-
----
-
-# 🧩 PHASE 9 — INTEGRATION POINTS
-
-## Hook Into Existing Flow
-
-### At session start:
-
-* load adaptive profile
-* apply recommendations
-
-### During generation:
-
-* inject profile + memory summary
-
-### After session:
-
-* compute reward
-* update weights
-* update profile
-* update summary (periodically)
-
----
-
-# ⚠️ DESIGN CONSTRAINTS
-
-## Must:
-
-* evolve slowly
-* remain invisible
-* avoid abrupt changes
-* preserve immersion
-
-## Must NOT:
-
-* expose raw scoring
-* behave unpredictably
-* override user agency
-
----
-
-# 🚀 FUTURE EXTENSIONS
-
-* multi-archetype blending
-* long-term behavioral arcs
-* adaptive voice modulation
-* real-time session adjustment
-* cross-session narrative continuity
-
----
-
-# 🧠 END STATE
-
-When complete, the system should feel like:
-
-> “It understands me better every time I use it.”
-
-Not because it *tells* the user —
-but because it *acts accordingly*.
-
----
+Last updated: 2026-04-24

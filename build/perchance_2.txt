@@ -424,6 +424,57 @@
   @media (min-width: 640px) { .script-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .script-actions .btn { min-width: 0; width: 100%; padding: 10px 12px; font-size: 0.88rem; }
 
+  /* ============ STREAMING PHASE PREVIEW (item #6) ============ */
+  .gen-stream-box {
+    margin-top: 10px; padding: 10px 12px;
+    background: rgba(0,229,255,0.03); border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 6px; min-height: 48px;
+    font-size: 0.78rem; line-height: 1.55; color: var(--text-dim);
+    white-space: pre-wrap; max-height: 180px; overflow-y: auto;
+    font-family: var(--font-body); display: none;
+  }
+  .gen-stream-box.active { display: block; }
+  .gen-stream-label {
+    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--neon-cyan); margin-bottom: 4px; font-weight: 600;
+  }
+  .gen-stream-text::after {
+    content: '▋'; color: var(--neon-cyan); animation: streamBlink 0.9s ease-in-out infinite;
+    margin-left: 2px;
+  }
+  .gen-stream-box.done .gen-stream-text::after { display: none; }
+  @keyframes streamBlink { 0%,100% { opacity: 0.2; } 50% { opacity: 1; } }
+
+  /* ============ PHASE DIFF MODAL (item #12) ============ */
+  .diff-modal { max-width: 860px !important; }
+  .diff-compare {
+    display: grid; grid-template-columns: 1fr; gap: 10px; margin: 12px 0;
+  }
+  @media (min-width: 720px) { .diff-compare { grid-template-columns: 1fr 1fr; } }
+  .diff-col {
+    background: var(--bg-softer); border: 1px solid var(--glass-border);
+    border-radius: 6px; padding: 10px 12px;
+    max-height: 320px; overflow-y: auto;
+  }
+  .diff-col.diff-new { border-color: rgba(57,255,142,0.25); }
+  .diff-col.diff-old { border-color: rgba(180,77,255,0.2); }
+  .diff-col-label {
+    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 6px; font-weight: 600;
+  }
+  .diff-col.diff-new .diff-col-label { color: var(--accent-green); }
+  .diff-col.diff-old .diff-col-label { color: var(--neon-purple); }
+  .diff-col-text {
+    font-size: 0.8rem; line-height: 1.6; color: var(--text-dim);
+    white-space: pre-wrap; font-family: var(--font-body);
+  }
+  .diff-col-meta {
+    font-size: 0.62rem; color: var(--text-faint); margin-top: 6px;
+    font-style: italic;
+  }
+  .diff-modal .modal-actions { flex-wrap: wrap; }
+  .diff-modal .modal-actions .btn { flex: 1 1 140px; }
+
   /* ============ LIBRARY ============ */
   .library-empty { font-size: 0.8rem; color: var(--text-faint); font-style: italic; padding: 10px 0; }
 
@@ -1734,6 +1785,7 @@ I return to myself easily"></textarea>
           <button class="btn secondary" id="regenScriptBtn">regenerate</button>
           <button class="btn secondary" id="autoTempoBtn">⏱ auto-tempo</button>
           <button class="btn secondary" id="exportScriptBtn">↓ download .txt</button>
+          <button class="btn secondary" id="shareConfigBtn" title="Create a shareable link for this session config">🔗 share link</button>
           <button class="btn green" id="beginBtn">begin session →</button>
         </div>
         <div class="detail-panel" id="phaseEditorPanel" style="margin-top:12px; display:none;">
@@ -1991,7 +2043,7 @@ I return to myself easily"></textarea>
     <div class="field"><label class="field-label-sm">tagline</label><input type="text" id="personaFormTagline"></div>
     <div class="field"><label class="field-label-sm">category</label><select id="personaFormCategory"><option value="contemplative">Contemplative</option><option value="showman">Showman</option><option value="somatic">Somatic</option><option value="authoritarian">Authoritarian</option></select></div>
     <div class="field"><label class="field-label-sm">voice instruction</label><textarea id="personaFormPrompt" rows="6"></textarea></div>
-    <div class="modal-actions"><button class="btn secondary" id="personaCancelBtn">cancel</button><button class="btn" id="personaSaveBtn">save</button></div>
+    <div class="modal-actions"><button class="btn secondary" id="personaCancelBtn">cancel</button><button class="btn secondary" id="personaShareBtn" title="Create a shareable link for this persona">🔗 share</button><button class="btn" id="personaSaveBtn">save</button></div>
   </div>
 </div>
 
@@ -2499,9 +2551,47 @@ I return to myself easily"></textarea>
 
   const loadCustomPersonas = () => _personaCache || [];
   const saveCustomPersonas = arr => { _personaCache = arr; idbSet(PERSONA_KEY, arr); return true; };
+
+  /**
+   * Load personas from community packs exposed via `root.communityPacks` (item #3).
+   * Packs are lazy-loaded generators with a top-level `personas` list whose
+   * items are JSON objects or serialisable list entries. Silent on failure.
+   * @returns {Array} Array of persona objects (possibly empty)
+   */
+  function loadCommunityPackPersonas() {
+    if (typeof root === 'undefined' || !root.communityPacks) return [];
+    const out = [];
+    try {
+      // communityPacks is a DSL list where each sub-list is a `dynamicImport(...)`
+      // Perchance materialises it as an object { <packName>: {personas: [...], ...}, ... }
+      for (const [packName, pack] of Object.entries(root.communityPacks)) {
+        if (!pack || !pack.personas) continue;
+        const items = Array.isArray(pack.personas) ? pack.personas : [pack.personas];
+        for (const raw of items) {
+          try {
+            // Accept either JS objects or JSON strings in the Perchance list
+            const p = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (!p || !p.id || !p.name) continue;
+            out.push({
+              id: `pack:${packName}:${p.id}`,
+              name: p.name,
+              tagline: p.tagline || '',
+              category: p.category || 'contemplative',
+              systemPrompt: p.systemPrompt || '',
+              isCommunity: true,
+              packName,
+            });
+          } catch (e) { /* skip malformed entry */ }
+        }
+      }
+    } catch (e) { console.warn('Community pack load failed:', e); }
+    return out;
+  }
+
   function refreshPersonas() {
     const custom = loadCustomPersonas().map(p => ({ ...p, isCustom: true, category: p.category || 'contemplative' }));
-    state.personas = [...BUILTIN_PERSONAS, ...custom];
+    const community = loadCommunityPackPersonas();
+    state.personas = [...BUILTIN_PERSONAS, ...community, ...custom];
   }
   const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 
@@ -2559,6 +2649,326 @@ I return to myself easily"></textarea>
       const el = $(s); if (el) el.style.display = s === id ? 'block' : 'none';
     });
     window.scrollTo(0, 0);
+  }
+
+  // ====================================================================
+  // TOKEN BUDGET (item #5) — priority-based trimming so long profiles,
+  // adaptive context, and semantic memory don't silently exceed the
+  // context window and cause quality cliffs.
+  // ====================================================================
+  /**
+   * Trim context blocks to fit within the Perchance AI token budget.
+   * Lower priority = dropped first. Priority convention:
+   *   1 = semantic/rolling memory      (first to trim)
+   *   2 = adaptive block
+   *   3 = profile context
+   *   4 = crafted + affirmations       (last-ditch)
+   *   5 = persona + method + task      (never trimmed)
+   * Blocks can be null/empty; they're skipped.
+   *
+   * @param {Array<{name:string, text:string, priority:number}>} blocks
+   * @param {number} reserveForOutput  Tokens to leave for the model's reply
+   * @returns {string}  Concatenated, possibly trimmed, context
+   */
+  function trimToTokenBudget(blocks, reserveForOutput = 800) {
+    const kept = blocks.filter(b => b && b.text && b.text.length > 0);
+    const joined = () => kept.map(b => b.text).join('');
+    // Best-effort — if Perchance AI isn't loaded, return everything and let the
+    // caller hope it fits. The call is guarded so we never throw on errors.
+    if (typeof root === 'undefined' || !root.aiTextPlugin) return joined();
+    let meta;
+    try { meta = root.aiTextPlugin({ getMetaObject: true }); } catch { return joined(); }
+    const countTokens = meta?.countTokens;
+    const limit = meta?.idealMaxContextTokens;
+    if (!countTokens || !limit) return joined();
+    const budget = limit - reserveForOutput;
+    // Sort by priority ASC so we pop low-priority first.
+    kept.sort((a, b) => (a.priority || 3) - (b.priority || 3));
+    let total = countTokens(joined());
+    while (total > budget && kept.length > 0) {
+      // Don't drop priority-5 items — if we hit them, nothing we can do.
+      const lowest = kept[0];
+      if ((lowest.priority || 3) >= 5) break;
+      console.warn(`[tokenBudget] Dropping "${lowest.name}" (${countTokens(lowest.text)} tokens, total ${total} > ${budget})`);
+      kept.shift();
+      total = countTokens(joined());
+    }
+    return joined();
+  }
+
+  // ====================================================================
+  // SEMANTIC MEMORY (item #4) — augments the existing recency-based
+  // 3-tier memory with embedding-based retrieval so "what worked for
+  // this intention before" beats "what happened most recently."
+  // Gracefully degrades when embedTexts isn't available.
+  // ====================================================================
+  const _EMBED_KEY = 'stillness_embed_v1';
+  let _embedCache = null;
+
+  async function _getEmbedStore() {
+    if (_embedCache) return _embedCache;
+    _embedCache = (await idbGet(_EMBED_KEY)) || { vectors: {} }; // { [digestId]: number[] }
+    return _embedCache;
+  }
+  async function _saveEmbedStore(store) {
+    _embedCache = store;
+    await idbSet(_EMBED_KEY, store);
+  }
+
+  /** Cosine distance (lower = more similar). Returns 2 for bad inputs. */
+  function cosineDistance(a, b) {
+    if (!a || !b || a.length !== b.length || a.length === 0) return 2;
+    let dot = 0, na = 0, nb = 0;
+    for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+    const denom = Math.sqrt(na) * Math.sqrt(nb);
+    if (denom === 0) return 2;
+    return 1 - dot / denom;
+  }
+
+  /** Embed a digest and store its vector alongside the digest's sessionId. */
+  async function embedAndStoreDigest(sessionId, digestText) {
+    if (!window.textEmbedderFunction || !digestText) return false;
+    try {
+      const modelName = window.thread?.textEmbeddingModelName;
+      const [vec] = await window.embedTexts({ textArr: [digestText], modelName });
+      if (!vec || vec.length === 0) return false;
+      // Serialize Float32Array → plain array for IDB.
+      const arr = Array.from(vec);
+      const store = await _getEmbedStore();
+      store.vectors[String(sessionId)] = arr;
+      // Cap store at 100 vectors, newest kept.
+      const ids = Object.keys(store.vectors);
+      if (ids.length > 100) {
+        // We don't have dates here, but digests are stored in insertion order —
+        // just drop the oldest half to stay simple.
+        for (const old of ids.slice(0, ids.length - 100)) delete store.vectors[old];
+      }
+      await _saveEmbedStore(store);
+      return true;
+    } catch (e) { console.warn('embedAndStoreDigest failed:', e); return false; }
+  }
+
+  /**
+   * Find the top-K most semantically similar past digests for a given query
+   * (typically the user's new intention text). Returns [{ digest, distance }].
+   * Returns [] if embeddings aren't available or no matches exist.
+   */
+  async function findRelevantDigests(queryText, k = 3) {
+    if (!window.textEmbedderFunction || !queryText || queryText.length < 4) return [];
+    try {
+      const modelName = window.thread?.textEmbeddingModelName;
+      const [qVec] = await window.embedTexts({ textArr: [queryText], modelName });
+      if (!qVec) return [];
+      const qArr = Array.from(qVec);
+      const store = await _getEmbedStore();
+      const memory = await getMemory();
+      const digestsById = Object.fromEntries((memory.sessionDigests || []).map(d => [String(d.sessionId), d]));
+      const scored = [];
+      for (const [id, vec] of Object.entries(store.vectors)) {
+        const d = digestsById[id];
+        if (!d) continue; // digest was pruned, orphan vector
+        scored.push({ digest: d, distance: cosineDistance(qArr, vec) });
+      }
+      scored.sort((a, b) => a.distance - b.distance);
+      return scored.slice(0, k);
+    } catch (e) { console.warn('findRelevantDigests failed:', e); return []; }
+  }
+
+  // ====================================================================
+  // SHARE LINKS via uploadPlugin (item #1) — publishes custom personas
+  // and full session configs as shareable URLs. Falls back to hash-URL
+  // for simple configs when uploadPlugin isn't available.
+  // ====================================================================
+  /**
+   * Upload a JSON payload via Perchance uploadPlugin and return a share URL.
+   * Handles the `disallowed_content` error per Perchance skill guidance.
+   * @returns {Promise<string|null>} Share URL or null on failure
+   */
+  async function createShareUpload(payload, opts = {}) {
+    if (typeof root === 'undefined' || !root.uploadPlugin) return null;
+    try {
+      const json = JSON.stringify(payload);
+      // Gzip client-side to fit larger configs under upload size limits.
+      let blob;
+      try {
+        const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+        blob = await new Response(stream).blob();
+      } catch { blob = new Blob([json], { type: 'application/json' }); }
+      const fileName = (opts.fileName || 'share') + '.' + Date.now() + '.gz';
+      const file = new File([blob], fileName, { type: 'application/gzip' });
+      const uploaded = await root.uploadPlugin.upload(file);
+      if (!uploaded || !uploaded.id) throw new Error('Upload did not return an ID');
+      const base = window.location.origin + window.location.pathname;
+      return `${base}?data=${encodeURIComponent(uploaded.id)}`;
+    } catch (e) {
+      const msg = String(e?.message || e);
+      if (msg.includes('disallowed_content')) {
+        notify.error('Upload was rejected for disallowed content. If this persona/config is non-sexual and for adults, please report this — some content filters are overly strict.');
+      } else {
+        console.warn('createShareUpload failed:', e);
+      }
+      return null;
+    }
+  }
+
+  /** Present a share-URL modal with copy button. */
+  async function showShareLinkModal(url, title) {
+    if (!url) { notify.warn('Could not create share link.'); return; }
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop visible';
+    backdrop.innerHTML = `<div class="modal" style="max-width:520px;">
+      <h2>${escapeHtml(title || 'Share link')}</h2>
+      <div style="font-size:0.82rem; color:var(--text-dim); line-height:1.55; margin-bottom:12px;">
+        Anyone with this link can add this to their own library.
+      </div>
+      <input type="text" readonly id="_shareUrlInput" value="${escapeHtml(url)}"
+        style="width:100%;padding:10px;background:var(--bg-softer);border:1px solid var(--glass-border);border-radius:6px;color:var(--text);font-family:monospace;font-size:0.78rem;">
+      <div class="modal-actions">
+        <button class="btn secondary" id="_shareClose">close</button>
+        <button class="btn" id="_shareCopy">copy link</button>
+      </div>
+    </div>`;
+    document.body.appendChild(backdrop);
+    const cleanup = () => backdrop.remove();
+    backdrop.querySelector('#_shareClose').addEventListener('click', cleanup);
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) cleanup(); });
+    backdrop.querySelector('#_shareCopy').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        notify.success('Share link copied to clipboard.');
+      } catch {
+        // Fallback — select the input so user can Cmd/Ctrl+C
+        const input = backdrop.querySelector('#_shareUrlInput');
+        input.select(); input.setSelectionRange(0, url.length);
+        notify.info('Link selected — press Ctrl/Cmd+C to copy.');
+      }
+    });
+    // Auto-select on open for easy keyboard copy
+    setTimeout(() => {
+      const input = backdrop.querySelector('#_shareUrlInput');
+      if (input) { input.focus(); input.select(); }
+    }, 50);
+  }
+
+  /** Share the current session config (persona + method + intention + settings). */
+  async function shareCurrentConfig() {
+    const payload = {
+      version: 1,
+      kind: 'session-config',
+      createdAt: Date.now(),
+      config: {
+        selectedPersonaId: state.selectedPersonaId,
+        selectedMethodId: state.selectedMethodId,
+        intentionType: state.intentionType,
+        length: state.length,
+        soundscape: state.soundscape,
+        vizOverride: state.vizOverride,
+        speechRate: state.speechRate,
+        voicePitch: state.voicePitch,
+        tempoMultiplier: state.tempoMultiplier,
+        affirmationMode: state.affirmationMode,
+        intentionInput: $('intentionInput')?.value?.slice(0, 500) || '',
+        userAffirmations: $('userAffirmations')?.value?.slice(0, 500) || '',
+        // Include crafted suggestion if present (opt-in — only if user set one)
+        craftedSuggestion: state.craftedSuggestion || null,
+        // Optionally include generated script for a "share exact session"
+        script: state.fullScript || null,
+      },
+      // Include custom persona definition IF the selected persona is custom —
+      // otherwise recipient wouldn't have it.
+      customPersona: (state.personas.find(p => p.id === state.selectedPersonaId)?.isCustom)
+        ? state.personas.find(p => p.id === state.selectedPersonaId) : null,
+    };
+    setLoading('shareConfigBtn', true);
+    try {
+      const url = await createShareUpload(payload, { fileName: 'session-config' });
+      if (url) {
+        await showShareLinkModal(url, 'Share session config');
+        await markFeatureUsed(FEAT.SHARE);
+      } else {
+        // Fallback: use the legacy hash-URL format (smaller, no upload)
+        const params = new URLSearchParams();
+        const c = payload.config;
+        if (c.selectedPersonaId) params.set('p', c.selectedPersonaId);
+        if (c.selectedMethodId) params.set('m', c.selectedMethodId);
+        if (c.intentionType) params.set('i', c.intentionType);
+        if (c.length) params.set('l', c.length);
+        if (c.soundscape) params.set('s', c.soundscape);
+        if (c.vizOverride) params.set('v', c.vizOverride);
+        if (c.intentionInput) params.set('t', encodeURIComponent(c.intentionInput));
+        if (c.userAffirmations) params.set('a', encodeURIComponent(c.userAffirmations));
+        if (c.affirmationMode) params.set('am', c.affirmationMode);
+        const fallback = window.location.origin + window.location.pathname + '#cfg=' + params.toString();
+        await showShareLinkModal(fallback, 'Share session config (basic)');
+      }
+    } finally { setLoading('shareConfigBtn', false, '🔗 share link'); }
+  }
+
+  /** Share the persona currently open in the editor. */
+  async function shareCurrentPersona() {
+    const id = state.editingPersonaId;
+    const name = $('personaFormName')?.value?.trim();
+    const tagline = $('personaFormTagline')?.value?.trim();
+    const category = $('personaFormCategory')?.value || 'contemplative';
+    const systemPrompt = $('personaFormPrompt')?.value?.trim();
+    if (!name || !systemPrompt) { notify.warn('Fill in name and voice instruction first.'); return; }
+    const payload = {
+      version: 1, kind: 'custom-persona', createdAt: Date.now(),
+      persona: { id: id || ('shared-' + Date.now().toString(36)), name, tagline, category, systemPrompt, isCustom: true },
+    };
+    setLoading('personaShareBtn', true);
+    try {
+      const url = await createShareUpload(payload, { fileName: 'persona' });
+      if (url) { await showShareLinkModal(url, 'Share persona'); await markFeatureUsed(FEAT.SHARE); }
+      else notify.warn('Share link unavailable — uploadPlugin may not be loaded yet. Try again in a moment.');
+    } finally { setLoading('personaShareBtn', false, '🔗 share'); }
+  }
+
+  // ====================================================================
+  // PHASE REGEN DIFF (item #12) — when a user retries a phase, show the
+  // old and new text side-by-side so they can pick the better one rather
+  // than blindly overwriting.
+  // ====================================================================
+  /**
+   * @param {string} oldText  Original phase text
+   * @param {string} newText  Newly generated phase text
+   * @param {string} phaseLabel  Human-friendly label for modal header
+   * @returns {Promise<'new'|'old'>} Which text to keep
+   */
+  function showPhaseDiffModal(oldText, newText, phaseLabel) {
+    return new Promise(resolve => {
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop visible';
+      const wc = (t) => (t || '').trim().split(/\s+/).filter(Boolean).length;
+      const oldW = wc(oldText), newW = wc(newText);
+      backdrop.innerHTML = `<div class="modal diff-modal">
+        <h2>Compare: ${escapeHtml(phaseLabel)}</h2>
+        <div style="font-size:0.8rem; color:var(--text-dim); line-height:1.55; margin-bottom:10px;">
+          Pick which version to keep. You can always regenerate again.
+        </div>
+        <div class="diff-compare">
+          <div class="diff-col diff-old">
+            <div class="diff-col-label">← original</div>
+            <div class="diff-col-text">${escapeHtml(oldText || '(empty)')}</div>
+            <div class="diff-col-meta">${oldW} words</div>
+          </div>
+          <div class="diff-col diff-new">
+            <div class="diff-col-label">new →</div>
+            <div class="diff-col-text">${escapeHtml(newText || '(empty)')}</div>
+            <div class="diff-col-meta">${newW} words</div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn secondary" id="_diffKeepOld">keep original</button>
+          <button class="btn" id="_diffKeepNew">use new version</button>
+        </div>
+      </div>`;
+      document.body.appendChild(backdrop);
+      const cleanup = (val) => { backdrop.remove(); resolve(val); };
+      backdrop.querySelector('#_diffKeepOld').addEventListener('click', () => cleanup('old'));
+      backdrop.querySelector('#_diffKeepNew').addEventListener('click', () => cleanup('new'));
+      backdrop.addEventListener('click', e => { if (e.target === backdrop) cleanup('new'); });
+    });
   }
 
   // ====================================================================
@@ -3185,11 +3595,12 @@ I return to myself easily"></textarea>
     if (!history.length || adaptive.memorySessCount < 5) return adaptive.memorySummary;
     const recent = history.slice(0, 8).map(s => `${s.guide}/${s.method} ${s.length} mood:${s.preMood ?? '?'}→${s.postMood ?? '?'} ${s.completed ? '✓' : '✗'}`).join('; ');
     try {
-      const data = await root.aiTextPlugin({
-        instruction: `You are analyzing a hypnosis user's recent sessions. Write a 1-2 sentence behavioral summary noting: what works best, what to avoid, emotional trajectory. Be concise and clinical.\n\nRecent sessions: ${recent}\n\nPrevious summary: ${adaptive.memorySummary || 'none'}\n\nNew summary:`,
-        stopSequences: ['\n\n'], hideStartWith: true,
-      });
-      if (data.stopReason === 'error') return adaptive.memorySummary;
+      // Item #9 — route through hardened aiGenerate wrapper (consistent HTTP/empty-text handling).
+      const data = await aiGenerate(
+        `You are analyzing a hypnosis user's recent sessions. Write a 1-2 sentence behavioral summary noting: what works best, what to avoid, emotional trajectory. Be concise and clinical.\n\nRecent sessions: ${recent}\n\nPrevious summary: ${adaptive.memorySummary || 'none'}\n\nNew summary:`,
+        { stopSequences: ['\n\n'] }
+      );
+      if (!data || data.stopReason === 'error') return adaptive.memorySummary;
       const text = (data.generatedText || '').trim().slice(0, 250);
       return text || adaptive.memorySummary;
     } catch { return adaptive.memorySummary; }
@@ -3261,6 +3672,14 @@ I return to myself easily"></textarea>
   // ====================================================================
   async function aiGenerate(instruction, opts = {}) {
     const provider = state.extAiProvider || 'perchance';
+    // Helper — ensure a returned object always has a usable shape and
+    // surfaces empty/failed generations as errors rather than silent empty
+    // strings that propagate into scripts (item #9).
+    const asResult = (text, stopReason, note) => {
+      const t = (text || '').trim();
+      if (!t || stopReason === 'error') return { generatedText: '', stopReason: 'error', _note: note || 'empty or errored' };
+      return { generatedText: t, stopReason: stopReason || 'stop' };
+    };
     if (provider === 'anthropic' && state._extAiKey) {
       try {
         const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -3268,8 +3687,21 @@ I return to myself easily"></textarea>
           headers: { 'Content-Type': 'application/json', 'x-api-key': state._extAiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
           body: JSON.stringify({ model: opts.model || 'claude-sonnet-4-20250514', max_tokens: opts.maxTokens || 2048, messages: [{ role: 'user', content: instruction }] }),
         });
-        const data = await res.json();
-        return { generatedText: data.content?.[0]?.text || '', stopReason: data.stop_reason === 'end_turn' ? 'stop' : (data.error ? 'error' : 'stop') };
+        if (!res.ok) {
+          console.warn(`Anthropic API HTTP ${res.status}, falling back to Perchance`);
+          // fall through to Perchance below
+        } else {
+          const data = await res.json();
+          if (data.error) {
+            console.warn('Anthropic API returned error:', data.error);
+          } else {
+            const text = data.content?.[0]?.text || '';
+            const stop = data.stop_reason === 'end_turn' || data.stop_reason === 'stop_sequence' ? 'stop'
+              : data.stop_reason === 'max_tokens' ? 'max_tokens' : 'stop';
+            const result = asResult(text, stop, 'anthropic empty');
+            if (result.stopReason !== 'error') return result;
+          }
+        }
       } catch (e) { console.warn('Anthropic API failed, falling back to Perchance:', e); }
     }
     if (provider === 'openai' && state._extAiKey) {
@@ -3279,15 +3711,31 @@ I return to myself easily"></textarea>
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state._extAiKey}` },
           body: JSON.stringify({ model: opts.model || 'gpt-4o-mini', messages: [{ role: 'user', content: instruction }], max_tokens: opts.maxTokens || 2048 }),
         });
-        const data = await res.json();
-        return { generatedText: data.choices?.[0]?.message?.content || '', stopReason: data.choices?.[0]?.finish_reason === 'stop' ? 'stop' : 'error' };
+        if (!res.ok) {
+          console.warn(`OpenAI API HTTP ${res.status}, falling back to Perchance`);
+        } else {
+          const data = await res.json();
+          if (data.error) {
+            console.warn('OpenAI API returned error:', data.error);
+          } else {
+            const text = data.choices?.[0]?.message?.content || '';
+            const finish = data.choices?.[0]?.finish_reason;
+            const stop = finish === 'stop' ? 'stop' : finish === 'length' ? 'max_tokens' : 'stop';
+            const result = asResult(text, stop, 'openai empty');
+            if (result.stopReason !== 'error') return result;
+          }
+        }
       } catch (e) { console.warn('OpenAI API failed, falling back to Perchance:', e); }
     }
     // Default: Perchance AI
     if (typeof root !== 'undefined' && root.aiTextPlugin) {
-      return root.aiTextPlugin({ instruction, stopSequences: opts.stopSequences || ['\n\n\n'], hideStartWith: true, ...opts });
+      try {
+        const data = await root.aiTextPlugin({ instruction, stopSequences: opts.stopSequences || ['\n\n\n'], hideStartWith: true, ...opts });
+        if (!data || data.stopReason === 'error') return asResult('', 'error', 'perchance ai error');
+        return asResult(data.generatedText, data.stopReason, 'perchance empty');
+      } catch (e) { console.warn('Perchance AI threw:', e); return asResult('', 'error', 'perchance threw'); }
     }
-    return { generatedText: '', stopReason: 'error' };
+    return asResult('', 'error', 'no provider available');
   }
 
   // ====================================================================
@@ -3368,8 +3816,13 @@ Practitioner profile (full, natural sentences):`;
       const memory = await getMemory();
       const digest = await digestSessionScript(script, record);
       if (digest) {
-        memory.sessionDigests.unshift({ sessionId: record.date, date: record.date, digest, depth: record.depth, moodDelta: (record.postMood||5) - (record.preMood||5) });
+        const entry = { sessionId: record.date, date: record.date, digest, depth: record.depth, moodDelta: (record.postMood||5) - (record.preMood||5) };
+        memory.sessionDigests.unshift(entry);
         while (memory.sessionDigests.length > 30) memory.sessionDigests.pop();
+        // Item #4 — also persist an embedding vector so future sessions can
+        // retrieve semantically relevant digests (not just recent ones).
+        // Guarded — silent no-op if embedTexts isn't available in this browser.
+        embedAndStoreDigest(entry.sessionId, digest).catch(() => {});
       }
       await updateRollingMemory(memory);
       await updateLongTermProfile(memory);
@@ -5050,7 +5503,10 @@ Practitioner profile (full, natural sentences):`;
     progressLabel.textContent = 'crafting your suggestion — about 2–3 minutes...';
     const stopTimer = makeElapsedTimer(s => { progressLabel.textContent = `crafting... ${s}s elapsed`; });
 
-    const instruction = `You are a master hypnotherapist converting a user's rough intention into a technically-precise hypnotic suggestion.
+    // Token-budgeted prompt assembly (item #5). The JSON-output schema and
+    // universal rules are priority-5 (never trimmed); profile context trims
+    // first if we're near the context limit.
+    const headerBlock = `You are a master hypnotherapist converting a user's rough intention into a technically-precise hypnotic suggestion.
 
 TYPE: ${type.label}
 USER'S ROUGH DESCRIPTION: "${rough}"
@@ -5066,8 +5522,9 @@ UNIVERSAL RULES:
 • Specificity
 
 TYPE-SPECIFIC GUIDANCE:
-${type.guidance}
-${getProfileContext()}
+${type.guidance}`;
+    const profileBlock = getProfileContext();
+    const schemaBlock = `
 Output EXACTLY this JSON, no other text, no markdown fences:
 {
   "craftedSuggestion": "Complete hypnotic suggestion, 3-5 sentences, ready to deliver verbatim. Second person.",
@@ -5076,11 +5533,18 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   "reinforcementPhrases": ["Three or four short variants (5-10 words)"],
   "explanation": "ONE sentence on the technique used"
 }`;
+    const instruction = trimToTokenBudget([
+      { name: 'header',   text: headerBlock,  priority: 5 },
+      { name: 'profile',  text: profileBlock, priority: 2 },
+      { name: 'schema',   text: schemaBlock,  priority: 5 },
+    ], 600);
 
     try {
       const data = await root.aiTextPlugin({ instruction, startWith: '{', stopSequences: ['\n\n\n'], hideStartWith: true });
-      if (data.stopReason === 'error') throw new Error('AI generation encountered an error.');
+      // Item #9 — guard against error status AND empty output
+      if (!data || data.stopReason === 'error') throw new Error('AI generation encountered an error.');
       let text = (data.generatedText || '').trim();
+      if (!text) throw new Error('AI returned empty text — please try again.');
       if (!text.startsWith('{')) text = '{' + text;
       const lb = text.lastIndexOf('}'); if (lb > -1) text = text.substring(0, lb + 1);
       state.craftedSuggestion = JSON.parse(text);
@@ -5225,10 +5689,37 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       return `<div class="gen-phase ${st}" data-phase-idx="${i}"><div class="gen-dot"></div><span>${label}</span></div>`;
     }).join('');
     if (etaEl) etaEl.textContent = eta || '';
+    // Streaming preview box (item #6) — ensure it exists under the phase list.
+    if (!$('genStreamBox')) {
+      const box = document.createElement('div');
+      box.id = 'genStreamBox';
+      box.className = 'gen-stream-box';
+      box.innerHTML = `<div class="gen-stream-label" id="genStreamLabel">generating…</div><div class="gen-stream-text" id="genStreamText"></div>`;
+      container.parentNode.insertBefore(box, container.nextSibling);
+    }
     if (retryCallback) {
       container.querySelectorAll('.gen-phase.error, .gen-phase.warn').forEach(el => {
         el.addEventListener('click', () => retryCallback(parseInt(el.dataset.phaseIdx)));
       });
+    }
+  }
+
+  /** Show/update the streaming preview for the phase currently generating. */
+  function setStreamingPreview(phaseLabel, text, opts = {}) {
+    const box = $('genStreamBox'); if (!box) return;
+    if (opts.hide) { box.classList.remove('active', 'done'); return; }
+    box.classList.add('active');
+    if (opts.done) box.classList.add('done'); else box.classList.remove('done');
+    const label = $('genStreamLabel');
+    const textEl = $('genStreamText');
+    if (label) label.textContent = phaseLabel ? `generating · ${phaseLabel.toLowerCase()}` : 'generating…';
+    if (textEl) {
+      // Truncate displayed text to keep the DOM light on very long phases —
+      // tail-biased so user sees fresh content.
+      const display = text.length > 1400 ? '…' + text.slice(text.length - 1400) : text;
+      textEl.textContent = display;
+      // Auto-scroll to bottom so streaming feels like a running transcript.
+      box.scrollTop = box.scrollHeight;
     }
   }
 
@@ -5268,9 +5759,38 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const profileCtx = getProfileContext();
     let adaptiveCtx = '';
     try { const ap = await getAdaptive(); adaptiveCtx = getAdaptivePromptBlock(ap); } catch {}
+
+    // Memory context — prefer semantic retrieval (item #4) over pure recency.
+    // Fall back to rolling window + long-term profile when embeddings aren't
+    // available or no relevant matches exist.
     let memoryCtx = '';
-    try { const mem = await getMemory(); if (mem.rollingWindow || mem.longTermProfile) memoryCtx = `\nPRACTITIONER MEMORY:${mem.longTermProfile ? '\nProfile: ' + mem.longTermProfile : ''}${mem.rollingWindow ? '\nRecent patterns: ' + mem.rollingWindow : ''}`; } catch {}
-    const sharedContext = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"${craftedBlock}${affirmBlock}${demoNote}${profileCtx}${adaptiveCtx}${memoryCtx}`;
+    try {
+      const mem = await getMemory();
+      // Top-K most semantically similar past digests (embedding-based)
+      const relevant = await findRelevantDigests(rough || (persona.name + ' ' + method.name), 3);
+      const relevantBlock = relevant.length
+        ? '\nMOST RELEVANT PAST SESSIONS (by semantic similarity to this intention):\n' +
+          relevant.map(r => `- [similarity ${((1 - r.distance) * 100).toFixed(0)}%] ${r.digest.digest}`).join('\n')
+        : '';
+      const baseBlock = (mem.rollingWindow || mem.longTermProfile)
+        ? `\nPRACTITIONER MEMORY:${mem.longTermProfile ? '\nProfile: ' + mem.longTermProfile : ''}${mem.rollingWindow ? '\nRecent patterns: ' + mem.rollingWindow : ''}`
+        : '';
+      memoryCtx = baseBlock + relevantBlock;
+    } catch (e) { console.warn('Memory context build failed:', e); }
+
+    // Build sharedContext under a token budget (item #5) — priority order
+    // determines what gets dropped first if the user has a huge profile +
+    // long memory + many affirmations.
+    const headerBlock = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"`;
+    const sharedContext = trimToTokenBudget([
+      { name: 'header',    text: headerBlock,  priority: 5 }, // persona + method + theme — never drop
+      { name: 'crafted',   text: craftedBlock, priority: 4 },
+      { name: 'affirm',    text: affirmBlock,  priority: 4 },
+      { name: 'demoNote',  text: demoNote,     priority: 4 },
+      { name: 'profile',   text: profileCtx,   priority: 3 },
+      { name: 'adaptive',  text: adaptiveCtx,  priority: 2 },
+      { name: 'memory',    text: memoryCtx,    priority: 1 }, // first to drop
+    ], 1200); // leave generous headroom for per-phase task block + output
 
     // Phase-specific instructions
     const phaseInstructions = {
@@ -5306,15 +5826,30 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const retryPhase = async (idx) => {
       if (_aiInProgress && !_genState) return;
       const gs = _genState;
+      const phaseId = gs.phases[idx];
+      // Capture the current (original) phase text BEFORE regenerating so we can
+      // offer a diff comparison after (item #12). Empty original = first-time
+      // generation, no diff needed.
+      const originalText = gs.phaseResults[phaseId] || '';
       gs.stateMask[idx] = 'streaming';
       renderGenProgress(gs.phases, gs.stateMask, null, retryPhase);
       try {
-        const result = await generateSinglePhase(gs, idx);
-        gs.phaseResults[gs.phases[idx]] = result;
+        const newText = await generateSinglePhase(gs, idx);
+        // Only show diff if there was prior content to compare against
+        let chosen = newText;
+        if (originalText && originalText.trim() && originalText.trim() !== newText.trim()) {
+          const pick = await showPhaseDiffModal(originalText, newText, getPhaseLabel(phaseId));
+          chosen = pick === 'old' ? originalText : newText;
+        }
+        gs.phaseResults[phaseId] = chosen;
         gs.stateMask[idx] = 'done';
         renderGenProgress(gs.phases, gs.stateMask, null, retryPhase);
         assembleAndShowScript(gs);
-        notify.success(`Phase "${gs.phases[idx]}" regenerated successfully.`);
+        if (chosen === originalText) {
+          notify.info(`Kept original "${getPhaseLabel(phaseId)}".`);
+        } else {
+          notify.success(`Phase "${getPhaseLabel(phaseId)}" regenerated successfully.`);
+        }
       } catch (e) {
         gs.stateMask[idx] = 'error';
         renderGenProgress(gs.phases, gs.stateMask, null, retryPhase);
@@ -5380,36 +5915,60 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       setLoading('generateScriptBtn', false, 'generate full script');
       setLoading('regenScriptBtn', false);
       if (scriptBuildProgress) scriptBuildProgress.style.display = 'none';
+      // Hide streaming preview once generation completes (item #6)
+      setStreamingPreview('', '', { hide: true });
     }
   }
 
   /** Generate a single phase via aiTextPlugin */
   async function generateSinglePhase(gs, idx) {
     const phase = gs.phases[idx];
+    const phaseLabel = getPhaseLabel(phase);
     const summaryBlock = gs.priorSummary ? `\n\nSO FAR (summary — continue seamlessly, DO NOT repeat):\n${gs.priorSummary}` : '';
-    const instruction = `${gs.sharedContext}${summaryBlock}\n\n═══ YOUR TASK ═══\n${gs.phaseInstructions[phase]}\n\nStay in ${gs.persona.name}'s voice. Continue naturally. No ===PHASE=== markers. Start immediately:`;
+    const taskBlock = `\n\n═══ YOUR TASK ═══\n${gs.phaseInstructions[phase]}\n\nStay in ${gs.persona.name}'s voice. Continue naturally. No ===PHASE=== markers. Start immediately:`;
 
-    // Token budget guard — trim summary if instruction is too long
-    let finalInstruction = instruction;
-    if (typeof root !== 'undefined' && root.aiTextPlugin) {
-      try {
-        const { countTokens, idealMaxContextTokens } = root.aiTextPlugin({ getMetaObject: true });
-        if (countTokens && idealMaxContextTokens) {
-          const tokens = countTokens(finalInstruction);
-          if (tokens > idealMaxContextTokens - 800) {
-            // Trim the summary to fit
-            const withoutSummary = `${gs.sharedContext}\n\n═══ YOUR TASK ═══\n${gs.phaseInstructions[phase]}\n\nStay in ${gs.persona.name}'s voice. Continue naturally. No ===PHASE=== markers. Start immediately:`;
-            finalInstruction = withoutSummary;
-            console.warn(`Phase ${phase}: trimmed summary — instruction was ${tokens} tokens (limit ~${idealMaxContextTokens})`);
-          }
-        }
-      } catch {}
+    // Token budget (item #5) — drop the prior-summary block first if we're over budget.
+    // The sharedContext + task block are priority 5 (never trimmed).
+    const finalInstruction = trimToTokenBudget([
+      { name: 'sharedContext', text: gs.sharedContext, priority: 5 },
+      { name: 'priorSummary',  text: summaryBlock,     priority: 1 },
+      { name: 'taskBlock',     text: taskBlock,        priority: 5 },
+    ], 900);
+
+    // Streaming (item #6) — render text as it arrives so users see progress
+    // within ~1s instead of waiting ~30-60s for the full phase.
+    let accumulated = '';
+    const onChunk = (data) => {
+      if (data.isFromStartWith) return;
+      const chunk = data.textChunk || '';
+      if (!chunk) return;
+      accumulated += chunk;
+      setStreamingPreview(phaseLabel, accumulated);
+    };
+
+    let data;
+    try {
+      // Perchance ai-text-plugin returns a thenable that resolves when done.
+      // Providing onChunk enables streaming — it's ignored if unsupported.
+      const streamObj = root.aiTextPlugin({
+        instruction: finalInstruction,
+        stopSequences: ['\n\n\n\n'],
+        hideStartWith: true,
+        onChunk,
+      });
+      data = await streamObj;
+    } catch (e) {
+      setStreamingPreview(phaseLabel, accumulated, { done: true });
+      throw new Error('AI call threw: ' + (e?.message || e));
     }
 
-    const data = await root.aiTextPlugin({ instruction: finalInstruction, stopSequences: ['\n\n\n\n'], hideStartWith: true });
-    if (data.stopReason === 'error') throw new Error('AI returned an error');
+    // Item #9 — explicit error-before-text check
+    if (!data || data.stopReason === 'error') {
+      setStreamingPreview(phaseLabel, accumulated, { done: true });
+      throw new Error('AI returned an error');
+    }
 
-    let raw = (data.generatedText || '').trim();
+    let raw = (data.generatedText || accumulated || '').trim();
     let text = stripLeadingPhaseHeader(raw, phase);
     if ((!text || text.length < 15) && raw) {
       text = raw
@@ -5417,6 +5976,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
         .replace(/^(?:[#>*-]+\s*)?(?:phase\s*[:\-]\s*)?[a-z][a-z0-9\s\-]{1,40}:?\s*/i, '')
         .trim();
     }
+    setStreamingPreview(phaseLabel, text, { done: true });
     if (!text || text.length < 15) throw new Error('Phase returned too little text');
     return text;
   }
@@ -6185,7 +6745,119 @@ ${s.text.trim()}`).join('\n\n').trim();
     notify.success('Script downloaded.');
   }
 
+  /**
+   * Fetch and process a `?data=<fileId>.gz` uploadPlugin share payload.
+   * Supports two payload kinds: 'session-config' and 'custom-persona'.
+   * Shows a confirmation modal for personas (per skill — age gate the link).
+   */
+  async function loadUploadedSharePayload(fileId) {
+    if (!fileId) return false;
+    try {
+      // uploadPlugin share URLs resolve to user.uploads.dev/<id>
+      const url = `https://user.uploads.dev/file/${encodeURIComponent(fileId)}`;
+      let resp;
+      try { resp = await fetch(url); } catch (e) {
+        // Try superFetch if direct fetch is CORS-blocked
+        if (typeof root !== 'undefined' && root.superFetch) resp = await root.superFetch(url);
+        else throw e;
+      }
+      if (!resp || !resp.ok) throw new Error('Could not fetch shared payload');
+      const blob = await resp.blob();
+      let json;
+      try {
+        const stream = blob.stream().pipeThrough(new DecompressionStream('gzip'));
+        json = await new Response(stream).text();
+      } catch { json = await blob.text(); }
+      const payload = JSON.parse(json);
+      if (!payload || !payload.kind) throw new Error('Malformed share payload');
+
+      if (payload.kind === 'custom-persona') {
+        // Age-gate warning per Perchance skill convention
+        const confirmed = await confirmAsync(
+          `Someone shared a custom persona with you:\n\n"${payload.persona.name}"\n\n${payload.persona.tagline || ''}\n\nThis is user-generated content — review the voice instruction before using. Shared personas may describe sensitive themes. If you are under 18, click cancel.`,
+          { okText: 'review & add', cancelText: 'cancel' }
+        );
+        if (!confirmed) return true;
+        const existing = loadCustomPersonas();
+        // Prevent duplicate IDs — if one exists, prompt to replace
+        const dup = existing.find(p => p.id === payload.persona.id);
+        if (dup) {
+          const replace = await confirmAsync(`A persona with ID "${payload.persona.id}" already exists. Replace it?`, { okText: 'replace', cancelText: 'keep existing' });
+          if (!replace) return true;
+          saveCustomPersonas(existing.filter(p => p.id !== payload.persona.id).concat([payload.persona]));
+        } else {
+          saveCustomPersonas([...existing, payload.persona]);
+        }
+        refreshPersonas(); renderPersonaGrid();
+        state.selectedPersonaId = payload.persona.id;
+        renderPersonaDetail(); updateStepUI();
+        notify.success(`Added persona: ${payload.persona.name}`);
+        return true;
+      }
+
+      if (payload.kind === 'session-config') {
+        const c = payload.config || {};
+        // Also install any custom persona attached to the config
+        if (payload.customPersona) {
+          const existing = loadCustomPersonas();
+          if (!existing.find(p => p.id === payload.customPersona.id)) {
+            saveCustomPersonas([...existing, payload.customPersona]);
+            refreshPersonas();
+          }
+        }
+        if (c.selectedPersonaId && state.personas.find(p => p.id === c.selectedPersonaId)) state.selectedPersonaId = c.selectedPersonaId;
+        if (c.selectedMethodId && METHODS.find(m => m.id === c.selectedMethodId)) state.selectedMethodId = c.selectedMethodId;
+        if (c.intentionType && INTENTION_TYPES[c.intentionType]) { state.intentionType = c.intentionType; const el = $('intentionType'); if (el) el.value = c.intentionType; }
+        if (c.length && PHASE_DURATIONS[c.length]) { state.length = c.length; const el = $('lengthSelect'); if (el) el.value = c.length; }
+        if (c.soundscape) { state.soundscape = c.soundscape; const el = $('soundscapeSelect'); if (el) el.value = c.soundscape; }
+        if (c.vizOverride) { state.vizOverride = c.vizOverride; const el = $('vizSelect'); if (el) el.value = c.vizOverride; }
+        if (typeof c.speechRate === 'number') state.speechRate = c.speechRate;
+        if (typeof c.voicePitch === 'number') state.voicePitch = c.voicePitch;
+        if (typeof c.tempoMultiplier === 'number') state.tempoMultiplier = c.tempoMultiplier;
+        if (c.affirmationMode) { state.affirmationMode = c.affirmationMode; const el = $('affirmationMode'); if (el) el.value = c.affirmationMode; }
+        if (c.intentionInput) { const el = $('intentionInput'); if (el) el.value = c.intentionInput.slice(0, 500); }
+        if (c.userAffirmations) { const el = $('userAffirmations'); if (el) el.value = c.userAffirmations.slice(0, 500); }
+        if (c.craftedSuggestion) state.craftedSuggestion = c.craftedSuggestion;
+        if (c.script) {
+          const scriptEl = $('scriptText'); if (scriptEl) scriptEl.value = c.script;
+          state.fullScript = c.script;
+          state.parsedScript = parseScript(c.script);
+          showScript();
+        }
+        renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
+        if (typeof updateIntentionHint === 'function') updateIntentionHint();
+        if (state.craftedSuggestion) { try { showCrafted(); } catch {} }
+        state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: !!c.script };
+        goToStep(c.script ? 6 : 5);
+        const persona = getPersona(), method = getMethod();
+        notify.info(`Shared config loaded: ${persona.name} · ${method.name} · ${c.length || 'medium'}.`, 8000);
+        return true;
+      }
+
+      notify.warn('Unknown payload kind: ' + payload.kind);
+      return false;
+    } catch (e) {
+      console.error('Share payload load failed:', e);
+      notify.error('Could not load shared link: ' + (e.message || e));
+      return false;
+    }
+  }
+
   async function loadSharedConfig() {
+    // Item #1 — new uploadPlugin-backed share links (`?data=<fileId>.gz`)
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const dataId = urlParams.get('data');
+      if (dataId) {
+        const handled = await loadUploadedSharePayload(dataId);
+        if (handled) {
+          // Clean up URL so a reload doesn't reinstall
+          history.replaceState(null, '', window.location.pathname);
+          return;
+        }
+      }
+    } catch (e) { console.warn('data= param handling failed:', e); }
+
     const hash = window.location.hash;
     if (!hash.startsWith('#cfg=')) return;
     const paramStr = hash.slice(5);
@@ -7261,6 +7933,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('generateScriptBtn').addEventListener('click', generateFullScript);
   $('regenScriptBtn').addEventListener('click', generateFullScript);
   $('exportScriptBtn').addEventListener('click', exportScript);
+  $('shareConfigBtn')?.addEventListener('click', shareCurrentConfig);
 
   $('beginBtn').addEventListener('click', startSession);
   $('addWorkPhaseBtn')?.addEventListener('click', () => addPhaseSection('work'));
@@ -8245,6 +8918,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   // Persona modal
   $('personaCancelBtn').addEventListener('click', closePersonaEditor);
   $('personaSaveBtn').addEventListener('click', savePersonaFromForm);
+  $('personaShareBtn')?.addEventListener('click', shareCurrentPersona);
     markFeatureUsed(FEAT.CUSTOM_PERSONA);
   $('personaModal').addEventListener('click', e => { if (e.target.id === 'personaModal') closePersonaEditor(); });
 

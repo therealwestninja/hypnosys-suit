@@ -1,12 +1,100 @@
 $meta
   title = Advanced Hypnosis Narration Engine
   description = Full-featured, FREE, science-based, high-quality hypnosis experience generator. Narrated voiceovers, ambient soundscapes, hypnotic visual effects, custom backgrounds (Ai image generation, local files, YouTube videos), mental health tracking tools, adaptive personal profile system, and much more! Useful for relaxation, mindfulness, grounding, meditation, and hypnosis.
-  header 
+  header
     mode = minimal // More room for visuals
+  // Dynamic link-preview metadata — MUST be fully self-contained (no root.* refs).
+  // If a user shares a session config or persona link, show a tailored title/description
+  // in Discord, Slack, iMessage, Twitter etc. Otherwise fall back to defaults.
+  async dynamic(inputs) =>
+    let defaultTitle = "Advanced Hypnosis Narration Engine";
+    let defaultDesc  = "Free, science-based hypnosis session generator with narration, ambient soundscapes, and adaptive personalization.";
+    let defaultImage = "";
+    try {
+      let params = inputs.urlParams || {};
+      let hash = (inputs.urlHash || "").replace(/^#/, "");
+      // Inline label map — CANNOT reference root.METHODS or root.BUILTIN_PERSONAS from here.
+      let methodLabel = {
+        "highway":"Highway Induction","spiral":"Spiral Fixation","betty-erickson":"Betty Erickson 3-2-1",
+        "staircase":"Staircase Descent","hand-heaviness":"Hand Heaviness","confusion":"Confusion Method",
+        "fractionation":"Fractionation","eye-roll":"Eye-Roll (Spiegel)","breath-478":"4-7-8 Breath",
+        "progressive":"Progressive Relaxation","ericksonian":"Ericksonian Conversational",
+        "magnetic-hands":"Magnetic Hands","arm-catalepsy":"Arm Catalepsy","pendulum":"Chevreul's Pendulum",
+        "tipsy":"Tipsy Without Drinking","laughter-trigger":"Laughter Trigger",
+        "number-amnesia":"Number Amnesia","thermal-hand":"Hot/Cold Hand","stuck-to-seat":"Stuck to Your Seat",
+        "body-awareness":"Body Awareness Scan","floating-body":"Floating Body","glove-anesthesia":"Glove Anesthesia",
+        "double-induction":"Double Induction"
+      };
+      let intentionLabel = {
+        "trigger":"Post-hypnotic trigger","reframe":"Belief reframe","habit":"Habit change","trance":"Pure trance",
+        "sleep":"Sleep induction","performance":"Peak performance","focus":"Deep focus","creativity":"Creative flow",
+        "pain":"Pain management","energy":"Energy boost","convincer":"Convincer demo","novelty":"Novelty effect",
+        "time":"Time distortion","amnesia":"Suggested amnesia","identity":"Identity exploration",
+        "surrender":"Surrender","conditioning":"Behavioral conditioning"
+      };
+      // Config-share URL: /?#cfg=p=...&m=...&i=...&l=...&t=... (URL-encoded intention text)
+      if (hash.indexOf("cfg=") === 0) {
+        let qs = new URLSearchParams(hash.slice(4));
+        let m = methodLabel[qs.get("m")] || "custom method";
+        let i = intentionLabel[qs.get("i")] || "";
+        let lenLabel = { micro:"micro", quick:"quick", short:"short", medium:"medium", long:"long", extended:"extended" }[qs.get("l")] || "";
+        let intent = (qs.get("t") || "").trim();
+        if (intent) try { intent = decodeURIComponent(intent); } catch(e){}
+        let parts = [m, lenLabel && lenLabel + " session", i].filter(Boolean);
+        return {
+          title: "Shared Hypnosis Session · " + parts.slice(0,2).join(" · "),
+          description: (intent ? "Intention: " + intent.slice(0,140) + (intent.length>140?"…":"") : parts.join(" · ")) + " — Click to open in the Hypnosis Narration Engine.",
+          image: defaultImage,
+        };
+      }
+      // Uploaded-payload share: /?data=<fileId>.gz (handles both full configs and custom personas).
+      // Can't fetch the payload from $meta.dynamic (no network in this context), so show a generic
+      // "shared content" preview and let the client render details on load.
+      if (params.data) {
+        return {
+          title: "Shared Hypnosis Content",
+          description: "Someone shared a custom session, persona, or program with you. Open to review and add it to your library.",
+          image: defaultImage,
+        };
+      }
+      // Named-character or named-preset URL: /?char=<name> or /?preset=<name>
+      let presetLabel = {
+        "quick-stress-reset":"Quick Stress Reset","deep-sleep":"Deep Sleep Induction",
+        "focus-boost":"Focus Boost","creative-flow":"Creative Flow","confidence":"Confidence Anchor"
+      };
+      if (params.preset && presetLabel[params.preset]) {
+        return {
+          title: presetLabel[params.preset] + " · Hypnosis Narration Engine",
+          description: "A curated one-click hypnosis preset. " + defaultDesc,
+          image: defaultImage,
+        };
+      }
+    } catch(e) {}
+    return { title: defaultTitle, description: defaultDesc, image: defaultImage };
 
 aiTextPlugin = {import:ai-text-plugin}
 textToImagePlugin = {import:text-to-image-plugin}
 fullscreenButtonPlugin = {import:fullscreen-button-plugin}
 uploadPlugin = {import:upload-plugin}
+dynamicImport = {import:dynamic-import-plugin}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Community content packs (item #3 — dynamicImport lane)
+// ──────────────────────────────────────────────────────────────────────────────
+// Each pack is another Perchance generator that exposes a `personas` list
+// (optionally `methods`, `presets`, `programs`). Packs are fetched LAZILY on
+// first use, so they don't add to page-load cost.
+//
+// To publish a pack:
+//   1. Create a new Perchance generator whose top editor defines:
+//        personas
+//          {"id":"custom-id","name":"...","tagline":"...","category":"...","systemPrompt":"..."}
+//          ...
+//   2. Add its generator-id to the list below.
+//
+// To consume, the client reads `root.communityPacks?.personas` etc.
+communityPacks
+  // Example slot (commented — replace with real generator IDs when published):
+  // examplePersonaPack = [dynamicImport('your-generator-id-here')]
 
 $output
