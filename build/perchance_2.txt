@@ -1822,6 +1822,7 @@ I return to myself easily"></textarea>
           <button class="preview-btn" id="jumpGuideBtn">change guide</button>
           <button class="preview-btn" id="jumpMethodBtn">change method</button>
           <button class="preview-btn" id="jumpIntentionBtn">change intention</button>
+          <button class="preview-btn" id="jumpAffirmationsBtn">change affirmations</button>
           <button class="preview-btn" id="jumpConfigBtn">change settings</button>
         </div>
       </div>
@@ -3064,6 +3065,7 @@ I return to myself easily"></textarea>
       intentionType: state.intentionType,
       length: state.length,
       soundscape: state.soundscape,
+      soundscapeOverridden: !!state._soundscapeOverridden,
       droneEnabled: state.droneEnabled,
       duckingEnabled: state.duckingEnabled,
       speechRate: state.speechRate,
@@ -3148,7 +3150,7 @@ I return to myself easily"></textarea>
       v: 3,
       p: {}, m: {}, i: {}, s: {}, z: {}, ln: {}, am: {}, vc: {},
       hr: new Array(24).fill(0), dw: new Array(7).fill(0),
-      mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0 },
+      mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0, postN: 0 },
       comp: { total: 0, finished: 0, emergency: 0 },
       dur: { sum: 0, n: 0 },
       shape: { phaseSum: 0, workSum: 0, affirmSum: 0, n: 0 },
@@ -3179,7 +3181,7 @@ I return to myself easily"></textarea>
     }
     a.hr = a.hr.map((v,i) => v + (Number(b.hr[i]) || 0));
     a.dw = a.dw.map((v,i) => v + (Number(b.dw[i]) || 0));
-    for (const k of ['preSum','postSum','deltaSum','n']) a.mood[k] = (a.mood[k] || 0) + (b.mood[k] || 0);
+    for (const k of ['preSum','postSum','deltaSum','n','postN']) a.mood[k] = (a.mood[k] || 0) + (b.mood[k] || 0);
     for (const k of ['total','finished','emergency']) a.comp[k] = (a.comp[k] || 0) + (b.comp[k] || 0);
     for (const k of ['sum','n']) a.dur[k] = (a.dur[k] || 0) + (b.dur[k] || 0);
     for (const k of ['phaseSum','workSum','affirmSum','n']) a.shape[k] = (a.shape[k] || 0) + (b.shape[k] || 0);
@@ -3209,6 +3211,7 @@ I return to myself easily"></textarea>
       if (s.intentionType) { state.intentionType = s.intentionType; const el = $('intentionType'); if (el) el.value = s.intentionType; }
       if (s.length) { state.length = s.length; const el = $('lengthSelect'); if (el) el.value = s.length; }
       if (s.soundscape != null) { state.soundscape = s.soundscape; state.droneEnabled = s.soundscape !== 'none'; const el = $('soundscapeSelect'); if (el) el.value = s.soundscape; }
+      if (s.soundscapeOverridden) state._soundscapeOverridden = true;
       if (s.speechRate != null) { state.speechRate = s.speechRate; const el = $('speechRate'); if (el) el.value = Math.round(s.speechRate * 100); const v = $('speechRateVal'); if (v) v.textContent = s.speechRate.toFixed(2) + '×'; }
       if (s.voicePitch != null) { state.voicePitch = s.voicePitch; const el = $('voicePitch'); if (el) el.value = Math.round(s.voicePitch * 100); const v = $('voicePitchVal'); if (v) v.textContent = s.voicePitch.toFixed(2); }
       if (s.voiceVolume != null) { state.voiceVolume = s.voiceVolume; const el = $('voiceVolume'); if (el) el.value = Math.round(s.voiceVolume * 100); const v = $('voiceVolVal'); if (v) v.textContent = Math.round(s.voiceVolume * 100); }
@@ -3333,6 +3336,7 @@ I return to myself easily"></textarea>
     if (p.pronouns) parts.push(`Pronouns: ${p.pronouns}.`);
     if (p.age) parts.push(`Age range: ${p.age}.`);
     if (p.experience) parts.push(`Experience: ${p.experience}.`);
+    if (p.about) parts.push(`About the subject: ${p.about}.`);
     if (p.appearance) parts.push(`Appearance: ${p.appearance}.`);
     if (p.goals) parts.push(`Goals: ${p.goals}.`);
     return parts.length > 0 ? '\nSUBJECT PROFILE: ' + parts.join(' ') : '';
@@ -3440,7 +3444,7 @@ I return to myself easily"></textarea>
       hr: new Array(24).fill(0),  // hourly distribution (0-23)
       dw: new Array(7).fill(0),   // day-of-week (0=Sun..6=Sat)
       // Mood & completion
-      mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0 },
+      mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0, postN: 0 },
       comp: { total: 0, finished: 0, emergency: 0 },
       dur: { sum: 0, n: 0 },
       shape: { phaseSum: 0, workSum: 0, affirmSum: 0, n: 0 },
@@ -3494,8 +3498,8 @@ I return to myself easily"></textarea>
       // Settings averages
       a.cfg.rateSum += (record.speechRate || 0.65);
       a.cfg.pitchSum += (record.voicePitch || 0.85);
-      a.cfg.volSum += (record.voiceVolume || 1.0);
-      a.cfg.droneSum += (record.droneVolume || 0.35);
+      a.cfg.volSum += (record.voiceVolume ?? 1.0);
+      a.cfg.droneSum += (record.droneVolume ?? 0.35);
       a.cfg.n++;
 
       const metrics = record.metrics || {};
@@ -3514,7 +3518,8 @@ I return to myself easily"></textarea>
     try {
       const a = await getAnalytics();
       a.mood.postSum += postVal;
-      a.mood.deltaSum += postVal - (state._preMood || 5);
+      a.mood.deltaSum += postVal - (state._preMood ?? 5);
+      a.mood.postN = (a.mood.postN || 0) + 1; // separate counter — not every session fills post-mood
       await idbSet(ANALYTICS_KEY, a);
     } catch {}
   }
@@ -3540,7 +3545,7 @@ I return to myself easily"></textarea>
       const feat = existing.feat || 0; // preserve feature flags
       const a = { v: 3, p: {}, m: {}, i: {}, s: {}, z: {}, ln: {}, am: {}, vc: {},
         hr: new Array(24).fill(0), dw: new Array(7).fill(0),
-        mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0 },
+        mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0, postN: 0 },
         comp: { total: 0, finished: 0, emergency: 0 },
         dur: { sum: 0, n: 0 }, shape: { phaseSum: 0, workSum: 0, affirmSum: 0, n: 0 }, cfg: { rateSum: 0, pitchSum: 0, volSum: 0, droneSum: 0, n: 0 },
         feat, ts: Date.now() };
@@ -3550,13 +3555,13 @@ I return to myself easily"></textarea>
         inc(a.s, r.soundscape); inc(a.z, r.vizOverride || 'auto'); inc(a.ln, r.length); inc(a.am, r.affirmationMode || 'woven'); inc(a.vc, r.voiceName || 'default');
         const d = new Date(r.date); a.hr[d.getHours()]++; a.dw[d.getDay()]++;
         if (r.preMood != null) { a.mood.preSum += r.preMood; a.mood.n++; }
-        if (r.postMood != null) { a.mood.postSum += r.postMood; a.mood.deltaSum += (r.postMood - (r.preMood || 5)); }
+        if (r.postMood != null) { a.mood.postSum += r.postMood; a.mood.deltaSum += (r.postMood - (r.preMood ?? 5)); a.mood.postN = (a.mood.postN || 0) + 1; }
         a.comp.total++;
         if (r.completed) a.comp.finished++;
         else a.comp.emergency++; // history entries without completed=true were emergency-ended
         if (r.durationSec > 0) { a.dur.sum += r.durationSec; a.dur.n++; }
         a.cfg.rateSum += (r.speechRate || 0.65); a.cfg.pitchSum += (r.voicePitch || 0.85);
-        a.cfg.volSum += (r.voiceVolume || 1.0); a.cfg.droneSum += (r.droneVolume || 0.35); a.cfg.n++;
+        a.cfg.volSum += (r.voiceVolume ?? 1.0); a.cfg.droneSum += (r.droneVolume ?? 0.35); a.cfg.n++;
         const metrics = r.metrics || {};
         a.shape.phaseSum += metrics.phaseCount || (Array.isArray(r.phaseOrder) ? r.phaseOrder.length : 0);
         a.shape.workSum += r.workBlockCount || metrics.workBlocks || 0;
@@ -3572,8 +3577,11 @@ I return to myself easily"></textarea>
     const topKey = obj => Object.entries(obj).sort((a,b) => b[1] - a[1])[0]?.[0] || null;
     const topN = (obj, n) => Object.entries(obj).sort((a,b) => b[1] - a[1]).slice(0, n).map(e => e[0]);
     const avgMood = a.mood.n > 0 ? (a.mood.preSum / a.mood.n).toFixed(1) : null;
-    const avgPost = a.mood.n > 0 && a.mood.postSum > 0 ? (a.mood.postSum / a.mood.n).toFixed(1) : null;
-    const avgDelta = a.mood.n > 0 ? (a.mood.deltaSum / a.mood.n).toFixed(1) : null;
+    // avgPost and avgDelta use postN (count of sessions where post-mood was filled).
+    // a.mood.n tracks pre-mood fills, which can be much higher — using it here would under-estimate.
+    const postN = a.mood.postN || 0;
+    const avgPost = postN > 0 && a.mood.postSum > 0 ? (a.mood.postSum / postN).toFixed(1) : null;
+    const avgDelta = postN > 0 ? (a.mood.deltaSum / postN).toFixed(1) : null;
     const avgDur = a.dur.n > 0 ? Math.round(a.dur.sum / a.dur.n) : 0;
     const peakHour = a.hr.indexOf(Math.max(...a.hr));
     const peakDay = a.dw.indexOf(Math.max(...a.dw));
@@ -3640,7 +3648,8 @@ I return to myself easily"></textarea>
     const a = analytics, h = history || [];
     const clamp = (v, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
     const compRate = a.comp.total > 0 ? a.comp.finished / a.comp.total : 0.5;
-    const avgDelta = a.mood.n > 0 ? a.mood.deltaSum / a.mood.n : 0;
+    const postN = a.mood.postN || 0; // only sessions where user filled post-mood
+    const avgDelta = postN > 0 ? a.mood.deltaSum / postN : 0;
     const emergRate = a.comp.total > 0 ? a.comp.emergency / a.comp.total : 0;
     // Mood variance from last 10 sessions
     const recent = h.filter(s => s.preMood != null && s.postMood != null).slice(0, 10);
@@ -3933,7 +3942,7 @@ NOTE: Don't append commentary or word counts. Just do the task and end your resp
 Script excerpt:
 ${truncated}
 
-Session: guide=${record.guide || '?'}, method=${record.method || '?'}, mood Δ=${(record.postMood||5) - (record.preMood||5)}, depth=${record.depth||'?'}/10
+Session: guide=${record.guide || '?'}, method=${record.method || '?'}, mood Δ=${(record.postMood ?? 5) - (record.preMood ?? 5)}, depth=${record.depth ?? '?'}/10
 
 Summary:`;
     try {
@@ -3989,7 +3998,7 @@ Practitioner profile (full, natural sentences):`;
       const memory = await getMemory();
       const digest = await digestSessionScript(script, record);
       if (digest) {
-        const entry = { sessionId: record.date, date: record.date, digest, depth: record.depth, moodDelta: (record.postMood||5) - (record.preMood||5) };
+        const entry = { sessionId: record.date, date: record.date, digest, depth: record.depth, moodDelta: (record.postMood ?? 5) - (record.preMood ?? 5) };
         memory.sessionDigests.unshift(entry);
         while (memory.sessionDigests.length > 30) memory.sessionDigests.pop();
         // Item #4 — also persist an embedding vector so future sessions can
@@ -4011,6 +4020,15 @@ Practitioner profile (full, natural sentences):`;
     state.abortFlag = false;
     state.paused = false;
     state.craftedSuggestion = null;
+    // Reset pre-session check-in so prior session's values don't leak forward
+    state._preMood = 5;
+    state._preTension = 5;
+    state._preEnergy = 5;
+    document.querySelectorAll('.mood-emoji.selected').forEach(b => b.classList.remove('selected'));
+    const tEl = $('preTensionSlider'); if (tEl) tEl.value = 5;
+    const tVal = $('preTensionVal'); if (tVal) tVal.textContent = '5';
+    const eEl = $('preEnergySlider'); if (eEl) eEl.value = 5;
+    const eVal = $('preEnergyVal'); if (eVal) eVal.textContent = '5';
     if (!preserveSelections) {
       state.selectedPersonaId = 'driver';
       state.selectedMethodId = 'highway';
@@ -4030,7 +4048,10 @@ Practitioner profile (full, natural sentences):`;
     try {
       const adaptive = await getAdaptive();
       const analytics = await getAnalytics();
-      if (!adaptive || adaptive.ts < 3) return; // need at least 3 sessions
+      // Need at least 3 completed sessions for recommendations to be meaningful.
+      // (Previously compared adaptive.ts — a Date.now() timestamp — against the literal 3,
+      // which was always false after any session.)
+      if (!adaptive || !analytics || (analytics.comp?.total || 0) < 3) return;
       const rec = getRecommendation(adaptive, analytics);
       if (rec.persona && state.personas.find(p => p.id === rec.persona)) state.selectedPersonaId = rec.persona;
       if (rec.method && METHODS.find(m => m.id === rec.method)) state.selectedMethodId = rec.method;
@@ -4192,11 +4213,15 @@ Practitioner profile (full, natural sentences):`;
       card.addEventListener('click', () => {
         state.selectedMethodId = m.id;
         saveUserSettings();
-        // Update soundscape default when method changes
-        state.soundscape = m.drone ? 'drone' : 'none';
-        state.droneEnabled = m.drone;
-        const ssSelect = $('soundscapeSelect');
-        if (ssSelect) ssSelect.value = state.soundscape;
+        // Update soundscape default when method changes — but only if the user
+        // hasn't explicitly customized it. Otherwise switching methods would silently
+        // overwrite their chosen soundscape.
+        if (!state._soundscapeOverridden) {
+          state.soundscape = m.drone ? 'drone' : 'none';
+          state.droneEnabled = m.drone;
+          const ssSelect = $('soundscapeSelect');
+          if (ssSelect) ssSelect.value = state.soundscape;
+        }
         renderMethodGrid(); renderMethodDetail(); hideScript(); updateStepUI();
       });
       grid.appendChild(card);
@@ -4251,7 +4276,7 @@ Practitioner profile (full, natural sentences):`;
   }
 
   // ====================================================================
-  // CONFIGURE PANEL (Step 4) — dynamic context rendering
+  // CONFIGURE PANEL (Step 5) — dynamic context rendering
   // ====================================================================
   function renderConfigSummary() {
     const p = getPersona(), m = getMethod();
@@ -4295,7 +4320,9 @@ Practitioner profile (full, natural sentences):`;
         'double-induction': 'brown',
       };
       const rec = recommendations[m.id];
-      if (rec && ssSelect.value === state.soundscape) {
+      // Only apply the recommendation if the user hasn't customized the soundscape.
+      // Otherwise coming back to Configure would silently overwrite their choice.
+      if (rec && ssSelect.value === state.soundscape && !state._soundscapeOverridden) {
         ssSelect.value = rec; state.soundscape = rec; state.droneEnabled = rec !== 'none';
       }
       if (m.drone) ssHint.textContent = `Recommended for ${escapeHtml(m.name)}. Procedurally generated — never loops.`;
@@ -6174,13 +6201,16 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     _genState = { phases, stateMask, phaseResults, phaseTimes, sharedContext, phaseInstructions, persona, method, genStartTime: Date.now(), priorSummary: '' };
 
     const retryPhase = async (idx) => {
-      if (_aiInProgress && !_genState) return;
+      // Guard: need gen state to exist and no concurrent AI call in flight
+      if (!_genState) return;
+      if (_aiInProgress) { notify.info('Please wait — another phase is still being generated.'); return; }
       const gs = _genState;
       const phaseId = gs.phases[idx];
       // Capture the current (original) phase text BEFORE regenerating so we can
       // offer a diff comparison after (item #12). Empty original = first-time
       // generation, no diff needed.
       const originalText = gs.phaseResults[phaseId] || '';
+      _aiInProgress = true;
       gs.stateMask[idx] = 'streaming';
       renderGenProgress(gs.phases, gs.stateMask, null, retryPhase);
       try {
@@ -6204,6 +6234,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
         gs.stateMask[idx] = 'error';
         renderGenProgress(gs.phases, gs.stateMask, null, retryPhase);
         notify.error(`Retry failed: ${e.message}. Click the red indicator to try again.`);
+      } finally {
+        _aiInProgress = false;
       }
     };
 
@@ -7102,7 +7134,17 @@ ${s.text.trim()}`).join('\n\n').trim();
     ctx.beginPath(); ctx.moveTo(pad.left, pad.top + chartH);
     values.forEach((v, i) => { ctx.lineTo(pad.left + i * xStep, pad.top + chartH - (v / maxVal) * chartH); });
     ctx.lineTo(pad.left + (values.length-1) * xStep, pad.top + chartH); ctx.closePath();
-    ctx.fillStyle = color.replace(')', ',0.12)').replace('rgb', 'rgba'); ctx.fill();
+    // Convert hex color to translucent rgba for the fill — handles both '#rrggbb' and 'rgb(...)'
+    let fillColor;
+    if (color.startsWith('#')) {
+      const hex = color.slice(1);
+      const full = hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex;
+      const r = parseInt(full.slice(0, 2), 16), g = parseInt(full.slice(2, 4), 16), b = parseInt(full.slice(4, 6), 16);
+      fillColor = `rgba(${r},${g},${b},0.12)`;
+    } else {
+      fillColor = color.replace(')', ',0.12)').replace('rgb', 'rgba');
+    }
+    ctx.fillStyle = fillColor; ctx.fill();
     // Line
     ctx.beginPath();
     values.forEach((v, i) => { const x = pad.left + i * xStep, y = pad.top + chartH - (v / maxVal) * chartH; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
@@ -7204,7 +7246,9 @@ ${s.text.trim()}`).join('\n\n').trim();
       case 'weekday': { drawBarChart('chartWeekday', ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], a.dw, CHART_COLORS.bars); break; }
       case 'mood': {
         if (a.mood.n > 0) {
-          const avgPre = a.mood.preSum / a.mood.n, avgPost = a.mood.postSum > 0 ? a.mood.postSum / a.mood.n : null;
+          const postN = a.mood.postN || 0;
+          const avgPre = a.mood.preSum / a.mood.n;
+          const avgPost = postN > 0 && a.mood.postSum > 0 ? a.mood.postSum / postN : null;
           const mL = avgPost ? ['Pre','Post'] : ['Pre'], mV = avgPost ? [+avgPre.toFixed(1), +avgPost.toFixed(1)] : [+avgPre.toFixed(1)];
           drawBarChart('chartMood', mL, mV, [CHART_COLORS.blue, CHART_COLORS.green]);
         } else drawBarChart('chartMood', [], [], CHART_COLORS.cyan);
@@ -7291,7 +7335,9 @@ ${s.text.trim()}`).join('\n\n').trim();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `hypnosis-${method.id}-${state.length}-${Date.now()}.txt`;
-    a.click(); URL.revokeObjectURL(a.href);
+    a.click();
+    // Delay revoke so the browser actually initiates the download
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     notify.success('Script downloaded.');
   }
 
@@ -7483,7 +7529,10 @@ ${s.text.trim()}`).join('\n\n').trim();
     } catch(e) { blob = new Blob([json], { type: 'application/json' }); }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     a.download = `stillness-backup-${new Date().toISOString().slice(0,10)}.gz`;
-    a.click(); URL.revokeObjectURL(a.href); notify.success('Backup exported (.gz).');
+    a.click();
+    // Delay revoke — some browsers cancel the download if URL is revoked before it starts
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    notify.success('Backup exported (.gz).');
   }
 
   async function importBackup(file) {
@@ -7646,7 +7695,7 @@ ${s.text.trim()}`).join('\n\n').trim();
       return;
     }
 
-    const scriptText = $('scriptText').value.trim();
+    let scriptText = $('scriptText').value.trim();
     if (!scriptText) { notify.warn('Generate or paste a script first.'); return; }
 
     // Structural safety gate — user must explicitly proceed if ending phases are missing
@@ -7671,6 +7720,7 @@ ${s.text.trim()}`).join('\n\n').trim();
         state.parsedScript = parseScript(fixed);
         showScript();
         notify.success('Pause timings recalculated.');
+        scriptText = fixed; // update local so the session plays the fixed text
       }
       _scriptEditedSinceGen = false;
     }
@@ -7693,6 +7743,8 @@ ${s.text.trim()}`).join('\n\n').trim();
     state.abortFlag = false;
     state._finishing = false;
     state._sessionStartTime = Date.now();
+    state._pausedTotalMs = 0;      // cumulative time spent paused
+    state._pauseStartedAt = null;  // wallclock of current pause start (if paused)
     state._currentPhase = 'settling';
     const method = getMethod();
 
@@ -7700,6 +7752,7 @@ ${s.text.trim()}`).join('\n\n').trim();
     state._doubleInduction = method.id === 'double-induction';
     state._secondVoice = null;
     if (state._doubleInduction) {
+      markFeatureUsed(FEAT.DOUBLE_INDUCT);
       const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en') && v.name !== state.voice?.name);
       // Try to find an opposite-gender voice for maximum contrast
       const primaryName = (state.voice?.name || '').toLowerCase();
@@ -7804,8 +7857,8 @@ ${s.text.trim()}`).join('\n\n').trim();
       }
     } catch(e) { /* Wake Lock not available or denied */ }
 
-    // Content warning for advanced/intense methods
-    const needsWarning = method.category === 'advanced' || ['drill-instructor','dominatrix','interrogator','commander'].includes(getPersona().id);
+    // Content warning for advanced/intense methods or authoritarian personas
+    const needsWarning = method.category === 'advanced' || ['drill-instructor','dominatrix','interrogator','commander','headmistress','surgeon'].includes(getPersona().id);
     if (needsWarning) {
       const warningShown = await confirmAsync(
         'This session uses advanced techniques that may produce intense experiences including dissociation, hallucination, or strong emotional responses.\n\nEnsure you are in a safe, comfortable environment. Do not drive or operate machinery after.\n\nThe "end & re-alert" button is always available.',
@@ -7815,6 +7868,21 @@ ${s.text.trim()}`).join('\n\n').trim();
         switchScreen('setup-wizard');
         document.body.classList.remove('in-session'); document.body.classList.remove('controls-hidden'); clearTimeout(_controlsTimer);
         await drone.stop(); stopVisuals();
+        bgEngine.clear();
+        setSleepOverlay(false);
+        // Clear media session metadata set earlier in startSession
+        if ('mediaSession' in navigator) {
+          try {
+            navigator.mediaSession.metadata = null;
+            navigator.mediaSession.setActionHandler('play', null);
+            navigator.mediaSession.setActionHandler('pause', null);
+            navigator.mediaSession.setActionHandler('stop', null);
+          } catch {}
+        }
+        // Reset session state so visibilitychange doesn't treat this as an active session
+        state._sessionStartTime = null;
+        state._pausedTotalMs = 0;
+        state._pauseStartedAt = null;
         try { state._wakeLock?.release(); } catch(e) {}
         return;
       }
@@ -7823,7 +7891,8 @@ ${s.text.trim()}`).join('\n\n').trim();
     // Session time tracker
     state._timeInterval = setInterval(() => {
       if (state.paused) return;
-      const elapsed = Math.round((Date.now() - state._sessionStartTime) / 1000);
+      const pausedMs = (state._pausedTotalMs || 0);
+      const elapsed = Math.round((Date.now() - state._sessionStartTime - pausedMs) / 1000);
       const mins = Math.floor(elapsed / 60);
       const secs = elapsed % 60;
       const timeEl = $('sessionTime');
@@ -7840,15 +7909,17 @@ ${s.text.trim()}`).join('\n\n').trim();
       if (base === 'affirm') return sum + 45;
       return sum + (durations[base] || 60);
     }, 0);
-    state._safetyTimeout = setTimeout(() => {
-      if (!state._finishing && state._sessionStartTime) {
-        notify.warn('Session exceeded maximum expected duration — auto-finishing.');
-        state._finishing = true;
-        state.abortFlag = true;
-        speechSynthesis.cancel();
-        finishSession(false);
-      }
-    }, (expectedSec * 2 + 300) * 1000);
+    const safetyCheck = () => {
+      if (state._finishing || !state._sessionStartTime) return;
+      // If user is paused, reschedule — don't force-end a user-paused session
+      if (state.paused) { state._safetyTimeout = setTimeout(safetyCheck, 60000); return; }
+      notify.warn('Session exceeded maximum expected duration — auto-finishing.');
+      state._finishing = true;
+      state.abortFlag = true;
+      speechSynthesis.cancel();
+      finishSession(false);
+    };
+    state._safetyTimeout = setTimeout(safetyCheck, (expectedSec * 2 + 300) * 1000);
 
     for (let pi = 0; pi < phases.length; pi++) {
       const phase = phases[pi];
@@ -8074,7 +8145,9 @@ ${s.text.trim()}`).join('\n\n').trim();
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = `stillness-ambience-${Date.now()}.webm`;
-        a.click(); URL.revokeObjectURL(a.href);
+        a.click();
+        // Delay revoke so the browser actually initiates the download
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
         notify.success('Ambience recording downloaded.');
         _recordedChunks = [];
       };
@@ -8101,17 +8174,29 @@ ${s.text.trim()}`).join('\n\n').trim();
   async function finishSession(wasEmergency = false) {
     clearInterval(state._timeInterval);
     clearTimeout(state._safetyTimeout);
+    state.paused = false; // don't leak paused state into the next session
     closeLivePanel();
     stopRecording(); // Stop any active recording before tearing down audio
     await drone.stop(); stopVisuals(); speechSynthesis.cancel();
+    // Clear lock-screen media session so it doesn't linger post-session
+    if ('mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('stop', null);
+      } catch {}
+    }
     document.body.classList.remove('in-session'); document.body.classList.remove('controls-hidden'); clearTimeout(_controlsTimer);
     switchScreen('post-screen');
 
     // Release wake lock
     try { state._wakeLock?.release(); } catch(e) {}
 
-    // Save session to history
-    const elapsed = state._sessionStartTime ? Math.round((Date.now() - state._sessionStartTime) / 1000) : 0;
+    // Save session to history — exclude paused time from duration
+    let pausedMs = (state._pausedTotalMs || 0);
+    if (state._pauseStartedAt) pausedMs += (Date.now() - state._pauseStartedAt); // finishing while paused
+    const elapsed = state._sessionStartTime ? Math.max(0, Math.round((Date.now() - state._sessionStartTime - pausedMs) / 1000)) : 0;
     const currentProfile = getProfile();
     const scriptMetrics = getScriptMetrics(state.fullScript || '');
     const sessionRecord = {
@@ -8124,9 +8209,9 @@ ${s.text.trim()}`).join('\n\n').trim();
       soundscape: state.soundscape,
       durationSec: elapsed,
       completed: !wasEmergency,
-      preMood: state._preMood || null,
-      preTension: state._preTension || null,
-      preEnergy: state._preEnergy || null,
+      preMood: state._preMood ?? null,
+      preTension: state._preTension ?? null,
+      preEnergy: state._preEnergy ?? null,
       // Full reproducibility data
       script: state.fullScript || '',
       personaId: state.selectedPersonaId,
@@ -8270,6 +8355,18 @@ ${s.text.trim()}`).join('\n\n').trim();
     if (state._finishing) return;
     state._finishing = true;
     state.abortFlag = true;
+    // If currently paused, resume speech engine + drone + unpause state
+    // so the rescue sequence can actually play
+    if (state.paused) {
+      state.paused = false;
+      if (state._pauseStartedAt) {
+        state._pausedTotalMs = (state._pausedTotalMs || 0) + (Date.now() - state._pauseStartedAt);
+        state._pauseStartedAt = null;
+      }
+      try { speechSynthesis.resume(); } catch {}
+      if (drone.ctx && drone.running) { try { drone.ctx.resume(); } catch {} }
+      $('pauseBtn').textContent = 'pause';
+    }
     speechSynthesis.cancel();
     // DEBUG: skip rescue sequence if debug checkbox is checked
     // This setting intentionally defaults OFF and is NOT saved with settings
@@ -8286,11 +8383,16 @@ ${s.text.trim()}`).join('\n\n').trim();
     state.paused = !state.paused;
     $('pauseBtn').textContent = state.paused ? 'resume' : 'pause';
     if (state.paused) {
+      state._pauseStartedAt = Date.now();
       speechSynthesis.pause();
       if (drone.ctx && drone.running) drone.ctx.suspend();
       document.body.classList.remove('controls-hidden'); // always show controls when paused
       clearTimeout(_controlsTimer);
     } else {
+      if (state._pauseStartedAt) {
+        state._pausedTotalMs = (state._pausedTotalMs || 0) + (Date.now() - state._pauseStartedAt);
+        state._pauseStartedAt = null;
+      }
       speechSynthesis.resume();
       if (drone.ctx && drone.running) drone.ctx.resume();
       setTimeout(() => {
@@ -8316,6 +8418,7 @@ ${s.text.trim()}`).join('\n\n').trim();
 $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('jumpMethodBtn')?.addEventListener('click', () => goToStep(2));
   $('jumpIntentionBtn')?.addEventListener('click', () => goToStep(3));
+  $('jumpAffirmationsBtn')?.addEventListener('click', () => goToStep(4));
   $('jumpConfigBtn')?.addEventListener('click', () => goToStep(5)); // Step 5 is Configure; step 4 is Affirmations
   $('btnSkipToScript').addEventListener('click', () => {
     state._skippedToScript = true;
@@ -8409,11 +8512,12 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('editCraftedBtn').addEventListener('click', toggleEditCrafted);
   $('saveEditBtn').addEventListener('click', saveEditCrafted);
 
-  // Step 4 — audio controls
+  // Step 5 — audio controls
   $('lengthSelect').addEventListener('change', () => { state.length = $('lengthSelect').value; hideScript(); saveUserSettings(); });
   $('soundscapeSelect')?.addEventListener('change', e => {
     state.soundscape = e.target.value;
     state.droneEnabled = e.target.value !== 'none';
+    state._soundscapeOverridden = true; // don't auto-override if user later changes method
     saveUserSettings();
     const hint = $('soundscapeHint');
     if (hint) {
@@ -8447,13 +8551,13 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     saveUserSettings();
   });
 
-  // Step 4 — visual controls
+  // Step 5 — visual controls
   $('vizSelect')?.addEventListener('change', e => {
     state.vizOverride = e.target.value;
     saveUserSettings();
   });
 
-  // Step 4 — HUD element toggles
+  // Step 5 — HUD element toggles
   ['cfgFixationDot','cfgTextDisplay','cfgPhaseDots','cfgPhaseLabel','cfgProgressBar','cfgSessionTime','cfgLabels'].forEach(id => {
     $(id)?.addEventListener('change', e => {
       const key = id.replace('cfg','').replace(/^./, c => c.toLowerCase());
@@ -8566,7 +8670,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     });
     $(id)?.addEventListener('change', () => saveUserSettings());
   });
-  // Step 5
+  // Step 6 — Generate & Begin
   $('generateScriptBtn').addEventListener('click', generateFullScript);
   $('regenScriptBtn').addEventListener('click', generateFullScript);
   $('exportScriptBtn').addEventListener('click', exportScript);
@@ -8648,9 +8752,13 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const el = $('alertnessVal'); if (el) el.textContent = e.target.value;
     // Howard Alertness Scale: if alertness < 5, show grounding exercise
     const groundingBox = $('groundingBox');
-    if (groundingBox && val < 5) {
-      groundingBox.style.display = 'block';
-      if ($('moodFeedback')) $('moodFeedback').textContent = 'You seem drowsy — please do the grounding exercise before standing up.';
+    if (groundingBox) {
+      if (val < 5) {
+        groundingBox.style.display = 'block';
+        if ($('moodFeedback')) $('moodFeedback').textContent = 'You seem drowsy — please do the grounding exercise before standing up.';
+      } else {
+        groundingBox.style.display = 'none';
+      }
     }
   });
 
@@ -8685,6 +8793,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     if (!await confirmAsync('Stop the session and return to the script editor?')) return;
     state.abortFlag = true;
     state._finishing = true;            // prevent playback loop from calling finishSession
+    state.paused = false;               // don't inherit paused state into next session
     clearInterval(state._timeInterval); // stop elapsed timer
     clearTimeout(state._safetyTimeout); // prevent ghost post-screen switch
     state._sessionStartTime = null;
@@ -8694,6 +8803,15 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     bgEngine.clear();
     stopRecording();
     closeLivePanel();
+    // Clear lock-screen media session
+    if ('mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('stop', null);
+      } catch {}
+    }
     try { state._wakeLock?.release(); } catch(e) {}
     document.body.classList.remove('in-session'); document.body.classList.remove('controls-hidden'); clearTimeout(_controlsTimer);
     switchScreen('setup-wizard');
@@ -8717,7 +8835,10 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     } else {
-      stage.requestFullscreen?.() || stage.webkitRequestFullscreen?.();
+      // Try standard first, fall back to webkit. Each returns a promise that can reject
+      // (user denied, iframe blocked, etc.) — swallow to avoid uncaught-rejection warnings.
+      const req = stage.requestFullscreen?.() ?? stage.webkitRequestFullscreen?.();
+      if (req && typeof req.catch === 'function') req.catch(() => {});
     }
   });
   document.addEventListener('fullscreenchange', () => {
@@ -8792,6 +8913,10 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const type = e.target.value;
     state.soundscape = type;
     state.droneEnabled = type !== 'none';
+    state._soundscapeOverridden = true;
+    // Sync the Configure-step select so the two stay aligned
+    const ssSelect = $('soundscapeSelect'); if (ssSelect) ssSelect.value = type;
+    saveUserSettings();
     await drone.stop();
     if (type !== 'none') {
       await drone.start(state.droneVolume, type);
@@ -8823,9 +8948,10 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('liveTempo')?.addEventListener('input', e => {
     state.tempoMultiplier = parseInt(e.target.value, 10) / 100;
     const v = $('liveTempoVal'); if (v) v.textContent = state.tempoMultiplier.toFixed(1) + '×';
-    // Sync Step 4 slider
+    // Sync Configure-tab slider (Step 5)
     const s4 = $('tempoSlider'); if (s4) s4.value = e.target.value;
     const s4v = $('tempoVal'); if (s4v) s4v.textContent = state.tempoMultiplier.toFixed(1) + '×';
+    saveUserSettings();
   });
 
   // Live background controls
@@ -8849,7 +8975,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   for (const [elId, key] of Object.entries(liveHudMap)) {
     $(elId)?.addEventListener('change', e => {
       state.hud[key] = e.target.checked;
-      // Also update the Step 4 checkboxes to stay in sync
+      // Also update the Step 5 checkboxes to stay in sync
       const cfgId = 'cfg' + key.charAt(0).toUpperCase() + key.slice(1);
       const cfgEl = $(cfgId); if (cfgEl) cfgEl.checked = e.target.checked;
       // Apply visibility immediately
@@ -8904,8 +9030,8 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
           state._wakeLock.addEventListener('release', () => { state._wakeLock = null; });
         }
       } catch(e) {}
-      // Resume audio context if suspended
-      if (drone.ctx?.state === 'suspended') { try { await drone.ctx.resume(); } catch(e) {} }
+      // Resume audio context if suspended — but NOT if user explicitly paused the session
+      if (!state.paused && drone.ctx?.state === 'suspended') { try { await drone.ctx.resume(); } catch(e) {} }
     } else if (document.visibilityState === 'hidden' && state._sessionStartTime && !state.abortFlag) {
       // Suspend audio context to save battery when tab hidden
       if (drone.ctx?.state === 'running') { try { drone.ctx.suspend(); } catch(e) {} }
@@ -8951,7 +9077,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('vizPreviewBtn')?.addEventListener('click', startVizPreview);
   $('vizStopBtn')?.addEventListener('click', stopVizPreview);
 
-  // Stop all previews when leaving Step 4
+  // Stop all previews when leaving Step 5 (Configure)
   const _stopAllPreviews = () => { stopVizPreview(); stopSoundscapePreview(); if (_voicePreviewing) { speechSynthesis.cancel(); _voicePreviewing = false; togglePreviewBtns('voice', false); } };
 
   // ====================================================================
@@ -9223,7 +9349,8 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
 
     // Set the intention input with program context
     const dayFocus = prog.arc ? prog.arc[Math.min(ps.currentDay, (prog.arc?.length || 1) - 1)] : `Day ${dayNum} of structured ${prog.name} program`;
-    const anchorContext = ps.anchors.length ? `Prior anchors: ${ps.anchors.join(', ')}. ` : '';
+    const anchors = Array.isArray(ps.anchors) ? ps.anchors : [];
+    const anchorContext = anchors.length ? `Prior anchors: ${anchors.join(', ')}. ` : '';
     $('intentionInput').value = `${anchorContext}Day ${dayNum} of ${prog.days}: ${dayFocus}`;
 
     state._activeProgram = { prog, ps };
@@ -9239,6 +9366,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     if (!state._activeProgram) return;
     const { prog, ps } = state._activeProgram;
     ps.currentDay = Math.min(ps.currentDay + 1, prog.days);
+    if (!Array.isArray(ps.completedDays)) ps.completedDays = [];
     ps.completedDays.push(Date.now());
     await saveActiveProgramState(ps);
     if (ps.currentDay >= prog.days) {
@@ -9312,8 +9440,8 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   const TOUR_STEPS = [
     { icon: '🌀', title: 'Welcome to the Hypnosis Engine', body: 'This tool creates personalised AI-generated hypnosis sessions with narration, visuals, and procedural soundscapes — all running locally in your browser. No data leaves your device. This quick tour shows you how.' },
     { icon: '⚡', title: 'Quick-start or deep-customise', body: 'In a hurry? Use a <strong>Preset</strong> at the top of Step 1 — one click sets guide, method, intention, soundscape, and length. Or follow the 6-step wizard for full control. You can also click "use my own script" to skip straight to the player.' },
-    { icon: '👤', title: 'Step 1 — Choose a Guide', body: 'Built-in personas across four temperaments — contemplative, showman, somatic, and authoritarian. Each has a distinct voice and therapeutic style. Create unlimited custom personas too.' },
-    { icon: '🔮', title: 'Step 2 — Choose a Method', body: 'Induction techniques from gentle progressive relaxation to dramatic shock inductions. Rapid and advanced methods unlock after 3 and 7 completed sessions — building your experience safely.' },
+    { icon: '👤', title: 'Step 1 — Choose a Guide', body: '25 built-in personas across four temperaments — contemplative, showman, somatic, and authoritarian. Each has a distinct voice and therapeutic style. Create unlimited custom personas too.' },
+    { icon: '🔮', title: 'Step 2 — Choose a Method', body: '37 induction techniques from gentle progressive relaxation to dramatic shock inductions. Rapid and advanced methods unlock after 3 and 7 completed sessions — building your experience safely.' },
     { icon: '🎯', title: 'Step 3 — Set an Intention', body: 'Describe what you want from the session. The AI crafts a precise hypnotic suggestion from your description.' },
     { icon: '💬', title: 'Step 4 — Affirmations (optional)', body: 'Add your own personal affirmations — they\'ll be woven verbatim into the script. Pick how strongly they appear: woven through, dedicated moments, or light touch.' },
     { icon: '⚙', title: 'Step 5 — Configure', body: 'Procedural soundscapes, visual effects with live tuning sliders (speed, intensity, trail), voice controls, ducking toggle, and HUD element toggles. All settings auto-save between visits.' },
@@ -9496,6 +9624,10 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     state.remoteProcessingOptIn = !!e.target.checked;
     saveUserSettings();
     notify.info(state.remoteProcessingOptIn ? 'Remote backup + processing enabled.' : 'Remote backup + processing disabled.');
+  });
+  $('smartDirectorEnabled')?.addEventListener('change', e => {
+    state.smartDirectorEnabled = !!e.target.checked;
+    saveUserSettings();
   });
   $('remoteConsentCancelBtn')?.addEventListener('click', () => {
     const cb = $('remoteProcessingOptIn'); if (cb) cb.checked = false;
@@ -9890,6 +10022,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     setLabel('jumpGuideBtn', 'Go back and change the guide');
     setLabel('jumpMethodBtn', 'Go back and change the method');
     setLabel('jumpIntentionBtn', 'Go back and change the intention');
+    setLabel('jumpAffirmationsBtn', 'Go back and change your affirmations');
     setLabel('jumpConfigBtn', 'Go back and change the session settings');
     setLabel('btnSkipToScript', 'Skip the guided builder and use your own script');
     setLabel('returnToSetupBtn', 'Go back to the setup screens');
