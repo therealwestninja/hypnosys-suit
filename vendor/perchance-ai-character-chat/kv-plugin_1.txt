@@ -1,0 +1,46 @@
+$output = [getKv()]
+
+getKv() =>
+  const moduleName = this.$root.$moduleName; // this is 'kv-plugin' - it's different to `window.generatorName` because that will be the name/url of the generator that imports this plugin, not this plugin's name/url. This is used in IndexedDB db/store name so forks of this plugin don't conflict with one another.
+  
+  if(!window.__kvPluginProxy7583683) {
+    // let idbKeyval = await import("https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm");
+    let idbKeyval = (function() { // This is v6.2.1
+      function e(e){return new Promise(((t,n)=>{e.oncomplete=e.onsuccess=()=>t(e.result),e.onabort=e.onerror=()=>n(e.error)}))}function t(t,n){const r=indexedDB.open(t);r.onupgradeneeded=()=>r.result.createObjectStore(n);const o=e(r);return(e,t)=>o.then((r=>t(r.transaction(n,e).objectStore(n))))}let n;function r(){return n||(n=t("keyval-store","keyval")),n}function o(t,n=r()){return n("readonly",(n=>e(n.get(t))))}function u(t,n,o=r()){return o("readwrite",(r=>(r.put(n,t),e(r.transaction))))}function c(t,n=r()){return n("readwrite",(n=>(t.forEach((e=>n.put(e[1],e[0]))),e(n.transaction))))}function s(t,n=r()){return n("readonly",(n=>Promise.all(t.map((t=>e(n.get(t)))))))}function a(t,n,o=r()){return o("readwrite",(r=>new Promise(((o,u)=>{r.get(t).onsuccess=function(){try{r.put(n(this.result),t),o(e(r.transaction))}catch(e){u(e)}}}))))}function i(t,n=r()){return n("readwrite",(n=>(n.delete(t),e(n.transaction))))}function l(t,n=r()){return n("readwrite",(n=>(t.forEach((e=>n.delete(e))),e(n.transaction))))}function f(t=r()){return t("readwrite",(t=>(t.clear(),e(t.transaction))))}function d(t,n){return t.openCursor().onsuccess=function(){this.result&&(n(this.result),this.result.continue())},e(t.transaction)}function h(t=r()){return t("readonly",(t=>{if(t.getAllKeys)return e(t.getAllKeys());const n=[];return d(t,(e=>n.push(e.key))).then((()=>n))}))}function y(t=r()){return t("readonly",(t=>{if(t.getAll)return e(t.getAll());const n=[];return d(t,(e=>n.push(e.value))).then((()=>n))}))}function p(t=r()){return t("readonly",(n=>{if(n.getAll&&n.getAllKeys)return Promise.all([e(n.getAllKeys()),e(n.getAll())]).then((([e,t])=>e.map(((e,n)=>[e,t[n]]))));const r=[];return t("readonly",(e=>d(e,(e=>r.push([e.key,e.value]))).then((()=>r))))}))}
+      return {clear:f,createStore:t,del:i,delMany:l,entries:p,get:o,getMany:s,keys:h,set:u,setMany:c,update:a,values:y};
+    })();
+    
+    let storeNameToStore = {};
+    
+    window.__kvPluginProxy7583683 = new Proxy({}, { // so api is like: kv.myStoreName.get(...)
+      get(target, storeName, receiver) {
+        
+        let store = storeNameToStore[storeName];
+        if(!store) {
+          // NOTE: We don't need to include `window.generatorName` in the storeName because each generator has its own subdomain, and hence its own partitioned IndexedDB database.
+          // CAUTION: changing the store naming (in createStore calls) will make previously-added data inaccessible!!! Don't change it.
+          store = idbKeyval.createStore(`${storeName}-db-${moduleName}`, `${storeName}-store-${moduleName}`); // <-- creates if it doesn't already exist, but we have an extra cache on top of that anyway in case it's expensive
+          storeNameToStore[storeName] = store;
+        }
+        
+        return {
+          // Reads:
+          get: (key) => idbKeyval.get(key, store),
+          has: (key) => idbKeyval.keys(store).then(keys => keys.includes(key)), // probably a bit inefficient, but fine for now
+          getMany: (keys) => idbKeyval.getMany(keys, store),
+          entries: () => idbKeyval.entries(store),
+          keys: () => idbKeyval.keys(store),
+          values: () => idbKeyval.values(store),
+          // Writes/Mutations:
+          set: (key, value) => idbKeyval.set(key, value, store),
+          setMany: (entries) => idbKeyval.setMany(entries, store),
+          update: (key, setterFn) => idbKeyval.update(key, setterFn, store),
+          delete: (key) => idbKeyval.del(key, store),
+          deleteMany: (keys) => idbKeyval.delMany(keys, store),
+          clear: () => idbKeyval.clear(store),
+        };
+      },
+    });
+  }
+  
+  return window.__kvPluginProxy7583683;

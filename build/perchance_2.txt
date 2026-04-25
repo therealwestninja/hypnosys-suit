@@ -2104,11 +2104,11 @@ I return to myself easily"></textarea>
           <div class="ai-prompt-grid">
             <div class="ai-prompt-col">
               <label class="ai-sublabel">prompt <span style="color:var(--neon-cyan);">+</span></label>
-              <textarea id="bgPromptInput" class="pf-textarea" rows="2" placeholder="dark ethereal misty landscape, dreamlike, soft focus..."></textarea>
+              <textarea id="bgPromptInput" class="pf-textarea" rows="4" placeholder="dark ethereal misty landscape, dreamlike, soft focus..."></textarea>
             </div>
             <div class="ai-prompt-col">
               <label class="ai-sublabel">negative <span style="color:var(--neon-coral,#e47171);">−</span></label>
-              <textarea id="bgNegativePromptInput" class="pf-textarea" rows="2" placeholder="text, words, bright, sharp, deformed..."></textarea>
+              <textarea id="bgNegativePromptInput" class="pf-textarea" rows="4" placeholder="text, words, bright, sharp, deformed..."></textarea>
             </div>
           </div>
           <div class="ai-controls-grid">
@@ -2159,16 +2159,21 @@ I return to myself easily"></textarea>
             </div>
           </div>
           <div class="sublabel" style="margin-top:10px;">Generates up to 4 images in parallel. Cycles through every <span id="bgRotationHint">45</span>s during sessions.</div>
-          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center;">
             <button class="preview-btn" id="bgPreviewBtn">generate image</button>
             <button class="preview-btn" id="bgPreviewBatchBtn">generate 4 (parallel)</button>
+            <button class="preview-btn" id="bgRemoveQueuedBtn" style="display:none;">remove queued image</button>
             <button class="preview-btn" id="bgManageBtn">gallery (<span id="bgCacheCount">0</span>)</button>
+            <span class="hint" id="bgQueueStatus" style="display:none;font-size:0.72rem;color:var(--neon-amber);"></span>
+          </div>
+          <div class="toggle-row" style="margin-top:10px;">
+            <label for="bgAutoGenToggle">Generate images in background during session<span class="hint">Continuously fills the image pool while the session plays</span></label>
+            <input type="checkbox" id="bgAutoGenToggle" checked>
           </div>
           <div id="bgPreviewWrap" style="display:none;margin-top:8px;text-align:center;">
             <div id="bgPreviewGrid" class="ai-preview-grid"></div>
             <div style="display:flex;gap:6px;justify-content:center;margin-top:6px;">
               <button class="preview-btn" id="bgSaveLastBtn" style="display:none;">save to device</button>
-              <button class="preview-btn" id="bgPreviewBtn2">generate another</button>
             </div>
             <div class="sublabel" id="bgPreviewStatus"></div>
           </div>
@@ -3516,6 +3521,7 @@ I return to myself easily"></textarea>
     bgEnabledTransitions: ['crossfade', 'fadeBlack', 'kenburns', 'blur'],
     bgYoutubeUrl: '',
     bgStaticUrl: '',
+    bgAutoGen: true,             // continuously generate images in background during session
     droneVolume: 0.35,
     affirmationMode: 'woven',
     // Auto-tempo cleanup options. stripChars is a string of single characters
@@ -6053,6 +6059,7 @@ I return to myself easily"></textarea>
       bgEnabledTransitions: state.bgEnabledTransitions,
       bgYoutubeUrl: state.bgYoutubeUrl,
       bgStaticUrl: state.bgStaticUrl,
+      bgAutoGen: state.bgAutoGen,
       droneVolume: state.droneVolume,
       vizOverride: state.vizOverride,
       audioReactiveMode: state.audioReactiveMode,
@@ -6264,6 +6271,7 @@ I return to myself easily"></textarea>
       }
       if (s.bgYoutubeUrl) { state.bgYoutubeUrl = s.bgYoutubeUrl; const el = $('bgYoutubeUrl'); if (el) el.value = s.bgYoutubeUrl; }
       if (s.bgStaticUrl) { state.bgStaticUrl = s.bgStaticUrl; const el = $('bgUrlInput'); if (el) el.value = s.bgStaticUrl; }
+      if (s.bgAutoGen != null) { state.bgAutoGen = s.bgAutoGen; const el = $('bgAutoGenToggle'); if (el) el.checked = s.bgAutoGen; }
       if (s.droneVolume != null) { state.droneVolume = s.droneVolume; const el = $('droneVolume'); if (el) el.value = Math.round(s.droneVolume * 100); const v = $('droneVolVal'); if (v) v.textContent = Math.round(s.droneVolume * 100); }
       if (s.vizOverride != null) { state.vizOverride = s.vizOverride; const el = $('vizSelect'); if (el) el.value = s.vizOverride; }
       // Audio reactive mode — with prefers-reduced-motion OS honor on first load
@@ -9410,8 +9418,8 @@ Practitioner profile (full, natural sentences):`;
         if (this._playCursor === 0) this._playOrder = this._buildPlayOrder();
         const idx = this._playOrder[this._playCursor];
         if (idx != null && this.queue[idx]) this.swap(this.queue[idx]);
-        // Silently generate more in background while under the cap
-        if (!this.generating && this.queue.length < 20) this.generateOne();
+        // Silently generate more in background while under the cap (if enabled)
+        if (state.bgAutoGen && !this.generating && this.queue.length < 20) this.generateOne();
       }, secs * 1000);
     },
 
@@ -15107,75 +15115,118 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   });
   $('bgTransitionDurSlider')?.addEventListener('change', saveUserSettings);
 
-  // Background generate handler — single image.
-  async function _bgGenerate() {
+  // ── Background image generation queue system ──
+  // _bgQueuePending = images queued but not yet started
+  // bgEngine.activeGenerations = images currently being generated
+  // The runner drains _bgQueuePending by launching generations up to BG_MAX_PARALLEL at a time.
+  let _bgQueuePending = 0;
+  let _bgQueueRunning = false;
+
+  function _bgUpdateQueueUI() {
+    const statusEl = $('bgQueueStatus');
+    const removeBtn = $('bgRemoveQueuedBtn');
+    const total = _bgQueuePending + bgEngine.activeGenerations;
+    if (total > 0) {
+      if (statusEl) {
+        const parts = [];
+        if (_bgQueuePending > 0) parts.push(`${_bgQueuePending} queued`);
+        if (bgEngine.activeGenerations > 0) parts.push(`${bgEngine.activeGenerations} generating`);
+        statusEl.textContent = parts.join(' · ');
+        statusEl.style.display = '';
+      }
+      if (removeBtn) removeBtn.style.display = '';
+    } else {
+      if (statusEl) statusEl.style.display = 'none';
+      if (removeBtn) removeBtn.style.display = 'none';
+    }
+    // Update button labels to reflect queue
     const btn = $('bgPreviewBtn');
-    const btn2 = $('bgPreviewBtn2');
+    const batchBtn = $('bgPreviewBatchBtn');
+    if (btn) btn.textContent = total > 0 ? `generate image (+1)` : 'generate image';
+    if (batchBtn) batchBtn.textContent = total > 0 ? `generate 4 (+4)` : 'generate 4 (parallel)';
+  }
+
+  async function _bgQueueRunner() {
+    if (_bgQueueRunning) return; // already draining
+    _bgQueueRunning = true;
     const wrap = $('bgPreviewWrap');
     const status = $('bgPreviewStatus');
     const grid = $('bgPreviewGrid');
     const saveBtn = $('bgSaveLastBtn');
-    if (!wrap || !status || !grid || !btn) return;
-    btn.disabled = true; btn.textContent = 'generating...';
-    if (btn2) { btn2.disabled = true; btn2.textContent = 'generating...'; }
-    wrap.style.display = '';
-    status.textContent = 'Sending to Perchance AI... (typically 10-30 seconds)';
-    grid.innerHTML = '';
-    if (saveBtn) saveBtn.style.display = 'none';
+    if (wrap) wrap.style.display = '';
     bgEngine.prompt = $('bgPromptInput')?.value || '';
-    const url = await bgEngine.generateOne();
-    btn.disabled = false; btn.textContent = 'generate image';
-    if (btn2) { btn2.disabled = false; btn2.textContent = 'generate another'; }
-    if (url) {
-      const img = document.createElement('img');
-      img.src = url;
-      grid.appendChild(img);
-      if (saveBtn) saveBtn.style.display = '';
+    while (_bgQueuePending > 0) {
+      // Launch up to BG_MAX_PARALLEL at a time
+      const batch = Math.min(_bgQueuePending, BG_MAX_PARALLEL - bgEngine.activeGenerations);
+      if (batch <= 0) {
+        // All slots busy — wait for one to free up
+        await new Promise(r => setTimeout(r, 200));
+        _bgUpdateQueueUI();
+        continue;
+      }
+      _bgQueuePending -= batch;
+      _bgUpdateQueueUI();
+      if (status) status.textContent = 'Sending to Perchance AI... (typically 10-30 seconds)';
+      const promises = Array.from({ length: batch }, () =>
+        bgEngine.generateOne().then(url => {
+          _bgUpdateQueueUI();
+          if (url && grid) {
+            const img = document.createElement('img');
+            img.src = url;
+            grid.appendChild(img);
+            if (saveBtn) saveBtn.style.display = '';
+          }
+          return url;
+        })
+      );
+      await Promise.all(promises);
+      // Update status after each micro-batch
       const manifest = await bgCacheGetManifest();
-      status.textContent = `Saved. ${manifest.length} image${manifest.length === 1 ? '' : 's'} in cache.`;
+      const el = $('bgCacheCount'); if (el) el.textContent = manifest.length;
+      if (status) {
+        const remaining = _bgQueuePending + bgEngine.activeGenerations;
+        status.textContent = remaining > 0
+          ? `${manifest.length} image${manifest.length === 1 ? '' : 's'} in cache. ${remaining} remaining...`
+          : `Done. ${manifest.length} image${manifest.length === 1 ? '' : 's'} in cache.`;
+      }
       renderBgGallery();
-    } else {
-      status.textContent = typeof root !== 'undefined' && root.textToImagePlugin
-        ? 'Generation failed — server may be busy. Try again.'
-        : 'Plugin not found. Add textToImagePlugin = {import:text-to-image-plugin} to the top editor.';
+    }
+    _bgUpdateQueueUI();
+    _bgQueueRunning = false;
+    // Final status
+    if (status && bgEngine.activeGenerations === 0) {
+      const manifest = await bgCacheGetManifest();
+      if (manifest.length > 0) {
+        status.textContent = `Done. ${manifest.length} image${manifest.length === 1 ? '' : 's'} in cache.`;
+      } else {
+        status.textContent = typeof root !== 'undefined' && root.textToImagePlugin
+          ? 'Generation failed — server may be busy. Try again.'
+          : 'Plugin not found. Add textToImagePlugin = {import:text-to-image-plugin} to the top editor.';
+      }
     }
   }
 
-  // Batch generate — fires 4 in parallel, populates grid progressively.
-  async function _bgGenerateBatch() {
-    const batchBtn = $('bgPreviewBatchBtn');
-    const wrap = $('bgPreviewWrap');
-    const status = $('bgPreviewStatus');
-    const grid = $('bgPreviewGrid');
-    if (!batchBtn || !wrap || !status || !grid) return;
-    batchBtn.disabled = true; batchBtn.textContent = 'generating 4...';
-    wrap.style.display = '';
-    status.textContent = 'Generating 4 images in parallel...';
-    grid.innerHTML = '';
-    bgEngine.prompt = $('bgPromptInput')?.value || '';
-    // Fire 4 in parallel; render each as it arrives rather than waiting for all.
-    let completed = 0;
-    const promises = Array.from({ length: 4 }, () =>
-      bgEngine.generateOne().then(url => {
-        completed++;
-        if (url) {
-          const img = document.createElement('img');
-          img.src = url;
-          grid.appendChild(img);
-        }
-        status.textContent = `${completed} of 4 complete...`;
-      })
-    );
-    await Promise.all(promises);
-    batchBtn.disabled = false; batchBtn.textContent = 'generate 4 (parallel)';
-    const manifest = await bgCacheGetManifest();
-    status.textContent = `Batch done. ${manifest.length} image${manifest.length === 1 ? '' : 's'} in cache.`;
-    renderBgGallery();
+  function _bgQueueAdd(count) {
+    _bgQueuePending += count;
+    _bgUpdateQueueUI();
+    _bgQueueRunner(); // start draining if not already running
   }
 
-  $('bgPreviewBtn')?.addEventListener('click', _bgGenerate);
-  $('bgPreviewBtn2')?.addEventListener('click', _bgGenerate);
-  $('bgPreviewBatchBtn')?.addEventListener('click', _bgGenerateBatch);
+  function _bgQueueRemove() {
+    if (_bgQueuePending > 0) {
+      _bgQueuePending--;
+      _bgUpdateQueueUI();
+      if (_bgQueuePending === 0 && bgEngine.activeGenerations === 0) {
+        const status = $('bgPreviewStatus');
+        if (status) status.textContent = 'Queue cleared.';
+      }
+    }
+  }
+
+  $('bgPreviewBtn')?.addEventListener('click', () => _bgQueueAdd(1));
+  $('bgPreviewBatchBtn')?.addEventListener('click', () => _bgQueueAdd(4));
+  $('bgRemoveQueuedBtn')?.addEventListener('click', _bgQueueRemove);
+  $('bgAutoGenToggle')?.addEventListener('change', e => { state.bgAutoGen = e.target.checked; saveUserSettings(); });
   $('bgSaveLastBtn')?.addEventListener('click', async () => {
     const manifest = await bgCacheGetManifest();
     if (manifest.length > 0) {

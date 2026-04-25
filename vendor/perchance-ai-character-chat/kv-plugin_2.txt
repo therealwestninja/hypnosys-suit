@@ -1,0 +1,133 @@
+<h1>kv-plugin</h1>
+<main>
+  <p>This plugin allows you to save data in a way that will be accessible even after the page has been reloaded/closed. It's mainly for more advanced Perchance devs. If you want a simpler alternative, you can just use <code>localStorage.abc="123"</code> to set a value, and <code>localStorage.abc="123"</code> to get that value later, even after page reload. <code>localStorage</code> is built into the browser, so it doesn't require a plugin.</p>
+  <p>Compare <a href="https://perchance.org/kv-plugin-example#edit" target="_blank">kv-plugin-example</a> and <a href="https://perchance.org/localstorage-example#edit" target="_blank">localstorage-example</a> to see similarity/differences in usage.</p>
+  <p>The advantage of this plugin over localStorage is that it allows you to store a <b>lot</b> more data (hundreds of megabytes instead of about 10 megabytes), and it allows many data types instead of just text/strings. This is possible because behind the scenes, it uses <a href="https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API" target="_blank">IndexedDB</a>. You need to use it within an 'async' function, since you need to 'await' it, as you can see in the examples below.</p>
+  <p>The name of this plugin comes from the programming concept of "key-value" stores. Put simply "key-value storage" is just a thing where you store and retrieve some data ("value") just based on a name ("key") that you give it.</p>
+  <p>You really only need to know two features to use this plugin. Here's a very example where we have a 'stories' folder, where we save stories, identified by their name:</p>
+<pre>
+<span style="opacity:0.5">// "fairytale1" is the key/name, and "Once upon a time..." is the value/data we're storing under that name</span>
+await kv.stories.set("fairytale1", "Once upon a time..."); <span style="opacity:0.5">// save some story text in the 'stories' folder, which will later be accessible via the name we chose (see below)</span>
+
+<span style="opacity:0.5">// ... and then later, even after the page has been refreshed:</span>
+let text = await kv.stories.get("fairytale1"); <span style="opacity:0.5">// get the story text from the 'stories' folder based on the story name</span>
+<span style="opacity:0.5">// the 'text' variable now contains "Once upon a time..."</span>
+</pre>
+<p>You'll normally use them inside async functions, like this:</p>
+<pre>  
+async saveStory(name, text) =>
+  await kv.stories.set(name, text); <span style="opacity:0.5">// save some story text in the 'stories' folder, which will later be accessible via the name we chose (see below)</span>
+
+async getStory(name) =>
+  let text = await kv.stories.get(name); <span style="opacity:0.5">// get the story text from the 'stories' folder based on the story name</span>
+  return text;
+</pre>
+  <p>The general term for 'name' in database/storage lingo in 'key', and the general term for the data we "put into" that name slot is 'value'.</p>
+  <p>Here's the full list of available functions:</p>
+<pre>
+await kv.folderName.<span style="color:green;">set</span>("abc", 123);
+let num = await kv.folderName.<span style="color:green;">get</span>("abc");
+await kv.folderName.<span style="color:green;">delete</span>("abc");
+
+<span style="opacity:0.5">// you can also store whole objects, and other data types:</span>
+let bob = \{name:"Bob", hp:100, inventory:\["stick", "flask"\]\};
+await kv.characters.<span style="color:green;">set</span>("Bob", bob);
+
+await kv.folderName.<span style="color:green;">setMany</span>(\[\["abc", 123\], \["blah", 456\]\]);
+let array = await kv.folderName.<span style="color:green;">getMany</span>(\["abc", "blah"\]);
+await kv.folderName.<span style="color:green;">deleteMany</span>(\["abc", "blah"\]);
+
+let entries = await kv.folderName.<span style="color:green;">entries</span>(); <span style="opacity:0.5">// an array of all the \[key,value\] items in the folder</span>
+let keys = await kv.folderName.<span style="color:green;">keys</span>(); <span style="opacity:0.5">// an array of all the keys in the folder</span>
+let values = await kv.folderName.<span style="color:green;">values</span>(); <span style="opacity:0.5">// an array of all the values in the folder</span>
+
+<span style="opacity:0.5">// advanced feature:</span>
+await kv.folderName.<span style="color:green;">update</span>("abc", (v) => v+1)
+<span style="opacity:0.5">// which is the same as:</span>
+await kv.folderName.<span style="color:green;">update</span>("abc", function(v) \{
+  return v + 1;
+\});
+</pre>
+  <h3>Notes on the <code>update</code> function:</h3>
+  <p>As you can see above, the <code>update</code> function takes a key as the first argument, and a <u>function</u> as the second argument, and the function's input (<code>v</code>, above) will tell you the existing value, and the value that you <code>return</code> from that function is the new value that will be stored in that key (<code>"abc"</code> in above example)</p>
+  <p>But why would we want something complex like that when we can just write something like this?:</p>
+<pre>
+let v = await kv.folderName.<span style="color:green;">get</span>("abc");
+await kv.folderName.<span style="color:green;">set</span>("abc", v+1);
+</pre>
+  <p>Well, this has to do with the fact that set/get doesn't happen instantly (that's why we need to <code>await</code> the set/get calls). So in the above example, there could actually be other code running in our app in between the two lines. And what if that other code is <i>also</i> getting the "abc" value and adding one to it? If both of them fetch the value at the same time and get 123, and then they both add one to it, then they'll both save 124 back into the storage. So imagine if the first get/set was caused by the player in our game clicking a treasure chest (i.e. adds 1 to their "gold" value), and the second get/set was caused by a "farm" that automatically gives them a point once per minute (also adds 1 to their "gold" value), then they should obviously get points for both of those things, so their points should be 125, not 124. But if those two things happen right at the same instant using code like the get/set code above, then that could result in 124.</p>
+  
+  <p>So this is where <code>update</code> comes in handy. Each call to <code>update</code> is done "atomically" - i.e. within a single database "transaction". So you can be sure that there isn't some code elsewhere which is setting the key at the same instant. This isn't usually something you'd have to worry about with JavaScript, but since this plugin is 'async' (unfortunately IndexedDB is async so there's no way around this), it's possible for multiple parts of your codebase to be interacting with your data at the same time.</p>
+
+  <p>So TL;DR, if you have a complex app/game/etc. where you've got lots of things editing the database, and you want to do an operation that <u>depends on what the current value</u> is (e.g. you want to set it to currentValue+1, or currentValue*10, etc.), then do something like this:</p>
+<pre>
+await kv.folderName.<span style="color:green;">update</span>("abc", v=>v+1);
+<span style="opacity:0.5">// or, another example, where a 'bob' character, which is stored as an *object* takes some damage:</span>
+await kv.characters.<span style="color:green;">update</span>("bob", char=>char.hp--); <span style="opacity:0.5">// `char.hp--` is shorthand for  `char.hp=char.hp-1`  i.e. subtract one from char.hp</span>
+</pre>
+  <p>Not this:</p>
+<pre>
+let v = await kv.folderName.<span style="color:green;">get</span>("abc");
+<span style="opacity:0.5">// since the above line has 'await' (i.e. it's an 'async' operation), some other code in our game/app could have fetched 'abc' data at the same time, and if it's also going to increment the value, then we'll both increment it to the same number, instead of it being incremented twice</span>
+await kv.folderName.<span style="color:green;">set</span>("abc", v+1);
+</pre>
+  	<p><b>Notes:</b></p>
+	<ul>
+		<li><a href="https://perchance.org/kv-plugin-example#edit">Here's a simple example</a> of a generator that uses this plugin.</li>
+		<li>Check out more plugins at <a href="/plugins">perchance.org/plugins</a></li>
+	</ul>
+</main>
+<!-- The line below makes it so if your device is in dark mode, then the default text color is switched to white, and the default background color is switch to black. -->
+<style> html { color-scheme: light dark; } </style>
+<style>
+  ul li {
+		margin-top:0.5em;	
+	}
+	main {
+		max-width:900px;
+		margin:0 auto;
+		background: #fff;
+		background: light-dark(#fff, #101010);
+		padding:1em;
+		border-radius:3px;
+		box-shadow: 0 0.5px 0 0 #ffffff inset, 0 1px 2px 0 #B3B3B3;
+		box-shadow: 0 0.5px 0 0 light-dark(#fff, #060606) inset, 0 1px 2px 0 light-dark(#B3B3B3, #2c2c2c);
+	}
+	p { text-align:left; line-height: 1.4em; }
+  main p:first-child {
+    margin-top:0;
+  }
+	body {
+		background-color:#f6f6f6;	
+		background-color: light-dark(#f6f6f6, #000);
+    color: black;
+    color: light-dark(black, #d6d6d6);
+	}
+	pre {
+		text-align:left;
+		background: #333;
+    background: light-dark(#333, #212121);
+    color: #e2e2e2;
+    padding: 1em;
+    border-radius: 2px;
+		tab-size: 2;
+		-moz-tab-size: 2;
+		-o-tab-size: 2;
+		-webkit-tab-size: 2;
+	}
+	code {
+		background: #eff0f1;
+    background:  light-dark(#eff0f1, #272727);
+    padding: 1px 5px;	
+		white-space: nowrap;
+	}
+	h2 {
+		margin-top: 1.5em;	
+	}
+	@media screen and (max-width: 600px) {
+		#header {
+			font-size:1.6rem !important;
+		} 
+	}
+  html { color-scheme: dark light }
+</style>
