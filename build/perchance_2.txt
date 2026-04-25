@@ -803,6 +803,41 @@
     font-weight: 700;
   }
   .tod-badge::before { content: '✦'; font-size: 0.7rem; }
+
+  /* ============ REIMAGINE BUTTONS (Custom blocks) ============ */
+  /* Inline ✨ button on each Custom phase row that triggers AI rewrite. */
+  .phase-reimagine {
+    background: transparent !important;
+    color: var(--neon-cyan) !important;
+    border: 1.5px solid var(--neon-cyan) !important;
+    padding: 4px 10px !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+    transition: all 0.2s !important;
+  }
+  .phase-reimagine:hover:not(:disabled) {
+    background: rgba(0,212,230,0.08) !important;
+    box-shadow: var(--glow-cyan) !important;
+  }
+  .phase-reimagine:disabled { opacity: 0.4; cursor: not-allowed; }
+  /* Active mode in the global toggle */
+  .reimagine-mode-btn.active {
+    background: rgba(0,212,230,0.12) !important;
+    color: var(--neon-cyan) !important;
+    border-color: var(--neon-cyan) !important;
+    box-shadow: 0 0 6px rgba(0,212,230,0.25) !important;
+  }
+  /* Custom row visual treatment so user can spot them at a glance */
+  .phase-editor-row.is-custom {
+    border-left: 3px solid var(--neon-cyan);
+    padding-left: 8px;
+  }
+  .phase-editor-row.is-sounding {
+    border-left: 3px solid var(--accent-warm);
+    padding-left: 8px;
+  }
   .bg-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; max-height: 380px; overflow-y: auto; padding: 8px 0; }
   .bg-gallery-item { position: relative; border-radius: 6px; overflow: hidden; aspect-ratio: 3/2; cursor: pointer; border: 1px solid var(--glass-border); }
   .bg-gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s; }
@@ -2653,12 +2688,23 @@ I return to myself easily"></textarea>
             <button class="preview-btn" id="addDeepenerPhaseBtn" title="Adds a Deepener — auto-adds a paired Lightener. Stackable for nested deepening.">+ add deepener (nest)</button>
             <button class="preview-btn" id="addWorkPhaseBtn">+ add work block</button>
             <button class="preview-btn" id="addAffirmPhaseBtn">+ add affirmation</button>
+            <button class="preview-btn" id="addSoundingPhaseBtn" title="Adds a Sounding — a brief meta-awareness pause where the user notices their current internal state without changing it.">+ add sounding</button>
+            <button class="preview-btn" id="addCustomPhaseBtn" title="Adds a user-authored block. Edit the text directly, or use Reimagine to have your guide rewrite it.">+ add custom</button>
             <button class="preview-btn" id="addLightenerPhaseBtn">+ add lightener</button>
             <button class="preview-btn" id="addWakePhaseBtn">+ add wake</button>
             <button class="preview-btn" id="addReintroPhaseBtn">+ add reintro</button>
             <button class="preview-btn" id="normalizePhaseOrderBtn">reset to default order</button>
             <button class="preview-btn" id="undoBtn" disabled title="Undo (Ctrl+Z / Cmd+Z)">↶ undo</button>
             <button class="preview-btn" id="redoBtn" disabled title="Redo (Ctrl+Shift+Z / Cmd+Shift+Z)">↷ redo</button>
+          </div>
+          <!-- Reimagine mode toggle — used by Custom block ✨ buttons -->
+          <div id="reimagineModeRow" style="margin-top:10px; padding:8px 10px; background:var(--bg-soft); border:1px solid var(--glass-border); display:none;">
+            <div style="font-size:0.7rem; color:var(--text-faint); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:4px;">reimagine mode</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <button type="button" class="preview-btn reimagine-mode-btn" data-mode="guide" title="Rewrites in the persona's voice only. No profile data injection.">⚡ guide voice only</button>
+              <button type="button" class="preview-btn reimagine-mode-btn" data-mode="smart" title="Rewrites in the persona's voice with Smart Director profile + memory context.">✦ smart director</button>
+              <span id="reimagineModeHint" style="font-size:0.7rem; color:var(--text-dim); margin-left:6px;"></span>
+            </div>
           </div>
           <div class="sublabel" id="phaseStructureHint" style="margin-top:8px; font-size:0.72rem; color:var(--text-faint);">
             Default structure: <span style="color:var(--text-dim);">\{\{Settling\}\} \{\{Induction\}\} \{\{Deepener\}\} &rarr; (\{\{Work\}\}, \{\{Affirmation\}\}) &times; N &rarr; \{\{Lightener\}\} \{\{Wake\}\} \{\{Reintroduction\}\}</span>.
@@ -6483,6 +6529,8 @@ I return to myself easily"></textarea>
       // Local AI voice (Phase 6) — opt-in offline TTS via Transformers.js
       useLocalTTS: !!state.useLocalTTS,
       localVoiceSpeaker: state.localVoiceSpeaker || 'clb',
+      // Reimagine mode for Custom blocks (Phase 7) — 'guide' or 'smart'
+      reimagineMode: state.reimagineMode || 'smart',
       remoteProcessingOptIn: !!$('remoteProcessingOptIn')?.checked,
       smartDirectorEnabled: !!$('smartDirectorEnabled')?.checked,
       directorBias: Number($('directorBiasSlider')?.value ?? state.directorBias ?? 0),
@@ -6743,6 +6791,8 @@ I return to myself easily"></textarea>
             : 'Could not load the local voice model — will fall back to the system voice.';
         });
       }
+      // Reimagine mode (Phase 7) — defaults to 'smart' if Smart Director is on, else 'guide'
+      state.reimagineMode = s.reimagineMode || (s.smartDirectorEnabled === false ? 'guide' : 'smart');
       state.remoteProcessingOptIn = !!s.remoteProcessingOptIn;
       const rpcb = $('remoteProcessingOptIn'); if (rpcb) rpcb.checked = !!state.remoteProcessingOptIn;
       state.smartDirectorEnabled = s.smartDirectorEnabled !== false;
@@ -12118,6 +12168,8 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       emergence: 'Emergence',
       work: idx ? `Work ${idx}` : 'Work',
       affirm: idx ? `Affirmation ${idx}` : 'Affirmation',
+      sounding: idx ? `Sounding ${idx}` : 'Sounding',
+      custom: idx ? `Custom ${idx}` : 'Custom',
     };
     return labels[base] || phaseId;
   }
@@ -12291,6 +12343,26 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
     if (kind === 'reintroduction') {
       return sections.length;
     }
+    if (kind === 'sounding') {
+      // Sounding (depth check / witness moment) — slot AFTER deepener and
+      // BEFORE work so the user takes a meta-awareness pause at the bottom of
+      // the descent before therapeutic work begins. Subsequent soundings
+      // (multiple) stack at the same canonical position; user can move with
+      // up/down arrows.
+      const lastDeepener = lastIdxOf(s => phaseBase(s.phaseId) === 'deepener');
+      const beforeWork = idxOf(s => ['work','affirm','lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
+      if (beforeWork >= 0) return beforeWork;
+      if (lastDeepener >= 0) return lastDeepener + 1;
+      return sections.length;
+    }
+    if (kind === 'custom') {
+      // Custom (user-authored) — default to before lightener (i.e. inside the
+      // trance work zone, after work blocks). User can re-arrange freely with
+      // up/down arrows; this is just a sensible initial slot.
+      const beforeReturn = idxOf(s => ['lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
+      if (beforeReturn >= 0) return beforeReturn;
+      return sections.length;
+    }
     return sections.length;
   }
 
@@ -12409,6 +12481,30 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       const base = phaseBase(p);
       if (base === 'affirm') {
         phaseInstructions[p] = `Write a brief affirmation interlude (~40-60 words). Deliver these affirmations in ${persona.name}'s voice, woven into flowing, hypnotic language:\n${affirmLines.map(l => `"${l}"`).join('\n')}\nUse the user's exact words. Add \x5BPAUSE 3\x5D between each. Poetic, rhythmic, repetitive. Output ONLY script text.`;
+      } else if (base === 'sounding') {
+        // Sounding (a.k.a. depth check / witness moment) — a meta-awareness
+        // pause where the narrator invites the user to register their CURRENT
+        // internal state without changing it. Interoceptive prompt; pulled
+        // from clinical mindfulness + somatic-experiencing protocols (Levine,
+        // Kabat-Zinn). Should feel like coming up for a breath without
+        // breaking trance.
+        phaseInstructions[p] = `Write a SOUNDING phase (~80-130 words). This is a brief meta-awareness moment — a "depth check" where you invite the user to NOTICE how they feel right now WITHOUT changing it. The narrator pauses the descent or work, lets the user register their own state, then continues.
+
+Tone: gently observing, never directive. The user is the instrument; you're helping them read it.
+
+Touch on (pick 2-3, in ${persona.name}'s voice):
+  • the body — weight, warmth, the sit of the hands, the feel of the breath at this moment
+  • the mind — the speed and quality of thoughts, what's surfacing
+  • the awareness itself — wide or narrow, sharp or soft, near or far
+  • emotional weather — what's present, without naming it as good or bad
+
+End with a brief acknowledgment that you're now continuing — bridging back to the surrounding phase. Use \x5BPAUSE 4-7\x5D between observations to give the user time to actually look. Output ONLY script text.`;
+      } else if (base === 'custom') {
+        // Custom blocks are user-authored — they pass through generation
+        // verbatim. We DO NOT issue a prompt for these. The Reimagine button
+        // in the editor uses a separate flow (reimagineCustomPhase).
+        // Leaving phaseInstructions[p] undefined is safe: generateSinglePhase
+        // checks the phaseId and skips custom blocks during generation.
       } else if (base === 'work') {
         const workIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
         let role;
@@ -12833,6 +12929,14 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
   async function generateSinglePhase(gs, idx, opts = {}) {
     const phase = gs.phases[idx];
     const phaseLabel = getPhaseLabel(phase);
+    // Custom blocks are user-authored and pass through verbatim. If the user
+    // wants AI output for a custom block, they use the Reimagine button in
+    // the phase editor (reimagineCustomPhase), which is a separate flow.
+    if (phaseBase(phase) === 'custom') {
+      const existing = (gs.phaseResults && gs.phaseResults[phase]) || scaffoldForPhase(phase);
+      setStreamingPreview(phaseLabel, existing, { done: true });
+      return existing;
+    }
     const summaryBlock = gs.priorSummary ? `\n\nSO FAR (summary — continue seamlessly, DO NOT repeat):\n${gs.priorSummary}` : '';
     const taskBlock = `\n\n═══ YOUR TASK ═══\n${gs.phaseInstructions[phase]}\n\nREMINDER: You are ${gs.persona.name}. Voice, vocabulary, cadence — match the role above completely. ${gs.method.pacing ? `Pacing must follow the ${gs.method.pacing} rule established earlier.` : ''} No ===PHASE=== markers. Start immediately:`;
 
@@ -13425,29 +13529,48 @@ ${s.text.trim()}`).join('\n\n').trim();
     const meta = computePairMetadata(sections);
     list.innerHTML = sections.map((s, i) => {
       const m = meta[i];
-      const rowClass = 'toggle-row phase-editor-row' + (m.pairGroup ? ' pair-' + m.pairGroup : '');
+      const base = phaseBase(s.phaseId);
+      const isCustom = base === 'custom';
+      const isSounding = base === 'sounding';
+      const rowClass = 'toggle-row phase-editor-row'
+        + (m.pairGroup ? ' pair-' + m.pairGroup : '')
+        + (isCustom ? ' is-custom' : '')
+        + (isSounding ? ' is-sounding' : '');
       const depthAttr = m.depth ? ` data-depth="${m.depth}"` : '';
       const tag = m.pairGroup === 'trance'
         ? '<span class="phase-pair-tag tag-trance" title="Induction ↔ Wake / Reintroduction">↕ trance</span>'
         : m.pairGroup === 'depth'
           ? `<span class="phase-pair-tag tag-depth" title="Deepener ↔ Lightener (level ${m.depth})">↕ depth ${m.depth}</span>`
-          : '';
+          : isCustom
+            ? '<span class="phase-pair-tag" style="background:rgba(0,212,230,0.1);color:var(--neon-cyan);" title="User-authored block — bypasses AI generation">✎ custom</span>'
+            : isSounding
+              ? '<span class="phase-pair-tag" style="background:rgba(201,168,85,0.1);color:var(--accent-warm);" title="Meta-awareness pause — depth check / witness moment">◉ sounding</span>'
+              : '';
       const preview = escapeHtml((s.text || '').replace(/\x5BPAUSE\s+\d+\x5D/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 100) || 'empty');
+      // Custom rows get an extra Reimagine action; the column count adjusts to fit
+      const reimagineBtn = isCustom
+        ? `<button class="preview-btn phase-reimagine" data-idx="${i}" title="Rewrite this block in your guide's voice">✨ reimagine</button>`
+        : '';
+      const colCount = isCustom ? 4 : 3;
       return `
       <div class="${rowClass}" data-phase-idx="${i}"${depthAttr} style="align-items:flex-start;">
         <div style="flex:1; min-width:0;">
           <label>${escapeHtml(getPhaseLabel(s.phaseId))}${tag}<span class="hint">${preview}</span></label>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(3, minmax(72px, auto)); gap:6px; margin-left:8px;">
+        <div style="display:grid; grid-template-columns:repeat(${colCount}, minmax(72px, auto)); gap:6px; margin-left:8px;">
           <button class="preview-btn phase-up" data-idx="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
           <button class="preview-btn phase-down" data-idx="${i}" ${i === sections.length - 1 ? 'disabled' : ''}>↓</button>
           <button class="preview-btn phase-remove" data-idx="${i}">remove</button>
+          ${reimagineBtn}
         </div>
       </div>`;
     }).join('');
     list.querySelectorAll('.phase-up').forEach(btn => btn.addEventListener('click', () => movePhaseSection(parseInt(btn.dataset.idx, 10), -1)));
     list.querySelectorAll('.phase-down').forEach(btn => btn.addEventListener('click', () => movePhaseSection(parseInt(btn.dataset.idx, 10), 1)));
     list.querySelectorAll('.phase-remove').forEach(btn => btn.addEventListener('click', () => removePhaseSection(parseInt(btn.dataset.idx, 10))));
+    list.querySelectorAll('.phase-reimagine').forEach(btn => btn.addEventListener('click', () => reimagineCustomPhase(parseInt(btn.dataset.idx, 10))));
+    // Refresh the global Reimagine mode toggle visibility (only shown when ≥1 custom block exists)
+    if (typeof _refreshReimagineModeUI === 'function') _refreshReimagineModeUI();
     // Pair-highlighting: hovering a paired phase highlights its partner(s).
     list.querySelectorAll('.phase-editor-row').forEach((row, i) => {
       const m = meta[i];
@@ -13569,6 +13692,17 @@ ${s.text.trim()}`).join('\n\n').trim();
     }
     if (phaseBase(phaseId) === 'work') return 'Continue the work here. \x5BPAUSE 3\x5D';
     if (phaseBase(phaseId) === 'affirm') return 'Return to the user\'s affirmations here. \x5BPAUSE 3\x5D';
+    if (phaseBase(phaseId) === 'sounding') {
+      // Sounding (a.k.a. depth check / witness moment) — meta-awareness pause.
+      // Generic fallback; the AI re-roll on this phase produces a personalized
+      // version using buildPhaseInstructions['sounding'].
+      return 'Take a sounding now. Notice — without changing anything — how you feel in this moment. The weight of the body. The quality of the breath. The shape of your awareness right now. \x5BPAUSE 5\x5D';
+    }
+    if (phaseBase(phaseId) === 'custom') {
+      // Custom phase — user-authored. Empty scaffold so the user knows it's
+      // theirs to fill. Reimagine button lets them bounce drafts through AI.
+      return '(Your custom text here. Edit this directly, or use Reimagine to have your guide rewrite it.) \x5BPAUSE 3\x5D';
+    }
     if (phaseId === 'wake') return 'In a moment, coming all the way back now. Five, returning. Four, breathing deeper. Three, energy returning. Two, eyes beginning to open. One, fully awake and alert. \x5BPAUSE 3\x5D';
     if (phaseId === 'reintroduction') return 'Welcome back. When you feel ready, slowly get up. Stretch. Shake it off. Go about your day. \x5BPAUSE 3\x5D';
     return 'New phase text. \x5BPAUSE 3\x5D';
@@ -13592,7 +13726,7 @@ ${s.text.trim()}`).join('\n\n').trim();
       const existingCount = countPhaseBase(sections.concat(added), kind);
       let id = kind;
       // Numbered IDs for anything that can legitimately appear multiple times
-      if (['work', 'affirm', 'deepener', 'lightener'].includes(kind)) {
+      if (['work', 'affirm', 'deepener', 'lightener', 'sounding', 'custom'].includes(kind)) {
         const nextN = existingCount + 1;
         id = nextN > 1 ? `${kind}-${nextN}` : kind;
         // Rename the first occurrence to `${kind}-1` for consistency once we have 2+.
@@ -13643,7 +13777,7 @@ ${s.text.trim()}`).join('\n\n').trim();
 
     // Normalize IDs: if we now have 2+ of a kind where the first was unnumbered,
     // promote it to `-1` so downstream code sees consistent numbering.
-    ['work', 'affirm', 'deepener', 'lightener'].forEach(kind => {
+    ['work', 'affirm', 'deepener', 'lightener', 'sounding', 'custom'].forEach(kind => {
       const indexes = sections.map((s, i) => phaseBase(s.phaseId) === kind ? i : -1).filter(i => i >= 0);
       if (indexes.length >= 2) {
         indexes.forEach((sectionIdx, n) => {
@@ -13657,6 +13791,118 @@ ${s.text.trim()}`).join('\n\n').trim();
     if (added.length > 1) {
       const labels = added.map(s => getPhaseLabel(s.phaseId)).join(' + ');
       notify.info(`Added paired phases: ${labels}`);
+    }
+  }
+
+  // ====================================================================
+  // REIMAGINE — bounce a Custom block through the AI in the persona's voice
+  // ====================================================================
+  // Two modes:
+  //   guide  — pass only the persona's role text; no profile/memory injection
+  //   smart  — full Smart Director context (profile + adaptive + memory)
+  // Default to 'smart' if Smart Director is on, else 'guide'.
+
+  function _refreshReimagineModeUI() {
+    const mode = state.reimagineMode || (state.smartDirectorEnabled === false ? 'guide' : 'smart');
+    state.reimagineMode = mode; // normalize
+    document.querySelectorAll('.reimagine-mode-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === mode);
+    });
+    const hint = $('reimagineModeHint');
+    if (hint) hint.textContent = mode === 'smart'
+      ? 'Uses your profile + memory to personalize the rewrite.'
+      : 'Persona voice only — no profile data injected.';
+    // The mode row is only useful when at least one Custom block exists
+    const row = $('reimagineModeRow');
+    if (row) {
+      const hasCustom = (state.scriptSections || []).some(s => phaseBase(s.phaseId) === 'custom');
+      row.style.display = hasCustom ? '' : 'none';
+    }
+  }
+
+  /** Reimagine a custom block through the AI. Replaces the block's text with
+   *  the rewrite, after showing a diff modal so the user can keep the original
+   *  if they prefer. */
+  async function reimagineCustomPhase(idx) {
+    if (_aiInProgress) { notify.info('An AI call is already in progress — try again in a moment.'); return; }
+    const sections = getScriptSectionsFromState();
+    const section = sections[idx];
+    if (!section || phaseBase(section.phaseId) !== 'custom') return;
+    const userText = (section.text || '').trim();
+    if (!userText || userText.length < 8) {
+      notify.info('Write something in the block first — Reimagine needs a draft to work from.');
+      return;
+    }
+    const mode = state.reimagineMode || (state.smartDirectorEnabled === false ? 'guide' : 'smart');
+    const persona = getPersona();
+    const method = getMethod();
+    const personaRole = getPersonaRole(persona);
+
+    // Build instruction blocks
+    const voiceBlock = `You are ${persona.name}.\n${personaRole}\n\nMETHOD CONTEXT: ${method.name} — ${method.detail}`;
+    const profileBlock = mode === 'smart' ? getProfileContext() : '';
+    const taskBlock = `\n\n═══ YOUR TASK ═══
+The user wrote the following text and wants you to REIMAGINE it in your voice.
+
+Their draft:
+"""
+${userText}
+"""
+
+Rewrite it as ${persona.name} — preserve their INTENT and meaning, but use YOUR vocabulary, cadence, and signature phrasing. Keep similar overall length (within ±30%). Add or adjust \x5BPAUSE n\x5D markers where natural for your pacing. Output ONLY the rewritten text — no preamble, no commentary, no markers like ===CUSTOM===.
+
+Start immediately:`;
+
+    const instruction = trimToTokenBudget([
+      { name: 'voice',   text: voiceBlock,   priority: 5 },
+      { name: 'profile', text: profileBlock, priority: 3 },
+      { name: 'task',    text: taskBlock,    priority: 5 },
+    ], 700);
+
+    // Find the row's reimagine button to give visible feedback
+    const btn = document.querySelector(`.phase-reimagine[data-idx="${idx}"]`);
+    const origLabel = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ rewriting…'; }
+    _aiInProgress = true;
+    try {
+      const result = await aiGenerate(instruction, { stopSequences: ['\n\n[[', '\n\n---', '\n===', '\n\n\n'] });
+      if (!result || !result.generatedText) throw new Error(result?._note || 'no text returned');
+      // Strip any leaked markers + leading/trailing quotes
+      let newText = result.generatedText
+        .replace(/^=+\s*[A-Z0-9-]+\s*=+\s*/i, '')
+        .replace(/^\s*["'""'']\s*/, '')
+        .replace(/\s*["'""'']\s*$/, '')
+        .trim();
+      if (!newText || newText.length < 8) throw new Error('AI returned too little text');
+
+      // Show diff modal so the user can pick — same UX as phase retry
+      let chosen = newText;
+      if (typeof showPhaseDiffModal === 'function') {
+        const pick = await showPhaseDiffModal(userText, newText, getPhaseLabel(section.phaseId));
+        chosen = pick === 'old' ? userText : newText;
+      }
+      if (chosen !== userText) {
+        const commit = history.beginChange();
+        const fresh = getScriptSectionsFromState();
+        // Re-resolve idx in case the editor was modified during await
+        if (fresh[idx] && phaseBase(fresh[idx].phaseId) === 'custom') {
+          fresh[idx] = { ...fresh[idx], text: chosen };
+          setScriptFromSections(fresh);
+          commit();
+          notify.success(`${getPhaseLabel(section.phaseId)} reimagined in ${persona.name}'s voice.`);
+        } else {
+          // Editor changed mid-flight — abort the write
+          notify.info('Editor changed during rewrite. Result discarded.');
+        }
+      } else {
+        notify.info('Kept your original.');
+      }
+    } catch (e) {
+      console.error('[reimagine] failed:', e);
+      notify.error(`Reimagine failed: ${e.message || e}`);
+    } finally {
+      _aiInProgress = false;
+      if (btn) { btn.disabled = false; btn.textContent = origLabel || '✨ reimagine'; }
     }
   }
 
@@ -16404,9 +16650,21 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('addDeepenerPhaseBtn')?.addEventListener('click', () => addPhaseSection('deepener'));
   $('addWorkPhaseBtn')?.addEventListener('click', () => addPhaseSection('work'));
   $('addAffirmPhaseBtn')?.addEventListener('click', () => addPhaseSection('affirm'));
+  $('addSoundingPhaseBtn')?.addEventListener('click', () => addPhaseSection('sounding'));
+  $('addCustomPhaseBtn')?.addEventListener('click', () => addPhaseSection('custom'));
   $('addLightenerPhaseBtn')?.addEventListener('click', () => addPhaseSection('lightener'));
   $('addWakePhaseBtn')?.addEventListener('click', () => addPhaseSection('wake'));
   $('addReintroPhaseBtn')?.addEventListener('click', () => addPhaseSection('reintroduction'));
+
+  // Reimagine mode toggle (affects Custom block ✨ buttons)
+  document.querySelectorAll('.reimagine-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.mode;
+      state.reimagineMode = mode;
+      saveUserSettings();
+      _refreshReimagineModeUI();
+    });
+  });
   $('normalizePhaseOrderBtn')?.addEventListener('click', resetPhaseOrderToDefault);
   $('undoBtn')?.addEventListener('click', () => history.undo());
   $('redoBtn')?.addEventListener('click', () => history.redo());
