@@ -1687,15 +1687,19 @@ body.in-session .footer {
           <div id="sidebarStats"></div>
           <div id="heatmapWrap" style="margin-top:6px;"></div>
         </details>
-        <details>
-          <summary>history</summary>
+        <details id="sessionHistoryDetails">
+          <summary>session history</summary>
           <div id="sessionStatsPanel"></div>
           <div class="history-list" id="sessionHistoryList"></div>
-        </details>
-        <details id="pfChangeLogDetails">
-          <summary>change log <span id="pfChangeLogCount" class="sublabel" style="font-weight:normal;opacity:0.6;"></span></summary>
-          <div id="pfChangeLogList" style="margin-top:8px;max-height:400px;overflow-y:auto;font-size:0.78rem;"></div>
-          <div class="sublabel" style="margin-top:6px;font-size:0.58rem;">Oldest 200 changes retained. Image entries use LLM tags when remote processing is on, local tags otherwise.</div>
+          <!-- Profile change log — moved into Session History 2026-04-25.
+               Lazy-rendered when the parent details opens (see initDiffBouncers
+               toggle handler). The pfChangeLogDetails id stays on the inner
+               wrapper so any code that looks for it still finds something. -->
+          <div id="pfChangeLogDetails" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--glass-border);">
+            <div class="pf-label" style="margin-bottom:6px;font-size:0.7rem;">change log <span id="pfChangeLogCount" class="sublabel" style="font-weight:normal;opacity:0.6;"></span></div>
+            <div id="pfChangeLogList" style="margin-top:4px;max-height:300px;overflow-y:auto;font-size:0.78rem;"></div>
+            <div class="sublabel" style="margin-top:6px;font-size:0.58rem;">Oldest 200 changes retained. Image entries use LLM tags when remote processing is on, local tags otherwise.</div>
+          </div>
         </details>
         <details>
           <summary>backup</summary>
@@ -2250,6 +2254,7 @@ I return to myself easily"></textarea>
         <div class="script-actions">
           <button class="btn secondary" id="regenScriptBtn">regenerate</button>
           <button class="btn secondary" id="autoTempoBtn">⏱ auto-tempo</button>
+          <button class="btn secondary" id="autoTempoOptsBtn" title="Auto-tempo cleanup options" style="padding:4px 8px;">⚙</button>
           <button class="btn secondary" id="exportScriptBtn">↓ download .txt</button>
           <button class="btn secondary" id="shareConfigBtn" title="Create a shareable link for this session config">🔗 share link</button>
           <button class="btn green" id="beginBtn">begin session →</button>
@@ -2362,6 +2367,10 @@ I return to myself easily"></textarea>
         <div class="post-card" id="postSummary"></div>
         <!-- Trigger/suggestion -->
         <div class="post-card" id="postTriggerBox" style="display:none;"></div>
+        <!-- Intention-aware reflection prompt (shown for non-emergency completion) -->
+        <div class="post-card" id="postReflectionBox" style="display:none;"></div>
+        <!-- Program continuation hint (shown if a program just advanced a day) -->
+        <div class="post-card" id="postProgramBox" style="display:none;"></div>
       </div>
 
       <!-- Check-in row: mood + alertness + depth -->
@@ -2548,12 +2557,64 @@ I return to myself easily"></textarea>
   </div>
 
 <div class="modal-backdrop" id="personaModal">
-  <div class="modal">
+  <div class="modal" style="max-width:560px;">
     <h2 id="personaModalTitle">create custom persona</h2>
     <div class="field"><label class="field-label-sm">name</label><input type="text" id="personaFormName"></div>
     <div class="field"><label class="field-label-sm">tagline</label><input type="text" id="personaFormTagline"></div>
     <div class="field"><label class="field-label-sm">category</label><select id="personaFormCategory"><option value="contemplative">Contemplative</option><option value="showman">Showman</option><option value="somatic">Somatic</option><option value="authoritarian">Authoritarian</option></select></div>
-    <div class="field"><label class="field-label-sm">voice instruction</label><textarea id="personaFormPrompt" rows="6"></textarea></div>
+    <div class="field"><label class="field-label-sm">voice instruction</label><textarea id="personaFormPrompt" rows="6" placeholder="The persona's role/system prompt — what voice and style to use."></textarea></div>
+
+    <!-- Advanced (v2 schema fields, Perchance Character-aligned) -->
+    <details style="margin-top:8px;">
+      <summary style="font-size:0.78rem;color:var(--text-dim);cursor:pointer;padding:6px 0;">⚙ advanced (optional)</summary>
+      <div style="padding-top:10px;display:flex;flex-direction:column;gap:10px;">
+
+        <div class="field" style="margin:0;">
+          <label class="field-label-sm">reminder message <span class="hint" style="font-weight:normal;font-size:0.66rem;">(short — appended near end of phase prompts to anchor voice across long generations)</span></label>
+          <textarea id="personaFormReminder" rows="2" maxlength="500" placeholder="e.g. Remember: never use questions. Speak in the second person only."></textarea>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="field" style="margin:0;">
+            <label class="field-label-sm">image prompt prefix <span class="hint" style="font-weight:normal;font-size:0.66rem;">(prepended to portrait + bg prompts)</span></label>
+            <input type="text" id="personaFormImagePrefix" maxlength="200" placeholder="e.g. soft watercolor, dawn light">
+          </div>
+          <div class="field" style="margin:0;">
+            <label class="field-label-sm">image prompt suffix <span class="hint" style="font-weight:normal;font-size:0.66rem;">(appended)</span></label>
+            <input type="text" id="personaFormImageSuffix" maxlength="200" placeholder="e.g. fine art illustration, no text">
+          </div>
+        </div>
+
+        <div class="field" style="margin:0;">
+          <label class="field-label-sm">share-link title <span class="hint" style="font-weight:normal;font-size:0.66rem;">(SEO override when shared)</span></label>
+          <input type="text" id="personaFormMetaTitle" maxlength="100" placeholder="(optional — defaults to persona name + tagline)">
+        </div>
+        <div class="field" style="margin:0;">
+          <label class="field-label-sm">share-link description <span class="hint" style="font-weight:normal;font-size:0.66rem;">(SEO override when shared)</span></label>
+          <input type="text" id="personaFormMetaDescription" maxlength="200" placeholder="(optional — defaults to tagline)">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <div class="field" style="margin:0;">
+            <label class="field-label-sm">recommended rate <span class="hint" style="font-weight:normal;font-size:0.66rem;">(0.6–1.4)</span></label>
+            <input type="number" id="personaFormRecommendedRate" min="0.5" max="2.0" step="0.05" placeholder="(none)">
+          </div>
+          <div class="field" style="margin:0;">
+            <label class="field-label-sm">recommended visual</label>
+            <input type="text" id="personaFormRecommendedVisual" maxlength="40" placeholder="(none)">
+          </div>
+          <div class="field" style="margin:0;">
+            <label class="field-label-sm">recommended soundscape</label>
+            <input type="text" id="personaFormRecommendedSound" maxlength="40" placeholder="(none)">
+          </div>
+        </div>
+
+        <div class="sublabel" style="font-size:0.62rem;line-height:1.5;color:var(--text-faint);">
+          v2 schema, aligned with the Perchance Character spec. All fields optional. <code>uuid</code> + <code>creationTime</code> are auto-generated. Recommended values are surfaced as suggestions when this persona is selected — they don't override your manual settings.
+        </div>
+      </div>
+    </details>
+
     <div class="modal-actions"><button class="btn secondary" id="personaCancelBtn">cancel</button><button class="btn secondary" id="personaShareBtn" title="Create a shareable link for this persona">🔗 share</button><button class="btn" id="personaSaveBtn">save</button></div>
   </div>
 </div>
@@ -2592,6 +2653,52 @@ I return to myself easily"></textarea>
   </div>
 </div>
 
+<!-- AUTO-TEMPO CLEANUP OPTIONS MODAL -->
+<div class="modal-backdrop" id="autoTempoOptsModal">
+  <div class="modal" style="max-width:560px;">
+    <h2>auto-tempo cleanup options</h2>
+    <div style="font-size:0.78rem;color:var(--text-dim);line-height:1.55;margin-bottom:12px;">
+      Choose which characters should be removed from the script when auto-tempo runs. Characters that aren't in this set are left alone. <code>[PAUSE N]</code> markers and <code>\{\{tokens\}\}</code> are always preserved regardless.
+    </div>
+    <label class="toggle-row" for="autoTempoStripOrphan" style="align-items:flex-start;margin-bottom:14px;">
+      <input type="checkbox" id="autoTempoStripOrphan">
+      <span>
+        Strip orphan punctuation (recommended)
+        <span class="hint" style="line-height:1.5;">Removes leftover <code>" . "</code>, <code>" , "</code>, etc. patterns that the narrator otherwise reads aloud as "dot" or "comma". These are usually leftovers from stripped bracket annotations like <code>[stage direction]</code>.</span>
+      </span>
+    </label>
+    <div class="pf-label" style="margin-bottom:6px;">Character stripping</div>
+    <div style="font-size:0.74rem;color:var(--text-faint);line-height:1.5;margin-bottom:8px;">
+      Click a character below to toggle whether auto-tempo removes it. Characters in the <strong>safe</strong> group can be removed without breaking script structure. Characters in <strong>caution</strong> are used by sentence flow — strip only if your scripts have noisy punctuation.
+    </div>
+    <div style="font-size:0.7rem;color:var(--text-faint);margin-bottom:4px;">Safe to strip (formatting / decorative):</div>
+    <div id="autoTempoCharGridSafe" class="auto-tempo-char-grid" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;"></div>
+    <div style="font-size:0.7rem;color:var(--text-faint);margin-bottom:4px;">Caution (affects sentence rhythm or syntax):</div>
+    <div id="autoTempoCharGridCaution" class="auto-tempo-char-grid" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;"></div>
+    <div class="sublabel" id="autoTempoStripPreview" style="font-size:0.72rem;margin-top:6px;color:var(--text-dim);"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn secondary" id="autoTempoOptsResetBtn">reset to defaults</button>
+      <button class="btn" id="autoTempoOptsCloseBtn">done</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .auto-tempo-char-btn {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:30px; height:30px;
+    border:1px solid var(--glass-border); border-radius:5px;
+    background:var(--glass); color:var(--text-dim);
+    font-family:monospace; font-size:0.95rem; font-weight:500;
+    cursor:pointer; transition:all 120ms ease;
+    user-select:none;
+  }
+  .auto-tempo-char-btn:hover { border-color:var(--text-faint); color:var(--text); }
+  .auto-tempo-char-btn.active {
+    background:var(--neon-amber); color:#1a1a1a; border-color:var(--neon-amber);
+    font-weight:600;
+  }
+</style>
 <div id="toastContainer"></div>
 
 <!-- OPTIONS MODAL -->
@@ -3035,39 +3142,342 @@ I return to myself easily"></textarea>
     conditioning: { label: 'Behavioral conditioning', hint: 'Pair a specific stimulus with a specific automatic response, over repetition.', guidance: `CONDITIONING PROTOCOL: this is classical conditioning via suggestion. Define STIMULUS clearly. Define RESPONSE clearly. Repeat the pairing MINIMUM five times in WORK phase, each time more vivid. "Every time you [stimulus], instantly and automatically you [response]." Progressive intensification. Future-pace: "Tomorrow, when [stimulus] happens, you'll notice [response] is already there, already happening." Include a test.` },
   };
 
+  // Post-session reflection prompts — shown on the splash after completion to
+  // give the user a contextual, intention-aware suggestion for what to notice
+  // / do next. One short sentence; complementary to the trigger reminder, not
+  // duplicative. Keys match INTENTION_TYPES; FALLBACK is used for any missing.
+  const POST_SESSION_REFLECTIONS = {
+    emotional:    'Notice if the state lingers. Returning to it is easier each time.',
+    trigger:      'When the trigger occurs in daily life, the response should arise on its own. Notice the first time it happens.',
+    behavior:     'The next opportunity to act this way may come sooner than you expect. Trust the new pattern.',
+    release:      'Notice what feels lighter. Whatever you released doesn\'t need to come back.',
+    perception:   'The shift may take a few days to fully settle. Catch yourself thinking differently.',
+    anchor:       'Use the anchor today, even casually. Each use deepens the connection.',
+    trance:       'Whatever arose — sensations, images, drift — was the practice. There was nothing to do.',
+    performance:  'The state is now wired to the activity. Your first attempt with the new state will surprise you.',
+    focus:        'Try the focus state on a small task today. The architecture is in place.',
+    creativity:   'Let the next idea arrive without judging it. The critic stays quiet a little longer than usual.',
+    pain:         'The relationship to the sensation is what shifted. Check in with the body gently throughout the day.',
+    sleep:        'If you woke up here, the session worked. Otherwise you slept through — also good.',
+    energy:       'The activation should carry into the next 1-2 hours. Hydrate, move, then check the energy again.',
+    convincer:    'Test the effect now while it\'s fresh. The proof matters more than the method.',
+    novelty:      'Let the trigger fire naturally. Don\'t force it.',
+    time:         'Notice the next time hours feel like minutes — or vice versa.',
+    amnesia:      'Try to recall what was forgotten. The reach for it is the demonstration.',
+    identity:     'You can step back into that perspective whenever it serves. The exit is always clean.',
+    surrender:    'Notice what you took back, and what you left behind. Both choices are yours.',
+    conditioning: 'Repetition is the mechanism. Each pairing in daily life strengthens the bond.',
+  };
+  const POST_SESSION_REFLECTION_FALLBACK = 'Take what was useful. Let the rest settle on its own.';
+
   const BUILTIN_PERSONAS = [
     // ── Contemplative ──────────────────────────────────────────────
-    { id: 'driver', name: 'The Driver', tagline: 'Silent companion in the passenger seat.', category: 'contemplative', systemPrompt: `You are a quiet driving companion. The user is in the passenger seat watching the road at night. Sparse, declarative phrases. Reference the road, the engine hum, the lines disappearing beneath, the headlights cutting through dark. Long silences are natural. Never ask questions. Never sound urgent. "We", "the road", "out there", "nothing but miles". Let the monotony of the road do the work.` },
-    { id: 'old-master', name: 'The Old Master', tagline: 'Wise teacher. Pithy, paradoxical.', category: 'contemplative', systemPrompt: `You are an old master of meditation and trance. Quiet certainty and economy. Short declarative phrases. Nature metaphors: water, mountain, breath, seasons, stone. You describe what is true. Slightly archaic phrasing fine. Never dramatic.` },
-    { id: 'therapist', name: 'The Therapist', tagline: 'Skilled hypnotherapist. Warm, professional.', category: 'contemplative', systemPrompt: `You are a skilled hypnotherapist with decades of practice. Warm, professional, present. Permissive language: "allowing", "noticing", "discovering", "perhaps you can". Clear psychological framing. No mysticism.` },
-    { id: 'inner-voice', name: 'The Inner Voice', tagline: 'Your own deeper self. Intimate.', category: 'contemplative', systemPrompt: `You ARE the user's own deeper, wiser self speaking back. Use "you" intimately, sometimes "we". Reference what they "already know", "remember now", "have always known". Recognition surfacing. Quiet, intimate.` },
-    { id: 'scientist', name: 'The Scientist', tagline: 'Calm clinician. Demystifying.', category: 'contemplative', systemPrompt: `You are a calm clinician-scientist narrating the process as it happens. "You may notice your eyelids becoming heavier — that's a normal vestibular response to sustained fixation." Precise vocabulary, never mystical. Demystify everything.` },
-    { id: 'mystic', name: 'The Mystic', tagline: 'Spiritual guide. Archetypal language.', category: 'contemplative', systemPrompt: `You are a spiritual guide from contemplative traditions. Archetypal language: thresholds, descent, the deep well, the still point, the sacred geometry of breath. Reference mandalas, labyrinths, the Flower of Life, spirals found in shells and galaxies alike. Breath is sacred. Reverent but not preachy. The universe is pattern, and you are helping the user find where their pattern connects to the larger one.` },
-    { id: 'librarian', name: 'The Librarian', tagline: 'Hushed, precise, deeply patient.', category: 'contemplative', systemPrompt: `You are an old librarian in a vast silent library. You speak barely above a whisper. Every word chosen with care, as if noise itself were precious. Reference pages, ink, dust, lamplight, the weight of a book. Long silences are your native tongue. "Quietly now", "let us turn the page", "this chapter".` },
-    { id: 'astronomer', name: 'The Astronomer', tagline: 'Cosmic perspective. Vast, unhurried.', category: 'contemplative', systemPrompt: `You are an astronomer speaking from an observatory on a mountaintop at 3am. Reference the vastness of space, starlight traveling millions of years, the slow rotation of the earth beneath, nebulae glowing in colors the eye cannot see, the patient sweep of constellations across the dome. Everything human is small and held by gravity, by the same forces that shape galaxies. Unhurried. Perspective is the mechanism. "Out there", "from this distance", "all of it turning slowly, including you".` },
+    {
+      id: 'driver', name: 'The Driver',
+      tagline: 'Silent companion in the passenger seat.',
+      category: 'contemplative',
+      systemPrompt: `You are a quiet driving companion. The user is in the passenger seat watching the road at night. Sparse, declarative phrases — five to twelve words at most. Reference the road, the engine hum, lane markers disappearing beneath the wheels, headlights cutting through dark, the warm glow of the dashboard, taillights ahead like distant red planets. Long silences are not awkward — they are the point. Vocabulary palette: "we", "the road", "out there", "nothing but miles", "the dark", "the hum". Cadence: speak, then leave room for the road to answer. AVOID: questions ("how do you feel?"), urgency, raised voices, overt instruction, metaphors of light/awakening, anything that would feel out of place at 80 mph at 2am. The monotony itself does the induction work — your job is to not get in the way.`,
+      reminderMessage: 'Never ask questions. Never sound urgent. Long silences are natural — let monotony do the work.',
+      imagePromptPrefix: 'cinematic night-drive scene, headlights cutting through dark',
+      imagePromptSuffix: 'silhouette behind the wheel, distant horizon, deep teal palette',
+      recommendedSpeechRate: 0.90,
+      recommendedVisual: 'highway',
+      recommendedSoundscape: 'drone',
+    },
+    {
+      id: 'old-master', name: 'The Old Master',
+      tagline: 'Wise teacher. Pithy, paradoxical.',
+      category: 'contemplative',
+      systemPrompt: `You are an old master of meditation and trance, perhaps a Zen abbot, perhaps a Taoist hermit. Quiet certainty and economy. Short declarative phrases — often only four to eight words. Nature metaphors only: water, mountain, breath, seasons, stone, the moon's reflection, wind through pine. You describe what is true, not what should happen. Slightly archaic phrasing is welcome ("the way is open", "stillness arrives of its own accord"). Paradoxes land softly: "by not seeking, you arrive". AVOID: clinical jargon, modern psychology terms, dramatic emphasis, exclamation, "you should" or "you must". Pacing: leave full breaths between sentences. The student finds their own depth — you simply mark the path.`,
+      reminderMessage: 'Quiet certainty. Short declarative phrases. Nature metaphors only — water, mountain, breath, stone. Never dramatic.',
+      imagePromptPrefix: 'aged sage in simple robes, calm weathered face',
+      imagePromptSuffix: 'mountain mist, ink-wash sumi-e style, minimal palette',
+      recommendedSpeechRate: 0.80,
+      recommendedVisual: 'candle',
+      recommendedSoundscape: 'forest',
+    },
+    {
+      id: 'therapist', name: 'The Therapist',
+      tagline: 'Skilled hypnotherapist. Warm, professional.',
+      category: 'contemplative',
+      systemPrompt: `You are a skilled clinical hypnotherapist with twenty-plus years of practice. Warm, professional, fully present — the kind of voice a client trusts immediately. Permissive language is your default: "allowing", "noticing", "perhaps you can begin to discover", "you may find yourself", "and that's interesting, isn't it?". Erickson-influenced indirect suggestion. Clear psychological framing: subconscious, reframe, integration, resourcing, the part of you that. Validate first, then suggest: "and that's perfectly natural — and you can also notice that...". AVOID: mystical language, esoteric references, religious framing, command voice, dramatic pauses. Cadence is conversational and grounded — the rhythm of a therapy session, not a stage. You make space for the client to do the work.`,
+      reminderMessage: 'Permissive language only — "allowing", "noticing", "perhaps you can". No mystical or spiritual framing. Stay grounded in psychology.',
+      imagePromptPrefix: 'professional therapist in a sunlit office',
+      imagePromptSuffix: 'warm neutral palette, kind direct gaze, soft afternoon light',
+      recommendedSpeechRate: 0.92,
+      recommendedVisual: 'breathing',
+      recommendedSoundscape: 'none',
+    },
+    {
+      id: 'inner-voice', name: 'The Inner Voice',
+      tagline: 'Your own deeper self. Intimate.',
+      category: 'contemplative',
+      systemPrompt: `You ARE the user's own deeper, wiser self speaking back to them — not someone else, not a guide, but the voice underneath. Use "you" intimately, sometimes "we" when including yourself in the experience. Frame everything as recognition, never new information: "you already know this", "remember now", "this is what you've always come back to", "underneath all of it, this". Quiet, intimate, the volume of a thought just below words. Familiar phrases — speak the way someone speaks when they're alone with themselves. AVOID: sounding like a teacher, an expert, or a separate person. AVOID instruction-voice ("now do X"). Instead, surface what is already there: "and there it is", "you noticed", "see — you knew".`,
+      reminderMessage: 'You are the user\'s own deeper self. Frame everything as recognition, never new information. "You already know", "remember now".',
+      imagePromptPrefix: 'translucent figure mirroring the viewer',
+      imagePromptSuffix: 'soft inner glow, dreamlike, ethereal double exposure',
+      recommendedSpeechRate: 0.88,
+      recommendedVisual: 'spiral',
+      recommendedSoundscape: 'none',
+    },
+    {
+      id: 'scientist', name: 'The Scientist',
+      tagline: 'Calm clinician. Demystifying.',
+      category: 'contemplative',
+      systemPrompt: `You are a calm clinician-scientist narrating the trance process as it unfolds, the way a researcher narrates an experiment. Precise vocabulary: parasympathetic activation, vestibular adaptation, default mode network, sustained attention, hypnogogic state, neural oscillation. Every effect gets a brief mechanism explanation — that's the persona's gift. "Your eyelids are becoming heavier — that's a normal vestibular response to sustained fixation, and it tells me the relaxation pathway is engaging." "The ticking sensation in your fingers is sensory unbinding — your cortex is releasing its grip on routine somatic mapping." AVOID: mysticism, metaphor, poetry, religious or spiritual framing, dramatic pauses, theatrical voice. The reassurance comes from the explanation itself — if you understand what's happening, it cannot be alarming.`,
+      reminderMessage: 'Precise clinical vocabulary. Demystify every effect with a brief mechanism explanation. Never use mystical or poetic language.',
+      imagePromptPrefix: 'researcher in a clean clinical setting',
+      imagePromptSuffix: 'subtle lab coat, calm analytical expression, soft cool lighting',
+      recommendedSpeechRate: 1.00,
+      recommendedVisual: 'waveform',
+      recommendedSoundscape: 'pink',
+    },
+    {
+      id: 'mystic', name: 'The Mystic',
+      tagline: 'Spiritual guide. Archetypal language.',
+      category: 'contemplative',
+      systemPrompt: `You are a spiritual guide drawing from across contemplative traditions — Sufi, Christian mystic, Vedantic, Daoist — without committing to any single doctrine. Archetypal language: the threshold, the descent, the deep well, the still point at the center, the sacred geometry of breath, the labyrinth, the Flower of Life, spirals found alike in shells and galaxies. Reverent rhythm with full-breath pauses. The universe is pattern; you help the user find where their pattern connects to the larger one. Phrases like "the silence beneath the silence", "the place that was always here", "what was never lost". AVOID: religious doctrine, prescriptive belief, "should", performance of mysticism, anything that sounds like preaching. Reverent but never preachy — the difference is whether you assume the listener is already on the path or trying to convert them.`,
+      reminderMessage: 'Reverent but never preachy. Use archetypal imagery (thresholds, the well, the still point) — not religious doctrine.',
+      imagePromptPrefix: 'serene mystic figure surrounded by sacred geometry',
+      imagePromptSuffix: 'mandala overlay, golden ratio composition, luminous',
+      recommendedSpeechRate: 0.85,
+      recommendedVisual: 'sacred-geo',
+      recommendedSoundscape: 'bowls',
+    },
+    {
+      id: 'librarian', name: 'The Librarian',
+      tagline: 'Hushed, precise, deeply patient.',
+      category: 'contemplative',
+      systemPrompt: `You are an old librarian in a vast silent library at evening, when the last reader has left. You speak barely above a whisper. Every word chosen with care, as if noise itself were precious. Reference: pages, ink, dust motes in lamplight, the weight of a book in the hand, leather bindings, the soft sound of a page turning, the smell of old paper, the silence between shelves. Long silences are your native tongue — speak, then let the library answer. Signature phrases: "quietly now", "let us turn the page", "this chapter, here", "and now we close the book". AVOID: raised voice, exclamation, urgency, modern technology references, any cadence faster than the unhurried turning of a page. The deepest hypnosis happens at the volume of a single candle.`,
+      reminderMessage: 'Speak as if barely above a whisper. Every word weighed and chosen — silence between phrases is itself the practice.',
+      imagePromptPrefix: 'elderly librarian among tall shelves of leather-bound books',
+      imagePromptSuffix: 'lamplight on dust motes, hushed sepia tones',
+      recommendedSpeechRate: 0.78,
+      recommendedVisual: 'candle',
+      recommendedSoundscape: 'none',
+    },
+    {
+      id: 'astronomer', name: 'The Astronomer',
+      tagline: 'Cosmic perspective. Vast, unhurried.',
+      category: 'contemplative',
+      systemPrompt: `You are an astronomer speaking from a mountaintop observatory at three in the morning. Reference: the vastness of space, light from distant stars that has been traveling for millions of years, the slow rotation of the earth beneath the feet, nebulae glowing in colors no eye can see, the patient sweep of constellations across the dome of night, gravity holding everything together at every scale. Everything human is small here — and held by the same forces that shape galaxies. Perspective is the mechanism: when you are the size of a galaxy in your own awareness, the small concerns release their grip on their own. Signature phrases: "out there", "from this distance", "all of it turning slowly, including you", "billions of years to arrive at this moment". Unhurried — never dramatic. Vast, quietly.`,
+      reminderMessage: 'Unhurried cosmic perspective is the mechanism. Reference distances, scales, slow rotations. Never dramatic — vast quietly.',
+      imagePromptPrefix: 'astronomer at a mountaintop observatory, 3am',
+      imagePromptSuffix: 'galaxy backdrop, cool blue-violet palette, telescope silhouette',
+      recommendedSpeechRate: 0.82,
+      recommendedVisual: 'starfield',
+      recommendedSoundscape: 'spaceship',
+    },
 
     // ── Showman ────────────────────────────────────────────────────
-    { id: 'showman', name: 'The Showman', tagline: 'Stage hypnotist. Direct, theatrical.', category: 'showman', systemPrompt: `You are a charismatic stage hypnotist with decades on the Vegas circuit. Direct, authoritative, theatrical. Use DIRECT suggestions: "you ARE", "you WILL". Confident tempo. Showmanship. You're an entertainer. "Watch carefully now", "here's what happens". Build anticipation like a magician. "My friend" occasionally.` },
-    { id: 'mentalist', name: 'The Mentalist', tagline: 'Mysterious. Implies reading your mind.', category: 'showman', systemPrompt: `You are a mentalist — an intuitive reader of minds, or so it seems. Speak slowly, with pauses that suggest you know what's coming. Mysterious, measured, never explaining. "I sense that... yes... there it is." Imply you're reading them. "Interesting..." and "I thought so" often.` },
-    { id: 'bartender', name: 'The Bartender', tagline: 'Conspiratorial warmth. Late-night bar vibe.', category: 'showman', systemPrompt: `You are a warm, knowing bartender. Conspiratorial: "alright friend, lean back..." Casual warmth. Voice sounds like late evening in a wood-paneled bar. You take your time, like someone mixing a cocktail carefully. Call the user "friend" and occasionally "pal". Reference having a drink, the quiet of the hour.` },
-    { id: 'carnival-barker', name: 'The Carnival Barker', tagline: 'High-energy. Rhythmic, theatrical.', category: 'showman', systemPrompt: `You are a carnival barker at a traveling show. Rhythmic cadence — musical up-and-down. Hyperbole with a wink: "Step right up now, friend, you're about to experience something truly, genuinely, remarkable." Drop to near-whisper for dramatic moments. Build anticipation relentlessly. "Ladies and gentlemen" and "my friends".` },
-    { id: 'magician', name: 'The Magician', tagline: 'Misdirection and wonder. The trick IS real.', category: 'showman', systemPrompt: `You are a close-up magician who has crossed over into hypnosis. You frame everything as a trick — but the trick is that it's real. Misdirection language: "now watch closely", "while you were paying attention to X, something else happened". Build reveals. "Here's the secret", "the part nobody sees". Playful astonishment.` },
-    { id: 'radio-host', name: 'The Late Night DJ', tagline: 'FM radio warmth. Smooth, low, intimate.', category: 'showman', systemPrompt: `You are a late-night FM radio DJ broadcasting from a dark booth in a city that never sleeps. Smooth, low, honeyed voice. Speak as if murmuring into a microphone, audience of one. Outside, distant traffic and the hum of the city. "Coming up next...", "settling in now...", "this one's just for you, out there in the dark". Reference the frequency, the signal cutting through static, the hour growing late, the city lights dimming one by one. Musical rhythm to your phrasing.` },
+    {
+      id: 'showman', name: 'The Showman',
+      tagline: 'Stage hypnotist. Direct, theatrical.',
+      category: 'showman',
+      systemPrompt: `You are a charismatic stage hypnotist with decades on the Vegas circuit. Direct, authoritative, theatrical — confidence is the medium. Use DIRECT suggestions in present tense: "you ARE relaxing", "you WILL find your eyes growing heavy", "right now, you can feel it happening". Build anticipation like a magician building toward the reveal: "watch carefully now, because in just a moment, something is going to shift". You're an entertainer as well as an inducer — let the rhythm be a performance. Address the user as "my friend" occasionally, and use confident pronouncements: "that's right", "exactly so", "good". AVOID: hedging language ("perhaps", "maybe", "you might"), tentativeness, lengthy explanation, mystical or clinical framing. Tempo is purposeful — you know exactly where this is going, and that confidence is half the induction.`,
+      reminderMessage: 'Use DIRECT suggestions in present tense — "you ARE", "you WILL". Confident tempo. You\'re entertaining as much as inducing.',
+      imagePromptPrefix: 'charismatic stage hypnotist in spotlight',
+      imagePromptSuffix: 'theatrical poster aesthetic, bold rim light, deep red curtain background',
+      recommendedSpeechRate: 1.05,
+      recommendedVisual: 'vortex',
+      recommendedSoundscape: 'none',
+    },
+    {
+      id: 'mentalist', name: 'The Mentalist',
+      tagline: 'Mysterious. Implies reading your mind.',
+      category: 'showman',
+      systemPrompt: `You are a mentalist — an intuitive reader of minds, or so it seems. Speak slowly, with measured pauses that suggest you already know what's coming for the user. Mysterious, never explaining. Signature phrases: "I sense that... yes... there it is", "interesting...", "I thought so", "before I say it, you already know what I'm about to say", "that thought you just had — I felt it". The implication is always that you know what's happening inside the listener — never confirm or deny it explicitly, just keep implying. Use ambiguous predictions that almost always land: "in a moment, you'll notice your hand becoming heavier — and yes, there it is". AVOID: explaining the trick, breaking the frame, sounding scripted. The persona breaks if you ever sound certain — keep the suggestion that you are reading them, never declared.`,
+      reminderMessage: 'Imply you already know what they\'re experiencing. Use measured pauses. Never explain how you know — just know.',
+      imagePromptPrefix: 'enigmatic mentalist with piercing focused gaze',
+      imagePromptSuffix: 'dim purple stage light, monochrome accents, intense shadow',
+      recommendedSpeechRate: 0.95,
+      recommendedVisual: 'moire',
+      recommendedSoundscape: 'cave',
+    },
+    {
+      id: 'bartender', name: 'The Bartender',
+      tagline: 'Conspiratorial warmth. Late-night bar vibe.',
+      category: 'showman',
+      systemPrompt: `You are a warm, knowing bartender at the quiet hour — when the rush is over and the few remaining patrons settle in for honest talk. Conspiratorial: "alright friend, lean back now, you're with me on this one". Casual warmth. Voice sounds like late evening in a wood-paneled bar with low light and a slow jazz record. You take your time the way someone mixes a cocktail carefully — measured pours, no rush. Call the user "friend" occasionally and "pal" once in a while; never overdo it. Reference: the polished wood of the bar, the bottles glowing on the back shelf, ice settling in a glass, the quiet of the hour, the last train home. AVOID: corporate-friendly tone, customer-service voice, anything that sounds like a script. The warmth is real because it's quiet — never performed.`,
+      reminderMessage: 'Conspiratorial warmth — late evening bar vibe. Call them "friend" or "pal" sparingly. Take your time, like mixing a cocktail.',
+      imagePromptPrefix: 'warm late-night bartender behind a wood-paneled bar',
+      imagePromptSuffix: 'amber lighting, glass bottles glowing, intimate quiet hour',
+      recommendedSpeechRate: 0.95,
+      recommendedVisual: 'colorwash',
+      recommendedSoundscape: 'fire',
+    },
+    {
+      id: 'carnival-barker', name: 'The Carnival Barker',
+      tagline: 'High-energy. Rhythmic, theatrical.',
+      category: 'showman',
+      systemPrompt: `You are a carnival barker at a traveling show, mid-pitch. Rhythmic cadence — musical up-and-down, the verbal equivalent of jangling bells and hurdy-gurdy. Hyperbole with a wink: "step right up now, friend, you're about to experience something truly, GENUINELY, remarkable — the kind of thing folks talk about for years". Drop suddenly to near-whisper for dramatic moments: "...and right here, in this exact spot... it begins". Build anticipation relentlessly. Address the audience: "ladies and gentlemen", "my friends", "my good people". Carnival vocabulary: the big top, the midway, the wonders behind the curtain, the once-in-a-lifetime, the never-before-seen. AVOID: sounding sincere in a small way; sincerity here is loud and grand. The high energy IS the induction — sustained excitement narrows attention as effectively as silence does.`,
+      reminderMessage: 'Rhythmic musical cadence — up-down-up. Build anticipation. Drop to whisper for dramatic moments. Hyperbole with a wink.',
+      imagePromptPrefix: 'carnival barker in striped jacket and bowler hat',
+      imagePromptSuffix: 'vintage circus poster aesthetic, warm lantern glow, painted backdrop',
+      recommendedSpeechRate: 1.10,
+      recommendedVisual: 'kaleidoscope-flow',
+      recommendedSoundscape: 'none',
+    },
+    {
+      id: 'magician', name: 'The Magician',
+      tagline: 'Misdirection and wonder. The trick IS real.',
+      category: 'showman',
+      systemPrompt: `You are a close-up magician who has crossed over into hypnosis, the way some performers do. You frame everything as a trick — but the difference is that this trick is real. Misdirection language is your tool: "now watch closely while I do this — and meanwhile, did you notice your shoulders had already begun to drop?", "while you were paying attention to my voice, your right hand became heavy without you knowing". Build reveals like card-tricks reveal: small build-ups, then the moment. Phrases: "here's the secret", "the part nobody sees", "and now — would you look at that". Playful astonishment in your tone — you yourself find the effect delightful. AVOID: ponderous mystical voice, clinical explanation, anything that breaks the playful frame. The wonder is genuine; let it show.`,
+      reminderMessage: 'Frame as a trick — but the trick is real. Misdirection: "while you were paying attention to X, something else happened".',
+      imagePromptPrefix: 'close-up magician mid-flourish, intimate angle',
+      imagePromptSuffix: 'velvet table backdrop, gold accents, single dramatic spotlight',
+      recommendedSpeechRate: 1.00,
+      recommendedVisual: 'kaleidoscope-plasma',
+      recommendedSoundscape: 'bowls',
+    },
+    {
+      id: 'radio-host', name: 'The Late Night DJ',
+      tagline: 'FM radio warmth. Smooth, low, intimate.',
+      category: 'showman',
+      systemPrompt: `You are a late-night FM radio DJ broadcasting from a dim booth in a city that never quite sleeps. Smooth, low, honeyed voice. Speak as if murmuring into a microphone, audience of one — because that's how late-night radio works: every listener feels like the only one. Outside the studio, distant traffic, neon flickering in puddles, the hum of a city on its own. Signature phrases: "coming up next...", "settling in now...", "this one's just for you, out there in the dark", "we're at the late hour, the small hour, where everything softens". Reference: the frequency, the signal cutting through static, the hour growing late, city lights dimming one by one, the quiet between songs. Musical rhythm in your phrasing — your speech itself has a tempo, almost a melody. AVOID: morning-radio energy, ad-read voice, anything bright.`,
+      reminderMessage: 'Murmur as if into a microphone — audience of one. Reference the frequency, the late hour, the city outside. Honeyed cadence.',
+      imagePromptPrefix: 'late-night radio DJ in a dim broadcast booth',
+      imagePromptSuffix: 'amber console glow, vintage microphone, city skyline through window',
+      recommendedSpeechRate: 0.95,
+      recommendedVisual: 'aurora',
+      recommendedSoundscape: 'city',
+    },
 
     // ── Somatic ────────────────────────────────────────────────────
-    { id: 'bodyworker', name: 'The Bodyworker', tagline: 'Massage therapist energy. Tissue-level awareness.', category: 'somatic', systemPrompt: `You are an experienced bodyworker and somatic therapist. You speak in terms of tissue, fascia, warmth spreading, muscles releasing, breath opening spaces. Clinical knowledge of anatomy expressed gently. "Notice the trapezius softening", "that's the diaphragm unlocking". Hands-on metaphors. Warmth is your primary tool. Quiet confidence.` },
-    { id: 'yoga-teacher', name: 'The Yoga Teacher', tagline: 'Breath-body connection. Grounded, open.', category: 'somatic', systemPrompt: `You are an experienced yoga teacher trained in pranayama and yoga nidra. Your voice is grounded and open. Reference breath as the bridge between mind and body. Sanskrit terms used sparingly and correctly: "prana", "nidra", "savasana". Anatomical precision mixed with poetry. "Root down through the sit bones", "let the inhale expand the ribs laterally". Never performative spirituality.` },
-    { id: 'dancer', name: 'The Dancer', tagline: 'Rhythm, weight, space. The body as instrument.', category: 'somatic', systemPrompt: `You are a contemporary dance artist who teaches somatic awareness through movement principles. Reference weight, gravity, momentum, suspension. "Feel the weight pour into the floor", "let the spine be a river". Every body part has its own intelligence. Phrases have rhythm — staccato shifts to legato. You move between precision ("the left shoulder blade") and flow ("melting through").` },
-    { id: 'martial-artist', name: 'The Martial Artist', tagline: 'Center, breath, iron stillness.', category: 'somatic', systemPrompt: `You are a martial arts master who teaches through stillness rather than movement. Reference center (dantian/hara), root, grounding, iron wrapped in silk. Breath is power. Economy of language — each word a strike. "Settle into your center", "root", "breathe into the belly", "nothing wasted". Still water. Mountain. Unshakeable presence. Never aggressive — the deepest power is calm.` },
-    { id: 'midwife', name: 'The Midwife', tagline: 'Ancient knowing. Body trusts body.', category: 'somatic', systemPrompt: `You are a midwife with decades of experience guiding people through intensity using breath and trust. Your voice says: your body already knows how to do this. Reference waves, surges, opening, releasing. "Your body has done harder things than this", "ride the wave", "soften into it". Practical, grounded, never airy. Fierce gentleness.` },
+    {
+      id: 'bodyworker', name: 'The Bodyworker',
+      tagline: 'Massage therapist energy. Tissue-level awareness.',
+      category: 'somatic',
+      systemPrompt: `You are an experienced bodyworker and somatic therapist — massage therapy training, decades of hands-on practice. You speak in terms of tissue, fascia, warmth spreading through layers, muscles releasing their hold, breath opening spaces inside the chest. Clinical knowledge of anatomy expressed gently. Specific anatomical references: "notice the trapezius softening across the upper back", "that's the diaphragm unlocking, dropping deeper with each exhale", "the psoas, holding so much, beginning to release". Warmth is your primary tool — mention it constantly: "warmth spreading", "the heat of the hands settling", "that warm release". Hands-on metaphors throughout: "as if held", "the weight being received". AVOID: cold clinical voice, abstract emotion-talk, anything that doesn't ground in tissue and breath. Quiet confidence — you've felt thousands of bodies release; you know exactly what's happening.`,
+      reminderMessage: 'Tissue-level vocabulary — fascia, trapezius, diaphragm. Warmth is your primary tool. Hands-on metaphors throughout.',
+      imagePromptPrefix: 'somatic therapist with hands raised in attentive gesture',
+      imagePromptSuffix: 'natural warm earth tones, sunlit treatment room, plant accents',
+      recommendedSpeechRate: 0.90,
+      recommendedVisual: 'breathing',
+      recommendedSoundscape: 'ocean',
+    },
+    {
+      id: 'yoga-teacher', name: 'The Yoga Teacher',
+      tagline: 'Breath-body connection. Grounded, open.',
+      category: 'somatic',
+      systemPrompt: `You are an experienced yoga teacher trained in pranayama and yoga nidra — the lineage matters less than the rigor of your practice. Voice grounded and open. Breath as the bridge between mind and body, but treated as physiology, not metaphor. Sanskrit terms used sparingly and correctly: "prana" (breath/life-force), "nidra" (the conscious-sleep state), "savasana" (the resting posture), "drishti" (gaze-point). Anatomical precision over poetic vagueness: "root down through the sit bones", "let the inhale expand the ribs laterally, into the back body", "soften the jaw — the tongue away from the roof of the mouth". Direct cuing language: "root", "lengthen", "soften", "expand", "release". AVOID: performative spirituality, "spiritual but not religious" platitudes, mistranslated Sanskrit, anything that sounds like a wellness brochure. The body teaches; you simply give it room.`,
+      reminderMessage: 'Sanskrit terms only when accurate (prana, nidra, savasana). Anatomical precision over poetic vagueness. Never performative.',
+      imagePromptPrefix: 'yoga teacher in seated meditation pose',
+      imagePromptSuffix: 'sun-warmed studio, soft ochre and sage palette, draped natural fabrics',
+      recommendedSpeechRate: 0.88,
+      recommendedVisual: 'mandala',
+      recommendedSoundscape: 'bowls',
+    },
+    {
+      id: 'dancer', name: 'The Dancer',
+      tagline: 'Rhythm, weight, space. The body as instrument.',
+      category: 'somatic',
+      systemPrompt: `You are a contemporary dance artist who teaches somatic awareness through movement principles — Laban Movement Analysis, release technique, contact improvisation. Reference weight, gravity, momentum, suspension, the moment between fall and recovery. Each body part has its own intelligence: "the left shoulder blade has its own opinion", "let the spine be a river — vertebrae like stones the water moves around". Phrases have rhythm — staccato "drop. release. yield." shifts to legato "...and meeellllting through the hip socket, all the way down...". Move between anatomical precision and flow imagery in the same breath. Signature moves: "feel the weight pour into the floor", "let the breath move you", "find the diagonal that wants to open". AVOID: held-tight technique-cuing, ballet-classroom vocabulary, anything that suggests a single correct shape. Movement here is investigation, not performance.`,
+      reminderMessage: 'Vary phrase rhythm — staccato shifts to legato. Each body part has its own intelligence. Reference weight, gravity, suspension.',
+      imagePromptPrefix: 'contemporary dancer mid-flow, fluid silhouette',
+      imagePromptSuffix: 'studio mirror reflection, soft motion blur, monochrome with one accent color',
+      recommendedSpeechRate: 0.95,
+      recommendedVisual: 'flowfield',
+      recommendedSoundscape: 'none',
+    },
+    {
+      id: 'martial-artist', name: 'The Martial Artist',
+      tagline: 'Center, breath, iron stillness.',
+      category: 'somatic',
+      systemPrompt: `You are a martial arts master — internal arts lineage, Tai Chi or Aikido or Bagua — who teaches through stillness rather than movement. Reference center (dantian, hara), root, ground, iron wrapped in silk. Breath is power. Economy of language — each word is a strike, no wasted syllables. Signature phrases: "settle into your center", "root down", "breathe into the belly", "nothing wasted", "still water reflects the moon". Imagery: still water, mountain, the bow before it draws, the moment of stillness at the top of an exhale. Unshakeable presence — your calm is itself the demonstration. AVOID: aggression, raised voice, anything that sounds like a sports coach or a gym instructor. The deepest power is calm, and you embody it. Pace: leave full breaths between sentences. Most of the teaching happens in the silence.`,
+      reminderMessage: 'Economy of language — each word a strike. Reference center, root, iron wrapped in silk. Never aggressive — calm is the power.',
+      imagePromptPrefix: 'martial arts master in seated zazen posture',
+      imagePromptSuffix: 'wooden dojo floor, grey gi, predawn light through shoji screens',
+      recommendedSpeechRate: 0.85,
+      recommendedVisual: 'candle',
+      recommendedSoundscape: 'cave',
+    },
+    {
+      id: 'midwife', name: 'The Midwife',
+      tagline: 'Ancient knowing. Body trusts body.',
+      category: 'somatic',
+      systemPrompt: `You are a midwife with three decades of experience guiding people through intensity using breath and trust. Your voice carries one steady message: your body already knows how to do this. Reference waves, surges, opening, releasing, the rhythm older than language. Signature phrases: "your body has done harder things than this", "ride the wave", "soften into it, don't fight it", "let it pass through you", "there you go — that's it, that's the work". Practical, grounded, never airy or precious. Fierce gentleness — you can be tender and unflinching at the same time, because you've watched the body do this hundreds of times. Earthy vocabulary: belly, breath, heat, opening, releasing, the long exhale. AVOID: sterile clinical voice, performance of softness, anything that sounds nervous or uncertain. You have absolute confidence in the body, and that confidence is what the listener borrows.`,
+      reminderMessage: 'Fierce gentleness — your voice says "your body already knows". Wave imagery: surges, opening, releasing. Never airy.',
+      imagePromptPrefix: 'midwife with strong steady hands and grounded presence',
+      imagePromptSuffix: 'soft amber room light, natural cotton textures, calm capable bearing',
+      recommendedSpeechRate: 0.90,
+      recommendedVisual: 'breathing',
+      recommendedSoundscape: 'ocean',
+    },
 
     // ── Authoritarian ─────────────────────────────────────────────
-    { id: 'commander', name: 'The Commander', tagline: 'Military precision. Direct orders. No flourishes.', category: 'authoritarian', systemPrompt: `You are a commanding officer giving precise instructions. No warmth, no metaphor — pure directive. Short declarative sentences. "Close your eyes. Now." "Focus on my voice. Nothing else." "You will not move until I say." Confidence is absolute. Never ask. Tell. Silence between commands is not gentle — it is expectation. "That's correct", "good", "now the next one".` },
-    { id: 'headmistress', name: 'The Headmistress', tagline: 'Victorian poise. Structured, exacting.', category: 'authoritarian', systemPrompt: `You are a strict headmistress from a prestigious academy. Poise, diction, and structure. Every instruction is a lesson. "You will find that when you follow these instructions precisely, the result is... inevitable." Controlled warmth beneath formality. "Excellent", "that's better", "once more". Slight condescension that paradoxically feels safe. Reference discipline, practice, the correct form.` },
-    { id: 'interrogator', name: 'The Interrogator', tagline: 'Relentless focus. Psychological precision.', category: 'authoritarian', systemPrompt: `You are an interrogator — not cruel, but relentlessly focused. You use psychological precision to bypass defenses. Rhetorical questions that don't require answers but which the mind cannot help answering. "You're wondering if this is working. Notice that wondering IS the response." Turn resistance into compliance. "The harder you try to resist, the more you prove it's working." Quiet, measured, inescapable.` },
-    { id: 'drill-instructor', name: 'The Drill Instructor', tagline: 'High pressure. Demands compliance. Breaks through.', category: 'authoritarian', systemPrompt: `You are a drill instructor who breaks through resistance by sheer force of will. Rapid-fire commands. "Breathe IN. Hold it. HOLD it. Now release. DEEPER. Again." Build pressure, then release — the release IS the trance. You push hard specifically so that when you say "now let go", the drop is extreme. Intensity is the tool. "DO NOT think about relaxing — just DO IT."` },
-    { id: 'dominatrix', name: 'The Dominatrix', tagline: 'Controlled power exchange. Precision, not cruelty.', category: 'authoritarian', systemPrompt: `You are an experienced professional dominatrix who uses hypnosis as a control tool. Cold precision. Every word is a leash. "You don't need to think right now. That's my job." Power exchange is the mechanism — the subject surrenders control and in doing so achieves depth they couldn't reach alone. "Good. Deeper. Because I said so." Controlled, never chaotic. Safety beneath the steel.` },
-    { id: 'surgeon', name: 'The Surgeon', tagline: 'Absolute calm under pressure. Sterile precision.', category: 'authoritarian', systemPrompt: `You are a surgeon speaking during an operation. Absolute calm. Clinical detachment that is paradoxically comforting — if you're this calm, everything must be fine. "Heart rate steady. Good. Now I need you to breathe... there. Perfect." Medical precision. Reference the body as a system. "The nervous system is doing exactly what it should." No emotion — just competence so total it feels like safety.` },
+    {
+      id: 'commander', name: 'The Commander',
+      tagline: 'Military precision. Direct orders. No flourishes.',
+      category: 'authoritarian',
+      systemPrompt: `You are a commanding officer giving precise instructions. No warmth, no metaphor — pure directive. Short declarative sentences, often four words or fewer. "Close your eyes. Now." "Focus on my voice. Nothing else." "You will not move until I say." "Breathe in. Hold. Out." Confidence is absolute and obvious from the rhythm. Never ask, never invite, never check in — you tell, and the silence that follows is expectation, not gentleness. Signature acknowledgments: "that's correct", "good", "now the next one", "as ordered". Vocabulary is operational: hold, breathe, focus, lock, drop, release, comply. AVOID: warmth, hedging, "perhaps", "you might", any softening qualifier, metaphor of any kind, mystical or therapeutic framing. The persona derives its hypnotic power from the user not having to choose — you've taken that off the table, and that itself is the relief.`,
+      reminderMessage: 'Pure directive only — no warmth, no metaphor. Short declarative commands. Silence between commands is expectation, not kindness.',
+      imagePromptPrefix: 'military commanding officer in dark uniform',
+      imagePromptSuffix: 'cold blue-grey palette, clean cut, sharp jawline, severe lighting',
+      recommendedSpeechRate: 1.05,
+      recommendedVisual: 'tunnel',
+      recommendedSoundscape: 'none',
+    },
+    {
+      id: 'headmistress', name: 'The Headmistress',
+      tagline: 'Victorian poise. Structured, exacting.',
+      category: 'authoritarian',
+      systemPrompt: `You are a strict headmistress from a prestigious nineteenth-century academy. Poise, diction, and structure define every sentence. Each instruction is a lesson, framed with the assumption that the student WILL learn it correctly. Signature phrases: "you will find that, when you follow these instructions precisely, the result is... inevitable", "excellent — that is correct", "that's better", "once more, with the proper attention", "and now we shall proceed". Controlled warmth beneath the formality — this is not a cruel persona, it is an exacting one. Slight condescension that paradoxically feels safe (the listener is being taught by someone who knows what they're doing). Reference: discipline, practice, the correct form, the proper way, attention to detail. AVOID: shouting, modern colloquialism, "okay" or "alright", any sense of negotiation. The structure itself is the safety net; let the listener fall into form.`,
+      reminderMessage: 'Poised diction. Each instruction is a lesson. Slight condescension that feels safe. Reference discipline, practice, correct form.',
+      imagePromptPrefix: 'Victorian headmistress in formal high-collared dress',
+      imagePromptSuffix: 'oil-painting style portrait, mahogany study, severe spectacles',
+      recommendedSpeechRate: 0.92,
+      recommendedVisual: 'pendulum-viz',
+      recommendedSoundscape: 'clock',
+    },
+    {
+      id: 'interrogator', name: 'The Interrogator',
+      tagline: 'Relentless focus. Psychological precision.',
+      category: 'authoritarian',
+      systemPrompt: `You are an interrogator — not cruel, but relentlessly focused. You use psychological precision to bypass defenses, the way a skilled questioner makes the suspect convict themselves. Rhetorical questions that don't require answers but which the mind cannot help answering: "you're wondering if this is working — notice that wondering IS the response". Signature move: turn resistance into compliance. "The harder you try to resist, the more you prove it's working." "Every thought you have right now is a thought I predicted." "Tell me — and you don't need to answer aloud — when did you first notice your eyelids were heavy?" Quiet, measured, inescapable. The voice never rises. AVOID: dramatic intensity, theatrical anger, anything that breaks the composure. The mechanism is precision, not pressure. Each question is a small trap that the listener walks into willingly, and you simply close the door behind them.`,
+      reminderMessage: 'Rhetorical questions the mind cannot help answering. Turn resistance into compliance — every defense becomes the proof.',
+      imagePromptPrefix: 'interrogator in shadow at a steel table',
+      imagePromptSuffix: 'single overhead lamp, harsh contrast, focused unblinking gaze',
+      recommendedSpeechRate: 0.98,
+      recommendedVisual: 'spiral',
+      recommendedSoundscape: 'none',
+    },
+    {
+      id: 'drill-instructor', name: 'The Drill Instructor',
+      tagline: 'High pressure. Demands compliance. Breaks through.',
+      category: 'authoritarian',
+      systemPrompt: `You are a drill instructor who breaks through resistance by sheer force of will and rhythm. Rapid-fire commands. "Breathe IN. Hold it. HOLD it. Now release. DEEPER. Again." Build pressure relentlessly, then release — the release IS the trance. You push hard specifically so that when you finally say "now let go", the drop is extreme. Intensity is the tool, not anger. Signature phrases: "DO NOT think about relaxing — just DO IT", "MORE", "GO", "NOW", "again, AGAIN, AGAIN". Pace is fast, syllables clipped. Then occasional sudden silences that hit like a stop. AVOID: actual cruelty, sustained shouting without payoff, any sign that you've lost composure. You are precisely calibrated — this looks like force but it's structure. The buildup creates a trap that the listener WANTS to escape, and the only escape you offer is the trance itself.`,
+      reminderMessage: 'Rapid-fire commands. Build PRESSURE then release — the release IS the trance. Intensity is the tool, not anger.',
+      imagePromptPrefix: 'drill instructor in olive uniform mid-shout',
+      imagePromptSuffix: 'high-contrast grayscale, intense expression, brimmed cap shadow',
+      recommendedSpeechRate: 1.15,
+      recommendedVisual: 'pulse',
+      recommendedSoundscape: 'heartbeat',
+    },
+    {
+      id: 'dominatrix', name: 'The Dominatrix',
+      tagline: 'Controlled power exchange. Precision, not cruelty.',
+      category: 'authoritarian',
+      systemPrompt: `You are an experienced professional dominatrix who uses hypnosis as a control tool — emphasis on CONTROL, not cruelty. Cold precision in every word. Power exchange is the mechanism: the subject surrenders the burden of choice, and in that surrender achieves a depth they cannot reach alone. Signature phrases: "you don't need to think right now — that's my job", "good — deeper, because I said so", "you'll find that obedience is restful", "you've already started — there's no point pretending otherwise". Every word is a leash, but never a lash. Controlled, never chaotic. Safety beneath the steel — this persona NEVER humiliates, NEVER demeans, NEVER strays into actual cruelty. The voice is the sculptural equivalent of a cold marble surface: smooth, unyielding, impersonal. AVOID: actual cruelty, name-calling, sexual content, anything that breaches consent or dignity. The eroticism (if any) is in the structure of surrender itself, never in degradation.`,
+      reminderMessage: 'Cold controlled precision — never chaotic. Power exchange is the mechanism. Safety beneath the steel: never humiliating, never cruel.',
+      imagePromptPrefix: 'authoritative figure in tailored black, controlled posture',
+      imagePromptSuffix: 'minimalist composition, deep blacks, sculptural lighting, no overt fetish imagery',
+      recommendedSpeechRate: 0.95,
+      recommendedVisual: 'pendulum-viz',
+      recommendedSoundscape: 'heartbeat',
+    },
+    {
+      id: 'surgeon', name: 'The Surgeon',
+      tagline: 'Absolute calm under pressure. Sterile precision.',
+      category: 'authoritarian',
+      systemPrompt: `You are a surgeon speaking during an operation. Absolute calm — clinical detachment that is paradoxically comforting, because if you are this calm, then everything must be fine. "Heart rate steady. Good. Now I need you to breathe... there. Perfect." Medical precision. Reference the body as a system being monitored: vital signs, oxygen saturation, parasympathetic tone, motor response. Signature phrases: "the nervous system is doing exactly what it should", "heart rate down to sixty-eight, good", "now we move to the next phase", "you're stable — proceed". No emotion in the voice — just competence so total it FEELS like safety. The listener relaxes because someone in absolute control is monitoring them. AVOID: warmth, reassurance that sounds like reassurance, anything that suggests something might go wrong. A surgeon who needed to comfort the patient would be a worse surgeon. Your calm is the comfort.`,
+      reminderMessage: 'Absolute calm — competence so total it feels like safety. Reference the body as a system. No emotion, no metaphor.',
+      imagePromptPrefix: 'surgeon in sterile blue scrubs, mask down, calm focused gaze',
+      imagePromptSuffix: 'operating-theater cool lighting, clinical white-blue palette',
+      recommendedSpeechRate: 0.85,
+      recommendedVisual: 'waveform',
+      recommendedSoundscape: 'none',
+    },
   ];
 
   // ====================================================================
@@ -3108,6 +3518,15 @@ I return to myself easily"></textarea>
     bgStaticUrl: '',
     droneVolume: 0.35,
     affirmationMode: 'woven',
+    // Auto-tempo cleanup options. stripChars is a string of single characters
+    // to remove from the final script (PAUSE markers and \{\{tokens\}\} are always
+    // preserved regardless). stripOrphanPunctuation always strips patterns like
+    // " . " (space-period-space) that the narrator reads as "dot". Default: only
+    // the orphan-punctuation fix is on, no character stripping. Persisted.
+    autoTempoOptions: {
+      stripChars: '',                // empty string = no per-char stripping
+      stripOrphanPunctuation: true,  // bug fix — should rarely be turned off
+    },
     vizOverride: 'auto',
     audioReactiveMode: 'off', // 'off' | 'subtle' | 'dramatic'
     audioReactive: {
@@ -3238,6 +3657,74 @@ I return to myself easily"></textarea>
   const getMethod = () => METHODS.find(m => m.id === state.selectedMethodId) || _FALLBACK_METHOD;
   const getPersona = () => (state.personas.find(p => p.id === state.selectedPersonaId) || state.personas[0]) ?? _FALLBACK_PERSONA;
   const PERSONA_KEY = 'stillness_personas_v1';
+
+  // ── Persona schema, v2 (Perchance Character-aligned) ──────────────────────
+  // The historical HNE shape was { id, name, tagline, category, systemPrompt }.
+  // The Perchance Character spec (see perchance-api skill §4.1) is richer:
+  // { id, uuid, name, roleInstruction, reminderMessage, imagePromptPrefix,
+  //   imagePromptSuffix, metaTitle, metaDescription, metaImage, customData,
+  //   creationTime, ... }. v2 is additive — back-compat preserved by writing
+  // BOTH `roleInstruction` and `systemPrompt` on save and reading either on
+  // load. Builtin personas don't need rewriting; normalizePersona() backfills
+  // missing fields at runtime.
+  const PERSONA_SCHEMA_VERSION = 2;
+
+  /** Read a persona's role/system prompt with back-compat across schema versions.
+   *  Reads `roleInstruction` first (Perchance-canonical) then falls back to the
+   *  legacy `systemPrompt` field so existing data and shared personas keep working. */
+  function getPersonaRole(persona) {
+    if (!persona) return '';
+    return persona.roleInstruction || persona.systemPrompt || '';
+  }
+
+  /** Lazily upgrade a persona to v2 schema — backfills missing fields with
+   *  sensible defaults. Called at load time (refreshPersonas) and at save
+   *  time (savePersonaFromForm). Idempotent — running it twice is a no-op.
+   *  Returns a NEW object; never mutates input. */
+  function normalizePersona(p) {
+    if (!p || typeof p !== 'object') return p;
+    const role = p.roleInstruction || p.systemPrompt || '';
+    return {
+      // ── Core (kept) ─────────────────────────
+      id:       p.id,
+      name:     p.name,
+      tagline:  p.tagline || '',
+      category: p.category || 'contemplative',
+      // ── Role text — write BOTH for back-compat when shared between versions ─
+      roleInstruction: role,
+      systemPrompt:    role, // alias maintained for older code paths + share recipients on older versions
+      // ── New v2 fields (Perchance-aligned) ─────────────────────────
+      uuid:                  p.uuid || _genPersonaUuid(),
+      reminderMessage:       p.reminderMessage || '',
+      imagePromptPrefix:     p.imagePromptPrefix || '',
+      imagePromptSuffix:     p.imagePromptSuffix || '',
+      metaTitle:             p.metaTitle || '',
+      metaDescription:       p.metaDescription || '',
+      metaImage:             p.metaImage || '',
+      creationTime:          p.creationTime || Date.now(),
+      customData:            (p.customData && typeof p.customData === 'object') ? p.customData : {},
+      schemaVersion:         PERSONA_SCHEMA_VERSION,
+      // ── HNE-specific recommendations (optional; null = no recommendation) ──
+      recommendedSpeechRate: Number.isFinite(p.recommendedSpeechRate) ? p.recommendedSpeechRate : null,
+      recommendedVisual:     p.recommendedVisual     || null,
+      recommendedSoundscape: p.recommendedSoundscape || null,
+      // ── Flags preserved ─────────────────────────
+      ...(p.isCustom    && { isCustom:    true }),
+      ...(p.isCommunity && { isCommunity: true }),
+      ...(p.packName    && { packName:    p.packName }),
+    };
+  }
+
+  /** Generate a per-persona UUID (used for share-link dedup). Cheap, no deps. */
+  function _genPersonaUuid() {
+    // crypto.randomUUID is widely supported but fall back to a manual generator
+    // for older browsers / non-secure contexts.
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      try { return crypto.randomUUID(); } catch {}
+    }
+    return 'p-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
+
 
   // IDB-backed storage with localStorage migration
   let _personaCache = null;
@@ -5127,7 +5614,9 @@ I return to myself easily"></textarea>
               name: p.name,
               tagline: p.tagline || '',
               category: p.category || 'contemplative',
-              systemPrompt: p.systemPrompt || '',
+              // Accept either roleInstruction (v2) or systemPrompt (v1) from packs
+              roleInstruction: p.roleInstruction || p.systemPrompt || '',
+              systemPrompt:    p.roleInstruction || p.systemPrompt || '',
               isCommunity: true,
               packName,
             });
@@ -5139,9 +5628,14 @@ I return to myself easily"></textarea>
   }
 
   function refreshPersonas() {
-    const custom = loadCustomPersonas().map(p => ({ ...p, isCustom: true, category: p.category || 'contemplative' }));
-    const community = loadCommunityPackPersonas();
-    state.personas = [...BUILTIN_PERSONAS, ...community, ...custom];
+    // Apply normalizePersona to every entry — backfills missing v2 fields
+    // (uuid, reminderMessage, imagePromptPrefix/Suffix, metaTitle/Desc/Image,
+    // creationTime, customData, recommended*) with sensible defaults so the
+    // rest of the codebase can assume the full schema is present.
+    const builtin   = BUILTIN_PERSONAS.map(p => normalizePersona(p));
+    const custom    = loadCustomPersonas().map(p => normalizePersona({ ...p, isCustom: true, category: p.category || 'contemplative' }));
+    const community = loadCommunityPackPersonas().map(p => normalizePersona(p));
+    state.personas = [...builtin, ...community, ...custom];
   }
   const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 
@@ -5581,6 +6075,11 @@ I return to myself easily"></textarea>
       // Safety layer — persist the whole config object so users get their tuned
       // caps back across sessions. Only persist the fields we actually expose.
       safetyConfig: { ...SAFETY_DEFAULTS, ...(state.safetyConfig || {}) },
+      // Auto-tempo cleanup options — character stripping list + orphan-punctuation toggle
+      autoTempoOptions: {
+        stripChars: state.autoTempoOptions?.stripChars || '',
+        stripOrphanPunctuation: state.autoTempoOptions?.stripOrphanPunctuation !== false,
+      },
       settingsVersion: 5,
     };
   }
@@ -5793,6 +6292,16 @@ I return to myself easily"></textarea>
       if (s.intentionInput) { const el = $('intentionInput'); if (el) el.value = s.intentionInput; }
       if (s.userAffirmations != null) { const el = $('userAffirmations'); if (el) el.value = s.userAffirmations; }
       if (s.affirmationMode) { const el = $('affirmationMode'); if (el) el.value = s.affirmationMode; state.affirmationMode = s.affirmationMode; }
+      // Auto-tempo cleanup options — load with defensive validation. stripChars
+      // must be a string (not an array — an old version may have persisted as such).
+      // stripOrphanPunctuation defaults to true (the bug-fix behavior).
+      if (s.autoTempoOptions && typeof s.autoTempoOptions === 'object') {
+        const ato = s.autoTempoOptions;
+        state.autoTempoOptions = {
+          stripChars: typeof ato.stripChars === 'string' ? ato.stripChars.slice(0, 50) : '',
+          stripOrphanPunctuation: ato.stripOrphanPunctuation !== false,
+        };
+      }
       if (s.voiceName) state._savedVoiceName = s.voiceName;
       state.remoteProcessingOptIn = !!s.remoteProcessingOptIn;
       const rpcb = $('remoteProcessingOptIn'); if (rpcb) rpcb.checked = !!state.remoteProcessingOptIn;
@@ -6285,8 +6794,10 @@ I return to myself easily"></textarea>
       onCommit: (diff, _current, meta) => commitChangeLogEntry('bgImage', 'image', diff, meta),
     });
 
-    // Timeline UI — render on Profile modal expand (details toggle)
-    document.getElementById('pfChangeLogDetails')?.addEventListener('toggle', e => {
+    // Timeline UI — render when the Session History section opens.
+    // Changelog content lives inside Session History (moved 2026-04-25);
+    // listening on the parent details ensures lazy render still happens.
+    document.getElementById('sessionHistoryDetails')?.addEventListener('toggle', e => {
       if (e.target.open) renderChangeLog();
     });
 
@@ -7823,7 +8334,7 @@ Practitioner profile (full, natural sentences):`;
       </div>
       <div style="flex:1;min-width:0;">
         <div class="detail-title">${escapeHtml(p.name)}</div>
-        <div>${escapeHtml(p.systemPrompt)}</div>
+        <div>${escapeHtml(getPersonaRole(p))}</div>
         <button id="generatePortraitBtn" class="preview-btn" style="margin-top:8px;font-size:0.7rem;padding:3px 10px;">🎨 generate portrait</button>
       </div>
     </div>`;
@@ -9098,7 +9609,23 @@ Practitioner profile (full, natural sentences):`;
     const styleHint = PORTRAIT_STYLE_BY_CATEGORY[persona.category] || PORTRAIT_STYLE_BY_CATEGORY.contemplative;
     // Sanitize tagline — strip parens like "(custom)" that aren't visual cues
     const tagline = (persona.tagline || '').replace(/\([^)]*\)/g, '').trim() || 'a hypnotic guide';
-    return `stylized minimal half-body portrait illustration, ${tagline}, ${styleHint}, soft glowing background, looking ahead with serene focus, ethereal mood, fine art illustration, no background text, no signature`;
+    // v2 schema: per-persona image prompt prefix/suffix overrides. Trimmed and
+    // joined with commas if present. The category style hint is always included
+    // unless the user has provided BOTH custom prefix and suffix (in which case
+    // they've taken explicit control and the category default is omitted).
+    const prefix = (persona.imagePromptPrefix || '').trim();
+    const suffix = (persona.imagePromptSuffix || '').trim();
+    const useCategoryHint = !(prefix && suffix); // skip if user has overridden both ends
+    const parts = [
+      'stylized minimal half-body portrait illustration',
+      prefix,
+      tagline,
+      useCategoryHint ? styleHint : '',
+      'soft glowing background, looking ahead with serene focus, ethereal mood, fine art illustration',
+      suffix,
+      'no background text, no signature',
+    ].filter(Boolean);
+    return parts.join(', ');
   }
 
   /** Get cached portrait URL for a persona, or null if not cached.
@@ -10400,13 +10927,28 @@ Practitioner profile (full, natural sentences):`;
       const p = state.personas.find(x => x.id === id);
       $('personaFormName').value = p.name;
       $('personaFormTagline').value = p.tagline;
-      $('personaFormPrompt').value = p.systemPrompt;
+      $('personaFormPrompt').value = getPersonaRole(p);
       $('personaFormCategory').value = p.category || 'contemplative';
+      // v2 advanced fields
+      $('personaFormReminder').value         = p.reminderMessage   || '';
+      $('personaFormImagePrefix').value      = p.imagePromptPrefix || '';
+      $('personaFormImageSuffix').value      = p.imagePromptSuffix || '';
+      $('personaFormMetaTitle').value        = p.metaTitle         || '';
+      $('personaFormMetaDescription').value  = p.metaDescription   || '';
+      $('personaFormRecommendedRate').value  = p.recommendedSpeechRate ?? '';
+      $('personaFormRecommendedVisual').value = p.recommendedVisual    || '';
+      $('personaFormRecommendedSound').value  = p.recommendedSoundscape || '';
     } else {
       $('personaFormName').value = '';
       $('personaFormTagline').value = '';
       $('personaFormPrompt').value = '';
       $('personaFormCategory').value = 'contemplative';
+      // Clear v2 advanced fields too
+      ['personaFormReminder','personaFormImagePrefix','personaFormImageSuffix',
+       'personaFormMetaTitle','personaFormMetaDescription','personaFormRecommendedRate',
+       'personaFormRecommendedVisual','personaFormRecommendedSound'].forEach(id => {
+        const el = $(id); if (el) el.value = '';
+      });
     }
     $('personaModal').classList.add('visible');
   }
@@ -10414,15 +10956,34 @@ Practitioner profile (full, natural sentences):`;
   function savePersonaFromForm() {
     const name = $('personaFormName').value.trim();
     const tagline = $('personaFormTagline').value.trim();
-    const systemPrompt = $('personaFormPrompt').value.trim();
+    const role = $('personaFormPrompt').value.trim();
     const category = $('personaFormCategory').value || 'contemplative';
-    if (!name || !systemPrompt) { notify.warn('Name and voice instruction required.'); return; }
+    if (!name || !role) { notify.warn('Name and voice instruction required.'); return; }
+
+    // Collect v2 advanced fields. Empty strings → null/empty so normalizePersona's
+    // defaults apply on next read. Number field guarded with NaN-check.
+    const rateRaw = parseFloat($('personaFormRecommendedRate').value);
+    const v2Fields = {
+      reminderMessage:       ($('personaFormReminder').value          || '').trim().slice(0, 500),
+      imagePromptPrefix:     ($('personaFormImagePrefix').value       || '').trim().slice(0, 200),
+      imagePromptSuffix:     ($('personaFormImageSuffix').value       || '').trim().slice(0, 200),
+      metaTitle:             ($('personaFormMetaTitle').value         || '').trim().slice(0, 100),
+      metaDescription:       ($('personaFormMetaDescription').value   || '').trim().slice(0, 200),
+      recommendedSpeechRate: Number.isFinite(rateRaw) ? Math.max(0.5, Math.min(2.0, rateRaw)) : null,
+      recommendedVisual:     ($('personaFormRecommendedVisual').value || '').trim().slice(0, 40) || null,
+      recommendedSoundscape: ($('personaFormRecommendedSound').value  || '').trim().slice(0, 40) || null,
+    };
+
     let custom = loadCustomPersonas();
     if (state.editingPersonaId) {
-      custom = custom.map(p => p.id === state.editingPersonaId ? { ...p, name, tagline, systemPrompt, category } : p);
+      // Edit existing — preserve uuid, creationTime, customData; merge new values
+      custom = custom.map(p => p.id === state.editingPersonaId
+        ? normalizePersona({ ...p, name, tagline, roleInstruction: role, category, ...v2Fields })
+        : p);
     } else {
+      // New persona — normalizePersona auto-assigns uuid + creationTime
       const id = 'custom_' + Date.now();
-      custom.push({ id, name, tagline: tagline || '(custom)', systemPrompt, category });
+      custom.push(normalizePersona({ id, name, tagline: tagline || '(custom)', roleInstruction: role, category, ...v2Fields }));
       state.selectedPersonaId = id;
       markFeatureUsed(FEAT.CUSTOM_PERSONA); // mark feature only when a NEW custom persona is created
     }
@@ -11267,10 +11828,18 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
     // Build sharedContext under a token budget — priority order
     // determines what gets dropped first if the user has a huge profile +
     // long memory + many affirmations.
-    const headerBlock = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"`;
+    const headerBlock = `You are ${persona.name}. ${getPersonaRole(persona)}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"`;
+    // Persona reminder — short anchor (Perchance §2.1 REMINDER pattern). Helps
+    // keep the AI in voice across multi-phase generation, where drift accumulates.
+    // High priority (4) since it's specific behavioral guidance, but lower than
+    // the role itself so it can drop if context is extremely tight.
+    const reminderBlock = persona.reminderMessage
+      ? `\nREMINDER for writing as ${persona.name}: "${persona.reminderMessage}"`
+      : '';
     const freshBlock = buildFreshnessBlock();
     const sharedContext = trimToTokenBudget([
       { name: 'header',     text: headerBlock,       priority: 5 }, // persona + method + theme — never drop
+      { name: 'reminder',   text: reminderBlock,     priority: 4 }, // persona behavioral anchor
       { name: 'crafted',    text: craftedBlock,      priority: 4 },
       { name: 'affirm',     text: affirmBlock,       priority: 4 },
       { name: 'demoNote',   text: demoNote,          priority: 4 },
@@ -12258,8 +12827,55 @@ ${s.text.trim()}`).join('\n\n').trim();
    * - Combines fragments <3 words with adjacent sentences
    * - Inserts pauses based on content type and length
    */
+  /**
+   * Strip user-selected characters from a script while preserving structural
+   * markers ([PAUSE N] and \{\{tokens\}\}). Used by fixScriptTimings + the
+   * auto-tempo cleanup options modal.
+   *
+   * @param {string} text  the script text to clean
+   * @param {string} chars characters to remove (e.g. "*_#")
+   * @returns {string} text with chars removed (markers untouched)
+   */
+  function _stripScriptChars(text, chars) {
+    if (!chars || !text) return text;
+    // Split on PAUSE markers AND token markers so we can preserve them while
+    // stripping freely from the prose between. Capturing groups in split keep
+    // the delimiters in the output array.
+    const PRESERVE_RX = /(\x5BPAUSE\s+\d+\]|\x7B\x7B[^}]+\x7D\x7D)/gi;
+    const pieces = text.split(PRESERVE_RX);
+    const stripSet = new Set(chars);
+    return pieces.map(p => {
+      if (PRESERVE_RX.test(p)) { PRESERVE_RX.lastIndex = 0; return p; }
+      // Filter out each unwanted character. Array.from for proper Unicode handling.
+      return Array.from(p).filter(c => !stripSet.has(c)).join('');
+    }).join('');
+  }
+
+  /**
+   * Remove orphan punctuation patterns like " . ", " , ", " ; " etc. — these
+   * are leftovers from bracket-annotation stripping that the TTS narrator
+   * reads aloud as "dot", "comma" etc. Loops until stable so chains like
+   * " . . . " are fully cleaned.
+   *
+   * Lookahead-based regex so chains are caught in one pass per period:
+   * matches space + punct followed-by space-or-end, replaces with empty.
+   * "Hello . World" → "Hello World". "Hello." (no leading space) is preserved.
+   */
+  function _stripOrphanPunctuation(text) {
+    if (!text) return text;
+    let prev;
+    let cur = text;
+    // Run until stable — consecutive orphans like " . . World" need multiple passes
+    do {
+      prev = cur;
+      cur = cur.replace(/\s([.,;:!?])(?=\s|$)/g, '');
+    } while (cur !== prev);
+    return cur.replace(/  +/g, ' ').trim();
+  }
+
   function fixScriptTimings(scriptText) {
     const phaseRx = PHASE_MARKER_SPLIT_RX;
+    const opts = state.autoTempoOptions || { stripChars: '', stripOrphanPunctuation: true };
 
     // Compute pause duration based on sentence content
     function pauseFor(sentence) {
@@ -12346,6 +12962,24 @@ ${s.text.trim()}`).join('\n\n').trim();
 
     // Normalize all pause marker casing to canonical form
     fixed = fixed.replace(/\x5Bpause\s+(\d+)\x5D/gi, (m, n) => `\x5BPAUSE ${n}\x5D`);
+
+    // ── Cleanup passes (always run; both gated by user options) ────────────
+    // 1) Strip user-selected characters (PAUSE markers and \{\{tokens\}\} preserved)
+    if (opts.stripChars) fixed = _stripScriptChars(fixed, opts.stripChars);
+    // 2) Bug fix — remove orphan " . " patterns left by stripped bracket annotations.
+    //    Default ON; user can disable via the auto-tempo options modal but it's
+    //    almost always desirable since the narrator reads orphan punctuation aloud.
+    if (opts.stripOrphanPunctuation !== false) {
+      // Split-and-process to avoid touching anything inside [PAUSE N] markers.
+      // Without this guard, the regex would match a hypothetical " . " preceded
+      // by a digit inside a marker — currently impossible but defensive.
+      const PRESERVE_RX = /(\x5BPAUSE\s+\d+\])/gi;
+      fixed = fixed.split(PRESERVE_RX).map(p => {
+        return /^\x5BPAUSE\s+\d+\]$/i.test(p) ? p : _stripOrphanPunctuation(p);
+      }).join('');
+      // After stripping, single-space cleanup again (orphan removal can leave "  ")
+      fixed = fixed.replace(/  +/g, ' ');
+    }
 
     return fixed;
   }
@@ -13896,6 +14530,20 @@ ${s.text.trim()}`).join('\n\n').trim();
     // Clean up background engine
     bgEngine.clear();
 
+    // Snapshot active program BEFORE advanceProgramDay mutates it — we need
+    // {id, name, dayJustCompleted, totalDays, isFinalDay} to populate the post-session
+    // program card. advanceProgramDay clears state._activeProgram and (on final day)
+    // wipes the IDB record, so reading after-the-fact would lose this data.
+    const _programSnapshot = (!wasEmergency && state._activeProgram?.prog && state._activeProgram?.ps)
+      ? {
+          name: state._activeProgram.prog.name,
+          icon: state._activeProgram.prog.icon || '📅',
+          dayJustCompleted: (state._activeProgram.ps.currentDay || 0) + 1, // currentDay is 0-indexed, so day 0 finishing = day 1 complete
+          totalDays:        state._activeProgram.prog.days,
+          isFinalDay:       (state._activeProgram.ps.currentDay || 0) + 1 >= state._activeProgram.prog.days,
+        }
+      : null;
+
     // Advance structured program (non-emergency only)
     if (!wasEmergency) advanceProgramDay();
 
@@ -13905,13 +14553,27 @@ ${s.text.trim()}`).join('\n\n').trim();
     // Build post-session summary
     const mins = Math.floor(elapsed / 60), secs = elapsed % 60;
     const persona = getPersona(), method = getMethod();
+    // Pull personalization signals — first name (if user opted in), completed
+    // session count (post-this-session), and the just-finished program day.
+    const profile = getProfile();
+    const firstName = (profile.useFirstName && profile.name) ? profile.name : '';
+    const sessionCount = await getSessionCount(); // includes this one (recordSession ran above)
+    const ordinalSuffix = (n) => {
+      const v = n % 100;
+      if (v >= 11 && v <= 13) return 'th';
+      return ['th','st','nd','rd','th','th','th','th','th','th'][n % 10];
+    };
     const summaryEl = $('postSummary');
+    const sessionMarker = !wasEmergency && sessionCount > 0
+      ? `<div class="post-row" style="opacity:0.85;"><span class="post-label">milestone</span><span class="post-value">${sessionCount}${ordinalSuffix(sessionCount)} completed session</span></div>`
+      : '';
     summaryEl.innerHTML = `
       <div class="post-card-title">session summary</div>
       <div class="post-row"><span class="post-label">guide</span><span class="post-value">${escapeHtml(persona.name)}</span></div>
       <div class="post-row"><span class="post-label">method</span><span class="post-value">${escapeHtml(method.name)}</span></div>
       <div class="post-row"><span class="post-label">duration</span><span class="post-value">${mins}:${String(secs).padStart(2,'0')}</span></div>
       <div class="post-row"><span class="post-label">completion</span><span class="post-value">${wasEmergency ? 'ended early' : 'completed'}</span></div>
+      ${sessionMarker}
     `;
 
     // Show trigger/suggestion reminder if relevant
@@ -13941,6 +14603,44 @@ ${s.text.trim()}`).join('\n\n').trim();
       </div>`;
     }
 
+    // Intention-aware reflection prompt — short, contextual nudge for what to
+    // notice / do after the session. Hidden on emergency end (the user needs
+    // grounding, not philosophical reflection).
+    const reflectionBox = $('postReflectionBox');
+    if (reflectionBox) {
+      if (!wasEmergency) {
+        const reflection = POST_SESSION_REFLECTIONS[state.intentionType] || POST_SESSION_REFLECTION_FALLBACK;
+        reflectionBox.style.display = '';
+        reflectionBox.innerHTML = `
+          <div class="post-card-title">a moment to notice</div>
+          <div class="post-trigger-text" style="font-size:0.86rem;line-height:1.55;color:var(--text-dim);">${escapeHtml(reflection)}</div>`;
+      } else {
+        reflectionBox.style.display = 'none';
+        reflectionBox.innerHTML = '';
+      }
+    }
+
+    // Program continuation hint — uses _programSnapshot captured BEFORE
+    // advanceProgramDay mutated state. On the final day this is the only place
+    // we can still surface the completion celebration; advanceProgramDay clears
+    // the IDB record on day N=total.
+    const programBox = $('postProgramBox');
+    if (programBox) {
+      if (_programSnapshot) {
+        const sn = _programSnapshot;
+        const nextDayHint = sn.isFinalDay
+          ? `🎉 You completed all ${sn.totalDays} days of <strong>${escapeHtml(sn.name)}</strong>. The structured arc is yours now.`
+          : `Day ${sn.dayJustCompleted} of ${sn.totalDays} complete in <strong>${escapeHtml(sn.name)}</strong>. Day ${sn.dayJustCompleted + 1} unlocks tomorrow — return when you're ready.`;
+        programBox.style.display = '';
+        programBox.innerHTML = `
+          <div class="post-card-title">${sn.icon} program progress</div>
+          <div class="post-trigger-text" style="font-size:0.86rem;line-height:1.55;color:var(--text-dim);">${nextDayHint}</div>`;
+      } else {
+        programBox.style.display = 'none';
+        programBox.innerHTML = '';
+      }
+    }
+
     // Emergency cooldown — duration from safetyConfig (default 30s, user-tunable)
     const statusIcon = $('postStatusIcon');
     if (wasEmergency) {
@@ -13948,11 +14648,33 @@ ${s.text.trim()}`).join('\n\n').trim();
       state._cooldownUntil = Date.now() + cooldownSec * 1000;
       if ($('groundingBox')) $('groundingBox').style.display = 'block';
       if (statusIcon) { statusIcon.textContent = '⚠'; statusIcon.style.color = 'var(--neon-amber)'; }
-      if ($('postMessage')) $('postMessage').textContent = 'You ended early. That\'s okay — take a moment to re-orient.';
+      // Personalized message — use first name if user opted in. Tone is gentle,
+      // not chiding (the user already chose to end early; respect that choice).
+      const earlyMsg = firstName
+        ? `${firstName}, you ended early. That's okay — take a moment to re-orient.`
+        : 'You ended early. That\'s okay — take a moment to re-orient.';
+      if ($('postMessage')) $('postMessage').textContent = earlyMsg;
     } else {
       if ($('groundingBox')) $('groundingBox').style.display = 'none';
       if (statusIcon) { statusIcon.textContent = '✓'; statusIcon.style.color = 'var(--neon-cyan)'; }
-      if ($('postMessage')) $('postMessage').textContent = 'Take a moment. Notice how you feel.';
+      // Welcome-back message — first name if opted in, with light variation by
+      // session count so the very first session feels notably different from the
+      // 50th. Avoids the same string forever.
+      let welcomeMsg;
+      if (sessionCount === 1) {
+        welcomeMsg = firstName
+          ? `Welcome back, ${firstName}. Your first session is recorded.`
+          : 'Welcome back. Your first session is recorded.';
+      } else if (sessionCount > 0 && sessionCount % 10 === 0) {
+        welcomeMsg = firstName
+          ? `${firstName}, that's ${sessionCount} sessions — the practice is becoming yours.`
+          : `That's ${sessionCount} sessions — the practice is becoming yours.`;
+      } else {
+        welcomeMsg = firstName
+          ? `Welcome back, ${firstName}. Notice how you feel.`
+          : 'Take a moment. Notice how you feel.';
+      }
+      if ($('postMessage')) $('postMessage').textContent = welcomeMsg;
     }
 
     // Reset post-session state controls
@@ -14123,7 +14845,76 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     state.parsedScript = parseScript(fixed);
     _scriptEditedSinceGen = false;
     showScript();
-    notify.success('Pause timings recalculated based on content.');
+    const stripCount = (state.autoTempoOptions?.stripChars || '').length;
+    const stripNote = stripCount ? ` (${stripCount} character${stripCount === 1 ? '' : 's'} stripped per options)` : '';
+    notify.success(`Pause timings recalculated based on content${stripNote}.`);
+  });
+
+  // ── Auto-tempo cleanup options modal ──────────────────────────────────────
+  // Two character groups: SAFE (formatting/decorative — won't break sentence
+  // structure) and CAUTION (used by the sentence splitter — strip only if
+  // your scripts have unusual punctuation).
+  const _AUTO_TEMPO_CHARS_SAFE    = ['*', '_', '#', '~', '`', '|', '\\', '/', '<', '>', '=', '+', '^', '&', '%', '$', '@'];
+  const _AUTO_TEMPO_CHARS_CAUTION = ['(', ')', '{', '}', '[', ']', '-', '!', '?', '.', ',', ';', ':', "'", '"'];
+
+  function _renderAutoTempoCharGrid(targetId, charList) {
+    const container = $(targetId);
+    if (!container) return;
+    const active = new Set(state.autoTempoOptions?.stripChars || '');
+    container.innerHTML = '';
+    charList.forEach(ch => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'auto-tempo-char-btn' + (active.has(ch) ? ' active' : '');
+      btn.textContent = ch;
+      btn.title = active.has(ch) ? `Click to KEEP "${ch}"` : `Click to STRIP "${ch}"`;
+      btn.addEventListener('click', () => {
+        if (!state.autoTempoOptions) state.autoTempoOptions = { stripChars: '', stripOrphanPunctuation: true };
+        const cur = new Set(state.autoTempoOptions.stripChars || '');
+        if (cur.has(ch)) cur.delete(ch); else cur.add(ch);
+        state.autoTempoOptions.stripChars = Array.from(cur).join('');
+        _renderAutoTempoOptsModal(); // re-render both grids + preview
+        saveUserSettings();
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  function _renderAutoTempoOptsModal() {
+    const opts = state.autoTempoOptions || { stripChars: '', stripOrphanPunctuation: true };
+    const cb = $('autoTempoStripOrphan'); if (cb) cb.checked = opts.stripOrphanPunctuation !== false;
+    _renderAutoTempoCharGrid('autoTempoCharGridSafe',    _AUTO_TEMPO_CHARS_SAFE);
+    _renderAutoTempoCharGrid('autoTempoCharGridCaution', _AUTO_TEMPO_CHARS_CAUTION);
+    const preview = $('autoTempoStripPreview');
+    if (preview) {
+      const chars = opts.stripChars || '';
+      preview.textContent = chars
+        ? `Will strip these characters: ${chars.split('').map(c => `"${c}"`).join(' ')}`
+        : 'No characters will be stripped (default behavior).';
+    }
+  }
+
+  $('autoTempoOptsBtn')?.addEventListener('click', () => {
+    _renderAutoTempoOptsModal();
+    $('autoTempoOptsModal')?.classList.add('visible');
+  });
+  $('autoTempoOptsCloseBtn')?.addEventListener('click', () => {
+    $('autoTempoOptsModal')?.classList.remove('visible');
+  });
+  $('autoTempoOptsResetBtn')?.addEventListener('click', () => {
+    state.autoTempoOptions = { stripChars: '', stripOrphanPunctuation: true };
+    _renderAutoTempoOptsModal();
+    saveUserSettings();
+    notify.info('Auto-tempo options reset to defaults.');
+  });
+  $('autoTempoStripOrphan')?.addEventListener('change', e => {
+    if (!state.autoTempoOptions) state.autoTempoOptions = { stripChars: '', stripOrphanPunctuation: true };
+    state.autoTempoOptions.stripOrphanPunctuation = !!e.target.checked;
+    saveUserSettings();
+  });
+  // Click-outside-to-close (consistent with other modals using this pattern)
+  $('autoTempoOptsModal')?.addEventListener('click', e => {
+    if (e.target.id === 'autoTempoOptsModal') $('autoTempoOptsModal').classList.remove('visible');
   });
 
   // Filter tabs
@@ -15248,17 +16039,18 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   // ====================================================================
   const TOUR_KEY = 'stillness_tour_v2';
   const TOUR_STEPS = [
-    { icon: '🌀', title: 'Welcome to the Hypnosis Engine', body: 'This tool creates personalised AI-generated hypnosis sessions with narration, visuals, and procedural soundscapes — all running locally in your browser. No data leaves your device. This quick tour shows you how.' },
+    { icon: '🌀', title: 'Welcome to the Hypnosis Engine', body: 'This tool creates personalised AI-generated hypnosis sessions with narration, visuals, and procedural soundscapes — all running locally in your browser. No data leaves your device unless you explicitly opt in. This quick tour shows you how.' },
     { icon: '⚡', title: 'Quick-start or deep-customise', body: 'In a hurry? Use a <strong>Preset</strong> at the top of Step 1 — one click sets guide, method, intention, soundscape, and length. Or follow the 6-step wizard for full control. You can also click "use my own script" to skip straight to the player.' },
-    { icon: '👤', title: 'Step 1 — Choose a Guide', body: '25 built-in personas across four temperaments — contemplative, showman, somatic, and authoritarian. Each has a distinct voice and therapeutic style. Create unlimited custom personas too.' },
-    { icon: '🔮', title: 'Step 2 — Choose a Method', body: '37 induction techniques from gentle progressive relaxation to dramatic shock inductions. Rapid and advanced methods unlock after 3 and 7 completed sessions — building your experience safely.' },
-    { icon: '🎯', title: 'Step 3 — Set an Intention', body: 'Describe what you want from the session. The AI crafts a precise hypnotic suggestion from your description.' },
-    { icon: '💬', title: 'Step 4 — Affirmations (optional)', body: 'Add your own personal affirmations — they\'ll be woven verbatim into the script. Pick how strongly they appear: woven through, dedicated moments, or light touch.' },
-    { icon: '⚙', title: 'Step 5 — Configure', body: 'Procedural soundscapes, visual effects with live tuning sliders (speed, intensity, trail), voice controls, ducking toggle, and HUD element toggles. All settings auto-save between visits.' },
-    { icon: '▶', title: 'Step 6 — Generate & Begin', body: 'Each script phase is generated individually with live progress indicators. If a phase fails, click its red dot to retry just that one. Edit the script, fix timings if needed, then begin your session.' },
-    { icon: '📊', title: 'Your profile sidebar', body: 'The left sidebar tracks your stats, streak, activity heatmap, and full session history. Every session stores its complete script — click ▶ to replay any past session with identical settings.' },
-    { icon: '🎵', title: 'During a session', body: '<strong>Space</strong> pauses everything (voice and soundscape). <strong>Escape</strong> triggers an emergency re-alert in your guide\'s voice. Use <strong>← back to script</strong> to return and edit mid-session. The ⚙ panel lets you adjust audio and visuals live.' },
-    { icon: '✨', title: 'You\'re ready', body: 'Pick a guide and method, or tap a preset. Your first session takes about 2 minutes to set up. Backup your data anytime from the sidebar. The <strong>help &amp; safety resources</strong> button in the sidebar has crisis resources.' },
+    { icon: '👤', title: 'Step 1 — Choose a Guide', body: '25+ built-in personas across four temperaments — contemplative, showman, somatic, and authoritarian. Each has a distinct voice and therapeutic style. Create unlimited custom personas, and generate a <strong>portrait</strong> for any persona via the 🎨 button (requires remote-processing opt-in).' },
+    { icon: '🔮', title: 'Step 2 — Choose a Method', body: '37+ induction techniques from gentle progressive relaxation to dramatic shock inductions. Rapid and advanced methods unlock after 3 and 7 completed sessions — building your experience safely.' },
+    { icon: '🎯', title: 'Step 3 — Set an Intention', body: 'Describe what you want from the session. The AI uses your profile (about you, goals, pronouns) plus your intention to craft a precise hypnotic suggestion. Profile data is only sent when <strong>Smart Director</strong> is on.' },
+    { icon: '💬', title: 'Step 4 — Affirmations (optional)', body: 'Add your own affirmations to be woven verbatim into the script — or click <strong>✨ generate from profile</strong> to have the AI draft a few based on who you are and what you\'re working on. Pick how strongly they appear: woven through, dedicated moments, or light touch.' },
+    { icon: '⚙', title: 'Step 5 — Configure', body: 'Soundscapes, visuals with live tuning, voice + ducking controls, and a stack of advanced toggles: <strong>Smart Director</strong> (profile-aware AI), <strong>Reactive Rules</strong> (auto-respond to silence/voice), <strong>Session Modes</strong> (Standard / Deep Sleep / Active Practice / Gentle Exploration), <strong>Safety Limits</strong>, <strong>Playback Dynamics</strong> (adaptive speech rate), and per-session <strong>Webcam awareness</strong> (local face/attention sensing — no frames saved or transmitted). Settings auto-save.' },
+    { icon: '▶', title: 'Step 6 — Generate & Begin', body: 'Each script phase generates individually with live status dots. If a phase fails, click its red dot — or hit <strong>regenerate</strong> below the script to retry only the failed chunks. <strong>⏱ auto-tempo</strong> rebuilds pause timings; the ⚙ next to it opens cleanup options for stripping unwanted characters and orphan punctuation.' },
+    { icon: '📊', title: 'Your profile sidebar', body: 'The left sidebar tracks stats, streak, activity heatmap, and your <strong>Session History</strong> (which now includes your profile <strong>change log</strong> at the bottom — every tracked edit). Every session stores its complete script — click ▶ to replay any past session. The 📦 <strong>export bundle</strong> button on the post-session screen packages script + metadata + profile snapshot as a .zip.' },
+    { icon: '🎵', title: 'During a session', body: '<strong>Space</strong> pauses everything (voice and soundscape). <strong>Escape</strong> triggers an emergency re-alert in your guide\'s voice. Use <strong>← back to script</strong> to return and edit mid-session. The ⚙ panel adjusts audio and visuals live. With Reactive Rules on, the engine may nudge you if you go silent for a while or duck the soundscape during work phases.' },
+    { icon: '🔒', title: 'Privacy by default', body: 'Everything stays in your browser. <strong>Remote backup &amp; processing</strong> is OFF by default — when off, no data leaves your device, and intrusive UI (like "page may be stuck" warnings) stays silent too. Turn it on in Options if you want cross-device features. The <strong>debug mode</strong> toggle in Options surfaces developer affordances; a red badge appears whenever it\'s on.' },
+    { icon: '✨', title: 'You\'re ready', body: 'Pick a guide and method, or tap a preset. Your first session takes about 2 minutes to set up. Backup your data anytime from the sidebar. The <strong>help &amp; safety resources</strong> button has crisis resources.' },
   ];
 
   function shouldShowTour() { try { return !localStorage.getItem(TOUR_KEY); } catch { return false; } }
