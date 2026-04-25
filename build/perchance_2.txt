@@ -2658,13 +2658,13 @@ I return to myself easily"></textarea>
   <div class="modal" style="max-width:560px;">
     <h2>auto-tempo cleanup options</h2>
     <div style="font-size:0.78rem;color:var(--text-dim);line-height:1.55;margin-bottom:12px;">
-      Choose which characters should be removed from the script when auto-tempo runs. Characters that aren't in this set are left alone. <code>[PAUSE N]</code> markers and <code>\{\{tokens\}\}</code> are always preserved regardless.
+      Choose which characters should be removed from the script when auto-tempo runs. Characters that aren't in this set are left alone. The PAUSE markers (in square brackets, e.g. PAUSE 3) and <code>\{\{tokens\}\}</code> are always preserved regardless.
     </div>
     <label class="toggle-row" for="autoTempoStripOrphan" style="align-items:flex-start;margin-bottom:14px;">
       <input type="checkbox" id="autoTempoStripOrphan">
       <span>
         Strip orphan punctuation (recommended)
-        <span class="hint" style="line-height:1.5;">Removes leftover <code>" . "</code>, <code>" , "</code>, etc. patterns that the narrator otherwise reads aloud as "dot" or "comma". These are usually leftovers from stripped bracket annotations like <code>[stage direction]</code>.</span>
+        <span class="hint" style="line-height:1.5;">Removes leftover <code>" . "</code>, <code>" , "</code>, etc. patterns that the narrator otherwise reads aloud as "dot" or "comma". These are usually leftovers from stripped square-bracket annotations like a stage-direction or topic-sentence header that the AI sometimes generates.</span>
       </span>
     </label>
     <div class="pf-label" style="margin-bottom:6px;">Character stripping</div>
@@ -5461,7 +5461,7 @@ I return to myself easily"></textarea>
         '',
         '## Files',
         '- `session.json` — full session record (config, metrics, settings)',
-        '- `script.txt` — raw generated script with phase markers and `[PAUSE N]` directives',
+        '- `script.txt` — raw generated script with phase markers and `\x5BPAUSE N\x5D` directives',
         '- `script.md` — pretty-printed script with phase headers',
         '- `profile.json` — your profile snapshot at session time',
         '',
@@ -12829,7 +12829,7 @@ ${s.text.trim()}`).join('\n\n').trim();
    */
   /**
    * Strip user-selected characters from a script while preserving structural
-   * markers ([PAUSE N] and \{\{tokens\}\}). Used by fixScriptTimings + the
+   * markers (\x5BPAUSE N\x5D and \{\{tokens\}\}). Used by fixScriptTimings + the
    * auto-tempo cleanup options modal.
    *
    * @param {string} text  the script text to clean
@@ -12896,7 +12896,7 @@ ${s.text.trim()}`).join('\n\n').trim();
 
     // Process a text segment (no existing pauses inside it)
     function processSegment(text) {
-      // Strip bracket annotations that aren't \x5BPAUSE N\x5D (e.g. [Topic Sentence], [Step 1])
+      // Strip bracket annotations that aren't \x5BPAUSE N\x5D (e.g. \x5BTopic Sentence\x5D, \x5BStep 1\x5D)
       const clean = text
         .replace(/^#+\s+.*$/gm, '') // strip markdown headings
         .replace(/\[[^\]]+\]/g, m =>
@@ -12970,7 +12970,7 @@ ${s.text.trim()}`).join('\n\n').trim();
     //    Default ON; user can disable via the auto-tempo options modal but it's
     //    almost always desirable since the narrator reads orphan punctuation aloud.
     if (opts.stripOrphanPunctuation !== false) {
-      // Split-and-process to avoid touching anything inside [PAUSE N] markers.
+      // Split-and-process to avoid touching anything inside \x5BPAUSE N\x5D markers.
       // Without this guard, the regex would match a hypothetical " . " preceded
       // by a digit inside a marker — currently impossible but defensive.
       const PRESERVE_RX = /(\x5BPAUSE\s+\d+\])/gi;
