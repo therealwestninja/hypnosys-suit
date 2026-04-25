@@ -1887,6 +1887,14 @@ body.in-session .footer {
 My body knows how to heal
 I return to myself easily"></textarea>
         <div class="sublabel">Tip: Write in the present tense, one thought per line. Your exact words may appear in affirmation interludes, deepening, or work blocks.</div>
+        <!-- Smart Director auto-fill: drafts 3-5 affirmations from your profile + intention.
+             Disabled if Smart Director is off (tooltip explains why). -->
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="preview-btn" id="generateAffirmationsBtn" type="button" title="Drafts a few affirmations from your profile and intention. Requires Smart Director.">
+            <span id="generateAffirmationsBtnLabel">✨ generate from profile</span>
+          </button>
+          <span id="generateAffirmationsHint" class="sublabel" style="font-size:0.7rem;color:var(--text-faint);"></span>
+        </div>
       </div>
 
       <div class="field-group">
@@ -2710,39 +2718,21 @@ I return to myself easily"></textarea>
       <!-- Debug section — session-only, NEVER persisted (excluded from _buildSettingsObj). -->
       <hr style="border:none;border-top:1px solid var(--glass-border);margin:14px 0 8px;">
       <div class="pf-label" style="margin-bottom:6px;">Debug (session only, never saved)</div>
-      <label class="toggle-row" for="debugSkipRescue" style="align-items:flex-start;margin-top:4px;">
-        <input type="checkbox" id="debugSkipRescue">
+      <label class="toggle-row" for="debugMode" style="align-items:flex-start;margin-top:4px;">
+        <input type="checkbox" id="debugMode">
         <span>
-          Skip rescue sequence
-          <span class="hint">Skips emergency re-alert narration. Also reveals the memories-inspector button.</span>
-        </span>
-      </label>
-      <label class="toggle-row" for="debugSkipCooldown" style="align-items:flex-start;margin-top:8px;">
-        <input type="checkbox" id="debugSkipCooldown">
-        <span>
-          Skip post-emergency cooldown
-          <span class="hint">Bypasses the 30-second wait between sessions after an emergency exit.</span>
-        </span>
-      </label>
-      <label class="toggle-row" for="debugSkipSafetyGate" style="align-items:flex-start;margin-top:8px;">
-        <input type="checkbox" id="debugSkipSafetyGate">
-        <span>
-          Skip pre-session safety gate
-          <span class="hint">Bypasses the modal for missing Lightener/Wake/Reintroduction or unbalanced Deepener/Lightener.</span>
-        </span>
-      </label>
-      <label class="toggle-row" for="debugSkipMethodGating" style="align-items:flex-start;margin-top:8px;">
-        <input type="checkbox" id="debugSkipMethodGating">
-        <span>
-          Unlock all methods
-          <span class="hint">Bypasses the experience-based locks on Rapid (3 sessions) and Advanced (7 sessions) categories.</span>
-        </span>
-      </label>
-      <label class="toggle-row" for="debugVerbose" style="align-items:flex-start;margin-top:8px;">
-        <input type="checkbox" id="debugVerbose">
-        <span>
-          Verbose Smart Director logging
-          <span class="hint">Logs every injection decision, gate check, and memory update to the console.</span>
+          Enable debug mode
+          <span class="hint" style="line-height:1.5;display:block;margin-top:4px;">
+            Turns on every developer affordance in one switch:
+            <ul style="margin:4px 0 0 16px;padding:0;font-size:0.7rem;line-height:1.5;color:var(--text-faint);">
+              <li>Skip rescue sequence (no emergency re-alert narration), reveals memories-inspector button</li>
+              <li>Skip post-emergency cooldown (no 30-second wait between sessions after early end)</li>
+              <li>Skip pre-session safety gate (no modal for missing Lightener/Wake or unbalanced phases)</li>
+              <li>Unlock all methods (bypass experience-based locks on Rapid + Advanced)</li>
+              <li>Verbose Smart Director logging (every injection decision, gate check, memory update to console)</li>
+            </ul>
+            Use only if you know what you're doing — these gates exist for safety. A red "DEBUG" badge appears in the corner whenever this is on.
+          </span>
         </span>
       </label>
       <hr style="border:none;border-top:1px solid var(--glass-border);margin:12px 0;">
@@ -3202,14 +3192,16 @@ I return to myself easily"></textarea>
     },
   };
 
-  /** Sync state._debug from checkbox DOM. Called on load and on any debug checkbox change. */
+  /** Sync state._debug from checkbox DOM. Called on load and on the debug toggle.
+   *  Single source of truth: one `debugMode` checkbox enables every debug flag. */
   function _syncDebugState() {
     const d = state._debug;
-    d.skipRescue       = !!document.getElementById('debugSkipRescue')?.checked;
-    d.skipCooldown     = !!document.getElementById('debugSkipCooldown')?.checked;
-    d.skipSafetyGate   = !!document.getElementById('debugSkipSafetyGate')?.checked;
-    d.skipMethodGating = !!document.getElementById('debugSkipMethodGating')?.checked;
-    d.verbose          = !!document.getElementById('debugVerbose')?.checked;
+    const on = !!document.getElementById('debugMode')?.checked;
+    d.skipRescue       = on;
+    d.skipCooldown     = on;
+    d.skipSafetyGate   = on;
+    d.skipMethodGating = on;
+    d.verbose          = on;
     _renderDebugBanner();
   }
 
@@ -10524,6 +10516,151 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       $('craftProgress').classList.remove('visible');
     }
   }
+
+  // ====================================================================
+  // AFFIRMATION AUTO-FILL — Smart Director drafts from profile + intention
+  // ====================================================================
+  // When the user's affirmation textarea is empty (Step 4) and Smart Director
+  // is enabled, the user can click "✨ generate from profile" to have the AI
+  // draft 3-5 affirmations tailored to their profile, current intention, and
+  // selected persona/method. The textarea remains editable — generation just
+  // gives the user a starting point.
+  //
+  // Design choices:
+  //   • Manual trigger (button click) — never auto-fires on step entry, so
+  //     the user is always in control of when API calls happen.
+  //   • Confirms before overwrite if the textarea has content.
+  //   • Uses the same _aiInProgress single-flight gate as craftSuggestion to
+  //     prevent overlapping AI calls.
+  //   • If Smart Director is off, the button is disabled (not hidden) with a
+  //     tooltip pointing the user to the toggle.
+  //   • Output respects the 500-char input limit and is shaped as one
+  //     affirmation per line (matching the textarea's expected format).
+  // ====================================================================
+  async function generateAffirmationsFromProfile() {
+    if (_aiInProgress) { notify.info('An AI call is already in progress.'); return; }
+    if (state.smartDirectorEnabled === false) {
+      notify.warn('Enable Smart Director (Settings) to use profile-driven generation.');
+      return;
+    }
+    const textarea = $('userAffirmations');
+    if (!textarea) return;
+    const existing = textarea.value.trim();
+    if (existing) {
+      const ok = await confirmAsync('Replace your existing affirmations with AI-drafted ones?');
+      if (!ok) return;
+    }
+
+    _aiInProgress = true;
+    const btn = $('generateAffirmationsBtn');
+    const label = $('generateAffirmationsBtnLabel');
+    const hint = $('generateAffirmationsHint');
+    if (btn) btn.disabled = true;
+    if (label) label.textContent = '⏳ drafting…';
+    if (hint) hint.textContent = '';
+    const stopTimer = makeElapsedTimer(s => { if (label) label.textContent = `⏳ drafting… ${s}s`; });
+
+    try {
+      // Build the prompt. Profile context provides about/goals/experience,
+      // intention type provides the directional purpose, persona provides voice.
+      const persona = getPersona();
+      const method = getMethod();
+      const intention = resolveTokens($('intentionInput')?.value?.trim() || '');
+      const intentionType = INTENTION_TYPES[state.intentionType] || INTENTION_TYPES.emotional;
+      const profileBlock = getProfileContext(); // already gated on Smart Director
+
+      const headerBlock = `You are a master hypnotherapist drafting personal affirmations for a hypnosis session.
+
+The user did not write their own affirmations and asked you to draft some. Generate 3-5 affirmations they will hear during the session.
+
+INTENTION TYPE: ${intentionType.label}
+USER'S INTENTION: "${intention || '(none specified — use the profile and intention type as guidance)'}"
+PERSONA STYLE: ${persona.name} — ${persona.tagline}
+METHOD: ${method.name}`;
+
+      const rulesBlock = `
+AFFIRMATION RULES:
+• First person, present tense ("I am…", "I notice…", "I allow…")
+• Short — 4 to 12 words each
+• Positively framed (state what IS, not what isn't)
+• Specific to the user's profile and intention — not generic platitudes
+• Each line should stand alone as a complete suggestion
+• Use the user's pronouns and any specific details from their profile
+• Avoid clichés like "I am enough" — be specific to what the user is working on
+
+OUTPUT FORMAT:
+One affirmation per line. No numbering, no bullets, no quotes around lines, no preamble, no commentary. Just the affirmations themselves, separated by newlines. 3-5 lines total.`;
+
+      const instruction = trimToTokenBudget([
+        { name: 'header',   text: headerBlock,  priority: 5 },
+        { name: 'profile',  text: profileBlock, priority: 3 },
+        { name: 'rules',    text: rulesBlock,   priority: 5 },
+      ], 400);
+
+      const result = await aiGenerate(instruction, { stopSequences: ['\n\n', '\n---'] });
+      if (!result.text) throw new Error(result.note || 'no text returned');
+
+      // Parse: split on newlines, drop empties, drop any quoted/numbered/bulleted prefixes
+      // the model adds despite the format instruction. Keep at most 5 lines.
+      const lines = result.text.split('\n')
+        .map(l => l.trim())
+        .filter(Boolean)
+        // Strip leading bullets, numbers, dashes, quotes that the model may add
+        .map(l => l.replace(/^[-•*\d.)\s]+/, '').replace(/^["'""'']\s*/, '').replace(/\s*["'""'']\s*$/, '').trim())
+        .filter(l => l.length >= 3 && l.length <= 200) // sanity bounds
+        .slice(0, 5);
+
+      if (lines.length === 0) throw new Error('AI output had no usable affirmations');
+
+      const joined = lines.join('\n');
+      // Respect the 500-char input cap (used downstream by buildSettingsObj URL encoder)
+      textarea.value = joined.slice(0, 500);
+      // Programmatic value change does NOT fire input event — manually ping the DiffBouncer
+      // so this counts as a tracked change in the profile changeLog.
+      diffBouncers.userAffirmations?.ping();
+      // Trigger updateStepUI so the step indicator reflects the now-filled state
+      if (typeof updateStepUI === 'function') updateStepUI();
+      // Persist to settings so a reload preserves the generated affirmations
+      saveUserSettings();
+
+      notify.success(`Drafted ${lines.length} affirmation${lines.length === 1 ? '' : 's'} from your profile.`);
+      if (hint) hint.textContent = 'You can edit these freely — they\'re just a starting point.';
+    } catch (e) {
+      console.error('[affirmations] generation failed:', e);
+      notify.warn('Could not draft affirmations: ' + (e.message || 'unknown error'));
+    } finally {
+      _aiInProgress = false;
+      stopTimer();
+      _refreshAffirmationsBtnState();
+    }
+  }
+
+  /** Update the affirmation generator button label + enabled state based on
+   *  current textarea content + Smart Director state. Called after typing,
+   *  after generation, after Smart Director toggle. Idempotent. */
+  function _refreshAffirmationsBtnState() {
+    const btn = $('generateAffirmationsBtn');
+    const label = $('generateAffirmationsBtnLabel');
+    const hint = $('generateAffirmationsHint');
+    if (!btn || !label) return;
+    const sdOn = state.smartDirectorEnabled !== false;
+    const hasContent = !!($('userAffirmations')?.value?.trim());
+    btn.disabled = !sdOn || _aiInProgress;
+    if (!sdOn) {
+      label.textContent = '✨ generate from profile';
+      btn.title = 'Smart Director must be enabled (in Settings) to use profile-driven generation';
+      if (hint) hint.textContent = 'Smart Director is off — enable it in Settings to use this.';
+    } else if (_aiInProgress) {
+      btn.title = 'Another AI call is in progress';
+    } else {
+      label.textContent = hasContent ? '✨ regenerate' : '✨ generate from profile';
+      btn.title = hasContent
+        ? 'Replace your affirmations with newly drafted ones'
+        : 'Drafts a few affirmations from your profile and intention';
+      if (hint && hint.textContent.startsWith('Smart Director is off')) hint.textContent = '';
+    }
+  }
+
   function showCrafted() {
     const c = state.craftedSuggestion;
     $('craftedText').textContent = c.craftedSuggestion;
@@ -10919,6 +11056,97 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   // Captured when generateFullScript sets up _genState. syncGenStateWithPhases
   // uses it to re-bind retry clicks on phases added after initial generation.
   let _genStateRetryHandler = null;
+
+  /**
+   * Step-6 "Regenerate" button (the one below the script textarea, before auto-tempo).
+   *
+   * Behavior — sequentially retries any chunks that failed to generate the first
+   * time (stateMask is 'error' or 'warn'). The button itself is disabled while
+   * running so a user can't accidentally double-trigger.
+   *
+   * Decision tree:
+   *   • _genState is null → no prior generation; offer full regen via confirm
+   *   • all phases done → no failures to retry; offer full regen via confirm
+   *   • some phases failed → run retryPhase for each in order, awaiting each
+   *
+   * Why sequential not parallel: the retry path uses _genStateRetryHandler which
+   * gates on _aiInProgress, so concurrent retries would just queue and notify.
+   * Sequential matches the visual progress (one indicator turning green at a
+   * time) and avoids hammering the AI endpoint with bursts.
+   */
+  async function regenerateFailedChunks() {
+    const btn = $('regenScriptBtn');
+    if (_aiInProgress) { notify.info('Another generation is already in progress.'); return; }
+
+    // No prior generation state — fall back to full regen flow with confirm.
+    if (!_genState) {
+      if (await confirmAsync('No previous generation in memory. Generate the full script?')) {
+        return generateFullScript();
+      }
+      return;
+    }
+
+    // Find indices that need retry. Treat both 'error' (hard failure) and 'warn'
+    // (soft issue, content present but flagged) as candidates so the user gets
+    // the maximum benefit from the retry button.
+    const failedIdx = [];
+    _genState.stateMask.forEach((s, i) => {
+      if (s === 'error' || s === 'warn') failedIdx.push(i);
+    });
+
+    // No failures — offer full regen as a fallback rather than silently no-op.
+    if (failedIdx.length === 0) {
+      const editedText = $('scriptText')?.value?.trim();
+      const hasManualEdits = state.fullScript && editedText && editedText !== state.fullScript.trim();
+      const msg = hasManualEdits
+        ? 'No failed chunks to regenerate. Discard your manual edits and regenerate the full script?'
+        : 'No failed chunks to regenerate. Regenerate the full script anyway?';
+      if (await confirmAsync(msg)) return generateFullScript();
+      return;
+    }
+
+    // Disable the button for the duration. Use setLoading so the visual matches
+    // the existing generation flow. Capture the original label to restore after.
+    const originalLabel = btn?.textContent || 'regenerate';
+    setLoading('regenScriptBtn', true);
+    if (btn) btn.disabled = true;
+
+    let succeeded = 0;
+    let failed = 0;
+    const retry = _genStateRetryHandler; // snapshot — generateFullScript reassigns this
+
+    try {
+      for (const idx of failedIdx) {
+        // Re-check current status — the user may have manually retried one
+        // mid-loop via the indicator click. Skip if it's no longer failed.
+        const cur = _genState.stateMask[idx];
+        if (cur !== 'error' && cur !== 'warn') {
+          succeeded++; // already fixed by user — count as a win
+          continue;
+        }
+        if (typeof retry !== 'function') {
+          notify.error('Retry handler missing — try the regenerate-everything path instead.');
+          break;
+        }
+        // retryPhase manages _aiInProgress internally; await it directly.
+        await retry(idx);
+        // After awaiting, check the new state to tally success/failure.
+        const after = _genState.stateMask[idx];
+        if (after === 'done') succeeded++; else failed++;
+      }
+    } finally {
+      setLoading('regenScriptBtn', false, originalLabel);
+      if (btn) btn.disabled = false;
+    }
+
+    if (failed === 0) {
+      notify.success(`Regenerated ${succeeded} failed chunk${succeeded === 1 ? '' : 's'}.`);
+    } else if (succeeded === 0) {
+      notify.warn(`Could not regenerate any of the ${failed} failed chunk${failed === 1 ? '' : 's'}. Click indicators to retry individually.`);
+    } else {
+      notify.warn(`Regenerated ${succeeded}, ${failed} still failing. Click red indicators to retry individually.`);
+    }
+  }
 
   async function generateFullScript() {
     if (_aiInProgress) { notify.info('An AI call is already in progress.'); return; }
@@ -13015,7 +13243,7 @@ ${s.text.trim()}`).join('\n\n').trim();
     // Emergency cooldown check
     if (state._cooldownUntil && Date.now() < state._cooldownUntil) {
       if (state._debug?.skipCooldown) {
-        sdLog('cooldown bypassed — debugSkipCooldown on');
+        sdLog('cooldown bypassed — debug mode on');
       } else {
         const remaining = Math.ceil((state._cooldownUntil - Date.now()) / 1000);
         notify.warn(`Please wait ${remaining}s before starting another session.`);
@@ -13031,7 +13259,7 @@ ${s.text.trim()}`).join('\n\n').trim();
     const safety = validateSessionSafety();
     if (!safety.ok) {
       if (state._debug?.skipSafetyGate) {
-        sdLog('safety gate bypassed — debugSkipSafetyGate on', safety);
+        sdLog('safety gate bypassed — debug mode on', safety);
         state._startedUnsafe = true;
       } else {
         const proceed = await showUnsafeSessionModal(safety);
@@ -13782,10 +14010,10 @@ ${s.text.trim()}`).join('\n\n').trim();
       $('pauseBtn').textContent = 'pause';
     }
     speechSynthesis.cancel();
-    // DEBUG: skip rescue sequence if debug checkbox is checked
-    // This setting intentionally defaults OFF and is NOT saved with settings
-    if (state._debug?.skipRescue || $('debugSkipRescue')?.checked) {
-      sdLog('rescue skipped — debugSkipRescue on');
+    // DEBUG: skip rescue sequence if debug mode is on (consolidated debugMode toggle).
+    // This setting intentionally defaults OFF and is NOT saved with settings.
+    if (state._debug?.skipRescue) {
+      sdLog('rescue skipped — debug mode on');
       finishSession(true);
       return;
     }
@@ -14211,7 +14439,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   });
   // Step 6 — Generate & Begin
   $('generateScriptBtn').addEventListener('click', generateFullScript);
-  $('regenScriptBtn').addEventListener('click', generateFullScript);
+  $('regenScriptBtn').addEventListener('click', regenerateFailedChunks);
   $('exportScriptBtn').addEventListener('click', exportScript);
   $('exportBundleBtn')?.addEventListener('click', exportSessionBundle);
   $('shareConfigBtn')?.addEventListener('click', shareCurrentConfig);
@@ -15204,18 +15432,16 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
 
   // Debug mode — all flags session-only, never persisted. Any change triggers a
   // re-sync of state._debug and re-renders the floating "DEBUG" banner.
-  $('debugSkipRescue')?.addEventListener('change', () => {
+  // Debug toggle — single checkbox enables every developer affordance. Mirrors to
+  // state._debug, refreshes the corner banner, applies method gating immediately,
+  // and shows/hides the memories-inspector button.
+  $('debugMode')?.addEventListener('change', () => {
     _syncDebugState();
+    const on = !!$('debugMode')?.checked;
     const memBtn = $('viewMemoriesBtn');
-    if (memBtn) memBtn.style.display = $('debugSkipRescue')?.checked ? '' : 'none';
-  });
-  $('debugSkipCooldown')?.addEventListener('change', _syncDebugState);
-  $('debugSkipSafetyGate')?.addEventListener('change', _syncDebugState);
-  $('debugSkipMethodGating')?.addEventListener('change', () => {
-    _syncDebugState();
+    if (memBtn) memBtn.style.display = on ? '' : 'none';
     applyMethodGating(); // re-evaluate the visible tab locks immediately
   });
-  $('debugVerbose')?.addEventListener('change', _syncDebugState);
 
   // ── Memories modal (Perchance-chat style: editable cards) ──
   async function renderMemoriesModal() {
@@ -15304,7 +15530,13 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     state.smartDirectorEnabled = !!e.target.checked;
     saveUserSettings();
     _updateDirectorBiasUI(); // grey out the bias row when director is off
+    _refreshAffirmationsBtnState(); // affirmation button enables/disables with SD
   });
+  // Affirmation auto-fill button (Step 4) — drafts from profile + intention via Smart Director.
+  // Refresh button label as the user types (showing "regenerate" once content exists)
+  // and when the page first loads.
+  $('generateAffirmationsBtn')?.addEventListener('click', generateAffirmationsFromProfile);
+  $('userAffirmations')?.addEventListener('input', _refreshAffirmationsBtnState);
   $('runtimeRulesEnabled')?.addEventListener('change', e => {
     state.runtimeRulesEnabled = !!e.target.checked;
     saveUserSettings();
@@ -15509,7 +15741,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   async function applyMethodGating() {
     const count = await getSessionCount();
     const skip = state._debug?.skipMethodGating;
-    if (skip) sdLog('method gating bypassed — debugSkipMethodGating on');
+    if (skip) sdLog('method gating bypassed — debug mode on');
     // Thresholds: rapid unlocks at 3 sessions, advanced at 7
     document.querySelectorAll('#methodFilterTabs .filter-tab').forEach(tab => {
       const cat = tab.dataset.filter;
@@ -15590,6 +15822,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     // state._debug matches the visible UI in all cases). Banner re-renders from here.
     _syncDebugState();
     _updateDirectorBiasUI();
+    _refreshAffirmationsBtnState(); // initial render so button reflects SD state at load
 
     // prefers-reduced-motion handling — if user's OS asks for less motion, gentle
     // visualizers and softer audio-reactive defaults. Only applied if the user
@@ -15631,6 +15864,11 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     // surface a corner button that lets the user grab their session history before
     // they refresh out of frustration. Self-deletes on first interaction with the
     // app so it doesn't appear in normal usage.
+    //
+    // Gated on `state.remoteProcessingOptIn` because users who've opted *out* of
+    // any extra processing surface presumably want the most minimal UI possible —
+    // intrusive "are you stuck?" warnings violate that contract. Power users
+    // who've opted into remote backup get the safety net.
     let _emergencyExportShown = false;
     function _showEmergencyExportButton() {
       if (_emergencyExportShown) return;
@@ -15647,11 +15885,18 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       document.body.appendChild(btn);
     }
     setTimeout(() => {
-      // Only show if user hasn't progressed past step 1 — implies a stuck boot
-      const stillOnStep1 = document.body.classList.contains('step-1') ||
-                           !document.querySelector('.in-session') &&
-                           !document.querySelector('#scriptPreview.visible');
-      if (stillOnStep1 && !_emergencyExportShown) _showEmergencyExportButton();
+      // Gate: opt-in only. Users without remote processing get a clean UI.
+      if (!state.remoteProcessingOptIn) return;
+      // Only show if user hasn't progressed past step 1 — implies a stuck boot.
+      // Operator-precedence note: explicit parens around the OR-chain make the
+      // condition "still on step 1 OR (no session AND no script)". Without these,
+      // && would bind tighter and we'd fire on any non-step-1 page that hadn't
+      // started a session yet (i.e. legitimate use of steps 2-5).
+      const onStep1     = document.body.classList.contains('step-1');
+      const inSession   = !!document.querySelector('.in-session');
+      const hasScript   = !!document.querySelector('#scriptPreview.visible');
+      const stillStuck  = onStep1 && !inSession && !hasScript;
+      if (stillStuck && !_emergencyExportShown) _showEmergencyExportButton();
     }, 30000);
     // Cancel the failsafe on first user click anywhere — they're clearly not stuck.
     document.addEventListener('click', () => {
