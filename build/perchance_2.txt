@@ -1,7 +1,7 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
   :root {
-    /* Palette — dark black, gold/honey/amber trim, subtle neon accents */
+    /* Palette — dark black, gold/honey/amber TRIM, neon ACCENTS for active/selected */
     --bg: #0a0a0a;
     --bg-soft: #121110;
     --bg-softer: #1a1816;
@@ -15,11 +15,14 @@
     --accent-warm: #c9a855;
     --accent-green: #5cb87a;
     --accent-purple: #9a6dd7;
-    --fixation: #b89a4a;
-    --neon-cyan: #5aabbf;
-    --neon-magenta: #c75a82;
-    --neon-amber: #b89a4a;
-    --neon-purple: #9a6dd7;
+    --fixation: #00d4e6;
+    /* Neon ACCENTS — punchy, used sparingly for selected/active state */
+    --neon-cyan: #00d4e6;
+    --neon-cyan-soft: rgba(0,212,230,0.12);
+    --neon-magenta: #e85a8e;
+    --neon-amber: #c9a855;
+    --neon-purple: #b078e5;
+    --neon-green: #5ed694;
     --wood: #131110;
     --wood-light: #1e1b18;
     --glass: #131110;
@@ -27,8 +30,8 @@
     --radius: 0;
     --font-display: 'Nunito', system-ui, -apple-system, sans-serif;
     --font-body: 'Nunito', system-ui, -apple-system, sans-serif;
-    --glow-cyan: 0 0 8px rgba(90,171,191,0.12);
-    --glow-amber: 0 0 8px rgba(184,154,74,0.18);
+    --glow-cyan: 0 0 12px rgba(0,212,230,0.32), 0 0 28px rgba(0,212,230,0.08);
+    --glow-amber: 0 0 6px rgba(184,154,74,0.12);
     --text-muted: #8a8680;
     --f-head: 'Nunito', system-ui, -apple-system, sans-serif;
     --f-body: 'Nunito', system-ui, -apple-system, sans-serif;
@@ -50,7 +53,7 @@
     font-weight: 600; font-size: 1.3rem; letter-spacing: 0.18em;
     text-align: center; margin: 0 0 8px; text-transform: uppercase;
     color: var(--accent-warm);
-    text-shadow: 0 0 10px rgba(184,154,74,0.35), 0 0 30px rgba(184,154,74,0.12);
+    text-shadow: 0 0 8px rgba(184,154,74,0.18);
   }
   h1 + p {
     text-align: center; font-size: 0.82rem; color: var(--text-dim);
@@ -69,7 +72,7 @@
   }
   .step-item { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; width: 100%; position: relative; cursor: default; }
   .step-item.clickable { cursor: pointer; }
-  .step-item.clickable:hover .step-circle { border-color: var(--accent-warm); box-shadow: var(--glow-amber); }
+  .step-item.clickable:hover .step-circle { border-color: var(--neon-cyan); box-shadow: var(--glow-cyan); }
   .step-circle {
     width: clamp(28px, 8vw, 38px); height: clamp(28px, 8vw, 38px); border-radius: 6px;
     background: var(--wood); border: 1.5px solid var(--wood-light);
@@ -79,13 +82,13 @@
     font-family: var(--font-display);
   }
   .step-item.current .step-circle {
-    border-color: var(--accent-warm); color: var(--accent-warm);
-    box-shadow: var(--glow-amber);
+    border-color: var(--neon-cyan); color: var(--neon-cyan);
+    box-shadow: var(--glow-cyan);
     background: var(--bg);
   }
   .step-item.completed .step-circle {
-    background: var(--neon-amber); border-color: var(--neon-amber); color: var(--bg);
-    box-shadow: var(--glow-amber);
+    background: var(--bg); border-color: var(--accent-warm); color: var(--accent-warm);
+    box-shadow: none;
   }
   .step-item.completed .step-num::before { content: '\2713'; }
   .step-item.completed .step-num-text { display: none; }
@@ -95,8 +98,9 @@
   .step-item.skipped .step-num-text { display: none; }
   .step-item.skipped .step-value { color: var(--text-faint); font-style: italic; }
   .step-label { font-size: clamp(0.5rem, 1.8vw, 0.62rem); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); text-align: center; line-height: 1.2; max-width: 100%; word-break: break-word; text-wrap: balance; }
-  .step-item.current .step-label, .step-item.completed .step-label { color: var(--text-dim); }
-  .step-value { font-size: clamp(0.52rem, 1.9vw, 0.68rem); color: var(--neon-amber); text-align: center; max-width: 100%; line-height: 1.15; font-style: italic; margin-top: -2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .step-item.current .step-label { color: var(--text); }
+  .step-item.completed .step-label { color: var(--text-dim); }
+  .step-value { font-size: clamp(0.52rem, 1.9vw, 0.68rem); color: var(--accent-warm); text-align: center; max-width: 100%; line-height: 1.15; font-style: italic; margin-top: -2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .step-num { font-size: clamp(0.72rem, 2.4vw, 0.85rem); }
 
   /* ============ STEP CONTENT ============ */
@@ -116,11 +120,11 @@
   /* ============ NAV BAR ============ */
   .step-nav { display: grid; grid-template-columns: 1fr; align-items: stretch; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--wood-light); gap: 12px; }
   @media (min-width: 900px) { .step-nav { grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; } }
-  .step-nav .btn-back, .step-nav .btn-next { padding: 12px 26px; border-radius: var(--radius); font-size: 0.92rem; font-weight: 600; cursor: pointer; letter-spacing: 0.04em; transition: all 0.25s; border: none; font-family: var(--font-body); }
+  .step-nav .btn-back, .step-nav .btn-next { padding: 12px 26px; border-radius: var(--radius); font-size: 0.92rem; font-weight: 600; cursor: pointer; letter-spacing: 0.04em; transition: all 0.25s; font-family: var(--font-body); }
   .step-nav .btn-back { background: transparent; color: var(--text-dim); border: 1px solid var(--wood-light); }
-  .step-nav .btn-back:hover { color: var(--text); border-color: var(--neon-amber); box-shadow: var(--glow-amber); }
-  .step-nav .btn-next { background: var(--accent-warm); color: var(--bg); font-weight: 700; min-width: 0; text-shadow: none; }
-  .step-nav .btn-next:hover { box-shadow: var(--glow-amber); filter: brightness(1.1); }
+  .step-nav .btn-back:hover { color: var(--text); border-color: var(--accent); }
+  .step-nav .btn-next { background: transparent; color: var(--accent-warm); font-weight: 700; min-width: 0; text-shadow: none; border: 1.5px solid var(--accent-warm); }
+  .step-nav .btn-next:hover { background: rgba(201,168,85,0.08); border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: var(--glow-cyan); }
   .step-nav .btn-next:disabled { opacity: 0.3; cursor: not-allowed; filter: none; box-shadow: none; }
   .step-nav .step-spacer { flex: 0 0 0; }
   .btn-back[hidden], .btn-next[hidden] { display: none !important; }
@@ -131,7 +135,7 @@
     cursor: pointer; letter-spacing: 0.02em; transition: all 0.25s;
     font-family: var(--font-body); white-space: nowrap;
   }
-  .step-nav .btn-skip:hover { color: var(--text-dim); border-color: var(--neon-amber); border-style: solid; }
+  .step-nav .btn-skip:hover { color: var(--text-dim); border-color: var(--accent); border-style: solid; }
   .step-nav .btn-skip[hidden] { display: none !important; }
 
   /* ============ CARD GRID ============ */
@@ -144,42 +148,43 @@
     transition: all 0.25s ease; position: relative;
     display: flex; flex-direction: column; gap: 4px;
   }
-  .card:hover { border-color: rgba(184,154,74,0.25); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+  .card:hover { border-color: rgba(0,212,230,0.35); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
   .card.selected {
-    border-color: var(--accent-warm);
-    background: rgba(184,154,74,0.06);
-    box-shadow: inset 0 0 0 1px rgba(184,154,74,0.18), 0 0 12px rgba(184,154,74,0.1);
+    border-color: var(--neon-cyan);
+    border-width: 2px;
+    background: var(--neon-cyan-soft);
+    box-shadow: var(--glow-cyan), inset 0 0 0 1px rgba(0,212,230,0.18);
   }
   .card .card-name { font-weight: 600; font-size: 0.92rem; color: var(--text); }
-  .card.selected .card-name { color: var(--accent-warm); }
+  .card.selected .card-name { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0,212,230,0.4); }
   .card .card-tagline { font-size: 0.76rem; color: var(--text-dim); line-height: 1.4; }
   .card .card-tags { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; }
   .card .card-tag { font-size: 0.6rem; color: var(--text-faint); padding: 1px 5px; border: 1px solid var(--text-faint); border-radius: 3px; text-transform: lowercase; letter-spacing: 0.05em; }
-  .card .card-category-label { font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; margin-top: 1px; }
-  .card.category-contemplative { border-left: 2px solid var(--neon-cyan); border-top: none; }
+  .card .card-category-label { font-size: 0.64rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; margin-top: 1px; }
+  .card.category-contemplative { border-left: 3px solid var(--neon-cyan); border-top: none; }
   .card.category-contemplative .card-category-label { color: var(--neon-cyan); }
-  .card.selected.category-contemplative { border-color: var(--accent-warm); border-left-color: var(--neon-cyan); }
-  .card.category-showman { border-left: 2px solid var(--neon-amber); border-top: none; }
+  .card.selected.category-contemplative { border-color: var(--neon-cyan); border-left-color: var(--neon-cyan); }
+  .card.category-showman { border-left: 3px solid var(--neon-amber); border-top: none; }
   .card.category-showman .card-category-label { color: var(--neon-amber); }
-  .card.selected.category-showman { border-color: var(--accent-warm); border-left-color: var(--neon-amber); }
-  .card.category-therapeutic { border-left: 2px solid #5fa8d4; border-top: none; }
+  .card.selected.category-showman { border-color: var(--neon-cyan); border-left-color: var(--neon-amber); }
+  .card.category-therapeutic { border-left: 3px solid #5fa8d4; border-top: none; }
   .card.category-therapeutic .card-category-label { color: #5fa8d4; }
-  .card.selected.category-therapeutic { border-color: var(--accent-warm); border-left-color: #5fa8d4; }
-  .card.category-demonstration { border-left: 2px solid var(--neon-purple); border-top: none; }
+  .card.selected.category-therapeutic { border-color: var(--neon-cyan); border-left-color: #5fa8d4; }
+  .card.category-demonstration { border-left: 3px solid var(--neon-purple); border-top: none; }
   .card.category-demonstration .card-category-label { color: var(--neon-purple); }
-  .card.selected.category-demonstration { border-color: var(--accent-warm); border-left-color: var(--neon-purple); }
-  .card.category-somatic { border-left: 2px solid var(--accent-green); border-top: none; }
-  .card.category-somatic .card-category-label { color: var(--accent-green); }
-  .card.selected.category-somatic { border-color: var(--accent-warm); border-left-color: var(--accent-green); }
-  .card.category-authoritarian { border-left: 2px solid var(--neon-magenta); border-top: none; }
+  .card.selected.category-demonstration { border-color: var(--neon-cyan); border-left-color: var(--neon-purple); }
+  .card.category-somatic { border-left: 3px solid var(--neon-green); border-top: none; }
+  .card.category-somatic .card-category-label { color: var(--neon-green); }
+  .card.selected.category-somatic { border-color: var(--neon-cyan); border-left-color: var(--neon-green); }
+  .card.category-authoritarian { border-left: 3px solid var(--neon-magenta); border-top: none; }
   .card.category-authoritarian .card-category-label { color: var(--neon-magenta); }
-  .card.selected.category-authoritarian { border-color: var(--accent-warm); border-left-color: var(--neon-magenta); }
-  .card.category-rapid { border-left: 2px solid var(--neon-amber); border-top: none; }
+  .card.selected.category-authoritarian { border-color: var(--neon-cyan); border-left-color: var(--neon-magenta); }
+  .card.category-rapid { border-left: 3px solid var(--neon-amber); border-top: none; }
   .card.category-rapid .card-category-label { color: var(--neon-amber); }
-  .card.selected.category-rapid { border-color: var(--accent-warm); border-left-color: var(--neon-amber); }
-  .card.category-advanced { border-left: 2px solid var(--neon-magenta); border-top: none; }
+  .card.selected.category-rapid { border-color: var(--neon-cyan); border-left-color: var(--neon-amber); }
+  .card.category-advanced { border-left: 3px solid var(--neon-magenta); border-top: none; }
   .card.category-advanced .card-category-label { color: var(--neon-magenta); }
-  .card.selected.category-advanced { border-color: var(--accent-warm); border-left-color: var(--neon-magenta); }
+  .card.selected.category-advanced { border-color: var(--neon-cyan); border-left-color: var(--neon-magenta); }
   .card .card-actions { position: absolute; top: 6px; right: 6px; display: none; gap: 4px; }
   .card.is-custom:hover .card-actions { display: flex; }
   .card .card-action-btn { background: var(--bg-softer); border: 1px solid var(--border); color: var(--text-dim); border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; cursor: pointer; }
@@ -190,20 +195,20 @@
   /* ============ FILTER TABS ============ */
   .filter-tabs { display: flex; gap: 4px; margin-bottom: 12px; justify-content: center; flex-wrap: wrap; }
   .filter-tab { background: var(--wood); border: 1px solid var(--wood-light); color: var(--text-dim); border-radius: var(--radius); padding: 6px 14px; cursor: pointer; font-size: 0.76rem; transition: all 0.25s; letter-spacing: 0.04em; font-weight: 600; }
-  .filter-tab:hover { color: var(--text); border-color: rgba(184,154,74,0.25); }
-  .filter-tab.active { background: rgba(184,154,74,0.08); color: var(--accent-warm); border-color: var(--accent); box-shadow: 0 0 6px rgba(184,154,74,0.1); }
+  .filter-tab:hover { color: var(--text); border-color: rgba(0,212,230,0.3); }
+  .filter-tab.active { background: var(--neon-cyan-soft); color: var(--neon-cyan); border-color: var(--neon-cyan); box-shadow: var(--glow-cyan); }
 
   /* ============ DETAIL PANEL ============ */
   .detail-panel { background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 14px 16px; margin-top: 12px; font-size: 0.85rem; line-height: 1.55; color: var(--text-dim); }
   .detail-panel strong { color: var(--text); }
-  .detail-panel .detail-title { font-family: var(--font-display); font-size: 1.0rem; color: var(--neon-amber); font-weight: 600; margin-bottom: 6px; letter-spacing: 0.06em; text-shadow: 0 0 8px rgba(184,154,74,0.15); }
+  .detail-panel .detail-title { font-family: var(--font-display); font-size: 1.0rem; color: var(--accent-warm); font-weight: 600; margin-bottom: 6px; letter-spacing: 0.06em; }
 
   /* ============ INPUTS ============ */
   textarea, input, select { width: 100%; background: rgba(13,10,7,0.7); border: 1px solid var(--wood-light); border-radius: var(--radius); color: var(--text); padding: 12px 14px; font-family: var(--font-body); font-size: 0.92rem; outline: none; transition: border-color 0.3s, box-shadow 0.3s; }
   textarea { resize: vertical; min-height: 70px; }
-  textarea:focus, input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(184,154,74,0.08), 0 0 10px rgba(184,154,74,0.06); }
+  textarea:focus, input:focus, select:focus { border-color: var(--neon-cyan); box-shadow: 0 0 0 2px rgba(0,212,230,0.1), 0 0 10px rgba(0,212,230,0.08); }
   select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a6b55' stroke-width='1.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; background-color: rgba(13,10,7,0.7); }
-  .field-label { display: block; font-size: 0.72rem; color: var(--neon-amber); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; font-weight: 600; font-family: var(--font-display); text-shadow: 0 0 6px rgba(184,154,74,0.1); }
+  .field-label { display: block; font-size: 0.72rem; color: var(--accent-warm); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; font-weight: 600; font-family: var(--font-display); }
   .field-group { margin-bottom: 20px; }
   .sublabel { font-size: 0.74rem; color: var(--text-faint); margin-top: 6px; line-height: 1.5; }
   .hint { font-size: 0.72rem; color: var(--text-faint); font-weight: 400; }
@@ -269,15 +274,15 @@
   }
 
   /* ============ BUTTONS ============ */
-  .btn { background: var(--accent-warm); color: var(--bg); border: none; border-radius: var(--radius); padding: 13px 20px; font-size: 0.92rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; transition: all 0.25s; font-family: var(--font-body); text-shadow: none; }
-  .btn:hover { box-shadow: var(--glow-amber); filter: brightness(1.1); }
+  .btn { background: transparent; color: var(--accent-warm); border: 1.5px solid var(--accent-warm); border-radius: var(--radius); padding: 13px 20px; font-size: 0.92rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; transition: all 0.25s; font-family: var(--font-body); text-shadow: none; }
+  .btn:hover { background: rgba(201,168,85,0.08); border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: var(--glow-cyan); }
   .btn.full { width: 100%; }
   .btn.secondary { background: transparent; color: var(--text-dim); border: 1px solid var(--wood-light); text-shadow: none; }
-  .btn.secondary:hover { border-color: var(--neon-amber); color: var(--neon-amber); box-shadow: var(--glow-amber); }
-  .btn.warm { background: var(--neon-amber); }
-  .btn.warm:hover { box-shadow: var(--glow-amber); }
-  .btn.green { background: #a08840; color: #0d0a07; }
-  .btn.green:hover { box-shadow: 0 0 10px rgba(160,136,64,0.35); filter: brightness(1.08); }
+  .btn.secondary:hover { border-color: var(--accent); color: var(--text); background: rgba(184,154,74,0.04); box-shadow: none; }
+  .btn.warm { background: transparent; color: var(--accent-warm); border: 1.5px solid var(--accent-warm); }
+  .btn.warm:hover { background: rgba(201,168,85,0.08); border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: var(--glow-cyan); }
+  .btn.green { background: transparent; color: var(--accent-green); border: 1.5px solid var(--accent-green); }
+  .btn.green:hover { background: rgba(92,184,122,0.08); box-shadow: 0 0 10px rgba(92,184,122,0.25); filter: brightness(1.08); }
   .btn:disabled { opacity: 0.3; cursor: wait; filter: none; box-shadow: none; }
   .btn.loading { position: relative; color: transparent !important; }
   .btn.loading::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.15); border-top-color: rgba(255,255,255,0.7); border-radius: 50%; animation: btn-spin 0.8s linear infinite; }
@@ -555,6 +560,249 @@
   .modal .field-label-sm { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 6px; letter-spacing: 0; text-transform: none; }
   .modal .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
   .modal .modal-actions .btn { flex: 1; }
+
+  /* ============ SOFT-PAUSE OVERLAY (first Esc press) ============ */
+  /* Shown over the session when the user hits Esc once. Gives them a calm
+     "you're safe, take your time" landing — they can resume or commit to a
+     full re-alert. Second Esc commits to emergency end. */
+  .soft-pause-overlay {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(8,8,10,0.85);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .soft-pause-overlay.visible { display: flex; animation: softPauseIn 0.35s ease-out; }
+  @keyframes softPauseIn { from { opacity: 0; } to { opacity: 1; } }
+  .soft-pause-card {
+    max-width: 480px; width: 100%;
+    background: var(--bg); border: 2px solid var(--neon-cyan);
+    box-shadow: var(--glow-cyan);
+    padding: 28px 26px 22px;
+    text-align: center;
+  }
+  .soft-pause-card h2 {
+    font-size: 1.05rem; color: var(--neon-cyan);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin: 0 0 6px; font-weight: 600;
+  }
+  .soft-pause-card .sp-line {
+    font-size: 0.95rem; color: var(--text); line-height: 1.55; margin: 14px 0 4px;
+  }
+  .soft-pause-card .sp-sub {
+    font-size: 0.78rem; color: var(--text-dim); line-height: 1.5; margin: 0 0 18px;
+  }
+  .soft-pause-card .sp-time {
+    font-size: 0.72rem; color: var(--accent-warm); letter-spacing: 0.08em;
+    text-transform: uppercase; margin: 16px 0 0; padding-top: 12px;
+    border-top: 1px solid var(--glass-border);
+  }
+  .soft-pause-card .sp-actions {
+    display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 18px;
+  }
+  @media (min-width: 480px) {
+    .soft-pause-card .sp-actions { grid-template-columns: 1fr 1fr; }
+  }
+  .soft-pause-card .sp-actions button {
+    padding: 14px 18px; font-size: 0.92rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; font-family: var(--font-body);
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .soft-pause-card .sp-continue {
+    background: transparent; color: var(--neon-cyan);
+    border: 1.5px solid var(--neon-cyan);
+  }
+  .soft-pause-card .sp-continue:hover {
+    background: rgba(0,212,230,0.1); box-shadow: var(--glow-cyan);
+  }
+  .soft-pause-card .sp-end {
+    background: transparent; color: var(--accent-warm);
+    border: 1.5px solid var(--accent-warm);
+  }
+  .soft-pause-card .sp-end:hover {
+    background: rgba(201,168,85,0.08); border-color: var(--neon-magenta);
+    color: var(--neon-magenta);
+  }
+  .soft-pause-card .sp-hint {
+    font-size: 0.7rem; color: var(--text-faint); margin-top: 14px;
+    font-style: italic;
+  }
+
+  /* ============ INTERACTIVE 5-4-3-2-1 GROUNDING ============ */
+  /* Add checkbox styling so each grounding step can be checked off — gives
+     the user a tangible action. Per Calm/Headspace/PositivePsychology pattern. */
+  .grounding-step.interactive {
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+    user-select: none; transition: opacity 0.2s;
+  }
+  .grounding-step.interactive .gs-check {
+    width: 18px; height: 18px; flex-shrink: 0;
+    border: 1.5px solid var(--accent-warm); display: inline-flex;
+    align-items: center; justify-content: center;
+    font-size: 0.8rem; color: var(--neon-cyan);
+  }
+  .grounding-step.interactive.done { opacity: 0.55; }
+  .grounding-step.interactive.done .gs-check {
+    background: rgba(0,212,230,0.1); border-color: var(--neon-cyan);
+  }
+  .grounding-step.interactive.done .gs-check::before { content: '\2713'; }
+  .grounding-step.interactive.done strong { text-decoration: line-through; }
+
+  /* ============ POST-EMERGENCY REORIENTATION CARD ============ */
+  .reorient-card {
+    border: 1px solid var(--accent-warm) !important;
+    padding: 14px 16px; margin: 12px 0; background: var(--bg-soft) !important;
+  }
+  .reorient-card h3 {
+    font-size: 0.78rem; color: var(--accent-warm); margin: 0 0 8px;
+    letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600;
+  }
+  .reorient-card .reorient-line {
+    font-size: 0.85rem; color: var(--text); line-height: 1.55; margin: 4px 0;
+  }
+  .reorient-card .reorient-line strong { color: var(--neon-cyan); }
+
+  /* ============ CHAT-WITH-GUIDE PANEL (Step 1) ============ */
+  /* Lets the user have a short conversation with a persona before committing.
+     Expands inline within the detail panel. History is ephemeral (cleared on
+     persona switch or step navigation). Hard cap of MAX_TURNS to control
+     token spend — 6 user/persona exchanges, then the input disables with a
+     "you've got the feel — pick this guide?" prompt. */
+  .pc-toggle-row {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    margin-top: 10px;
+  }
+  .pc-toggle {
+    background: transparent; color: var(--neon-cyan);
+    border: 1.5px solid var(--neon-cyan);
+    padding: 6px 14px; font-size: 0.78rem; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer;
+    font-family: var(--font-body); transition: all 0.2s;
+  }
+  .pc-toggle:hover { background: rgba(0,212,230,0.08); box-shadow: var(--glow-cyan); }
+  .pc-toggle .pc-toggle-name { font-style: italic; text-transform: none; letter-spacing: 0; }
+  .pc-panel {
+    margin-top: 12px; padding: 14px;
+    background: var(--bg-soft);
+    border: 1px solid var(--neon-cyan);
+    box-shadow: 0 0 8px rgba(0,212,230,0.08);
+    display: none; animation: pcIn 0.3s ease-out;
+  }
+  .pc-panel.visible { display: block; }
+  @keyframes pcIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .pc-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--glass-border);
+  }
+  .pc-header .pc-name {
+    font-size: 0.85rem; color: var(--neon-cyan); font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .pc-header .pc-close {
+    background: transparent; border: none; color: var(--text-faint);
+    font-size: 1rem; cursor: pointer; padding: 2px 6px;
+    line-height: 1; font-family: var(--font-body);
+  }
+  .pc-header .pc-close:hover { color: var(--text); }
+  .pc-transcript {
+    max-height: 280px; min-height: 80px;
+    overflow-y: auto; padding: 4px 2px;
+    display: flex; flex-direction: column; gap: 8px;
+    margin-bottom: 10px;
+  }
+  .pc-msg {
+    max-width: 88%; padding: 8px 12px;
+    font-size: 0.85rem; line-height: 1.5;
+    word-wrap: break-word;
+  }
+  .pc-msg.user {
+    align-self: flex-end; background: rgba(0,212,230,0.08);
+    border: 1px solid rgba(0,212,230,0.3);
+    color: var(--text);
+  }
+  .pc-msg.persona {
+    align-self: flex-start; background: var(--bg);
+    border: 1px solid var(--accent-warm);
+    color: var(--text);
+  }
+  .pc-msg.persona .pc-msg-name {
+    font-size: 0.62rem; color: var(--accent-warm); letter-spacing: 0.08em;
+    text-transform: uppercase; font-weight: 700; margin-bottom: 4px;
+    display: block;
+  }
+  .pc-msg.streaming { opacity: 0.85; }
+  .pc-msg.streaming::after {
+    content: '▍'; color: var(--neon-cyan); animation: pcCursor 0.9s steps(2) infinite;
+    margin-left: 2px;
+  }
+  @keyframes pcCursor { 50% { opacity: 0.2; } }
+  .pc-empty {
+    font-size: 0.78rem; color: var(--text-faint); font-style: italic;
+    text-align: center; padding: 14px 8px;
+  }
+  .pc-suggestions {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .pc-suggest {
+    background: transparent; color: var(--text-dim);
+    border: 1px solid var(--glass-border); border-radius: 14px;
+    padding: 4px 10px; font-size: 0.72rem; cursor: pointer;
+    transition: all 0.2s; font-family: var(--font-body);
+  }
+  .pc-suggest:hover { color: var(--neon-cyan); border-color: var(--neon-cyan); }
+  .pc-input-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 6px;
+    align-items: stretch;
+  }
+  .pc-input {
+    width: 100%; resize: none; min-height: 38px; max-height: 120px;
+    padding: 8px 10px; font-size: 0.85rem; font-family: var(--font-body);
+    background: var(--bg) !important; color: var(--text);
+    border: 1px solid var(--glass-border) !important;
+  }
+  .pc-input:focus {
+    border-color: var(--neon-cyan) !important;
+    box-shadow: 0 0 0 1px rgba(0,212,230,0.2) !important;
+  }
+  .pc-send {
+    padding: 0 16px; font-size: 0.78rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+    background: transparent; color: var(--neon-cyan);
+    border: 1.5px solid var(--neon-cyan);
+    text-transform: uppercase; letter-spacing: 0.04em;
+    font-family: var(--font-body);
+  }
+  .pc-send:hover:not(:disabled) { background: rgba(0,212,230,0.08); box-shadow: var(--glow-cyan); }
+  .pc-send:disabled { opacity: 0.35; cursor: not-allowed; }
+  .pc-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--glass-border);
+    gap: 8px; flex-wrap: wrap;
+  }
+  .pc-footer-status { font-size: 0.7rem; color: var(--text-faint); flex: 1 1 auto; }
+  .pc-commit {
+    background: transparent; color: var(--accent-warm);
+    border: 1.5px solid var(--accent-warm);
+    padding: 8px 14px; font-size: 0.78rem; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer;
+    font-family: var(--font-body); transition: all 0.2s; white-space: nowrap;
+  }
+  .pc-commit:hover { background: rgba(201,168,85,0.08); border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: var(--glow-cyan); }
+
+  /* ============ TIME-OF-DAY HINT BADGE ============ */
+  /* Surfaced on persona/preset cards when the user has historically picked
+     this option around the current hour. Quiet — informational, not pushy. */
+  .tod-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(0,212,230,0.1);
+    border: 1px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+    font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 1px 6px; margin-left: 6px; vertical-align: middle;
+    font-weight: 700;
+  }
+  .tod-badge::before { content: '✦'; font-size: 0.7rem; }
   .bg-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; max-height: 380px; overflow-y: auto; padding: 8px 0; }
   .bg-gallery-item { position: relative; border-radius: 6px; overflow: hidden; aspect-ratio: 3/2; cursor: pointer; border: 1px solid var(--glass-border); }
   .bg-gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s; }
@@ -640,7 +888,14 @@
   body.in-session.controls-hidden .audio-indicator { opacity: 0; pointer-events: none; }
   .phase-indicator { font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 20px; }
   .stage { position: relative; width: 100%; height: 360px; margin: 0 auto 30px; border-radius: 12px; overflow: hidden; background: #000; transition: background 1s; }
-  body.bg-active .stage { background: rgba(0,0,0,0.75); }
+  /* Background layer & stage are siblings at z-index 0; stage paints later in
+     DOM. Original rule made stage 75% opaque black when a bg was active,
+     which drowned out AI images (effective opacity dropped to ~9%). The
+     visualizer canvas inside .stage retains its own appearance — we just
+     make the stage's BACKGROUND transparent so the bg-img beneath can show.
+     A tiny dim (15% black) keeps high-contrast visualizers readable without
+     obscuring the image. */
+  body.bg-active .stage { background: rgba(0,0,0,0.15); }
   body.bg-active .highway-canvas, body.bg-active .spiral-svg, body.bg-active .pulse-rings { opacity: 0.8; }
   .fixation-dot {
     position: absolute; top: 38%; left: 50%;
@@ -905,11 +1160,54 @@ body.in-session .footer {
     background: var(--glass); border: 1px solid var(--glass-border);
     border-radius: var(--radius); padding: 5px 15px; cursor: pointer;
     transition: all 0.2s; text-align: center;
+    position: relative;
   }
-  .preset-card:hover { border-color: var(--accent-soft); background: rgba(184,154,74,0.03); }
+  .preset-card:hover { border-color: rgba(0,212,230,0.3); background: rgba(0,212,230,0.03); transform: translateY(-1px); }
+  .preset-card.selected {
+    border-color: var(--neon-cyan);
+    border-width: 2px;
+    background: var(--neon-cyan-soft);
+    box-shadow: var(--glow-cyan);
+  }
+  .preset-card.selected .preset-name { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0,212,230,0.4); }
   .preset-card .preset-icon { font-size: 1.4rem; margin-bottom: 4px; }
   .preset-card .preset-name { font-size: 0.78rem; color: var(--text); font-weight: 500; }
   .preset-card .preset-desc { font-size: 0.62rem; color: var(--text-faint); margin-top: 2px; }
+  .preset-card .preset-intent-label {
+    font-size: 0.56rem; letter-spacing: 0.1em; text-transform: uppercase;
+    font-weight: 700; margin-top: 4px; opacity: 0.85;
+  }
+  /* Intention color stripes — left border + label color */
+  .preset-card.intent-sleep { border-left: 3px solid var(--neon-purple); }
+  .preset-card.intent-sleep .preset-intent-label { color: var(--neon-purple); }
+  .preset-card.intent-trance { border-left: 3px solid var(--neon-cyan); }
+  .preset-card.intent-trance .preset-intent-label { color: var(--neon-cyan); }
+  .preset-card.intent-focus { border-left: 3px solid #5fa8d4; }
+  .preset-card.intent-focus .preset-intent-label { color: #5fa8d4; }
+  .preset-card.intent-release { border-left: 3px solid var(--neon-green); }
+  .preset-card.intent-release .preset-intent-label { color: var(--neon-green); }
+  .preset-card.intent-emotional { border-left: 3px solid var(--neon-magenta); }
+  .preset-card.intent-emotional .preset-intent-label { color: var(--neon-magenta); }
+  .preset-card.intent-pain { border-left: 3px solid var(--neon-green); }
+  .preset-card.intent-pain .preset-intent-label { color: var(--neon-green); }
+  .preset-card.intent-convincer { border-left: 3px solid var(--neon-magenta); }
+  .preset-card.intent-convincer .preset-intent-label { color: var(--neon-magenta); }
+  .preset-card.intent-performance { border-left: 3px solid var(--neon-amber); }
+  .preset-card.intent-performance .preset-intent-label { color: var(--neon-amber); }
+  .preset-card.intent-creativity { border-left: 3px solid var(--neon-purple); }
+  .preset-card.intent-creativity .preset-intent-label { color: var(--neon-purple); }
+  .preset-card.intent-behavior { border-left: 3px solid var(--neon-amber); }
+  .preset-card.intent-behavior .preset-intent-label { color: var(--neon-amber); }
+  .preset-card.intent-energy { border-left: 3px solid var(--neon-amber); }
+  .preset-card.intent-energy .preset-intent-label { color: var(--neon-amber); }
+  /* Programs get a distinct top stripe in addition to intent left-border to set them apart from single presets */
+  .preset-card.is-program { border-top: 2px solid var(--accent); }
+  .preset-card.is-program::before {
+    content: 'PROGRAM';
+    position: absolute; top: 4px; right: 6px;
+    font-size: 0.5rem; letter-spacing: 0.12em; font-weight: 700;
+    color: var(--accent); opacity: 0.7;
+  }
 
   /* ============ ONBOARDING TOUR ============ */
   .tour-overlay {
@@ -1403,15 +1701,43 @@ body.in-session .footer {
   *, *::before, *::after { border-radius: 0 !important; }
   * { text-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 
-  /* ─── surfaces: solid bg, 1px amber-tinted border, no decorative shadow ─── */
-  .card, .detail-panel, .summary-card, .post-card, .toggle-row, .crafted-preview,
+  /* ─── surfaces: solid bg, 1px amber-tinted border, no decorative shadow.
+         .selected variants opt OUT of these resets so the cyan accent shows. ─── */
+  .card:not(.selected), .detail-panel, .summary-card, .post-card, .toggle-row, .crafted-preview,
   .script-preview, .modal, .modal-content, .brief-preview, .disclaimer, .history-item,
-  .preset-card, .tour-card, .safety-inner, .program-card, .sidebar, .stats-panel,
+  .preset-card:not(.selected), .tour-card, .safety-inner, .program-card, .sidebar, .stats-panel,
   .live-panel, .post-trigger, .sparkline-wrap, .heatmap-wrap {
     box-shadow: none !important;
     border: 1px solid var(--border) !important;
     background: var(--bg-soft) !important;
   }
+  /* Selected state — strong cyan accent that beats the surface reset */
+  .card.selected, .preset-card.selected {
+    border: 2px solid var(--neon-cyan) !important;
+    background: var(--neon-cyan-soft) !important;
+    box-shadow: var(--glow-cyan) !important;
+  }
+  /* Category color stripes still need to win over the surface reset's left border */
+  .card.category-contemplative:not(.selected) { border-left: 3px solid var(--neon-cyan) !important; }
+  .card.category-showman:not(.selected) { border-left: 3px solid var(--neon-amber) !important; }
+  .card.category-therapeutic:not(.selected) { border-left: 3px solid #5fa8d4 !important; }
+  .card.category-demonstration:not(.selected) { border-left: 3px solid var(--neon-purple) !important; }
+  .card.category-somatic:not(.selected) { border-left: 3px solid var(--neon-green) !important; }
+  .card.category-authoritarian:not(.selected) { border-left: 3px solid var(--neon-magenta) !important; }
+  .card.category-rapid:not(.selected) { border-left: 3px solid var(--neon-amber) !important; }
+  .card.category-advanced:not(.selected) { border-left: 3px solid var(--neon-magenta) !important; }
+  .preset-card.intent-sleep:not(.selected) { border-left: 3px solid var(--neon-purple) !important; }
+  .preset-card.intent-trance:not(.selected) { border-left: 3px solid var(--neon-cyan) !important; }
+  .preset-card.intent-focus:not(.selected) { border-left: 3px solid #5fa8d4 !important; }
+  .preset-card.intent-release:not(.selected) { border-left: 3px solid var(--neon-green) !important; }
+  .preset-card.intent-emotional:not(.selected) { border-left: 3px solid var(--neon-magenta) !important; }
+  .preset-card.intent-pain:not(.selected) { border-left: 3px solid var(--neon-green) !important; }
+  .preset-card.intent-convincer:not(.selected) { border-left: 3px solid var(--neon-magenta) !important; }
+  .preset-card.intent-performance:not(.selected) { border-left: 3px solid var(--neon-amber) !important; }
+  .preset-card.intent-creativity:not(.selected) { border-left: 3px solid var(--neon-purple) !important; }
+  .preset-card.intent-behavior:not(.selected) { border-left: 3px solid var(--neon-amber) !important; }
+  .preset-card.intent-energy:not(.selected) { border-left: 3px solid var(--neon-amber) !important; }
+  .preset-card.is-program:not(.selected) { border-top: 2px solid var(--accent) !important; }
 
   /* ─── inputs: crisp square, hard focus ─── */
   .pf-input, .pf-select, .pf-textarea,
@@ -1424,7 +1750,8 @@ body.in-session .footer {
   .pf-input:focus, .pf-select:focus, .pf-textarea:focus,
   input:focus, select:focus, textarea:focus {
     outline: none !important;
-    border-color: var(--accent) !important;
+    border-color: var(--neon-cyan) !important;
+    box-shadow: 0 0 0 1px rgba(0,212,230,0.2), 0 0 8px rgba(0,212,230,0.1) !important;
   }
   input::placeholder, textarea::placeholder { color: #a89982; opacity: 1; }
 
@@ -1455,15 +1782,15 @@ body.in-session .footer {
   }
   .phase-dot.active { background: var(--neon-magenta) !important; }
 
-  /* ─── buttons: warm gold fill, black text, subtle glow ─── */
+  /* ─── buttons: dark with honey-amber trim (outlined). Hover lifts to neon-cyan accent. ─── */
   .btn, button, .preview-btn, .filter-tab {
     transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s !important;
   }
   .btn, .preview-btn,
   button:not(.icon-btn):not(.filter-tab):not(.toggle-btn):not([class*="close"]) {
-    background: var(--accent-warm) !important;
-    color: #0a0a0a !important;
-    border: 1px solid var(--accent) !important;
+    background: transparent !important;
+    color: var(--accent-warm) !important;
+    border: 1.5px solid var(--accent-warm) !important;
     box-shadow: none !important;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -1471,14 +1798,14 @@ body.in-session .footer {
   }
   .btn:hover:not(:disabled), .preview-btn:hover:not(:disabled),
   button:not(.icon-btn):not(.filter-tab):not(.toggle-btn):not([class*="close"]):hover:not(:disabled) {
-    background: #d4b55e !important;
-    color: #0a0a0a !important;
-    border-color: #d4b55e !important;
-    box-shadow: 0 0 10px rgba(184,154,74,0.25) !important;
+    background: rgba(0,212,230,0.06) !important;
+    color: var(--neon-cyan) !important;
+    border-color: var(--neon-cyan) !important;
+    box-shadow: var(--glow-cyan) !important;
   }
   .btn:active, .preview-btn:active,
   button:not(.icon-btn):not(.filter-tab):not(.toggle-btn):not([class*="close"]):active {
-    box-shadow: 0 0 4px rgba(184,154,74,0.2) !important;
+    box-shadow: 0 0 4px rgba(0,212,230,0.25) !important;
     transform: translateY(1px);
   }
   .btn:disabled, .preview-btn:disabled, button:disabled {
@@ -1486,34 +1813,34 @@ body.in-session .footer {
     cursor: not-allowed;
     box-shadow: none !important;
   }
-  .btn.primary, button.primary { box-shadow: 0 0 8px rgba(184,154,74,0.2) !important; }
+  .btn.primary, button.primary { box-shadow: 0 0 6px rgba(184,154,74,0.15) !important; }
   .btn.primary:hover:not(:disabled), button.primary:hover:not(:disabled) {
-    box-shadow: 0 0 14px rgba(184,154,74,0.35) !important;
+    box-shadow: var(--glow-cyan) !important;
   }
 
-  /* ─── focus ring: warm gold outline ─── */
+  /* ─── focus ring: cyan outline (matches the action language) ─── */
   :focus-visible {
-    outline: 2px solid var(--accent) !important;
+    outline: 2px solid var(--neon-cyan) !important;
     outline-offset: 2px !important;
-    box-shadow: 0 0 6px rgba(184,154,74,0.15) !important;
+    box-shadow: 0 0 6px rgba(0,212,230,0.2) !important;
   }
 
-  /* ─── stepper: warm gold circles + subtle trail markers ─── */
+  /* ─── stepper: current = cyan accent, completed = outlined amber (no fill) ─── */
   .step-item.current .step-circle {
-    border-color: var(--accent-warm) !important;
-    color: var(--accent-warm) !important;
+    border-color: var(--neon-cyan) !important;
+    color: var(--neon-cyan) !important;
     background: var(--bg) !important;
-    box-shadow: 0 0 8px rgba(184,154,74,0.25) !important;
+    box-shadow: var(--glow-cyan) !important;
   }
   .step-item.completed .step-circle {
-    background: var(--accent-warm) !important;
+    background: var(--bg) !important;
     border-color: var(--accent-warm) !important;
-    color: #0a0a0a !important;
-    box-shadow: 0 0 6px rgba(184,154,74,0.2) !important;
+    color: var(--accent-warm) !important;
+    box-shadow: none !important;
   }
   .step-item.clickable:hover .step-circle {
-    border-color: var(--accent-warm) !important;
-    box-shadow: 0 0 8px rgba(184,154,74,0.2) !important;
+    border-color: var(--neon-cyan) !important;
+    box-shadow: var(--glow-cyan) !important;
   }
   .stepper { position: relative; }
   .step-item::after {
@@ -1530,7 +1857,7 @@ body.in-session .footer {
   .step-item:last-child::after { display: none !important; }
   .step-item.completed::after {
     background: var(--accent);
-    box-shadow: 0 0 4px rgba(184,154,74,0.2);
+    box-shadow: none;
   }
 
   /* ─── a11y: legible base sizes, 40px+ touch targets, 42px step circles ─── */
@@ -1944,6 +2271,9 @@ I return to myself easily"></textarea>
           <option value="short">Short (~12 min) — standard</option>
           <option value="medium" selected>Medium (~20 min) — recommended</option>
           <option value="long">Long (~30 min) — deepest</option>
+          <option value="extended">Extended (~45 min) — extra work block</option>
+          <option value="deep">Deep (~60 min) — sustained, multi-pass work</option>
+          <option value="marathon">Marathon (~90 min) — double-depth, full arc</option>
         </select>
         <div class="sublabel" id="lengthHint"></div>
       </div>
@@ -1957,6 +2287,34 @@ I return to myself easily"></textarea>
           <button class="preview-btn" id="voicePreviewBtn">▶ preview</button>
           <button class="preview-btn stop" id="voiceStopBtn" style="display:none;">⏹ stop</button>
           <span class="preview-hint">Hear a sample with your speed/pitch/volume settings.</span>
+        </div>
+        <!-- Local AI voice (Phase 6 addition). Loads Hugging Face Transformers.js
+             SpeechT5 from CDN on first use, caches the model in IndexedDB.
+             First-load is ~80MB; subsequent sessions use the cache. No word-level
+             highlighting (neural TTS doesn't expose boundary events) — pulses are
+             estimated. Falls back to the OS voice above if loading fails. -->
+        <div style="margin-top:10px;padding:10px;border:1px solid var(--glass-border);background:rgba(0,212,230,0.03);">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="localVoiceToggle">
+            <span style="font-size:0.85rem;color:var(--text);font-weight:500;">🎙 use local AI voice</span>
+            <span style="font-size:0.7rem;color:var(--text-faint);">(offline, neural-quality)</span>
+          </label>
+          <div id="localVoiceStatus" style="font-size:0.7rem;color:var(--text-faint);margin-top:6px;line-height:1.4;">
+            Free, runs entirely in your browser. ~80&nbsp;MB model downloads on first use, then cached. No internet needed afterward.
+          </div>
+          <div id="localVoiceProgress" style="display:none;margin-top:6px;">
+            <div style="height:4px;background:var(--glass);overflow:hidden;">
+              <div id="localVoiceProgressFill" style="height:100%;width:0%;background:var(--neon-cyan);transition:width 0.2s;"></div>
+            </div>
+            <div id="localVoiceProgressText" style="font-size:0.65rem;color:var(--text-dim);margin-top:3px;"></div>
+          </div>
+          <select id="localVoiceSpeaker" style="display:none;margin-top:8px;font-size:0.78rem;">
+            <option value="clb">Female · clear (CLB)</option>
+            <option value="slt">Female · soft (SLT)</option>
+            <option value="bdl">Male · grounded (BDL)</option>
+            <option value="rms">Male · low (RMS)</option>
+            <option value="ksp">Male · British (KSP)</option>
+          </select>
         </div>
       </div>
 
@@ -2370,15 +2728,27 @@ I return to myself easily"></textarea>
         <p class="post-message" id="postMessage">Take a moment. Notice how you feel.</p>
       </div>
 
-      <!-- Grounding exercise (shown after emergency end) -->
+      <!-- Reorientation card (shown after emergency end). Anchors the user
+           back to consensus reality with date/time + a "you're here" prompt.
+           Clinical post-emergency protocol — Quinn ERP / Brown-Fromm. -->
+      <div class="reorient-card" id="reorientCard" style="display:none;">
+        <h3>where you are now</h3>
+        <div class="reorient-line" id="reorientWhen"></div>
+        <div class="reorient-line">You're <strong>here</strong>, in your body, in this room. The session has ended.</div>
+        <div class="reorient-line" style="font-size:0.78rem;color:var(--text-dim);margin-top:6px;">If anything feels unsettled, the grounding exercise below helps. Take whatever time you need.</div>
+      </div>
+
+      <!-- Grounding exercise (shown after emergency end). Each step is
+           tappable — gives the user a tangible action that anchors them
+           back into present-moment sensory awareness. Calm/Headspace pattern. -->
       <div class="grounding-box" id="groundingBox" style="display:none;">
         <h3>5-4-3-2-1 grounding</h3>
-        <div class="grounding-step"><strong>5 things</strong> you can see right now</div>
-        <div class="grounding-step"><strong>4 things</strong> you can physically touch or feel</div>
-        <div class="grounding-step"><strong>3 things</strong> you can hear</div>
-        <div class="grounding-step"><strong>2 things</strong> you can smell</div>
-        <div class="grounding-step"><strong>1 thing</strong> you can taste</div>
-        <div style="font-size:0.7rem; color:var(--text-faint); margin-top:8px; font-style:italic;">Take your time. There is no rush.</div>
+        <div class="grounding-step interactive" data-gs="5"><span class="gs-check"></span><span><strong>5 things</strong> you can see right now</span></div>
+        <div class="grounding-step interactive" data-gs="4"><span class="gs-check"></span><span><strong>4 things</strong> you can physically touch or feel</span></div>
+        <div class="grounding-step interactive" data-gs="3"><span class="gs-check"></span><span><strong>3 things</strong> you can hear</span></div>
+        <div class="grounding-step interactive" data-gs="2"><span class="gs-check"></span><span><strong>2 things</strong> you can smell</span></div>
+        <div class="grounding-step interactive" data-gs="1"><span class="gs-check"></span><span><strong>1 thing</strong> you can taste</span></div>
+        <div style="font-size:0.7rem; color:var(--text-faint); margin-top:8px; font-style:italic;">Take your time. There is no rush. Tap each as you find it.</div>
       </div>
 
       <div class="post-cards">
@@ -2474,7 +2844,26 @@ I return to myself easily"></textarea>
       <button class="transcript-toggle" id="webcamLiveToggle" title="Toggle webcam awareness for this session">📷 webcam</button>
       <button class="transcript-toggle" id="liveSettingsBtn">⚙ settings</button>
     </div>
-    <div class="kb-hint"><kbd>Space</kbd> pause/resume · <kbd>Esc</kbd> end & re-alert</div>
+    <div class="kb-hint"><kbd>Space</kbd> pause/resume · <kbd>Esc</kbd> safe pause (twice to end)</div>
+  </div>
+
+  <!-- ============ SOFT-PAUSE OVERLAY ============
+       First Esc press during a session shows this. Pauses speech + drone,
+       gives the user a breath, and offers two clear paths: continue, or
+       commit to a full counted re-alert end. Second Esc (while open) commits.
+       Layer 50 (above session, below full modals at 100). -->
+  <div class="soft-pause-overlay" id="softPauseOverlay" role="dialog" aria-modal="true" aria-labelledby="spTitle">
+    <div class="soft-pause-card">
+      <h2 id="spTitle">Paused — you're safe</h2>
+      <p class="sp-line">Take a breath. Feel your feet on the ground.</p>
+      <p class="sp-sub">Nothing is happening. The session is on hold. You can continue when you're ready, or end with a full counted re-alert.</p>
+      <div class="sp-time" id="spTimeNow"></div>
+      <div class="sp-actions">
+        <button type="button" class="sp-continue" id="spContinueBtn">▸ continue session</button>
+        <button type="button" class="sp-end" id="spEndBtn">end now &amp; re-alert</button>
+      </div>
+      <div class="sp-hint">Press <kbd>Esc</kbd> again to end now · <kbd>Space</kbd> or <kbd>Enter</kbd> to continue</div>
+    </div>
   </div>
 
   <!-- LIVE SETTINGS PANEL (slide-out during session) -->
@@ -3665,11 +4054,17 @@ I return to myself easily"></textarea>
   }
 
   const PHASE_DURATIONS = {
-    micro:  { settling: 15,  induction: 30,  deepener: 15,  work: 60,  lightener: 15, wake: 12, reintroduction: 20 },
-    quick:  { settling: 30,  induction: 90,  deepener: 30,  work: 120, lightener: 30, wake: 20, reintroduction: 30 },
-    short:  { settling: 60,  induction: 180, deepener: 60,  work: 240, lightener: 45, wake: 30, reintroduction: 45 },
-    medium: { settling: 90,  induction: 300, deepener: 180, work: 360, lightener: 60, wake: 40, reintroduction: 60 },
-    long:   { settling: 120, induction: 420, deepener: 300, work: 540, lightener: 75, wake: 50, reintroduction: 75 },
+    micro:    { settling: 15,  induction: 30,  deepener: 15,  work: 60,   lightener: 15,  wake: 12, reintroduction: 20 },
+    quick:    { settling: 30,  induction: 90,  deepener: 30,  work: 120,  lightener: 30,  wake: 20, reintroduction: 30 },
+    short:    { settling: 60,  induction: 180, deepener: 60,  work: 240,  lightener: 45,  wake: 30, reintroduction: 45 },
+    medium:   { settling: 90,  induction: 300, deepener: 180, work: 360,  lightener: 60,  wake: 40, reintroduction: 60 },
+    long:     { settling: 120, induction: 420, deepener: 300, work: 540,  lightener: 75,  wake: 50, reintroduction: 75 },
+    // Phase 6 length-picker expansion. Each step adds ~1 Work + ~1 Affirm
+    // pair; marathon also doubles the deepener/lightener depth (handled in
+    // getSessionPhaseBlueprint), so its `deepener` total is split across two phases.
+    extended: { settling: 150, induction: 480, deepener: 360, work: 720,  lightener: 90,  wake: 60, reintroduction: 90 },
+    deep:     { settling: 180, induction: 540, deepener: 420, work: 900,  lightener: 105, wake: 70, reintroduction: 105 },
+    marathon: { settling: 180, induction: 600, deepener: 540, work: 1080, lightener: 120, wake: 80, reintroduction: 120 },
   };
 
   const _FALLBACK_PERSONA = { id: 'fallback', name: 'Guide', tagline: '', category: 'contemplative', systemPrompt: '' };
@@ -4070,7 +4465,7 @@ I return to myself easily"></textarea>
     }
   }
 
-  /** Evaluate a {metric, op, value} condition against the current engine state.
+  /** Evaluate a [metric, op, value] condition against the current engine state.
    *  Also supports pseudo-metrics 'phaseKind' (string equality) and
    *  'currentPhase' (exact phase-id match). */
   function evalEngineCondition(condition) {
@@ -4965,7 +5360,7 @@ I return to myself easily"></textarea>
   }
 
   /** Pre-flight check — call before session start. Returns null if OK or
-   *  an info object {warn, message} if the user should be warned. The caller
+   *  an info object [warn, message] if the user should be warned. The caller
    *  decides whether to block or just notify. */
   function checkSessionLengthSafety() {
     const c = getSafetyConfig();
@@ -5378,7 +5773,7 @@ I return to myself easily"></textarea>
     return { nameBytes, lfh, cdh, bytes };
   }
 
-  /** Build a ZIP file from an array of {name, bytes} entries. */
+  /** Build a ZIP file from an array of [name, bytes] entries. */
   function _zipBuild(files) {
     const entries = files.map(f => _zipEntry(f.name, f.bytes));
     const parts = [];
@@ -5613,7 +6008,7 @@ I return to myself easily"></textarea>
    * Load personas from community packs exposed via `root.communityPacks`.
    * Packs are lazy-loaded generators with a top-level `personas` list whose
    * items are JSON objects or serialisable list entries. Silent on failure.
-   * @returns {Array} Array of persona objects (possibly empty)
+   * @returns [Array] Array of persona objects (possibly empty)
    */
   function loadCommunityPackPersonas() {
     if (typeof root === 'undefined' || !root.communityPacks) return [];
@@ -5730,9 +6125,9 @@ I return to myself easily"></textarea>
    *   5 = persona + method + task      (never trimmed)
    * Blocks can be null/empty; they're skipped.
    *
-   * @param {Array<{name:string, text:string, priority:number}>} blocks
-   * @param {number} reserveForOutput  Tokens to leave for the model's reply
-   * @returns {string}  Concatenated, possibly trimmed, context
+   * @param {Array<[name:string, text:string, priority:number]>} blocks
+   * @param [number] reserveForOutput  Tokens to leave for the model's reply
+   * @returns [string]  Concatenated, possibly trimmed, context
    */
   function trimToTokenBudget(blocks, reserveForOutput = 800) {
     const kept = blocks.filter(b => b && b.text && b.text.length > 0);
@@ -5999,9 +6394,9 @@ I return to myself easily"></textarea>
   // than blindly overwriting.
   // ====================================================================
   /**
-   * @param {string} oldText  Original phase text
-   * @param {string} newText  Newly generated phase text
-   * @param {string} phaseLabel  Human-friendly label for modal header
+   * @param [string] oldText  Original phase text
+   * @param [string] newText  Newly generated phase text
+   * @param [string] phaseLabel  Human-friendly label for modal header
    * @returns {Promise<'new'|'old'>} Which text to keep
    */
   function showPhaseDiffModal(oldText, newText, phaseLabel) {
@@ -6085,6 +6480,9 @@ I return to myself easily"></textarea>
       userAffirmations: $('userAffirmations')?.value || '',
       affirmationMode: $('affirmationMode')?.value || 'woven',
       voiceName: $('voiceSelect')?.value || '',
+      // Local AI voice (Phase 6) — opt-in offline TTS via Transformers.js
+      useLocalTTS: !!state.useLocalTTS,
+      localVoiceSpeaker: state.localVoiceSpeaker || 'clb',
       remoteProcessingOptIn: !!$('remoteProcessingOptIn')?.checked,
       smartDirectorEnabled: !!$('smartDirectorEnabled')?.checked,
       directorBias: Number($('directorBiasSlider')?.value ?? state.directorBias ?? 0),
@@ -6325,6 +6723,26 @@ I return to myself easily"></textarea>
         };
       }
       if (s.voiceName) state._savedVoiceName = s.voiceName;
+      // Local AI voice (Phase 6) — restore toggle + speaker; don't auto-load the
+      // model on startup (heavy), wait for the user to actually start a session.
+      state.useLocalTTS = !!s.useLocalTTS;
+      state.localVoiceSpeaker = s.localVoiceSpeaker || 'clb';
+      const ltcb = $('localVoiceToggle'); if (ltcb) ltcb.checked = state.useLocalTTS;
+      const ltsel = $('localVoiceSpeaker'); if (ltsel) {
+        ltsel.value = state.localVoiceSpeaker;
+        ltsel.style.display = state.useLocalTTS ? '' : 'none';
+      }
+      if (state.useLocalTTS) {
+        const lts = $('localVoiceStatus');
+        if (lts) lts.textContent = 'Local voice was enabled — re-loading the model (~80 MB cached after first download)…';
+        // Fire-and-forget: model prep happens in the background while the user
+        // configures the rest of the session.
+        _localTTS.init(state.localVoiceSpeaker).then((ok) => {
+          if (lts) lts.textContent = ok
+            ? '✓ Ready. Local AI voice will be used for the next session.'
+            : 'Could not load the local voice model — will fall back to the system voice.';
+        });
+      }
       state.remoteProcessingOptIn = !!s.remoteProcessingOptIn;
       const rpcb = $('remoteProcessingOptIn'); if (rpcb) rpcb.checked = !!state.remoteProcessingOptIn;
       state.smartDirectorEnabled = s.smartDirectorEnabled !== false;
@@ -6444,11 +6862,11 @@ I return to myself easily"></textarea>
 
   class DiffBouncer {
     /**
-     * @param {object} cfg
-     * @param {string} cfg.source    Identifier (e.g. 'pfGoals', 'bgImage')
+     * @param [object] cfg
+     * @param [string] cfg.source    Identifier (e.g. 'pfGoals', 'bgImage')
      * @param {'text'|'csv'|'image'} cfg.type
-     * @param {Function} cfg.getState () => current snapshot for this source
-     * @param {Function} cfg.onCommit (diffDetail, currentState, meta) => void
+     * @param [Function] cfg.getState () => current snapshot for this source
+     * @param [Function] cfg.onCommit (diffDetail, currentState, meta) => void
      */
     constructor(cfg) {
       this.source = cfg.source;
@@ -6881,6 +7299,110 @@ I return to myself easily"></textarea>
   }
 
   /** Build an AI context string from the user's profile for prompt injection */
+  // ====================================================================
+  // PHASE 4 SIGNALS — time-of-day picks + modality inference
+  // ====================================================================
+  // Two lightweight derived signals from the existing analytics store. Both
+  // are read-only — they don't add new persistence, just compute over `hr`
+  // (hourly distribution) + frequency maps + current settings.
+
+  /** What persona/method does this user most often pick at the given hour?
+   *  Returns null if there's not enough signal (fewer than 3 sessions in this
+   *  hour bucket OR no clear winner). Cheap — runs in-memory after analytics
+   *  load. Used to surface a "matches your usual hour" hint on Step 1.
+   *
+   *  Note: The current analytics store keeps a single hourly counter (`hr`),
+   *  not a per-(hour × persona) cross-tab. So this function approximates by
+   *  combining global persona popularity with the user's typical hour. If
+   *  the user has substantial activity at the requested hour AND has a clear
+   *  top persona, return that persona — it's the best available signal
+   *  without expanding the schema.
+   *
+   *  @returns {Promise<{personaId?:string, methodId?:string} | null>} */
+  async function getTimeOfDayPick(hour) {
+    try {
+      const a = await getAnalytics();
+      if (!a) return null;
+      const hourCount = (a.hr && a.hr[hour]) || 0;
+      // Need a meaningful baseline — ignore single-session noise.
+      if (hourCount < 3) return null;
+      // Pick the user's globally most-used persona/method as the recommendation
+      // for this hour. (A future schema upgrade could store hourly cross-tabs;
+      // for now this is the highest-signal field.)
+      const topKey = (map) => {
+        let best = null, bestN = 0;
+        for (const k of Object.keys(map || {})) {
+          if (map[k] > bestN) { best = k; bestN = map[k]; }
+        }
+        return bestN >= 3 ? best : null;
+      };
+      const personaId = topKey(a.p);
+      const methodId  = topKey(a.m);
+      if (!personaId && !methodId) return null;
+      return { personaId, methodId, hourCount };
+    } catch (e) { return null; }
+  }
+
+  /** Conservative inference of the user's preferred sensory modality from
+   *  current settings + recent usage. Returns 'visual'|'auditory'|'kinesthetic'
+   *  ONLY when the signal is strong. Otherwise returns null and we say nothing.
+   *
+   *  Used to lightly steer AI generation: a kinesthetic user gets more body
+   *  references; an auditory user gets sound-rich descriptions. Wrong
+   *  inference is worse than no inference, so the bar is high.
+   *
+   *  Signals (each 0 or 1):
+   *    visual:       text-display ON, viz-override is intense (not none/candle/colorwash),
+   *                  recent methods include visual fixation patterns
+   *    auditory:     text-display ON, soundscape on, audio-reactive on, voice volume high
+   *    kinesthetic:  somatic-category methods dominate, breath/body-scan in usage,
+   *                  webcam/biofeedback features used
+   *
+   *  Requires score >= 2 in a single modality AND that modality must be the
+   *  clear leader (margin >= 1) to return non-null. */
+  async function inferModality() {
+    try {
+      const scores = { visual: 0, auditory: 0, kinesthetic: 0 };
+      // Visual signals
+      if (state.vizOverride && !['none', 'candle', 'colorwash'].includes(state.vizOverride)) scores.visual++;
+      if (state.hud?.fixationDot !== false) scores.visual++;
+      // Auditory signals
+      if (state.cfgTextDisplay !== false) scores.auditory++; // narration-text on suggests they want spoken reinforcement
+      if (state.soundscape && state.soundscape !== 'none') scores.auditory++;
+      if ((state.audioReactiveMode || 'subtle') !== 'off') scores.auditory++;
+      // Kinesthetic signals — read from analytics method usage
+      const a = await getAnalytics();
+      if (a && a.m) {
+        const SOMATIC_METHODS = new Set(['hand-heaviness', 'arm-catalepsy', 'progressive', 'body-awareness',
+          'floating-body', 'glove-anesthesia', 'heartbeat-sync', 'breath-478', 'pain-dial', 'arm-drop']);
+        let somaticPlays = 0, totalPlays = 0;
+        for (const k of Object.keys(a.m)) {
+          totalPlays += a.m[k];
+          if (SOMATIC_METHODS.has(k)) somaticPlays += a.m[k];
+        }
+        if (totalPlays >= 5 && (somaticPlays / totalPlays) > 0.4) scores.kinesthetic += 2;
+      }
+      // Pick the leader if it's clear
+      const entries = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+      const [winner, wScore] = entries[0];
+      const [, runner] = entries[1];
+      if (wScore < 2 || (wScore - runner) < 1) return null;
+      return winner;
+    } catch (e) { return null; }
+  }
+
+  /** Cached inference — refreshed asynchronously after each session and at
+   *  init. `getProfileContext` is sync (called during prompt assembly), so
+   *  it reads from this cache rather than awaiting. Stale by at most one
+   *  session, which is fine. */
+  state._inferredModality = state._inferredModality || null;
+  async function refreshInferredModality() {
+    try { state._inferredModality = await inferModality(); }
+    catch { state._inferredModality = null; }
+  }
+  // Refresh once at module load so first session has signal if usage is heavy
+  setTimeout(() => { refreshInferredModality().catch(() => {}); }, 1500);
+
   function getProfileContext() {
     if (state.smartDirectorEnabled === false) {
       sdLog('getProfileContext returning empty — Smart Director off');
@@ -6896,6 +7418,17 @@ I return to myself easily"></textarea>
     if (p.about) parts.push(`About the subject: ${p.about}.`);
     if (p.appearance) parts.push(`Appearance: ${p.appearance}.`);
     if (p.goals) parts.push(`Goals: ${p.goals}.`);
+
+    // Phase 4: inferred sensory modality. Only surfaced when inference is
+    // confident (see inferModality). Wrong guidance is worse than silence.
+    if (state._inferredModality) {
+      const guidance = {
+        visual:       'Lean into visual descriptions (light, color, distance, scenes the user can see in their mind).',
+        auditory:     'Lean into auditory descriptions (sounds, rhythms, the texture of the voice itself, named sounds).',
+        kinesthetic:  'Lean into bodily sensation (weight, warmth, breath, where in the body the experience lands).',
+      }[state._inferredModality];
+      if (guidance) parts.push(`Inferred preferred modality: ${state._inferredModality}. ${guidance}`);
+    }
 
     // Recent change signals from the diff-bounce log — gives the director
     // a time-aware view of what the user's been exploring lately.
@@ -7110,9 +7643,9 @@ I return to myself easily"></textarea>
    * `coldStart: true` and no active recommendations, so the AI falls back to
    * defaults rather than pretending expertise the app hasn't earned.
    *
-   * @param {object|null} living     output of buildLivingProfile()
-   * @param {object}       session   { persona, method, intention, length }
-   * @returns {object|null}
+   * @param [object|null] living     output of buildLivingProfile()
+   * @param [object]       session   { persona, method, intention, length }
+   * @returns [object|null]
    */
   function computeDirectorBrief(living, session = {}) {
     if (!living) return null;
@@ -7278,9 +7811,9 @@ I return to myself easily"></textarea>
    * can handle them. Called both pre-prompt (so AI sees resolved values in
    * the generation context) and pre-TTS (so user edits with live tokens work).
    *
-   * @param {string} text   Source text possibly containing \{\{...\}\} tokens.
-   * @param {object} [opts] Overrides: { user, persona, intention, affirmations[] }.
-   * @returns {string}
+   * @param [string] text   Source text possibly containing \{\{...\}\} tokens.
+   * @param [object] [opts] Overrides: { user, persona, intention, affirmations[] }.
+   * @returns [string]
    */
   function resolveTokens(text, opts = {}) {
     if (!text || typeof text !== 'string') return text || '';
@@ -7430,6 +7963,9 @@ I return to myself easily"></textarea>
 
       a.ts = Date.now();
       await idbSet(ANALYTICS_KEY, a);
+      // Phase 4: refresh inferred modality so the next session's prompt has
+      // an updated read. Fire-and-forget — never block the analytics write.
+      refreshInferredModality().catch(() => {});
     } catch(e) { console.error('Analytics write failed:', e); }
   }
 
@@ -7580,8 +8116,8 @@ I return to myself easily"></textarea>
     const mTotal = mEntries.reduce((s, v) => s + v, 0) || 1;
     const mEntropy = -mEntries.reduce((s, v) => { const p = v / mTotal; return s + (p > 0 ? p * Math.log2(p) : 0); }, 0);
     const maxEntropy = Math.log2(Math.max(mEntries.length, 1)) || 1;
-    // Average session length normalized (0=micro, 1=long)
-    const lenMap = { micro: 0, quick: 0.2, short: 0.4, medium: 0.6, long: 0.85, extended: 1 };
+    // Average session length normalized (0=micro, 1=marathon)
+    const lenMap = { micro: 0, quick: 0.15, short: 0.3, medium: 0.45, long: 0.6, extended: 0.75, deep: 0.88, marathon: 1 };
     const lenEntries = Object.entries(a.ln || {});
     const lenTotal = lenEntries.reduce((s, [, v]) => s + v, 0) || 1;
     const avgLen = lenEntries.reduce((s, [k, v]) => s + (lenMap[k] ?? 0.5) * v, 0) / lenTotal;
@@ -7836,11 +8372,13 @@ I return to myself easily"></textarea>
     // Default: Perchance AI
     if (typeof root !== 'undefined' && root.aiTextPlugin) {
       try {
-        // Default stopSequences include both '\n\n\n' (paragraph triple-break)
-        // and '\n\n[[' as a defensive guard against chat-format bleed (the
-        // [[Speaker]]: pattern occasionally appears in model outputs even when
-        // we don't request it). Per the perchance-api skill checklist §14.
-        const data = await root.aiTextPlugin({ instruction, stopSequences: opts.stopSequences || ['\n\n\n', '\n\n[['], hideStartWith: true, ...opts });
+        // Merge defensive chat-format guards ('\n\n[[' and '\n[[') into whatever
+        // stop sequences the caller passed. Some models occasionally emit the
+        // [[Speaker]]: chat format even when not requested — this catches that.
+        // Per perchance-api §14 checklist. Set-dedupe so we don't pass duplicates.
+        const userStops = opts.stopSequences || ['\n\n\n'];
+        const stopSequences = Array.from(new Set([...userStops, '\n\n[[', '\n[[']));
+        const data = await root.aiTextPlugin({ ...opts, instruction, stopSequences, hideStartWith: true });
         if (!data || data.stopReason === 'error') return asResult('', 'error', 'perchance ai error');
         return asResult(data.generatedText, data.stopReason, 'perchance empty');
       } catch (e) { console.warn('Perchance AI threw:', e); return asResult('', 'error', 'perchance threw'); }
@@ -8227,6 +8765,11 @@ Practitioner profile (full, natural sentences):`;
     if (n < state.currentStep && state._skippedToScript) {
       state._skippedToScript = false;
     }
+    // Leaving Step 1 → clear the ephemeral persona chat history (Phase 3).
+    // Chat is preview-only by design; users coming back to Step 1 start fresh.
+    if (state.currentStep === 1 && n !== 1 && typeof clearAllPersonaChats === 'function') {
+      clearAllPersonaChats();
+    }
     state.currentStep = n;
     // Stop all previews when leaving the Configure step
     if (typeof _stopAllPreviews === 'function') _stopAllPreviews();
@@ -8327,6 +8870,7 @@ Practitioner profile (full, natural sentences):`;
     filtered.forEach(p => {
       const card = document.createElement('div');
       card.className = `card category-${p.category || 'contemplative'}` + (p.id === state.selectedPersonaId ? ' selected' : '') + (p.isCustom ? ' is-custom' : '');
+      card.dataset.personaId = p.id;
       card.innerHTML = `<div class="card-category-label">${escapeHtml(p.category || 'contemplative')}</div><div class="card-name">${escapeHtml(p.name)}</div><div class="card-tagline">${escapeHtml(p.tagline)}</div>${p.isCustom ? `<div class="card-actions"><button class="card-action-btn" data-action="edit">edit</button><button class="card-action-btn" data-action="delete">×</button></div>` : ''}`;
       card.addEventListener('click', e => {
         if (e.target.dataset.action === 'edit') { e.stopPropagation(); openPersonaEditor(p.id); return; }
@@ -8342,6 +8886,36 @@ Practitioner profile (full, natural sentences):`;
     addCard.innerHTML = '<span>+ create custom</span>';
     addCard.addEventListener('click', () => openPersonaEditor(null));
     grid.appendChild(addCard);
+    // Phase 4: async-paint a "matches your usual hour" badge on the user's
+    // most-used persona at the current hour. Non-blocking — first paint is
+    // already complete by the time this resolves.
+    _applyTimeOfDayBadge('persona');
+  }
+
+  /** Apply the ✦ time-of-day badge on the persona/method card matching
+   *  the user's usual pick at this hour. Idempotent — clears any stale
+   *  badges before adding the new one. */
+  async function _applyTimeOfDayBadge(kind) {
+    try {
+      const hour = new Date().getHours();
+      const pick = await getTimeOfDayPick(hour);
+      if (!pick) return;
+      const targetId = kind === 'persona' ? pick.personaId : pick.methodId;
+      const grid = kind === 'persona' ? $('personaGrid') : $('methodGrid');
+      if (!grid || !targetId) return;
+      // Remove any prior badges in this grid (filter changes can re-render fast)
+      grid.querySelectorAll('.tod-badge').forEach(b => b.remove());
+      const card = grid.querySelector(`.card[data-${kind}-id="${CSS.escape(targetId)}"]`);
+      if (!card) return;
+      const nameEl = card.querySelector('.card-name');
+      if (!nameEl) return;
+      const badge = document.createElement('span');
+      badge.className = 'tod-badge';
+      const hourLabel = (hour < 5 || hour >= 21) ? 'late' : (hour < 12 ? 'morning' : (hour < 17 ? 'afternoon' : 'evening'));
+      badge.textContent = `your ${hourLabel}`;
+      badge.title = `You've used this guide ${pick.hourCount} time${pick.hourCount === 1 ? '' : 's'} around this hour.`;
+      nameEl.appendChild(badge);
+    } catch (e) { /* badges are decoration — never crash */ }
   }
   function renderPersonaDetail() {
     const p = getPersona();
@@ -8357,7 +8931,26 @@ Practitioner profile (full, natural sentences):`;
       <div style="flex:1;min-width:0;">
         <div class="detail-title">${escapeHtml(p.name)}</div>
         <div>${escapeHtml(getPersonaRole(p))}</div>
-        <button id="generatePortraitBtn" class="preview-btn" style="margin-top:8px;font-size:0.7rem;padding:3px 10px;">🎨 generate portrait</button>
+        <div class="pc-toggle-row">
+          <button id="generatePortraitBtn" class="preview-btn" style="font-size:0.7rem;padding:3px 10px;">🎨 generate portrait</button>
+          <button id="personaChatToggleBtn" class="pc-toggle" data-persona-id="${escapeHtml(p.id)}">💬 try out <span class="pc-toggle-name">${escapeHtml(p.name)}</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="pc-panel" id="personaChatPanel" data-persona-id="${escapeHtml(p.id)}">
+      <div class="pc-header">
+        <div class="pc-name">talking with ${escapeHtml(p.name)}</div>
+        <button type="button" class="pc-close" id="personaChatCloseBtn" aria-label="close chat">✕</button>
+      </div>
+      <div class="pc-transcript" id="personaChatTranscript"></div>
+      <div class="pc-suggestions" id="personaChatSuggestions"></div>
+      <div class="pc-input-row">
+        <textarea id="personaChatInput" class="pc-input" rows="1" placeholder="ask ${escapeHtml(p.name)} anything…"></textarea>
+        <button type="button" class="pc-send" id="personaChatSendBtn">send</button>
+      </div>
+      <div class="pc-footer">
+        <div class="pc-footer-status" id="personaChatStatus">Ephemeral — clears when you switch guides or change steps.</div>
+        <button type="button" class="pc-commit" id="personaChatCommitBtn">use ${escapeHtml(p.name)} →</button>
       </div>
     </div>`;
     // Async load cached portrait if available (no API call — IDB lookup only)
@@ -8370,6 +8963,8 @@ Practitioner profile (full, natural sentences):`;
       if (btn) { btn.disabled = false; btn.textContent = url ? '🔄 regenerate portrait' : '🎨 generate portrait'; }
       if (url) _setPortraitImage(url, p.id);
     });
+    // Wire the chat-with-guide affordances (Phase 3)
+    _wirePersonaChat(p);
   }
 
   /** Look up cached portrait for a persona and inject it into the detail panel
@@ -8397,6 +8992,223 @@ Practitioner profile (full, natural sentences):`;
     box.innerHTML = `<img src="${url}" alt="portrait" style="width:100%;height:100%;object-fit:cover;">`;
   }
 
+  // ====================================================================
+  // CHAT-WITH-GUIDE (Phase 3) — try a persona before committing
+  // ====================================================================
+  // Lets users have a short conversation with each persona to get a feel
+  // for voice and style before locking in a Step-2 commitment. Per persona
+  // history is ephemeral — kept only in memory, cleared on persona switch
+  // or step navigation. Hard cap on turns to bound token spend.
+  const PERSONA_CHAT_MAX_TURNS = 6; // user/persona exchanges before input disables
+  const _personaChats = {}; // personaId → [{role: 'user'|'persona', text}]
+
+  /** Suggested starter prompts shown as chips when chat is empty. The chip
+   *  text becomes the user's message verbatim — kept short, persona-agnostic,
+   *  designed to surface voice/style differences quickly. */
+  function _personaChatStarters() {
+    return [
+      'how would you start a session with me?',
+      "what's your style?",
+      "what makes you different from other guides?",
+      'tell me what to expect.',
+    ];
+  }
+
+  /** Build the AI instruction for a chat turn. Uses Perchance's canonical
+   *  chat-completion format from §2.1 of the perchance-api skill. */
+  function _personaChatInstruction(persona, history, userMsg) {
+    const role = getPersonaRole(persona) || `You are ${persona.name}, a hypnosis guide.`;
+    // Chat-format messages block — model continues from the trailing [[Persona]]:
+    const messages = history.concat([{ role: 'user', text: userMsg }])
+      .map(m => m.role === 'user'
+        ? `[[User]]: ${m.text}`
+        : `[[${persona.name}]]: ${m.text}`)
+      .join('\n');
+    return `<ROLE>
+${role}
+</ROLE>
+
+You are ${persona.name}. The user is considering choosing you as their hypnosis guide for a session, and is asking you questions to get a feel for your voice and style. This is a SHORT preview chat, NOT a hypnosis session — do not induce trance, do not give a script. Reply in your own voice as defined above. Keep replies brief (1-3 sentences). Stay fully in character — your voice, vocabulary, and cadence are the answer.
+
+<MESSAGES>
+${messages}
+</MESSAGES>
+
+>>> TASK: Write the next message from ${persona.name}, in voice. Keep it short.`;
+  }
+
+  /** Set up event listeners for the chat panel. Called from renderPersonaDetail
+   *  every time the panel is re-rendered (which is every persona switch). */
+  function _wirePersonaChat(persona) {
+    if (!persona) return;
+    const toggleBtn = $('personaChatToggleBtn');
+    const panel = $('personaChatPanel');
+    const closeBtn = $('personaChatCloseBtn');
+    const transcript = $('personaChatTranscript');
+    const suggestions = $('personaChatSuggestions');
+    const input = $('personaChatInput');
+    const sendBtn = $('personaChatSendBtn');
+    const commitBtn = $('personaChatCommitBtn');
+    const status = $('personaChatStatus');
+    if (!panel || !transcript) return;
+
+    const renderTranscript = () => {
+      const history = _personaChats[persona.id] || [];
+      if (!history.length) {
+        transcript.innerHTML = `<div class="pc-empty">Say hello, or pick a starter below.</div>`;
+        suggestions.style.display = '';
+      } else {
+        transcript.innerHTML = history.map(m =>
+          m.role === 'user'
+            ? `<div class="pc-msg user">${escapeHtml(m.text)}</div>`
+            : `<div class="pc-msg persona"><span class="pc-msg-name">${escapeHtml(persona.name)}</span>${escapeHtml(m.text)}</div>`
+        ).join('');
+        // Hide starters once the conversation has begun
+        suggestions.style.display = history.length === 0 ? '' : 'none';
+        transcript.scrollTop = transcript.scrollHeight;
+      }
+      // Update turn-cap status
+      const turns = history.filter(m => m.role === 'user').length;
+      const remaining = PERSONA_CHAT_MAX_TURNS - turns;
+      if (remaining <= 0) {
+        if (status) status.textContent = `Preview cap reached — pick this guide if it's a fit.`;
+        if (input) { input.disabled = true; input.placeholder = 'preview cap reached'; }
+        if (sendBtn) sendBtn.disabled = true;
+      } else if (turns > 0) {
+        if (status) status.textContent = `${remaining} more question${remaining === 1 ? '' : 's'} in this preview.`;
+      } else {
+        if (status) status.textContent = `Ephemeral — clears when you switch guides or change steps.`;
+      }
+    };
+
+    const renderSuggestions = () => {
+      const starters = _personaChatStarters();
+      suggestions.innerHTML = starters.map(s =>
+        `<button type="button" class="pc-suggest">${escapeHtml(s)}</button>`
+      ).join('');
+      suggestions.querySelectorAll('.pc-suggest').forEach(b => {
+        b.addEventListener('click', () => {
+          input.value = b.textContent;
+          sendChat();
+        });
+      });
+    };
+
+    let _streaming = false;
+    const sendChat = async () => {
+      if (_streaming) return;
+      const text = (input.value || '').trim();
+      if (!text) return;
+      const history = _personaChats[persona.id] = _personaChats[persona.id] || [];
+      if (history.filter(m => m.role === 'user').length >= PERSONA_CHAT_MAX_TURNS) return;
+      history.push({ role: 'user', text });
+      input.value = '';
+      renderTranscript();
+      // Insert a streaming placeholder for the persona's reply
+      _streaming = true;
+      sendBtn.disabled = true;
+      const placeholder = document.createElement('div');
+      placeholder.className = 'pc-msg persona streaming';
+      placeholder.innerHTML = `<span class="pc-msg-name">${escapeHtml(persona.name)}</span><span class="pc-msg-body"></span>`;
+      transcript.appendChild(placeholder);
+      transcript.scrollTop = transcript.scrollHeight;
+      const bodyEl = placeholder.querySelector('.pc-msg-body');
+      try {
+        // Use the hardened aiGenerate wrapper. Stop sequences are merged with
+        // chat-format guards by the wrapper itself (Phase 1 change).
+        const instruction = _personaChatInstruction(persona, history.slice(0, -1), text);
+        // Direct streaming via aiTextPlugin so we get progressive rendering.
+        // aiGenerate would work but doesn't expose onChunk.
+        let acc = '';
+        if (typeof root !== 'undefined' && root.aiTextPlugin) {
+          const startWith = `[[${persona.name}]]:`;
+          const streamObj = root.aiTextPlugin({
+            instruction,
+            startWith,
+            hideStartWith: true,
+            stopSequences: ['\n[[User]]:', '\n\n[[', '\n[[', '\n\n\n'],
+            onChunk: (data) => {
+              if (data.isFromStartWith) return;
+              const chunk = data.textChunk || '';
+              if (!chunk) return;
+              acc += chunk;
+              // Strip any leaked role tags from the very first chunks
+              const cleaned = acc.replace(/^\s*\[\[[^\]]+\]\]:\s*/, '').trim();
+              bodyEl.textContent = cleaned;
+              transcript.scrollTop = transcript.scrollHeight;
+            },
+          });
+          const data = await streamObj;
+          if (data?.stopReason === 'error' && !acc) throw new Error('plugin error');
+        } else {
+          // No plugin — fall through to wrapper-based call (no streaming)
+          const data = await aiGenerate(instruction, { stopSequences: ['\n[[User]]:'] });
+          acc = (data?.generatedText || '').trim();
+          bodyEl.textContent = acc.replace(/^\s*\[\[[^\]]+\]\]:\s*/, '').trim();
+        }
+        let finalText = (acc || '').replace(/^\s*\[\[[^\]]+\]\]:\s*/, '').trim();
+        if (!finalText) throw new Error('empty reply');
+        placeholder.classList.remove('streaming');
+        bodyEl.textContent = finalText;
+        history.push({ role: 'persona', text: finalText });
+        renderTranscript();
+      } catch (e) {
+        placeholder.classList.remove('streaming');
+        bodyEl.textContent = `(${persona.name} couldn't respond — try again in a moment)`;
+        bodyEl.style.color = 'var(--text-faint)';
+        bodyEl.style.fontStyle = 'italic';
+      } finally {
+        _streaming = false;
+        sendBtn.disabled = false;
+      }
+    };
+
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        const isOpen = panel.classList.contains('visible');
+        if (isOpen) {
+          panel.classList.remove('visible');
+        } else {
+          panel.classList.add('visible');
+          renderSuggestions();
+          renderTranscript();
+          setTimeout(() => input?.focus(), 50);
+        }
+      });
+    }
+    if (closeBtn) closeBtn.addEventListener('click', () => panel.classList.remove('visible'));
+    if (sendBtn) sendBtn.addEventListener('click', sendChat);
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        // Enter sends; Shift+Enter inserts newline
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendChat();
+        }
+      });
+      // Auto-grow textarea up to max-height
+      input.addEventListener('input', () => {
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+      });
+    }
+    if (commitBtn) {
+      commitBtn.addEventListener('click', () => {
+        // Persona is already selected (user is viewing its detail); commit
+        // means advance to step 2 with the chat history cleared.
+        clearAllPersonaChats();
+        notify.success(`${persona.name} is your guide. Choose a method →`);
+        goToStep(2);
+      });
+    }
+  }
+
+  /** Clear ephemeral chat history for ALL personas. Called when leaving
+   *  Step 1 (via goToStep), since the chats are explicitly preview-only. */
+  function clearAllPersonaChats() {
+    for (const k of Object.keys(_personaChats)) delete _personaChats[k];
+  }
+
   function renderMethodGrid() {
     const grid = $('methodGrid');
     grid.innerHTML = '';
@@ -8404,6 +9216,7 @@ Practitioner profile (full, natural sentences):`;
     filtered.forEach(m => {
       const card = document.createElement('div');
       card.className = `card category-${m.category}` + (m.id === state.selectedMethodId ? ' selected' : '');
+      card.dataset.methodId = m.id;
       card.innerHTML = `<div class="card-category-label">${escapeHtml(m.category)}</div><div class="card-name">${escapeHtml(m.name)}${m.recommended ? `<span class="card-badge">recommended</span>` : ''}</div><div class="card-tagline">${escapeHtml(m.tagline)}</div><div class="card-tags">${m.tags.map(t => `<span class="card-tag">${escapeHtml(t)}</span>`).join('')}</div>`;
       card.addEventListener('click', () => {
         state.selectedMethodId = m.id;
@@ -8421,6 +9234,8 @@ Practitioner profile (full, natural sentences):`;
       });
       grid.appendChild(card);
     });
+    // Phase 4: time-of-day badge on the method most-used at this hour
+    _applyTimeOfDayBadge('method');
   }
   function renderMethodDetail() {
     const m = getMethod();
@@ -11152,13 +11967,21 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       const intentionType = INTENTION_TYPES[state.intentionType] || INTENTION_TYPES.emotional;
       const profileBlock = getProfileContext(); // already gated on Smart Director
 
-      const headerBlock = `You are a master hypnotherapist drafting personal affirmations for a hypnosis session.
+      // Phase 5: pull the persona's full role text (with signature phrases and
+      // vocabulary) into the prompt so the affirmations come out IN VOICE.
+      // Previously we used only persona.tagline, which produced voice-neutral
+      // affirmations regardless of who the guide was.
+      const personaRole = getPersonaRole(persona);
+      const voiceBlock = personaRole
+        ? `\n\nPERSONA VOICE — match this completely:\n${personaRole}\n\nThe affirmations MUST sound like ${persona.name} wrote them. Pull from the vocabulary, cadence, and signature phrasing above.`
+        : '';
 
-The user did not write their own affirmations and asked you to draft some. Generate 3-5 affirmations they will hear during the session.
+      const headerBlock = `You are ${persona.name}, drafting personal affirmations for the listener's hypnosis session.
+
+The listener did not write their own affirmations and asked you to draft some. Generate 3-5 affirmations they will hear during the session, in your voice.
 
 INTENTION TYPE: ${intentionType.label}
 USER'S INTENTION: "${intention || '(none specified — use the profile and intention type as guidance)'}"
-PERSONA STYLE: ${persona.name} — ${persona.tagline}
 METHOD: ${method.name}`;
 
       const rulesBlock = `
@@ -11170,22 +11993,25 @@ AFFIRMATION RULES:
 • Each line should stand alone as a complete suggestion
 • Use the user's pronouns and any specific details from their profile
 • Avoid clichés like "I am enough" — be specific to what the user is working on
+• CRITICAL: Match the persona voice above. A Commander's affirmations sound like commands. The Inner Voice's affirmations sound like a thought just below words. The Old Master's are short and elemental. Don't write generic affirmations.
 
 OUTPUT FORMAT:
 One affirmation per line. No numbering, no bullets, no quotes around lines, no preamble, no commentary. Just the affirmations themselves, separated by newlines. 3-5 lines total.`;
 
       const instruction = trimToTokenBudget([
         { name: 'header',   text: headerBlock,  priority: 5 },
+        { name: 'voice',    text: voiceBlock,   priority: 5 }, // voice is non-negotiable
         { name: 'profile',  text: profileBlock, priority: 3 },
         { name: 'rules',    text: rulesBlock,   priority: 5 },
-      ], 400);
+      ], 600); // bumped from 400 to make room for the voice block
 
       const result = await aiGenerate(instruction, { stopSequences: ['\n\n', '\n---'] });
-      if (!result.text) throw new Error(result.note || 'no text returned');
+      // aiGenerate returns { generatedText, stopReason } — was checking result.text (always undefined)
+      if (!result || !result.generatedText) throw new Error(result?._note || 'no text returned');
 
       // Parse: split on newlines, drop empties, drop any quoted/numbered/bulleted prefixes
       // the model adds despite the format instruction. Keep at most 5 lines.
-      const lines = result.text.split('\n')
+      const lines = result.generatedText.split('\n')
         .map(l => l.trim())
         .filter(Boolean)
         // Strip leading bullets, numbers, dashes, quotes that the model may add
@@ -11270,8 +12096,11 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
 
   /** Session work block count by selected length */
   function getWorkBlockCount() {
-    if (state.length === 'long') return 5;
-    if (state.length === 'medium') return 2;
+    if (state.length === 'marathon') return 8;
+    if (state.length === 'deep')     return 7;
+    if (state.length === 'extended') return 6;
+    if (state.length === 'long')     return 5;
+    if (state.length === 'medium')   return 2;
     return 1;
   }
 
@@ -11282,8 +12111,8 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
     const labels = {
       settling: 'Settling',
       induction: 'Induction',
-      deepener: 'Deepener',
-      lightener: 'Lightener',
+      deepener: idx ? `Deepener ${idx}` : 'Deepener',
+      lightener: idx ? `Lightener ${idx}` : 'Lightener',
       wake: 'Wake',
       reintroduction: 'Reintroduction',
       emergence: 'Emergence',
@@ -11368,7 +12197,14 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
    * Sleep intention skips the ending trio (drifts into sleep).
    */
   function getSessionPhaseBlueprint() {
-    const phases = ['settling', 'induction', 'deepener'];
+    // Marathon length doubles the descent: two deepener phases on the way
+    // down, two lighteners on the way back up (LIFO unwind, mirrored).
+    // Other lengths use a single deepener+lightener pair.
+    const deepenerCount = state.length === 'marathon' ? 2 : 1;
+    const phases = ['settling', 'induction'];
+    for (let d = 1; d <= deepenerCount; d++) {
+      phases.push(deepenerCount > 1 ? `deepener-${d}` : 'deepener');
+    }
     const workCount = getWorkBlockCount();
     const userAff = $('userAffirmations')?.value?.trim();
     const hasAff = !!userAff;
@@ -11378,7 +12214,12 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       if (hasAff) phases.push(workCount > 1 ? `affirm-${i}` : 'affirm');
     }
     if (state.intentionType === 'sleep') return phases;
-    phases.push('lightener', 'wake', 'reintroduction');
+    // Mirror the deepener depth on the way out — innermost lightener first,
+    // unwinding back to surface awareness layer by layer.
+    for (let l = deepenerCount; l >= 1; l--) {
+      phases.push(deepenerCount > 1 ? `lightener-${l}` : 'lightener');
+    }
+    phases.push('wake', 'reintroduction');
     return phases;
   }
 
@@ -11523,11 +12364,11 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
    * syncGenStateWithPhases() when the user adds/removes blocks after
    * the initial generation.
    *
-   * @param {string[]} phases       ordered phase IDs (e.g. ['settling','induction','deepener','work-1','affirm-1',...])
-   * @param {object}   targetWords  { settling: n, induction: n, ... } word budgets
-   * @param {object}   persona      current persona object
-   * @param {object}   method       current method object
-   * @param {string[]} affirmLines  affirmations (already token-resolved, line-per-entry)
+   * @param [string[]] phases       ordered phase IDs (e.g. ['settling','induction','deepener','work-1','affirm-1',...])
+   * @param [object]   targetWords  { settling: n, induction: n, ... } word budgets
+   * @param [object]   persona      current persona object
+   * @param [object]   method       current method object
+   * @param [string[]] affirmLines  affirmations (already token-resolved, line-per-entry)
    */
   function buildPhaseInstructions(phases, targetWords, persona, method, affirmLines) {
     const deepenerPhases = phases.filter(p => phaseBase(p) === 'deepener');
@@ -11896,7 +12737,10 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       gs.stateMask[idx] = 'streaming';
       renderGenProgress(gs.phases, gs.stateMask, null, retryPhase);
       try {
-        const newText = await generateSinglePhase(gs, idx);
+        // Pass the original text as priorDraft so generateSinglePhase can
+        // instruct the AI to avoid the previous opening + rhythm. This is the
+        // difference between two-near-identical re-rolls and meaningful variety.
+        const newText = await generateSinglePhase(gs, idx, { priorDraft: originalText });
         // Only show diff if there was prior content to compare against
         let chosen = newText;
         if (originalText && originalText.trim() && originalText.trim() !== newText.trim()) {
@@ -11986,18 +12830,28 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
   }
 
   /** Generate a single phase via aiTextPlugin */
-  async function generateSinglePhase(gs, idx) {
+  async function generateSinglePhase(gs, idx, opts = {}) {
     const phase = gs.phases[idx];
     const phaseLabel = getPhaseLabel(phase);
     const summaryBlock = gs.priorSummary ? `\n\nSO FAR (summary — continue seamlessly, DO NOT repeat):\n${gs.priorSummary}` : '';
-    const taskBlock = `\n\n═══ YOUR TASK ═══\n${gs.phaseInstructions[phase]}\n\nStay in ${gs.persona.name}'s voice. Continue naturally. No ===PHASE=== markers. Start immediately:`;
+    const taskBlock = `\n\n═══ YOUR TASK ═══\n${gs.phaseInstructions[phase]}\n\nREMINDER: You are ${gs.persona.name}. Voice, vocabulary, cadence — match the role above completely. ${gs.method.pacing ? `Pacing must follow the ${gs.method.pacing} rule established earlier.` : ''} No ===PHASE=== markers. Start immediately:`;
+
+    // Diversity block — only present on a re-roll. Tells the AI to avoid the
+    // rhythm and openings of the previous draft so re-rolls don't cluster
+    // around the same opening words / cadence the user already rejected.
+    // Without this, repeated retries tend to converge.
+    const diversityBlock = (opts.priorDraft && opts.priorDraft.trim())
+      ? `\n\n═══ DIVERSITY (this is a RE-ROLL) ═══\nThe previous attempt began: "${opts.priorDraft.trim().slice(0, 120).replace(/\s+/g, ' ')}…"\nWrite something MEANINGFULLY DIFFERENT this time:\n  • Do NOT open with the same word or phrase.\n  • Do NOT repeat the same sentence rhythm.\n  • Choose different sensory details and metaphors.\n  • Same persona voice, same task — different execution.`
+      : '';
 
     // Token budget — drop the prior-summary block first if we're over budget.
     // The sharedContext + task block are priority 5 (never trimmed).
+    // The diversity block is priority 5 too — it's the whole point of a re-roll.
     const finalInstruction = trimToTokenBudget([
       { name: 'sharedContext', text: gs.sharedContext, priority: 5 },
       { name: 'priorSummary',  text: summaryBlock,     priority: 1 },
       { name: 'taskBlock',     text: taskBlock,        priority: 5 },
+      { name: 'diversity',     text: diversityBlock,   priority: 5 },
     ], 900);
 
     // Streaming — render text as it arrives so users see progress
@@ -12017,7 +12871,11 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       // Providing onChunk enables streaming — it's ignored if unsupported.
       const streamObj = root.aiTextPlugin({
         instruction: finalInstruction,
-        stopSequences: ['\n\n\n\n'],
+        // Stop sequences:
+        //   '\n\n\n\n'  — original guard against runaway
+        //   '\n\n[['    — chat-format bleed safety net (perchance-api skill §14)
+        //   '\n[['      — same, with a single newline (some models emit this)
+        stopSequences: ['\n\n\n\n', '\n\n[[', '\n[['],
         hideStartWith: true,
         onChunk,
       });
@@ -12854,9 +13712,9 @@ ${s.text.trim()}`).join('\n\n').trim();
    * markers (\x5BPAUSE N\x5D and \{\{tokens\}\}). Used by fixScriptTimings + the
    * auto-tempo cleanup options modal.
    *
-   * @param {string} text  the script text to clean
-   * @param {string} chars characters to remove (e.g. "*_#")
-   * @returns {string} text with chars removed (markers untouched)
+   * @param [string] text  the script text to clean
+   * @param [string] chars characters to remove (e.g. "*_#")
+   * @returns [string] text with chars removed (markers untouched)
    */
   function _stripScriptChars(text, chars) {
     if (!chars || !text) return text;
@@ -14301,8 +15159,191 @@ ${s.text.trim()}`).join('\n\n').trim();
     if (shouldDuck && isDucked) { drone.unduck(); isDucked = false; }
   }
 
+  // ====================================================================
+  // LOCAL TTS — Hugging Face Transformers.js SpeechT5 (offline, free)
+  // ====================================================================
+  // Optional path that uses neural TTS running entirely in the browser.
+  // Lazy-loaded only when the user opts in. After first download (~80 MB)
+  // the model is cached by the browser's normal HTTP cache + IDB. No
+  // network needed at runtime.
+  //
+  // Trade-offs vs the speechSynthesis path:
+  //   + Higher quality on platforms with bad system voices (Linux, older Android).
+  //   + Consistent voice across all devices.
+  //   + No cloud round-trip.
+  //   - First sentence has ~1-3s synth latency on fast hardware, more on slow.
+  //   - No native onboundary word events — pulses are time-estimated.
+  //   - Big first-load.
+  //
+  // Falls back to speechSynthesis on any failure (404, OOM, model error).
+  const _localTTS = {
+    enabled: false,         // user toggle
+    ready: false,           // model loaded and synthesizer is callable
+    loading: false,
+    pipeline: null,         // the Transformers.js pipeline function
+    synthesizer: null,
+    speakerEmbeddings: null,
+    speakerName: 'clb',
+    audioCtx: null,
+    currentSource: null,
+    paused: false,
+    pausedAt: 0,
+    pausedBuffer: null,
+    abortFlag: false,
+    // CDN sources — pinned so updates don't break this app silently
+    CDN_TRANSFORMERS: 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2',
+    SPEAKER_BASE: 'https://huggingface.co/datasets/Matthijs/cmu-arctic-xvectors/resolve/main/',
+    SPEAKER_FILES: {
+      clb: 'cmu_us_clb_arctic-wav-arctic_a0001.bin',
+      slt: 'cmu_us_slt_arctic-wav-arctic_a0001.bin',
+      bdl: 'cmu_us_bdl_arctic-wav-arctic_a0001.bin',
+      rms: 'cmu_us_rms_arctic-wav-arctic_a0001.bin',
+      ksp: 'cmu_us_ksp_arctic-wav-arctic_a0001.bin',
+    },
+    /** Lazy-load Transformers.js + SpeechT5 model + speaker embedding. Idempotent —
+     *  multiple calls during loading wait on the same promise. */
+    async init(speakerName = 'clb') {
+      if (this.ready && this.speakerName === speakerName) return true;
+      if (this.loading) return new Promise(r => {
+        const tick = () => this.loading ? setTimeout(tick, 200) : r(this.ready);
+        tick();
+      });
+      this.loading = true;
+      this.speakerName = speakerName;
+      const setStatus = (msg) => {
+        const el = document.getElementById('localVoiceProgressText');
+        if (el) el.textContent = msg;
+      };
+      const setBar = (pct) => {
+        const fill = document.getElementById('localVoiceProgressFill');
+        const wrap = document.getElementById('localVoiceProgress');
+        if (wrap) wrap.style.display = '';
+        if (fill) fill.style.width = Math.min(100, Math.max(0, pct)) + '%';
+      };
+      try {
+        if (!this.pipeline) {
+          setStatus('Loading the TTS engine…');
+          setBar(5);
+          // Dynamic import from CDN — works in modern browsers without a build step
+          const mod = await import(/* @vite-ignore */ this.CDN_TRANSFORMERS);
+          this.pipeline = mod.pipeline;
+          // Disable local model loading attempts (we want CDN-hosted weights)
+          if (mod.env) {
+            mod.env.allowLocalModels = false;
+            mod.env.useBrowserCache = true;
+          }
+          setBar(15);
+        }
+        if (!this.synthesizer) {
+          setStatus('Downloading voice model (~80 MB, one-time)…');
+          this.synthesizer = await this.pipeline('text-to-speech', 'Xenova/speecht5_tts', {
+            quantized: false,
+            progress_callback: (p) => {
+              if (p.status === 'progress' && p.progress != null) {
+                setBar(15 + p.progress * 0.7);
+                setStatus(`Downloading voice model… ${Math.round(p.progress)}%`);
+              }
+            },
+          });
+          setBar(85);
+        }
+        // Load the speaker embedding (a small ~2KB tensor that conditions the voice)
+        setStatus('Loading speaker voice…');
+        const url = this.SPEAKER_BASE + this.SPEAKER_FILES[speakerName];
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('speaker fetch ' + res.status);
+        const buf = await res.arrayBuffer();
+        this.speakerEmbeddings = new Float32Array(buf);
+        setBar(100);
+        setStatus('Ready. The first sentence may take 1-3 seconds; later ones are faster.');
+        this.ready = true;
+        return true;
+      } catch (e) {
+        setStatus('Failed to load: ' + (e?.message || e) + '. Will fall back to system voice.');
+        console.warn('[localTTS] init failed:', e);
+        this.ready = false;
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+    /** Synthesize and play one chunk. Resolves when playback ends. */
+    async speak(text) {
+      if (!this.ready || !text || !text.trim()) return;
+      this.abortFlag = false;
+      try {
+        const out = await this.synthesizer(text, { speaker_embeddings: this.speakerEmbeddings });
+        if (this.abortFlag) return;
+        const audioData = out.audio;          // Float32Array
+        const sr = out.sampling_rate || 16000;
+        await this._playBuffer(audioData, sr);
+      } catch (e) {
+        console.warn('[localTTS] synth failed for chunk:', e);
+        // Don't throw — caller treats as best-effort. Falling back here would
+        // require restructuring; instead we log and silently drop the chunk.
+      }
+    },
+    async _playBuffer(audioData, sampleRate) {
+      if (!this.audioCtx) {
+        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      // Fire word-pulse pings on a timer for visualizer compatibility (no
+      // real boundary events from neural TTS).
+      const dur = audioData.length / sampleRate;
+      const wordCount = Math.max(1, Math.round(dur / 0.4)); // ~150 wpm rough
+      const pulseInterval = (dur / wordCount) * 1000;
+      let pulsesFired = 0;
+      const pulseTimer = setInterval(() => {
+        if (this.abortFlag || pulsesFired >= wordCount) { clearInterval(pulseTimer); return; }
+        if (state.audioReactive) state.audioReactive._voicePulseSpawnedAt = performance.now();
+        pulsesFired++;
+      }, pulseInterval);
+      const buffer = this.audioCtx.createBuffer(1, audioData.length, sampleRate);
+      buffer.copyToChannel(audioData, 0);
+      const source = this.audioCtx.createBufferSource();
+      source.buffer = buffer;
+      // Apply user volume
+      const gainNode = this.audioCtx.createGain();
+      gainNode.gain.value = state.voiceVolume ?? 1.0;
+      source.connect(gainNode).connect(this.audioCtx.destination);
+      // Apply rate as playbackRate (rough analog of state.speechRate)
+      source.playbackRate.value = Math.max(0.5, Math.min(2, state.speechRate || 1));
+      this.currentSource = source;
+      return new Promise((resolve) => {
+        source.onended = () => {
+          clearInterval(pulseTimer);
+          if (this.currentSource === source) this.currentSource = null;
+          resolve();
+        };
+        source.start(0);
+      });
+    },
+    pause() {
+      if (this.audioCtx && this.audioCtx.state === 'running') {
+        try { this.audioCtx.suspend(); this.paused = true; } catch {}
+      }
+    },
+    resume() {
+      if (this.audioCtx && this.paused) {
+        try { this.audioCtx.resume(); this.paused = false; } catch {}
+      }
+    },
+    cancel() {
+      this.abortFlag = true;
+      if (this.currentSource) {
+        try { this.currentSource.stop(0); } catch {}
+        this.currentSource = null;
+      }
+    },
+  };
+
   function speak(text) {
     return new Promise(resolve => {
+      // Local TTS path — opt-in, must be loaded
+      if (state.useLocalTTS && _localTTS.ready) {
+        _localTTS.speak(text).then(resolve).catch(() => resolve());
+        return;
+      }
       if (!('speechSynthesis' in window)) { setTimeout(resolve, text.length * 80); return; }
       // Only cancel if something is unexpectedly still speaking
       if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
@@ -14669,6 +15710,21 @@ ${s.text.trim()}`).join('\n\n').trim();
       const cooldownSec = getSafetyConfig().emergencyCooldownSec;
       state._cooldownUntil = Date.now() + cooldownSec * 1000;
       if ($('groundingBox')) $('groundingBox').style.display = 'block';
+      // Reorientation card — anchors back to consensus reality (clinical
+      // post-emergency protocol, Quinn ERP / Brown-Fromm). Time + place +
+      // "session has ended" framing.
+      const reorientCard = $('reorientCard');
+      const reorientWhen = $('reorientWhen');
+      if (reorientCard && reorientWhen) {
+        const now = new Date();
+        const day = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+        const time = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        reorientWhen.innerHTML = `It's <strong>${day}</strong> at <strong>${time}</strong>.`;
+        reorientCard.style.display = '';
+      }
+      // Reset the interactive grounding checkboxes so a previous session's
+      // state doesn't carry over
+      document.querySelectorAll('#groundingBox .grounding-step.interactive').forEach(s => s.classList.remove('done'));
       if (statusIcon) { statusIcon.textContent = '⚠'; statusIcon.style.color = 'var(--neon-amber)'; }
       // Personalized message — use first name if user opted in. Tone is gentle,
       // not chiding (the user already chose to end early; respect that choice).
@@ -14678,6 +15734,7 @@ ${s.text.trim()}`).join('\n\n').trim();
       if ($('postMessage')) $('postMessage').textContent = earlyMsg;
     } else {
       if ($('groundingBox')) $('groundingBox').style.display = 'none';
+      if ($('reorientCard')) $('reorientCard').style.display = 'none';
       if (statusIcon) { statusIcon.textContent = '✓'; statusIcon.style.color = 'var(--neon-cyan)'; }
       // Welcome-back message — first name if opted in, with light variation by
       // session count so the very first session feels notably different from the
@@ -14750,10 +15807,12 @@ ${s.text.trim()}`).join('\n\n').trim();
         state._pauseStartedAt = null;
       }
       try { speechSynthesis.resume(); } catch {}
+      if (state.useLocalTTS && _localTTS.ready) { try { _localTTS.resume(); } catch {} }
       if (drone.ctx && drone.running) { try { drone.ctx.resume(); } catch {} }
       $('pauseBtn').textContent = 'pause';
     }
     speechSynthesis.cancel();
+    if (state.useLocalTTS && _localTTS.ready) _localTTS.cancel();
     // DEBUG: skip rescue sequence if debug mode is on (consolidated debugMode toggle).
     // This setting intentionally defaults OFF and is NOT saved with settings.
     if (state._debug?.skipRescue) {
@@ -14772,6 +15831,7 @@ ${s.text.trim()}`).join('\n\n').trim();
     if (state.paused) {
       state._pauseStartedAt = Date.now();
       speechSynthesis.pause();
+      if (state.useLocalTTS && _localTTS.ready) _localTTS.pause();
       if (drone.ctx && drone.running) drone.ctx.suspend();
       document.body.classList.remove('controls-hidden'); // always show controls when paused
       clearTimeout(_controlsTimer);
@@ -14781,6 +15841,7 @@ ${s.text.trim()}`).join('\n\n').trim();
         state._pauseStartedAt = null;
       }
       speechSynthesis.resume();
+      if (state.useLocalTTS && _localTTS.ready) _localTTS.resume();
       if (drone.ctx && drone.running) drone.ctx.resume();
       setTimeout(() => {
         if (!state.paused && !speechSynthesis.speaking && speechSynthesis.paused) {
@@ -14975,6 +16036,44 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
 
   // Step 5 — audio controls
   $('lengthSelect').addEventListener('change', () => { state.length = $('lengthSelect').value; hideScript(); saveUserSettings(); });
+
+  // Local AI voice toggle (Phase 6 — Hugging Face SpeechT5 in browser)
+  $('localVoiceToggle')?.addEventListener('change', async (e) => {
+    const on = e.target.checked;
+    state.useLocalTTS = on;
+    saveUserSettings();
+    const status = $('localVoiceStatus');
+    const speakerSel = $('localVoiceSpeaker');
+    if (!on) {
+      _localTTS.enabled = false;
+      _localTTS.cancel();
+      if (status) status.textContent = 'Disabled. The system voice above will be used.';
+      if (speakerSel) speakerSel.style.display = 'none';
+      return;
+    }
+    _localTTS.enabled = true;
+    if (status) status.textContent = 'Loading… first-time download is ~80 MB. Subsequent loads are instant.';
+    if (speakerSel) speakerSel.style.display = '';
+    const ok = await _localTTS.init(state.localVoiceSpeaker || 'clb');
+    if (!ok) {
+      // Loading failed — uncheck and revert
+      e.target.checked = false;
+      state.useLocalTTS = false;
+      saveUserSettings();
+      if (speakerSel) speakerSel.style.display = 'none';
+    } else {
+      if (status) status.textContent = '✓ Ready. Local AI voice will be used for the next session.';
+    }
+  });
+  $('localVoiceSpeaker')?.addEventListener('change', async (e) => {
+    state.localVoiceSpeaker = e.target.value;
+    saveUserSettings();
+    if (_localTTS.ready) {
+      // Re-init with new speaker — only re-fetches the small embedding (~2KB),
+      // not the full model
+      await _localTTS.init(e.target.value);
+    }
+  });
   $('soundscapeSelect')?.addEventListener('change', e => {
     state.soundscape = e.target.value;
     state.droneEnabled = e.target.value !== 'none';
@@ -15215,7 +16314,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       } else {
         status.textContent = typeof root !== 'undefined' && root.textToImagePlugin
           ? 'Generation failed — server may be busy. Try again.'
-          : 'Plugin not found. Add textToImagePlugin = {import:text-to-image-plugin} to the top editor.';
+          : 'Plugin not found. Add textToImagePlugin = ' + '\u007B' + 'import:text-to-image-plugin' + '\u007D' + ' to the top editor.';
       }
     }
   }
@@ -15447,6 +16546,12 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   // Session
   $('pauseBtn').addEventListener('click', togglePause);
   $('endBtn').addEventListener('click', emergencyEnd);
+  $('spContinueBtn')?.addEventListener('click', closeSoftPauseAndContinue);
+  $('spEndBtn')?.addEventListener('click', closeSoftPauseAndEnd);
+  // Interactive 5-4-3-2-1 grounding — tap each step as you find the items
+  document.querySelectorAll('#groundingBox .grounding-step.interactive').forEach(step => {
+    step.addEventListener('click', () => step.classList.toggle('done'));
+  });
   $('backToEditBtn').addEventListener('click', async () => {
     if (!await confirmAsync('Stop the session and return to the script editor?')) return;
     state.abortFlag = true;
@@ -15662,12 +16767,96 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     });
   }
 
+  // ====================================================================
+  // SOFT-PAUSE OVERLAY (first Esc press) — Phase 2 safety addition
+  // ====================================================================
+  // Tiered emergency response: first Esc opens a soft-pause overlay (pauses
+  // speech + drone, no termination). Second Esc commits to full emergencyEnd.
+  // Clinical literature (Lynn et al., Kluft) on hypnosis safety distinguishes
+  // mild discomfort from genuine abreaction — most Esc presses are the former,
+  // and the soft pause gives those users an exit without the hard re-alert
+  // overhead. Truly distressed users will press Esc twice.
+  let _softPauseWasPaused = false; // remember pre-pause state for resume
+  function openSoftPause() {
+    const overlay = document.getElementById('softPauseOverlay');
+    if (!overlay) return false;
+    if (overlay.classList.contains('visible')) return false; // already open
+    // Pause speech + drone if not already paused — independent of state.paused
+    // because togglePause() also flips _pauseStartedAt and we don't want
+    // double-counting.
+    _softPauseWasPaused = state.paused;
+    if (!state.paused) {
+      try { speechSynthesis.pause(); } catch {}
+      if (state.useLocalTTS && _localTTS.ready) { try { _localTTS.pause(); } catch {} }
+      if (drone.ctx && drone.running) { try { drone.ctx.suspend(); } catch {} }
+      state.paused = true;
+      state._pauseStartedAt = Date.now();
+      const pb = document.getElementById('pauseBtn'); if (pb) pb.textContent = 'resume';
+    }
+    // Update the time/place line
+    const timeEl = document.getElementById('spTimeNow');
+    if (timeEl) {
+      const now = new Date();
+      const day = now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+      const time = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      timeEl.textContent = `${day} · ${time}`;
+    }
+    overlay.classList.add('visible');
+    document.body.classList.remove('controls-hidden');
+    // Focus continue button so Enter resumes
+    setTimeout(() => document.getElementById('spContinueBtn')?.focus(), 50);
+    return true;
+  }
+  function closeSoftPauseAndContinue() {
+    const overlay = document.getElementById('softPauseOverlay');
+    if (!overlay || !overlay.classList.contains('visible')) return;
+    overlay.classList.remove('visible');
+    // Only resume speech/drone if we paused them (not if user had paused before Esc)
+    if (!_softPauseWasPaused) {
+      if (state._pauseStartedAt) {
+        state._pausedTotalMs = (state._pausedTotalMs || 0) + (Date.now() - state._pauseStartedAt);
+        state._pauseStartedAt = null;
+      }
+      state.paused = false;
+      try { speechSynthesis.resume(); } catch {}
+      if (state.useLocalTTS && _localTTS.ready) { try { _localTTS.resume(); } catch {} }
+      if (drone.ctx && drone.running) { try { drone.ctx.resume(); } catch {} }
+      const pb = document.getElementById('pauseBtn'); if (pb) pb.textContent = 'pause';
+    }
+  }
+  function closeSoftPauseAndEnd() {
+    const overlay = document.getElementById('softPauseOverlay');
+    if (overlay) overlay.classList.remove('visible');
+    // emergencyEnd handles its own pause/resume reconciliation
+    emergencyEnd();
+  }
+
   // Keyboard controls during session
   document.addEventListener('keydown', e => {
     if ($('session-screen').style.display === 'none') return;
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const overlay = document.getElementById('softPauseOverlay');
+    const overlayOpen = overlay && overlay.classList.contains('visible');
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (overlayOpen) {
+        // Second Esc → commit to full emergency end
+        closeSoftPauseAndEnd();
+      } else {
+        // First Esc → open soft-pause overlay
+        openSoftPause();
+      }
+      return;
+    }
+    if (overlayOpen) {
+      // While the overlay is open: Space or Enter resumes; other keys do nothing
+      if (e.code === 'Space' || e.key === 'Enter') {
+        e.preventDefault();
+        closeSoftPauseAndContinue();
+      }
+      return;
+    }
     if (e.code === 'Space') { e.preventDefault(); togglePause(); }
-    if (e.key === 'Escape') { e.preventDefault(); emergencyEnd(); }
     showSessionControls(); // any key shows controls
   });
 
@@ -15708,7 +16897,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   // Post-session save
 
   // Voice preview with stop
-  $('voicePreviewBtn').addEventListener('click', () => {
+  $('voicePreviewBtn').addEventListener('click', async () => {
     const voice = getSelectedVoice();
     const samples = [
       "And now... noticing the weight of your hands... just resting there...",
@@ -15717,6 +16906,22 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       "Drifting comfortably... nowhere to be... nothing to do...",
     ];
     const sample = samples[Math.floor(Math.random() * samples.length)];
+    // Local AI voice path — only when enabled AND ready (no fallback to system
+    // voice during preview; if it's not loaded the user is told to wait).
+    if (state.useLocalTTS) {
+      if (!_localTTS.ready) {
+        notify.info(_localTTS.loading
+          ? 'Local voice is still loading — try again in a moment.'
+          : 'Local voice is enabled but not loaded yet. Toggle it off to use the system voice.');
+        return;
+      }
+      _voicePreviewing = true;
+      togglePreviewBtns('voice', true);
+      try { await _localTTS.speak(sample); } catch {}
+      _voicePreviewing = false;
+      togglePreviewBtns('voice', false);
+      return;
+    }
     if (!('speechSynthesis' in window)) { notify.info('Text-to-speech is not available in this browser.'); return; }
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(sample);
@@ -15729,6 +16934,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   });
   $('voiceStopBtn')?.addEventListener('click', () => {
     speechSynthesis.cancel();
+    if (state.useLocalTTS && _localTTS.ready) _localTTS.cancel();
     _voicePreviewing = false;
     togglePreviewBtns('voice', false);
   });
@@ -15861,7 +17067,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       persona: 'therapist', method: 'staircase', intention: 'behavior', length: 'medium', soundscape: 'rain', vizOverride: 'tunnel' },
     { id: 'creativity', icon: '🎨', name: 'Creative Flow', desc: 'Dissolve creative blocks',
       persona: 'mystic', method: 'ericksonian', intention: 'creativity', length: 'medium', soundscape: 'fire', vizOverride: 'sacred-geo' },
-    { id: 'energy', icon: ☀️', name: 'Energy Boost', desc: 'Wake up & activate',
+    { id: 'energy', icon: '☀️', name: 'Energy Boost', desc: 'Wake up & activate',
       persona: 'drill-instructor', method: 'dave-elman', intention: 'energy', length: 'quick', soundscape: 'white' },
     { id: 'deep-dive', icon: '🌀', name: 'Deep Dive', desc: 'Maximum depth trance',
       persona: 'old-master', method: 'staircase', intention: 'trance', length: 'long', soundscape: 'cave', vizOverride: 'tunnel' },
@@ -15879,8 +17085,8 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     grid.innerHTML = '';
     PRESETS.forEach(p => {
       const card = document.createElement('div');
-      card.className = 'preset-card';
-      card.innerHTML = `<div class="preset-icon">${p.icon}</div><div class="preset-name">${escapeHtml(p.name)}</div><div class="preset-desc">${escapeHtml(p.desc)}</div>`;
+      card.className = `preset-card intent-${p.intention || 'trance'}`;
+      card.innerHTML = `<div class="preset-icon">${p.icon}</div><div class="preset-name">${escapeHtml(p.name)}</div><div class="preset-desc">${escapeHtml(p.desc)}</div><div class="preset-intent-label">${escapeHtml(p.intention || 'trance')}</div>`;
       card.addEventListener('click', () => applyPreset(p));
       grid.appendChild(card);
     });
@@ -15979,8 +17185,8 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     PROGRAMS.forEach(prog => {
       const isActive = active?.programId === prog.id;
       const card = document.createElement('div');
-      card.className = 'preset-card' + (isActive ? ' selected' : '');
-      card.innerHTML = `<div class="preset-icon">${prog.icon}</div><div class="preset-name">${escapeHtml(prog.name)}</div><div class="preset-desc">${prog.days} days · ${escapeHtml(prog.desc)}</div>`;
+      card.className = `preset-card is-program intent-${prog.intention || 'trance'}` + (isActive ? ' selected' : '');
+      card.innerHTML = `<div class="preset-icon">${prog.icon}</div><div class="preset-name">${escapeHtml(prog.name)}</div><div class="preset-desc">${prog.days} days · ${escapeHtml(prog.desc)}</div><div class="preset-intent-label">${escapeHtml(prog.intention || 'trance')}</div>`;
       card.addEventListener('click', async () => {
         if (isActive) { startProgramDay(prog, active); return; }
         if (active) { if (!await confirmAsync('Starting a new program will replace your current one. Continue?')) return; }
