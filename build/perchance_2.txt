@@ -2804,6 +2804,13 @@ I return to myself easily"></textarea>
               <input type="range" id="bgStepsSlider" min="15" max="50" step="1" value="30">
             </div>
           </div>
+          <!-- Note shown when the user is on the free Perchance image plugin —
+               those three controls only take effect when the user has wired up
+               their own API key. _applyAdvancedBgControlGating() toggles this
+               note's visibility in lockstep with the controls' disabled state. -->
+          <div id="advancedBgControlsNote" class="ai-sublabel" style="font-style:italic;color:var(--text-faint);font-size:0.66rem;margin-top:6px;line-height:1.45;letter-spacing:0;text-transform:none;">
+            ⓘ Orientation, prompt strength, and quality steps are inactive on the free Perchance image plugin (its documented API only accepts prompt + negative). Wire up your own API key under <em>AI provider</em> below to enable them.
+          </div>
           <!-- Playback + transitions — backported from Slideshow spinoff. -->
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--glass-border);">
             <label class="ai-sublabel" style="margin-bottom:6px;display:block;">playback during session</label>
@@ -11283,27 +11290,36 @@ ${messages}
   // User can toggle any subset via the checkbox grid in Step 5.
   const BG_DEFAULT_ENABLED = ['crossfade', 'fadeBlack', 'kenburns', 'blur'];
 
-  /** Escape literal `{` and `}` to `\{` and `\}` for safe transit through
-   *  the Perchance text-to-image-plugin. The plugin's input pipeline parses
-   *  curly-brace expressions as Perchance DSL list references (perchance-api
-   *  skill §1.1) — so a user prompt like `forest, {moody}, dim` would try to
-   *  resolve a list named "moody" and throw when one doesn't exist.
-   *
-   *  We use the canonical Perchance escape (backslash-brace). Idempotent in
-   *  the sense that running it on already-escaped content produces a literal
-   *  double-backslash brace, which is fine for the plugin's parser and for
-   *  downstream SD tokenizers (most strip non-significant backslashes; the
-   *  ones that don't treat `\{` as a literal brace, which is what we want).
-   *
-   *  Tradeoff: power users who actually wanted to use Perchance list refs
-   *  in their prompt (`{landscapes}` to pull from a list) lose that
-   *  capability. That's a niche feature here — bg prompts are free-text,
-   *  not part of a list-driven workflow — and the cost of leaving braces
-   *  unescaped is "image generation breaks for anyone who types `{` for any
-   *  reason," which is the bug we're fixing. */
-  function _escapePerchanceBraces(s) {
-    if (!s) return s;
-    return String(s).replace(/[{}]/g, '\\$&');
+  /** True when the user has configured their own AI provider (Anthropic or
+   *  OpenAI) with a populated key. The default state is `extAiProvider:'perchance'`
+   *  with `_extAiKey:null`. We use this flag to decide whether to send the
+   *  advanced bg-image parameters to root.textToImagePlugin — the documented
+   *  Perchance plugin contract is `{prompt, negative, style}` only, and any
+   *  extras get DSL-evaluated which breaks brace-containing user input. Users
+   *  with their own keys have opted into the advanced/risky path. */
+  function _isUsingUserApiKey() {
+    return state.extAiProvider !== 'perchance' && !!state._extAiKey;
+  }
+
+  /** Sync the disabled state of the Step-5 advanced bg controls (orientation /
+   *  prompt strength / quality steps) to the current API-key situation. Called
+   *  on init, on AI-provider change, and on key-input change. The accompanying
+   *  `#advancedBgControlsNote` element shows/hides in lockstep. */
+  function _applyAdvancedBgControlGating() {
+    const enabled = _isUsingUserApiKey();
+    const ids = ['bgOrientationSelect', 'bgGuidanceSlider', 'bgStepsSlider'];
+    ids.forEach(id => {
+      const el = $(id);
+      if (!el) return;
+      el.disabled = !enabled;
+      el.style.opacity = enabled ? '' : '0.5';
+      el.style.cursor  = enabled ? '' : 'not-allowed';
+      el.title = enabled
+        ? ''
+        : 'Inactive on the free Perchance image plugin (which only accepts prompt + negative). Set up your own API key in Step-5 AI provider settings to enable.';
+    });
+    const note = $('advancedBgControlsNote');
+    if (note) note.style.display = enabled ? 'none' : '';
   }
 
   const bgEngine = {
@@ -11332,17 +11348,7 @@ ${messages}
      *  Generates a fresh client-side seed each call (not -1) so the seed can
      *  be captured into the cache manifest for sort-by-seed and future
      *  "regenerate with same seed" workflows. The plugin still randomizes if
-     *  seed is omitted, but explicit seeds make the output reproducible.
-     *
-     *  CURLY-BRACE ESCAPING: the text-to-image-plugin evaluates `{...}` in
-     *  input strings as Perchance DSL list references (same syntax as the
-     *  top-zone `{listName}` pattern — perchance-api skill §1.1). Any literal
-     *  `{` or `}` in user-typed prompts gets parsed as a list ref and throws
-     *  when no matching list exists. We escape both braces with backslash
-     *  (canonical Perchance escape) so user-typed text is treated as literal.
-     *  Applied AFTER preset composition so style-preset fragments also get
-     *  protected — a defensive belt against future preset authors slipping a
-     *  literal brace into their fragment text. */
+     *  seed is omitted, but explicit seeds make the output reproducible. */
     _currentParams() {
       const resolution = BG_RESOLUTIONS[state.bgOrientation || 'landscape'] || null;
 
@@ -11369,8 +11375,8 @@ ${messages}
       const seed = Math.floor(Math.random() * 2147483647);
 
       return {
-        prompt:         _escapePerchanceBraces(finalPrompt),
-        negativePrompt: _escapePerchanceBraces(finalNegative),
+        prompt: finalPrompt,
+        negativePrompt: finalNegative,
         resolution,
         guidanceScale: Number(state.bgGuidance) || 7,
         numInferenceSteps: Number(state.bgSteps) || 30,
@@ -11389,20 +11395,28 @@ ${messages}
       this.activeGenerations++;
       try {
         const params = this._currentParams();
-        // resolution: null tells the plugin to use its default; omit the key entirely
-        // rather than passing null to avoid confusing the plugin.
-        // Steps is passed under both common names — Perchance's plugin accepts one
-        // or the other depending on backend; extras are silently ignored.
+        // The text-to-image-plugin's documented contract is `{prompt, negative, style}`
+        // (perchance-api skill §3). The default path for free Perchance users
+        // sticks to that contract — sending undocumented extras like
+        // `negativePrompt`, `numInferenceSteps`, `steps`, `seed`, `guidanceScale`,
+        // `resolution` routes their string values through Perchance's DSL
+        // evaluator, which parses `{listName}` as a list reference and throws
+        // on brace-containing user input.
+        //
+        // When the user has supplied their own API key (Anthropic/OpenAI), they
+        // get the advanced controls — orientation / prompt-strength / quality
+        // steps. The Step-5 sliders are visually disabled for free Perchance
+        // users with a note explaining why; see _applyAdvancedBgControlGating().
         const call = {
-          prompt: params.prompt,
-          negativePrompt: params.negativePrompt,
+          prompt:   params.prompt,
           negative: params.negativePrompt,
-          guidanceScale: params.guidanceScale,
-          numInferenceSteps: params.numInferenceSteps,
-          steps: params.numInferenceSteps,
-          seed: params.seed,
         };
-        if (params.resolution) call.resolution = params.resolution;
+        if (_isUsingUserApiKey()) {
+          call.guidanceScale     = params.guidanceScale;
+          call.numInferenceSteps = params.numInferenceSteps;
+          call.seed              = params.seed;
+          if (params.resolution) call.resolution = params.resolution;
+        }
         const result = await root.textToImagePlugin(call);
         const dataUrl = result.dataUrl || String(result);
         if (dataUrl && dataUrl.startsWith('data:')) {
@@ -11850,19 +11864,16 @@ ${messages}
     const promise = (async () => {
       try {
         const prompt = _buildPortraitPrompt(persona);
-        // Same brace-escape as the bg path — custom personas can have
-        // user-typed text in imagePromptPrefix / imagePromptSuffix that
-        // gets composed into the portrait prompt. See _escapePerchanceBraces
-        // above for the why. PORTRAIT_NEGATIVE is author-curated and brace-
-        // free, but escaping it is free and protects against future edits.
+        // Match the documented plugin contract from perchance-api skill §3.
+        // Same rationale as bgEngine.generateOne(): undocumented aliases like
+        // `negativePrompt`, `numInferenceSteps`, `steps`, `seed`, `guidanceScale`
+        // are routed through Perchance's DSL evaluator by the plugin and break
+        // any string containing literal `{` or `}`. Custom personas can have
+        // user-typed text in imagePromptPrefix/imagePromptSuffix that flows into
+        // this prompt, so the same protection applies.
         const result = await root.textToImagePlugin({
-          prompt:         _escapePerchanceBraces(prompt),
-          negativePrompt: _escapePerchanceBraces(PORTRAIT_NEGATIVE),
-          negative:       _escapePerchanceBraces(PORTRAIT_NEGATIVE),
-          guidanceScale:  7.5,
-          numInferenceSteps: 25,
-          steps:             25,
-          seed: Math.floor(Math.random() * 2147483647), // fresh seed each generation
+          prompt,
+          negative: PORTRAIT_NEGATIVE,
         });
         const dataUrl = result?.dataUrl || String(result || '');
         if (!dataUrl || !dataUrl.startsWith('data:')) {
@@ -19965,6 +19976,9 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       keyInput.value = cachedKey;
       state._extAiKey = cachedKey || null;
     }
+    // Refresh advanced-bg-controls disabled state — switching to/from the free
+    // Perchance plugin changes which extras are safe to send.
+    try { _applyAdvancedBgControlGating(); } catch {}
   });
 
   $('extAiKey')?.addEventListener('input', async e => {
@@ -19990,6 +20004,8 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     if (provider === 'anthropic' || provider === 'openai') {
       state._extAiKeysByProvider[provider] = newVal;
     }
+    // Refresh advanced-bg-controls — pasting/clearing the key flips the gate.
+    try { _applyAdvancedBgControlGating(); } catch {}
   });
 
   // Debug mode — all flags session-only, never persisted. Any change triggers a
@@ -20602,6 +20618,10 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
 
     // Practice-unlock method gating
     applyMethodGating();
+    // Advanced bg control gating — disable orientation/strength/steps on the
+    // free Perchance plugin (whose documented contract doesn't accept them);
+    // re-enable when the user has wired up their own API key.
+    try { _applyAdvancedBgControlGating(); } catch {}
     // Persona unlock state — load from IDB so previously-revealed hidden
     // guides stay revealed across reloads. checkPersonaUnlocks() also runs
     // here in case the user just barely crossed a threshold last session
