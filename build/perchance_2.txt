@@ -905,7 +905,180 @@
   .bg-gallery-item:hover img { transform: scale(1.05); }
   .bg-gallery-item .bg-del { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.7); color: #f88; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 0.7rem; cursor: pointer; display: none; line-height: 22px; text-align: center; }
   .bg-gallery-item .bg-dl { position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.7); color: var(--text-faint); border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 0.65rem; cursor: pointer; display: none; line-height: 22px; text-align: center; }
-  .bg-gallery-item:hover .bg-del, .bg-gallery-item:hover .bg-dl { display: block; }
+  .bg-gallery-item:hover .bg-del, .bg-gallery-item:hover .bg-dl, .bg-gallery-item:hover .bg-fav { display: block; }
+  /* Favorite star — bottom-right of each gallery item; always visible when active.
+     Uses the colorful theme's neon-amber + glow-amber accent. */
+  .bg-gallery-item .bg-fav { position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.7); color: var(--text-faint); border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 0.78rem; cursor: pointer; display: none; line-height: 22px; text-align: center; }
+  .bg-gallery-item .bg-fav.active { display: block; color: var(--neon-amber); text-shadow: 0 0 6px rgba(184,154,74,0.5); }
+  /* Subtle ring around favorited items so it reads at a glance even without hover */
+  .bg-gallery-item.is-fav { border-color: var(--neon-amber); box-shadow: var(--glow-amber), 0 0 0 1px rgba(184,154,74,0.25); }
+  /* Seed badge — tiny chip in lower-left, only shown for entries that have a seed */
+  .bg-gallery-item .bg-seed-tag { position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.7); color: var(--text-faint); border-radius: 3px; padding: 2px 5px; font-size: 0.58rem; font-family: var(--font-mono, monospace); letter-spacing: 0.02em; pointer-events: none; opacity: 0; transition: opacity 0.18s; }
+  .bg-gallery-item:hover .bg-seed-tag { opacity: 0.9; }
+
+  /* ============ STYLE PRESET CHIPS ============ */
+  /* Compact tappable modifier chips above the bg prompt input. Selected chips
+     contribute their `prompt` and `negative` fragments to the composed call
+     without touching the user's textarea. Categories are visually grouped.
+     Active state uses the colorful theme's neon-cyan accent (matching how
+     .filter-tab.active and .card.selected light up). */
+  .bg-style-chips-wrap { margin-top: 6px; }
+  .bg-style-chips-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .bg-style-chips-header .ai-sublabel { margin: 0; }
+  .bg-style-chips-header .bg-style-clear {
+    background: none; border: none; color: var(--text-faint);
+    font-size: 0.68rem; cursor: pointer; padding: 2px 6px; letter-spacing: 0.02em;
+    border-radius: 3px; transition: color 0.15s, background 0.15s;
+  }
+  .bg-style-chips-header .bg-style-clear:hover { color: var(--text); background: var(--glass); }
+  .bg-style-chips-header .bg-style-clear:disabled { opacity: 0.4; cursor: default; background: none; }
+  .bg-style-cat-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 4px 0; }
+  .bg-style-cat-label { font-size: 0.6rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.1em; min-width: 64px; padding-right: 4px; }
+  .bg-style-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    color: var(--text-dim); font-size: 0.72rem; font-family: var(--font-body);
+    padding: 4px 9px; border-radius: 999px; cursor: pointer;
+    transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, text-shadow 0.15s;
+    user-select: none; line-height: 1.4;
+  }
+  .bg-style-chip:hover { color: var(--text); border-color: rgba(0,212,230,0.35); }
+  /* Active state — outline neon-cyan with glow, mirroring how .filter-tab.active
+     and .card.selected use --neon-cyan-soft + --glow-cyan in this theme. */
+  .bg-style-chip.active {
+    color: var(--neon-cyan); border-color: var(--neon-cyan);
+    background: var(--neon-cyan-soft);
+    text-shadow: 0 0 6px rgba(0,212,230,0.4);
+    box-shadow: var(--glow-cyan);
+  }
+  .bg-style-chip.active:hover {
+    color: var(--neon-cyan); border-color: var(--neon-cyan);
+    text-shadow: 0 0 8px rgba(0,212,230,0.55);
+  }
+
+  /* ============ GALLERY SORT BAR ============ */
+  .bg-gallery-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px; flex-wrap: wrap;
+  }
+  .bg-gallery-toolbar .field-label-sm { margin: 0; flex-shrink: 0; }
+  .bg-gallery-toolbar select {
+    padding: 6px 28px 6px 10px; font-size: 0.78rem;
+    background-color: rgba(13,10,7,0.7); flex: 0 1 auto; min-width: 140px;
+  }
+  .bg-gallery-toolbar .bg-sort-spacer { flex: 1; }
+  .bg-gallery-toolbar .bg-fav-filter {
+    background: var(--glass); border: 1px solid var(--glass-border);
+    color: var(--text-dim); font-size: 0.72rem;
+    padding: 5px 10px; border-radius: 4px; cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s, box-shadow 0.15s, text-shadow 0.15s;
+  }
+  .bg-gallery-toolbar .bg-fav-filter:hover { color: var(--text); border-color: rgba(184,154,74,0.4); }
+  /* Active filter — outline neon-amber with glow, matching the favorite-star
+     ring around individual gallery items. */
+  .bg-gallery-toolbar .bg-fav-filter.active {
+    color: var(--neon-amber); border-color: var(--neon-amber);
+    background: rgba(184,154,74,0.12);
+    text-shadow: 0 0 6px rgba(184,154,74,0.4);
+    box-shadow: var(--glow-amber);
+  }
+
+  /* ============ GALLERY LIGHTBOX ============ */
+  /* Fullscreen image viewer with wheel/pinch zoom + drag pan. Sits on top of
+     the gallery modal — click on a thumbnail opens it; ESC or the close
+     button dismisses it without affecting the underlying gallery. */
+  #bgLightboxModal {
+    background: rgba(0,0,0,0.94);
+    z-index: 110;  /* above other modals (100) so it can stack over the gallery */
+    padding: 0;
+  }
+  #bgLightboxModal.visible { display: flex; }
+  .bg-lightbox-stage {
+    position: relative;
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; touch-action: none;  /* let JS handle pinch/pan */
+  }
+  .bg-lightbox-stage img {
+    max-width: 92vw; max-height: 88vh;
+    object-fit: contain;
+    transform-origin: center center;
+    transition: transform 0.18s ease-out;
+    will-change: transform;
+    user-select: none; -webkit-user-drag: none;
+    cursor: grab;
+  }
+  .bg-lightbox-stage img.dragging { cursor: grabbing; transition: none; }
+  .bg-lightbox-stage img.no-transition { transition: none; }
+  .bg-lightbox-prompt {
+    position: absolute; left: 50%; bottom: 76px;
+    transform: translateX(-50%);
+    max-width: 80vw; padding: 8px 14px;
+    background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    color: var(--text-dim); font-size: 0.78rem; line-height: 1.5;
+    text-align: center; pointer-events: none;
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  }
+  .bg-lightbox-prompt:empty { display: none; }
+  .bg-lightbox-meta {
+    position: absolute; left: 14px; top: 14px;
+    color: var(--text-faint); font-size: 0.7rem; font-family: var(--font-mono, monospace);
+    background: rgba(0,0,0,0.5); padding: 6px 10px; border-radius: 4px;
+    pointer-events: none;
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  }
+  .bg-lightbox-prev, .bg-lightbox-next, .bg-lightbox-close {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    background: rgba(0,0,0,0.55); border: 1px solid var(--glass-border);
+    color: var(--text); border-radius: 50%;
+    width: 44px; height: 44px; font-size: 1.4rem; line-height: 42px;
+    cursor: pointer; padding: 0; text-align: center;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  }
+  .bg-lightbox-prev { left: 16px; }
+  .bg-lightbox-next { right: 16px; }
+  .bg-lightbox-prev:hover, .bg-lightbox-next:hover, .bg-lightbox-close:hover {
+    background: rgba(0,0,0,0.8); color: var(--neon-cyan); border-color: var(--neon-cyan);
+  }
+  .bg-lightbox-prev:disabled, .bg-lightbox-next:disabled { opacity: 0.25; cursor: default; }
+  .bg-lightbox-close {
+    top: 14px; right: 14px; left: auto; transform: none;
+    width: 36px; height: 36px; font-size: 1rem; line-height: 34px;
+  }
+  .bg-lightbox-zoom-bar {
+    position: absolute; bottom: 14px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; align-items: center; gap: 4px;
+    background: rgba(0,0,0,0.7); border: 1px solid var(--glass-border);
+    border-radius: 6px; padding: 4px 6px;
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  }
+  .bg-lightbox-zoom-bar button {
+    background: none; border: none; color: var(--text-dim);
+    cursor: pointer; padding: 4px 9px; font-size: 0.82rem;
+    border-radius: 3px; min-width: 28px;
+    transition: color 0.15s, background 0.15s, text-shadow 0.15s;
+  }
+  .bg-lightbox-zoom-bar button:hover { color: var(--text); background: var(--glass); }
+  .bg-lightbox-zoom-bar #bgLightboxFavorite.active {
+    color: var(--neon-amber);
+    text-shadow: 0 0 6px rgba(184,154,74,0.5);
+  }
+  .bg-lightbox-zoom-bar #bgLightboxZoomLabel {
+    color: var(--text-faint); font-size: 0.7rem;
+    font-family: var(--font-mono, monospace);
+    min-width: 44px; text-align: center; pointer-events: none;
+  }
+  /* Mobile — pull arrows in tighter, shrink chrome */
+  @media (max-width: 540px) {
+    .bg-lightbox-prev { left: 6px; }
+    .bg-lightbox-next { right: 6px; }
+    .bg-lightbox-prompt { bottom: 64px; font-size: 0.72rem; max-width: 92vw; padding: 6px 10px; }
+    .bg-lightbox-meta { font-size: 0.62rem; top: 10px; left: 10px; padding: 4px 8px; }
+    .bg-lightbox-zoom-bar button { padding: 4px 6px; }
+  }
   .memories-list { max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
   .memory-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px 12px; position: relative; }
   .memory-card .mem-tier { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--neon-amber); margin-bottom: 4px; }
@@ -2580,6 +2753,17 @@ I return to myself easily"></textarea>
               <textarea id="bgNegativePromptInput" class="pf-textarea" rows="4" placeholder="text, words, bright, sharp, deformed..."></textarea>
             </div>
           </div>
+          <!-- Style preset chips — additive modifiers that compose with the typed
+               prompt without mutating the textarea. Populated by buildBgStyleChips().
+               Each selected chip contributes its `prompt` and `negative` fragments
+               to the call inside bgEngine._currentParams(). -->
+          <div class="bg-style-chips-wrap">
+            <div class="bg-style-chips-header">
+              <label class="ai-sublabel">style presets <span class="hint" id="bgStyleChipCount" style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--text-faint);"></span></label>
+              <button type="button" class="bg-style-clear" id="bgStyleClearBtn" disabled>clear all</button>
+            </div>
+            <div id="bgStyleChips"><!-- populated by buildBgStyleChips() --></div>
+          </div>
           <div class="ai-controls-grid">
             <div class="ai-control">
               <label class="ai-sublabel">orientation</label>
@@ -3170,6 +3354,19 @@ I return to myself easily"></textarea>
 <div class="modal-backdrop" id="bgGalleryModal">
   <div class="modal" style="max-width:600px;">
     <h2>background image cache</h2>
+    <!-- Sort + filter toolbar — controls how the grid below is rendered.
+         State persists in state.bgGallerySort / state.bgGalleryFavOnly. -->
+    <div class="bg-gallery-toolbar">
+      <span class="field-label-sm">sort</span>
+      <select id="bgGallerySortSelect">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="favorites">Favorites first</option>
+        <option value="seed">By seed</option>
+      </select>
+      <button type="button" class="bg-fav-filter" id="bgGalleryFavFilterBtn" aria-pressed="false" title="show only favorites">★ favorites only</button>
+      <span class="bg-sort-spacer"></span>
+    </div>
     <div id="bgGalleryGrid" class="bg-gallery-grid"></div>
     <div class="sublabel" id="bgGalleryInfo" style="text-align:center;margin:8px 0;"></div>
     <div class="modal-actions">
@@ -3177,6 +3374,29 @@ I return to myself easily"></textarea>
       <button class="btn secondary" id="bgClearAllBtn">clear all</button>
       <button class="btn" id="bgGalleryCloseBtn">close</button>
     </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX — fullscreen image viewer with wheel/pinch zoom and drag pan.
+     Stacks on top of the gallery modal (z-index 110 vs 100). State managed
+     by the bgLightbox object in JS. Buttons here are wired up after the
+     gallery click handler opens the lightbox at a manifest index. -->
+<div class="modal-backdrop" id="bgLightboxModal">
+  <div class="bg-lightbox-stage" id="bgLightboxStage">
+    <img id="bgLightboxImg" alt="">
+  </div>
+  <div class="bg-lightbox-meta" id="bgLightboxMeta"></div>
+  <div class="bg-lightbox-prompt" id="bgLightboxPrompt"></div>
+  <button class="bg-lightbox-prev" id="bgLightboxPrev" aria-label="previous image">‹</button>
+  <button class="bg-lightbox-next" id="bgLightboxNext" aria-label="next image">›</button>
+  <button class="bg-lightbox-close" id="bgLightboxClose" aria-label="close">✕</button>
+  <div class="bg-lightbox-zoom-bar">
+    <button id="bgLightboxZoomOut" title="zoom out (−)" aria-label="zoom out">−</button>
+    <span id="bgLightboxZoomLabel">100%</span>
+    <button id="bgLightboxZoomIn" title="zoom in (+)" aria-label="zoom in">+</button>
+    <button id="bgLightboxZoomFit" title="reset zoom (0)" aria-label="reset zoom">fit</button>
+    <button id="bgLightboxFavorite" title="toggle favorite (f)" aria-label="favorite">☆</button>
+    <button id="bgLightboxDownload" title="download" aria-label="download">⬇</button>
   </div>
 </div>
 
@@ -4086,6 +4306,14 @@ I return to myself easily"></textarea>
     bgOrientation: 'landscape', // default | square | portrait | landscape
     bgGuidance: 7,               // 1-20, controls prompt adherence
     bgSteps: 30,                 // 15-50, quality/detail
+    // Style preset chip selections — additive prompt modifiers composed in
+    // bgEngine._currentParams(). Persisted across sessions. Filtered against
+    // BG_STYLE_PRESET_MAP on load to drop unknown ids gracefully.
+    bgActiveStylePresetIds: [],
+    // Gallery view preferences — sort mode + favorites-only filter. Persisted
+    // so reopening the gallery feels stateful between sessions.
+    bgGallerySort: 'newest',     // 'newest' | 'oldest' | 'favorites' | 'seed'
+    bgGalleryFavOnly: false,
     // Playback + transition controls — backported from Slideshow spinoff.
     // Calm defaults enabled; user can pick any subset via checkbox grid.
     bgRotationSec: 45,           // seconds between slides (10-120)
@@ -6740,6 +6968,13 @@ I return to myself easily"></textarea>
       bgOrientation: state.bgOrientation,
       bgGuidance: state.bgGuidance,
       bgSteps: state.bgSteps,
+      // Style preset chips selected on the bg prompt — additive modifiers
+      // composed inside bgEngine._currentParams() at generation time.
+      bgActiveStylePresetIds: Array.isArray(state.bgActiveStylePresetIds) ? state.bgActiveStylePresetIds : [],
+      // Gallery view preferences — persist sort + favorites-only filter so
+      // reopening the modal feels stateful.
+      bgGallerySort: state.bgGallerySort || 'newest',
+      bgGalleryFavOnly: state.bgGalleryFavOnly === true,
       bgRotationSec: state.bgRotationSec,
       bgTransitionDuration: state.bgTransitionDuration,
       bgPlaybackOrder: state.bgPlaybackOrder,
@@ -6941,6 +7176,18 @@ I return to myself easily"></textarea>
         const el = $('bgStepsSlider'); if (el) el.value = state.bgSteps;
         const lbl = $('bgStepsVal'); if (lbl) lbl.textContent = state.bgSteps;
       }
+      // Style preset chip selections — filter unknown ids out (would happen if
+      // a preset was renamed or removed between sessions).
+      if (Array.isArray(s.bgActiveStylePresetIds)) {
+        state.bgActiveStylePresetIds = s.bgActiveStylePresetIds.filter(id => !!BG_STYLE_PRESET_MAP[id]);
+        // Rebuild chip UI with restored selections (no-op if not yet built).
+        try { buildBgStyleChips(); } catch (e) { /* not fatal — page may still be initialising */ }
+      }
+      // Gallery view preferences
+      if (typeof s.bgGallerySort === 'string' && ['newest','oldest','favorites','seed'].includes(s.bgGallerySort)) {
+        state.bgGallerySort = s.bgGallerySort;
+      }
+      if (typeof s.bgGalleryFavOnly === 'boolean') state.bgGalleryFavOnly = s.bgGalleryFavOnly;
       if (s.bgRotationSec != null) {
         state.bgRotationSec = Number(s.bgRotationSec);
         const el = $('bgRotationSlider'); if (el) el.value = state.bgRotationSec;
@@ -10380,6 +10627,60 @@ ${messages}
   };
 
   // ====================================================================
+  // BG STYLE PRESETS — additive prompt modifiers (chip UI)
+  // ====================================================================
+  // Curated set of style fragments tuned for hypnosis aesthetics: soft,
+  // non-figurative, dim, dreamlike. Each chip the user toggles contributes
+  // its `prompt` and `negative` fragments to the final call WITHOUT
+  // mutating the textarea — so users can freely edit their own prompt
+  // and the chips compose on top.
+  //
+  // Active selections live in state.bgActiveStylePresetIds (string[]).
+  // Composed inside bgEngine._currentParams() and rendered as chips by
+  // buildBgStyleChips(). Categories are purely visual — they group the
+  // chips into rows but don't restrict selection (you can stack as many
+  // as you like across categories).
+  //
+  // To add a preset: append to the array. To rename a category: change
+  // both the `cat` value here AND the matching label in BG_STYLE_CATEGORIES.
+  // To migrate ids: filter unknown ids out gracefully on load (the loader
+  // already does this).
+  // ====================================================================
+  const BG_STYLE_CATEGORIES = [
+    { id: 'atmosphere', label: 'Atmosphere' },
+    { id: 'nature',     label: 'Nature'     },
+    { id: 'abstract',   label: 'Abstract'   },
+    { id: 'style',      label: 'Style'      },
+  ];
+  const BG_STYLE_PRESETS = [
+    // Atmosphere — environmental qualities (lighting, weather, time of day)
+    { id: 'misty',      cat: 'atmosphere', label: 'Misty',        prompt: 'misty fog, drifting low clouds, ethereal haze, soft visibility',                       negative: 'sharp clarity, hard edges' },
+    { id: 'twilight',   cat: 'atmosphere', label: 'Twilight',     prompt: 'twilight blue hour, indigo and violet sky, soft fading light',                         negative: 'high noon, harsh sunlight' },
+    { id: 'underwater', cat: 'atmosphere', label: 'Underwater',   prompt: 'underwater scene, soft refracted light beams, slow drifting particles, deep blue-green', negative: 'bright sun, dry land' },
+    { id: 'aurora',     cat: 'atmosphere', label: 'Aurora',       prompt: 'aurora borealis ribbons, soft green and violet light bands, starry night',             negative: 'daytime, blue sky' },
+    { id: 'cosmic',     cat: 'atmosphere', label: 'Cosmic',       prompt: 'deep space nebula, soft star clusters, swirling cosmic dust, indigo and magenta',       negative: 'earth, ground, mundane' },
+    // Nature — recognisable landscapes
+    { id: 'forest',     cat: 'nature',     label: 'Forest',       prompt: 'ancient forest at dusk, soft mossy ground, dappled fading light, deep shadows',         negative: 'open field, bright midday' },
+    { id: 'ocean',      cat: 'nature',     label: 'Ocean',        prompt: 'calm ocean horizon, slow gentle waves, soft pastel sky, infinite distance',             negative: 'storm, choppy waves' },
+    { id: 'mountains',  cat: 'nature',     label: 'Mountains',    prompt: 'distant snow-capped mountains, soft layered haze, muted blue-gray palette',             negative: 'close-up, sharp detail' },
+    { id: 'meadow',     cat: 'nature',     label: 'Meadow',       prompt: 'soft grass meadow at dawn, golden mist, gentle suggestion of breeze, warm muted tones', negative: 'concrete, urban' },
+    { id: 'cave',       cat: 'nature',     label: 'Cave',         prompt: 'dim luminous cave interior, soft bioluminescent glow, smooth wet stone, deep shadows',  negative: 'bright, exposed, daylight' },
+    // Abstract — non-figurative
+    { id: 'flowing',    cat: 'abstract',   label: 'Flowing',      prompt: 'flowing abstract liquid forms, slow swirling color gradients, soft ink-in-water',       negative: 'rigid geometry, sharp angles' },
+    { id: 'fractal',    cat: 'abstract',   label: 'Fractal',      prompt: 'soft fractal mandala, gentle radial symmetry, muted dreamlike palette',                 negative: 'literal scene, recognizable objects' },
+    { id: 'gradient',   cat: 'abstract',   label: 'Gradient',     prompt: 'pure soft color gradient, smooth transitions of indigo violet and amber, no objects',   negative: 'figures, shapes, faces' },
+    { id: 'particles',  cat: 'abstract',   label: 'Particles',    prompt: 'floating dust motes, soft light particles drifting, dark moody backdrop',               negative: 'crisp focus, sharp' },
+    // Style — rendering medium
+    { id: 'watercolor', cat: 'style',      label: 'Watercolor',   prompt: 'soft watercolor wash, gentle color bleeds, subtle paper texture, hand-painted',         negative: 'photographic, digital, sharp' },
+    { id: 'oil',        cat: 'style',      label: 'Oil paint',    prompt: 'soft oil painting, romantic style, visible brush strokes, muted impressionist palette', negative: 'photograph, sharp digital' },
+    { id: 'charcoal',   cat: 'style',      label: 'Charcoal',     prompt: 'soft charcoal sketch, monochromatic gray tones, atmospheric haze, hand-drawn lines',    negative: 'colorful, photo' },
+    { id: 'longexp',    cat: 'style',      label: 'Long exposure',prompt: 'long exposure photograph, soft motion blur trails, smooth water and clouds, dreamlike', negative: 'frozen action, sharp' },
+    { id: 'film',       cat: 'style',      label: 'Film',         prompt: 'analog film photograph, soft grain, faded vintage palette, warm muted highlights',     negative: 'crisp digital, oversaturated' },
+  ];
+  // Quick lookup by id (used by _currentParams + chip toggle logic)
+  const BG_STYLE_PRESET_MAP = Object.fromEntries(BG_STYLE_PRESETS.map(p => [p.id, p]));
+
+  // ====================================================================
   // BG TRANSITION REGISTRY — 12 effects, backported from Slideshow spinoff.
   // Adapted for <img> elements (not background-image divs) and for the
   // session-bg dim cap of 0.35 (so text stays readable over the images).
@@ -10647,16 +10948,51 @@ ${messages}
     get generating() { return this.activeGenerations > 0; },
 
     /** Read current generation parameters from state. Pure — no DOM access.
-     *  Centralized so generateOne() + anyone else stays in sync. */
+     *  Centralized so generateOne() + anyone else stays in sync.
+     *
+     *  Composes three sources into the final prompt and negative prompt:
+     *    1. The user's typed prompt (state.bgPrompt)            — highest priority
+     *    2. Active style preset chips (state.bgActiveStylePresetIds) — additive
+     *    3. Sensible defaults                                    — fallback only
+     *  Selected presets contribute both `prompt` and `negative` fragments, so
+     *  e.g. picking "Misty" automatically negates "sharp clarity, hard edges".
+     *
+     *  Generates a fresh client-side seed each call (not -1) so the seed can
+     *  be captured into the cache manifest for sort-by-seed and future
+     *  "regenerate with same seed" workflows. The plugin still randomizes if
+     *  seed is omitted, but explicit seeds make the output reproducible. */
     _currentParams() {
       const resolution = BG_RESOLUTIONS[state.bgOrientation || 'landscape'] || null;
+
+      const userPrompt = (this.prompt || state.bgPrompt || '').trim();
+      const userNegative = (state.bgNegativePrompt || '').trim();
+      const activeIds = Array.isArray(state.bgActiveStylePresetIds) ? state.bgActiveStylePresetIds : [];
+      const activePresets = activeIds.map(id => BG_STYLE_PRESET_MAP[id]).filter(Boolean);
+
+      // Compose: user fragment first (it's primary intent), preset fragments
+      // appended in selection order. Empty pieces filtered out so we never
+      // emit a stray leading/trailing comma.
+      const promptParts = [userPrompt, ...activePresets.map(p => p.prompt)].filter(Boolean);
+      const finalPrompt = promptParts.length
+        ? promptParts.join(', ')
+        : 'abstract dark ethereal misty landscape, dreamlike, hypnotic, soft focus';
+
+      const negativeParts = [userNegative, ...activePresets.map(p => p.negative).filter(Boolean)].filter(Boolean);
+      const finalNegative = negativeParts.length
+        ? negativeParts.join(', ')
+        : 'text, words, letters, bright, harsh, sharp, neon, ugly, deformed';
+
+      // Fresh seed per call. Range matches what most SD-style plugins accept
+      // (signed 32-bit positive). Mirrors the persona portrait code's pattern.
+      const seed = Math.floor(Math.random() * 2147483647);
+
       return {
-        prompt: this.prompt || state.bgPrompt || 'abstract dark ethereal misty landscape, dreamlike, hypnotic, soft focus',
-        negativePrompt: state.bgNegativePrompt || 'text, words, letters, bright, harsh, sharp, neon, ugly, deformed',
+        prompt: finalPrompt,
+        negativePrompt: finalNegative,
         resolution,
         guidanceScale: Number(state.bgGuidance) || 7,
         numInferenceSteps: Number(state.bgSteps) || 30,
-        seed: -1,
+        seed,
       };
     },
 
@@ -10688,7 +11024,9 @@ ${messages}
         const result = await root.textToImagePlugin(call);
         const dataUrl = result.dataUrl || String(result);
         if (dataUrl && dataUrl.startsWith('data:')) {
-          await bgCacheStore(dataUrl, params.prompt);
+          // Store the actual seed used so the gallery can sort by it and a
+          // future "regenerate with same seed" feature has the value to hand.
+          await bgCacheStore(dataUrl, params.prompt, params.seed);
           const blob = await fetch(dataUrl).then(r => r.blob());
           const objectUrl = URL.createObjectURL(blob);
           this.queue.push(objectUrl);
@@ -10873,23 +11211,77 @@ ${messages}
   };
 
   // ── Background image cache — per-image Blob storage ──
-  // Manifest at 'bg_manifest' holds metadata [{id, prompt, createdAt}]
-  // Each image stored separately at 'bg_img_<id>' as a Blob (no base64 overhead)
+  // Manifest at 'bg_manifest' holds metadata [{id, prompt, createdAt, seed?, favorited?}].
+  // Each image stored separately at 'bg_img_<id>' as a Blob (no base64 overhead).
+  //
+  // `seed` and `favorited` are optional fields — entries persisted before this
+  // feature shipped won't have them, so all readers must use `?? null` /
+  // `=== true` patterns rather than expecting them to be present.
   const BG_MANIFEST_KEY = 'bg_manifest';
-  const BG_MAX_IMAGES = 50;
+  // Cache cap. Sized for a comfortable 90-minute session given that users'
+  // eyes are closed for most of it: 80 images × default 45s rotation =
+  // 60 minutes before a sequential repeat, so a typical session might see
+  // one wrap in its final third — and even then, only a handful of
+  // moments where eyes are open. Random-order playback feels effectively
+  // non-repeating at this size. Storage cost is ~8-15MB total at typical
+  // 768×512 JPEG sizes — well under any device's IDB pressure threshold.
+  // Favorited entries are protected from eviction (see below).
+  const BG_MAX_IMAGES = 80;
 
-  async function bgCacheStore(dataUrl, prompt) {
+  async function bgCacheStore(dataUrl, prompt, seed) {
     const id = 'bg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
     const blob = await fetch(dataUrl).then(r => r.blob());
     const manifest = (await idbGet(BG_MANIFEST_KEY)) || [];
-    manifest.push({ id, prompt: prompt || '', createdAt: Date.now() });
-    // Evict oldest if over limit
-    while (manifest.length > BG_MAX_IMAGES) {
-      const old = manifest.shift();
-      await idbDel('bg_img_' + old.id);
-    }
+
+    // Step 1 — save the new blob first. If anything fails after this point
+    // the worst case is an orphan blob (small storage leak) rather than a
+    // manifest entry that points at a missing blob (broken thumbnail).
     await idbSet('bg_img_' + id, blob);
+
+    // Step 2 — decide evictions in memory before touching IDB further. We
+    // evict BEFORE appending the new entry so the new entry can never become
+    // its own eviction target (which would happen if every existing slot
+    // is favorited and we'd already pushed our fresh non-favorite first).
+    // Walk oldest-to-newest preferring non-favorited entries; only fall
+    // back to evicting a favorite when literally every slot is favorited.
+    const evictedEntries = [];
+    while (manifest.length >= BG_MAX_IMAGES) {
+      let evictIdx = manifest.findIndex(m => !m.favorited);
+      if (evictIdx === -1) {
+        // Every entry is favorited — evict the absolute oldest as a last
+        // resort. Rare; only happens if the user has explicitly favorited
+        // every single slot. The new image will arrive un-favorited and
+        // the user can favorite it manually if they want it kept.
+        console.warn('[bgCache] all entries are favorited; evicting oldest to make room');
+        evictIdx = 0;
+      }
+      const [removed] = manifest.splice(evictIdx, 1);
+      if (removed) evictedEntries.push(removed);
+    }
+
+    // Step 3 — append the new entry and persist the manifest. After this
+    // write the cache is in a fully consistent state: every entry in the
+    // manifest refers to a blob that exists in IDB.
+    manifest.push({
+      id,
+      prompt: prompt || '',
+      createdAt: Date.now(),
+      seed: (typeof seed === 'number' && Number.isFinite(seed)) ? seed : null,
+      favorited: false,
+    });
     await idbSet(BG_MANIFEST_KEY, manifest);
+
+    // Step 4 — best-effort cleanup of evicted blobs. If the tab crashes
+    // between steps 3 and 4 the orphan blobs simply leak storage; they're
+    // no longer referenced by the manifest so they can't cause broken
+    // thumbnails. A future self-healing sweep on app start could reclaim
+    // them by listing IDB keys with the 'bg_img_' prefix and dropping any
+    // not present in the manifest.
+    for (const old of evictedEntries) {
+      try { await idbDel('bg_img_' + old.id); }
+      catch (e) { console.warn('[bgCache] failed to delete evicted blob', old.id, e); }
+    }
+
     // Update count badge + refresh gallery if open (Phase 6 desync fix)
     const countEl = $('bgCacheCount'); if (countEl) countEl.textContent = manifest.length;
     _maybeRefreshGallery();
@@ -10932,6 +11324,52 @@ ${messages}
     a.download = id + '.png';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  /** Toggle the `favorited` flag on a manifest entry. No-op for unknown ids.
+   *  Returns the new favorited value (or null if the entry wasn't found). */
+  async function bgCacheToggleFavorite(id) {
+    const manifest = (await idbGet(BG_MANIFEST_KEY)) || [];
+    const entry = manifest.find(m => m.id === id);
+    if (!entry) return null;
+    entry.favorited = !entry.favorited;
+    await idbSet(BG_MANIFEST_KEY, manifest);
+    return entry.favorited;
+  }
+  /** Return a sorted+filtered VIEW of the manifest. Doesn't mutate storage.
+   *  - mode: 'newest' | 'oldest' | 'favorites' | 'seed'
+   *  - favOnly: if true, drop non-favorited entries entirely
+   *  Used by renderBgGallery and the lightbox to walk a consistent ordering. */
+  function bgCacheSortManifest(manifest, mode, favOnly) {
+    let view = (manifest || []).slice();
+    if (favOnly) view = view.filter(m => m.favorited === true);
+    switch (mode) {
+      case 'oldest':
+        view.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        break;
+      case 'favorites':
+        // Favorites first (descending); within each group, newest first.
+        view.sort((a, b) => {
+          const fa = a.favorited === true ? 1 : 0;
+          const fb = b.favorited === true ? 1 : 0;
+          if (fa !== fb) return fb - fa;
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
+        break;
+      case 'seed':
+        // Numerical seed sort; entries without a seed sink to the bottom.
+        view.sort((a, b) => {
+          const sa = (typeof a.seed === 'number') ? a.seed : Infinity;
+          const sb = (typeof b.seed === 'number') ? b.seed : Infinity;
+          if (sa !== sb) return sa - sb;
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
+        break;
+      case 'newest':
+      default:
+        view.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        break;
+    }
+    return view;
   }
 
   // ====================================================================
@@ -11075,21 +11513,57 @@ ${messages}
     // Snapshot a generation id; if another render starts during our async
     // work, our id will be stale and we'll bail before mutating the DOM.
     const myGen = ++_galleryRenderGen;
-    const manifest = await bgCacheGetManifest();
+    const manifestRaw = await bgCacheGetManifest();
     if (myGen !== _galleryRenderGen) return; // a newer render started
-    if (countEl) countEl.textContent = manifest.length;
-    if (info) info.textContent = `${manifest.length} image${manifest.length === 1 ? '' : 's'} · stored as binary blobs (no base64 overhead)`;
-    if (!manifest.length) { grid.innerHTML = '<div class="sublabel" style="text-align:center;padding:20px;">No cached images yet. Generate some with the preview button or during a session.</div>'; return; }
-    // Build grid with placeholder thumbnails, load blobs lazily
-    grid.innerHTML = manifest.map(c => `
-      <div class="bg-gallery-item" data-id="${c.id}">
+    if (countEl) countEl.textContent = manifestRaw.length;
+
+    // Sync the toolbar controls to current state on each render so opening
+    // the gallery from anywhere shows the correct active sort/filter.
+    const sortSelect = $('bgGallerySortSelect');
+    const sortMode = state.bgGallerySort || 'newest';
+    if (sortSelect && sortSelect.value !== sortMode) sortSelect.value = sortMode;
+    const favBtn = $('bgGalleryFavFilterBtn');
+    const favOnly = state.bgGalleryFavOnly === true;
+    if (favBtn) {
+      favBtn.classList.toggle('active', favOnly);
+      favBtn.setAttribute('aria-pressed', favOnly ? 'true' : 'false');
+    }
+
+    const view = bgCacheSortManifest(manifestRaw, sortMode, favOnly);
+    const favCount = manifestRaw.filter(m => m.favorited === true).length;
+    if (info) {
+      const totalStr = `${manifestRaw.length} image${manifestRaw.length === 1 ? '' : 's'}`;
+      const favStr = favCount > 0 ? ` · ${favCount} favorite${favCount === 1 ? '' : 's'}` : '';
+      const filterStr = favOnly && favCount !== manifestRaw.length ? ` · showing ${view.length}` : '';
+      info.textContent = totalStr + favStr + filterStr;
+    }
+    if (!view.length) {
+      grid.innerHTML = manifestRaw.length === 0
+        ? '<div class="sublabel" style="text-align:center;padding:20px;">No cached images yet. Generate some with the preview button or during a session.</div>'
+        : '<div class="sublabel" style="text-align:center;padding:20px;">No images match the current filter.</div>';
+      return;
+    }
+    // Build grid with placeholder thumbnails, load blobs lazily.
+    // Each .bg-gallery-item carries data-id for the action buttons + data-idx
+    // (relative to the current sorted view) so clicking the body opens the
+    // lightbox at the right position in the same ordering the user sees.
+    grid.innerHTML = view.map((c, idx) => {
+      const seedTag = (typeof c.seed === 'number') ? `<div class="bg-seed-tag" title="seed">#${c.seed}</div>` : '';
+      const favClass = c.favorited === true ? ' is-fav' : '';
+      const favActive = c.favorited === true ? ' active' : '';
+      const favIcon = c.favorited === true ? '★' : '☆';
+      return `
+      <div class="bg-gallery-item${favClass}" data-id="${c.id}" data-idx="${idx}" title="${c.prompt ? c.prompt.replace(/"/g, '&quot;').slice(0, 200) : 'click to view'}">
         <img alt="" loading="lazy" style="background:#111;">
-        <button class="bg-del" data-id="${c.id}" title="delete">✕</button>
-        <button class="bg-dl" data-id="${c.id}" title="download">⬇</button>
-      </div>`).join('');
+        <button class="bg-del" data-id="${c.id}" title="delete" aria-label="delete">✕</button>
+        <button class="bg-dl"  data-id="${c.id}" title="download" aria-label="download">⬇</button>
+        <button class="bg-fav${favActive}" data-id="${c.id}" title="${c.favorited === true ? 'unfavorite' : 'favorite'}" aria-label="favorite" aria-pressed="${c.favorited === true ? 'true' : 'false'}">${favIcon}</button>
+        ${seedTag}
+      </div>`;
+    }).join('');
     // Load thumbnails lazily — bail per-iteration if a newer render started OR
     // if the matching DOM node is gone (item was deleted concurrently).
-    for (const entry of manifest) {
+    for (const entry of view) {
       if (myGen !== _galleryRenderGen) return;
       const url = await bgCacheGetUrl(entry.id);
       if (myGen !== _galleryRenderGen) {
@@ -11105,6 +11579,8 @@ ${messages}
         URL.revokeObjectURL(url);
       }
     }
+    // Per-button handlers — stop propagation so clicking a button doesn't
+    // also trigger the body's lightbox-open click.
     grid.querySelectorAll('.bg-del').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -11120,6 +11596,25 @@ ${messages}
         bgCacheDownload(btn.dataset.id);
       });
     });
+    grid.querySelectorAll('.bg-fav').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await bgCacheToggleFavorite(btn.dataset.id);
+        renderBgGallery();
+      });
+    });
+    // Click on the item body (anywhere not on a button) opens the lightbox at
+    // this position in the sorted view.
+    grid.querySelectorAll('.bg-gallery-item').forEach(itemEl => {
+      itemEl.addEventListener('click', (e) => {
+        // If the click landed on (or inside) one of the action buttons, the
+        // button's own handler already handled it via stopPropagation, but
+        // belt-and-braces — a defensive closest() check.
+        if (e.target.closest('button')) return;
+        const idx = Number(itemEl.dataset.idx);
+        if (Number.isFinite(idx)) bgLightbox.open(view, idx);
+      });
+    });
   }
 
   /** Called by bgCacheStore / bgCacheDelete after they mutate the manifest.
@@ -11128,6 +11623,322 @@ ${messages}
   function _maybeRefreshGallery() {
     if (_galleryOpen) renderBgGallery();
   }
+
+  // ====================================================================
+  // STYLE PRESET CHIP UI
+  // ====================================================================
+  // Builds the chip row inside #bgStyleChips from BG_STYLE_PRESETS, restores
+  // the active selections from state.bgActiveStylePresetIds, and wires click
+  // handlers for toggle behavior. Idempotent — safe to call again on settings
+  // import; rebuilds from scratch.
+  function buildBgStyleChips() {
+    const root = $('bgStyleChips');
+    const countEl = $('bgStyleChipCount');
+    const clearBtn = $('bgStyleClearBtn');
+    if (!root) return;
+    const active = new Set(Array.isArray(state.bgActiveStylePresetIds) ? state.bgActiveStylePresetIds : []);
+    // Group presets by category to render one row per category.
+    const byCat = {};
+    for (const cat of BG_STYLE_CATEGORIES) byCat[cat.id] = [];
+    for (const preset of BG_STYLE_PRESETS) {
+      if (!byCat[preset.cat]) byCat[preset.cat] = [];
+      byCat[preset.cat].push(preset);
+    }
+    const rows = BG_STYLE_CATEGORIES.map(cat => {
+      const items = byCat[cat.id] || [];
+      if (!items.length) return '';
+      const chips = items.map(p => {
+        const cls = active.has(p.id) ? 'bg-style-chip active' : 'bg-style-chip';
+        // Tooltip shows the actual fragment so users can preview what the
+        // chip contributes before tapping it.
+        const tip = (p.prompt || '').replace(/"/g, '&quot;');
+        return `<button type="button" class="${cls}" data-style-id="${p.id}" title="${tip}" aria-pressed="${active.has(p.id) ? 'true' : 'false'}">${p.label}</button>`;
+      }).join('');
+      return `<div class="bg-style-cat-row"><span class="bg-style-cat-label">${cat.label}</span>${chips}</div>`;
+    }).join('');
+    root.innerHTML = rows;
+    if (countEl) countEl.textContent = active.size > 0 ? `· ${active.size} active` : '';
+    if (clearBtn) clearBtn.disabled = active.size === 0;
+    // Wire chip toggles. We rebuild the whole row on each click rather than
+    // mutating in place — simpler and the row is tiny.
+    root.querySelectorAll('.bg-style-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const id = chip.dataset.styleId;
+        if (!id) return;
+        const cur = new Set(Array.isArray(state.bgActiveStylePresetIds) ? state.bgActiveStylePresetIds : []);
+        if (cur.has(id)) cur.delete(id); else cur.add(id);
+        state.bgActiveStylePresetIds = Array.from(cur);
+        buildBgStyleChips();
+        try { saveUserSettings(); } catch (e) { /* save is best-effort here */ }
+        // Update the diff-bounce ingestion so the recent-changes log reflects
+        // style picks alongside typed prompt edits.
+        try {
+          if (diffBouncers.bgImage) diffBouncers.bgImage.ping?.();
+        } catch (e) { /* never break the toggle on telemetry */ }
+      });
+    });
+  }
+  // Clear button — wipes all active chip selections.
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'bgStyleClearBtn' && !e.target.disabled) {
+      state.bgActiveStylePresetIds = [];
+      buildBgStyleChips();
+      try { saveUserSettings(); } catch (err) {}
+    }
+  });
+
+  // ====================================================================
+  // GALLERY LIGHTBOX
+  // ====================================================================
+  // Self-contained module managing the fullscreen image viewer. Opened from
+  // renderBgGallery() with a sorted view + index. Handles wheel/pinch zoom,
+  // drag-pan, keyboard nav, and toggles favorite/download against the same
+  // bgCache* helpers the gallery uses.
+  //
+  // State is intentionally kept on this object (not in `state`) because it
+  // resets every time the lightbox opens and shouldn't be persisted.
+  const bgLightbox = {
+    view: [],            // sorted manifest snapshot at the moment of opening
+    index: 0,            // current position in `view`
+    scale: 1,            // current zoom
+    panX: 0, panY: 0,    // current translation in pixels
+    minScale: 1,         // computed per-image (1 = fit)
+    maxScale: 8,
+    _drag: null,         // { startX, startY, panX, panY } during a pan
+    _pinch: null,        // { startDist, startScale } during a pinch zoom
+    _bound: false,       // event-handler binding guard
+
+    /** Open the lightbox with a sorted-manifest view + starting index. */
+    open(view, index) {
+      if (!Array.isArray(view) || view.length === 0) return;
+      this.view = view;
+      this.index = Math.max(0, Math.min(index | 0, view.length - 1));
+      this._bindOnce();
+      const modal = $('bgLightboxModal');
+      if (modal) modal.classList.add('visible');
+      document.body.style.overflow = 'hidden'; // suppress page scroll behind
+      this._loadCurrent();
+    },
+    close() {
+      const modal = $('bgLightboxModal');
+      if (modal) modal.classList.remove('visible');
+      document.body.style.overflow = '';
+      // Release the object URL we created for the displayed image.
+      const img = $('bgLightboxImg');
+      if (img && img.src && img.src.startsWith('blob:')) {
+        try { URL.revokeObjectURL(img.src); } catch {}
+        img.src = '';
+      }
+      this._drag = null;
+      this._pinch = null;
+    },
+    next() { if (this.index < this.view.length - 1) { this.index++; this._loadCurrent(); } },
+    prev() { if (this.index > 0)                    { this.index--; this._loadCurrent(); } },
+
+    /** Load the current entry's image + metadata. Resets zoom/pan. */
+    async _loadCurrent() {
+      const entry = this.view[this.index];
+      if (!entry) return;
+      const img = $('bgLightboxImg');
+      const meta = $('bgLightboxMeta');
+      const promptEl = $('bgLightboxPrompt');
+      const favBtn = $('bgLightboxFavorite');
+      const prevBtn = $('bgLightboxPrev');
+      const nextBtn = $('bgLightboxNext');
+      // Revoke previous blob URL before assigning a new one
+      if (img && img.src && img.src.startsWith('blob:')) {
+        try { URL.revokeObjectURL(img.src); } catch {}
+      }
+      const url = await bgCacheGetUrl(entry.id);
+      if (img && url) {
+        img.src = url;
+        img.classList.add('no-transition');
+        // Reset transform on the next frame so the new image starts un-zoomed
+        requestAnimationFrame(() => {
+          this._resetZoom();
+          requestAnimationFrame(() => img.classList.remove('no-transition'));
+        });
+      }
+      if (meta) {
+        const parts = [`${this.index + 1} / ${this.view.length}`];
+        if (typeof entry.seed === 'number') parts.push(`seed ${entry.seed}`);
+        if (entry.createdAt) {
+          const d = new Date(entry.createdAt);
+          parts.push(d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        }
+        meta.textContent = parts.join(' · ');
+      }
+      if (promptEl) {
+        // Truncate very long prompts so the overlay doesn't dominate the view.
+        const p = entry.prompt || '';
+        promptEl.textContent = p.length > 240 ? p.slice(0, 237) + '…' : p;
+      }
+      if (favBtn) {
+        favBtn.classList.toggle('active', entry.favorited === true);
+        favBtn.textContent = entry.favorited === true ? '★' : '☆';
+        favBtn.title = entry.favorited === true ? 'unfavorite (f)' : 'favorite (f)';
+      }
+      if (prevBtn) prevBtn.disabled = this.index <= 0;
+      if (nextBtn) nextBtn.disabled = this.index >= this.view.length - 1;
+    },
+
+    /** Apply current scale/pan to the image element. */
+    _applyTransform() {
+      const img = $('bgLightboxImg');
+      if (!img) return;
+      img.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.scale})`;
+      const lbl = $('bgLightboxZoomLabel');
+      if (lbl) lbl.textContent = `${Math.round(this.scale * 100)}%`;
+    },
+    _resetZoom() {
+      this.scale = 1; this.panX = 0; this.panY = 0;
+      this._applyTransform();
+    },
+    /** Zoom around a screen-space focal point so the pixel under the cursor
+     *  stays roughly in place. (Standard "pinch around finger" behavior.) */
+    _zoomAt(factor, focalX, focalY) {
+      const newScale = Math.max(this.minScale, Math.min(this.maxScale, this.scale * factor));
+      if (newScale === this.scale) return;
+      const stage = $('bgLightboxStage');
+      if (!stage) { this.scale = newScale; this._applyTransform(); return; }
+      const rect = stage.getBoundingClientRect();
+      // Translate focal coords into the stage's center-relative space
+      const sx = focalX - rect.left - rect.width / 2;
+      const sy = focalY - rect.top  - rect.height / 2;
+      // Adjust pan so the focal point stays anchored
+      const ratio = newScale / this.scale;
+      this.panX = sx - (sx - this.panX) * ratio;
+      this.panY = sy - (sy - this.panY) * ratio;
+      this.scale = newScale;
+      this._applyTransform();
+    },
+
+    /** Bind all event handlers once on first open. We don't unbind on close —
+     *  re-opens are cheap and the listeners are guarded by the `.visible`
+     *  state of the modal. */
+    _bindOnce() {
+      if (this._bound) return;
+      this._bound = true;
+      const self = this;
+      const modal = $('bgLightboxModal');
+      const stage = $('bgLightboxStage');
+      const img = $('bgLightboxImg');
+
+      // Buttons
+      $('bgLightboxClose')?.addEventListener('click', () => self.close());
+      $('bgLightboxPrev') ?.addEventListener('click', () => self.prev());
+      $('bgLightboxNext') ?.addEventListener('click', () => self.next());
+      $('bgLightboxZoomIn') ?.addEventListener('click', () => self._zoomAt(1.25, window.innerWidth / 2, window.innerHeight / 2));
+      $('bgLightboxZoomOut')?.addEventListener('click', () => self._zoomAt(0.8,  window.innerWidth / 2, window.innerHeight / 2));
+      $('bgLightboxZoomFit')?.addEventListener('click', () => self._resetZoom());
+      $('bgLightboxFavorite')?.addEventListener('click', async () => {
+        const entry = self.view[self.index];
+        if (!entry) return;
+        const newVal = await bgCacheToggleFavorite(entry.id);
+        if (newVal !== null) {
+          entry.favorited = newVal; // keep our local view in sync
+          self._loadCurrent();
+          // Refresh underlying gallery so it reflects the change when the
+          // user closes the lightbox.
+          renderBgGallery();
+        }
+      });
+      $('bgLightboxDownload')?.addEventListener('click', () => {
+        const entry = self.view[self.index];
+        if (entry) bgCacheDownload(entry.id);
+      });
+
+      // Click on the modal backdrop (but not the stage / chrome) closes it.
+      modal?.addEventListener('click', (e) => {
+        if (e.target === modal) self.close();
+      });
+
+      // Keyboard navigation — only act when the lightbox is visible.
+      document.addEventListener('keydown', (e) => {
+        if (!modal?.classList.contains('visible')) return;
+        switch (e.key) {
+          case 'Escape':     e.preventDefault(); self.close(); break;
+          case 'ArrowLeft':  e.preventDefault(); self.prev();  break;
+          case 'ArrowRight': e.preventDefault(); self.next();  break;
+          case '+': case '=': e.preventDefault();
+            self._zoomAt(1.25, window.innerWidth / 2, window.innerHeight / 2); break;
+          case '-': case '_': e.preventDefault();
+            self._zoomAt(0.8,  window.innerWidth / 2, window.innerHeight / 2); break;
+          case '0':          e.preventDefault(); self._resetZoom(); break;
+          case 'f': case 'F': e.preventDefault();
+            $('bgLightboxFavorite')?.click(); break;
+        }
+      });
+
+      // Mouse wheel — zoom around the cursor. preventDefault to suppress
+      // background page scroll. Use a capped multiplier so trackpads don't
+      // jump huge amounts per gesture.
+      stage?.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.12 : 0.89;
+        self._zoomAt(factor, e.clientX, e.clientY);
+      }, { passive: false });
+
+      // Drag-to-pan (mouse). Only pans when zoomed in past 1× — at 1× the
+      // image fits the viewport, so pan would just slide it offscreen.
+      img?.addEventListener('mousedown', (e) => {
+        if (self.scale <= 1.0001) return;
+        e.preventDefault();
+        self._drag = { startX: e.clientX, startY: e.clientY, panX: self.panX, panY: self.panY };
+        img.classList.add('dragging');
+      });
+      document.addEventListener('mousemove', (e) => {
+        if (!self._drag) return;
+        self.panX = self._drag.panX + (e.clientX - self._drag.startX);
+        self.panY = self._drag.panY + (e.clientY - self._drag.startY);
+        self._applyTransform();
+      });
+      document.addEventListener('mouseup', () => {
+        if (self._drag) { self._drag = null; img?.classList.remove('dragging'); }
+      });
+
+      // Touch — single touch pans, two touches pinch-zoom.
+      stage?.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1 && self.scale > 1.0001) {
+          const t = e.touches[0];
+          self._drag = { startX: t.clientX, startY: t.clientY, panX: self.panX, panY: self.panY };
+        } else if (e.touches.length === 2) {
+          self._drag = null;
+          const [a, b] = e.touches;
+          const dx = b.clientX - a.clientX, dy = b.clientY - a.clientY;
+          self._pinch = { startDist: Math.hypot(dx, dy), startScale: self.scale };
+        }
+      }, { passive: true });
+      stage?.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1 && self._drag) {
+          const t = e.touches[0];
+          self.panX = self._drag.panX + (t.clientX - self._drag.startX);
+          self.panY = self._drag.panY + (t.clientY - self._drag.startY);
+          self._applyTransform();
+          e.preventDefault();
+        } else if (e.touches.length === 2 && self._pinch) {
+          const [a, b] = e.touches;
+          const dx = b.clientX - a.clientX, dy = b.clientY - a.clientY;
+          const dist = Math.hypot(dx, dy);
+          const target = self._pinch.startScale * (dist / self._pinch.startDist);
+          // Pinch around the midpoint of the two touches
+          const midX = (a.clientX + b.clientX) / 2;
+          const midY = (a.clientY + b.clientY) / 2;
+          self._zoomAt(target / self.scale, midX, midY);
+          e.preventDefault();
+        }
+      }, { passive: false });
+      stage?.addEventListener('touchend', (e) => {
+        if (e.touches.length === 0) { self._drag = null; self._pinch = null; }
+      });
+
+      // Double-click toggles between fit and 2× — handy "quick zoom" gesture
+      img?.addEventListener('dblclick', (e) => {
+        if (self.scale > 1.0001) self._resetZoom();
+        else self._zoomAt(2, e.clientX, e.clientY);
+      });
+    },
+  };
 
   let highwayRAF = null;
   let vizRAF = null;
@@ -17349,6 +18160,18 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   });
   $('bgManageBtn')?.addEventListener('click', () => { _galleryOpen = true; renderBgGallery(); $('bgGalleryModal')?.classList.add('visible'); });
   $('bgGalleryCloseBtn')?.addEventListener('click', () => { _galleryOpen = false; $('bgGalleryModal')?.classList.remove('visible'); });
+  // Sort dropdown — persist choice, re-render with new ordering.
+  $('bgGallerySortSelect')?.addEventListener('change', (e) => {
+    state.bgGallerySort = e.target.value || 'newest';
+    try { saveUserSettings(); } catch (err) {}
+    renderBgGallery();
+  });
+  // Favorites-only filter toggle — also persisted so it survives reopen.
+  $('bgGalleryFavFilterBtn')?.addEventListener('click', (e) => {
+    state.bgGalleryFavOnly = !state.bgGalleryFavOnly;
+    try { saveUserSettings(); } catch (err) {}
+    renderBgGallery();
+  });
   $('bgClearAllBtn')?.addEventListener('click', async () => {
     if (!await confirmAsync('Clear all cached background images?')) return;
     await bgCacheClear(); renderBgGallery(); notify.info('Background cache cleared.');
@@ -17362,6 +18185,10 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       await new Promise(r => setTimeout(r, 300)); // stagger to avoid browser blocking
     }
   });
+  // Build the style preset chips once on page setup. Reads
+  // state.bgActiveStylePresetIds (which loadUserSettings restores from previous
+  // session, if any) so previously-selected chips render in the active state.
+  try { buildBgStyleChips(); } catch (e) { console.warn('buildBgStyleChips:', e); }
   $('bgFileInput')?.addEventListener('change', e => {
     const file = e.target.files?.[0];
     if (!file) return;
