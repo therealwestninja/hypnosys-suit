@@ -386,9 +386,30 @@ padding: 5px 15px; cursor: pointer;
   }
 
   /* ============ BUTTONS ============ */
-  .btn { background: transparent; color: var(--accent-warm); border: 1.5px solid var(--accent-warm);padding: 13px 20px; font-size: 0.92rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; transition: all 0.25s; font-family: var(--font-body);}
+  /* Base button — `min-width: 0` lets flex/grid children shrink below their
+     content width instead of overflowing; `overflow-wrap: anywhere` makes
+     long labels wrap inside the button rather than spill out the side.
+     Combined, these eliminate the "content too wide for fixed-width button"
+     visual bug across mobile and narrow sidebars. */
+  .btn {
+    background: transparent; color: var(--accent-warm); border: 1.5px solid var(--accent-warm);
+    padding: 13px 20px; font-size: 0.92rem; font-weight: 700; letter-spacing: 0.04em;
+    cursor: pointer; transition: all 0.25s; font-family: var(--font-body);
+    box-sizing: border-box; min-width: 0; overflow-wrap: anywhere;
+  }
   .btn:hover { background: rgba(201,168,85,0.08); border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: var(--glow-cyan); }
   .btn.full { width: 100%; }
+  /* Icon variant — opt-in for single-glyph buttons (⚙, ×, ↻, etc.). Tight
+     padding; never grows to fill flex/grid space. Stays sized to its content
+     so a single ⚙ doesn't take a whole 200px column next to a real label. */
+  .btn.icon {
+    padding: 6px 10px;
+    font-size: 0.95rem;
+    flex: 0 0 auto;
+    min-width: 32px;
+    line-height: 1;
+  }
+  .btn.icon.sm { padding: 4px 8px; min-width: 28px; font-size: 0.82rem; }
   .btn.secondary { background: transparent; color: var(--text-dim); border: 1px solid var(--wood-light);}
   .btn.secondary:hover { border-color: var(--accent); color: var(--text); background: rgba(184,154,74,0.04); box-shadow: none; }
   .btn.warm { background: transparent; color: var(--accent-warm); border: 1.5px solid var(--accent-warm); }
@@ -494,7 +515,7 @@ padding: 16px; margin-top: 16px; display: none;
   .crafted-meta { font-size: 0.75rem; color: var(--text-dim); line-height: 1.5; margin-bottom: 12px; }
   .crafted-meta strong { color: var(--neon-amber); }
   .crafted-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .crafted-actions .btn { flex: 1; min-width: 90px; padding: 8px 12px; font-size: 0.85rem; }
+  .crafted-actions .btn { flex: 1 1 80px; min-width: 0; padding: 8px 12px; font-size: 0.85rem; }
 
   /* ============ SUMMARY CARDS (step 5) ============ */
   .summary-grid {
@@ -544,9 +565,16 @@ padding: 16px; margin-top: 16px; display: none;
     padding: 14px; border: 1px solid var(--glass-border);
     white-space: pre-wrap; resize: vertical;
   }
-  .script-actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; }
-  @media (min-width: 640px) { .script-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  .script-actions .btn { min-width: 0; width: 100%; padding: 10px 12px; font-size: 0.88rem; }
+  /* Script-actions row — flex-wrap so labels of varying length pack
+     naturally and single-glyph (.btn.icon) buttons stay compact instead
+     of being stretched to a full grid column. flex:1 with a sane min-width
+     lets multi-word buttons share space equally on wide screens but fall
+     to their natural width when there's not room. */
+  .script-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .script-actions .btn { flex: 1 1 140px; padding: 10px 12px; font-size: 0.88rem; }
+  /* Override flex:1 for icon buttons inside script-actions — they stay
+     sized to content via .btn.icon's flex: 0 0 auto. */
+  .script-actions .btn.icon { flex: 0 0 auto; }
 
   /* ============ PHASE PAIRS (editor color coding) ============ */
   .phase-editor-row {
@@ -2592,6 +2620,7 @@ padding: 8px 12px; font-size: 0.75rem;
     color: var(--text-dim); cursor: pointer; text-align: left;
     font-family: var(--font-body); transition: all 0.25s;
     letter-spacing: 0.04em; margin-top: 4px;
+    box-sizing: border-box; min-width: 0; overflow-wrap: anywhere;
   }
   .sidebar-settings-btn:hover { border-color: var(--neon-amber); color: var(--text); }
   .profile-form { display: flex; flex-direction: column; gap: 6px; padding: 4px 0; }
@@ -2654,6 +2683,30 @@ padding: 8px 12px; font-size: 0.75rem;
   .tl-entry .tl-ts { color: var(--text-faint); flex-shrink: 0; }
   .tl-entry .tl-body { margin-top: 3px; color: var(--text); }
   .tl-entry .tl-empty { color: var(--text-faint); font-style: italic; padding: 12px 4px; text-align: center; }
+
+  /* Free-voice-options modal — collapsible cards with hover affordance. */
+  .fv-section summary { list-style: none; transition: background 0.12s ease; }
+  .fv-section summary::-webkit-details-marker { display: none; }
+  .fv-section summary::before {
+    content: '▸'; display: inline-block; margin-right: 6px;
+    color: var(--neon-amber); transition: transform 0.18s ease;
+  }
+  .fv-section[open] summary::before { transform: rotate(90deg); }
+  .fv-section summary:hover { background: rgba(255,255,255,0.04); }
+  .fv-section-body p:first-child { margin-top: 0; }
+  .fv-section-body code {
+    background: rgba(0,212,230,0.08); padding: 1px 5px;
+    font-size: 0.85em; font-family: var(--font-mono, ui-monospace, monospace);
+    color: var(--neon-cyan);
+  }
+  .fv-section-body kbd {
+    background: var(--wood); border: 1px solid var(--glass-border);
+    padding: 0 5px; font-size: 0.78em;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    color: var(--text); border-radius: 0;
+  }
+  .fv-section-body a { color: var(--neon-cyan); }
+  .fv-section-body a:hover { color: var(--accent-warm); }
 
   /* AI background controls — POS/NEG + orientation + weight sliders */
   .ai-prompt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -3712,6 +3765,13 @@ I return to myself easily"></textarea>
           <button class="preview-btn stop" id="voiceStopBtn" style="display:none">⏹ stop</button>
           <span class="preview-hint">Hear a sample with your speed/pitch/volume settings.</span>
         </div>
+        <!-- Cross-platform free-voice guide. Opens a modal that detects OS and
+             shows the most relevant install instructions first. Useful for
+             Windows/iOS/macOS users whose default browser voices are weak —
+             they often don't realize they can download free high-quality
+             voices via OS accessibility settings, switch to Edge for neural
+             cloud voices, or enable the offline AI voice below. -->
+        <button type="button" class="btn-link" id="freeVoiceOptionsBtn" style="background:none;border:none;color:var(--neon-cyan);cursor:pointer;font-size:0.74rem;padding:6px 0 0 0;text-decoration:underline;font-family:inherit">find more free high-quality voices for your device ↗</button>
         <!-- Local AI voice (Phase 6 addition). Loads Hugging Face Transformers.js
              SpeechT5 from CDN on first use, caches the model in IndexedDB.
              First-load is ~80MB; subsequent sessions use the cache. No word-level
@@ -4168,7 +4228,7 @@ I return to myself easily"></textarea>
           <button class="btn secondary" id="regenScriptBtn" title="Re-generate any phase that failed, or fill in phases you added via the editor below. Click ✨ on a single row to target just that phase.">regenerate</button>
           <button class="btn secondary" id="regenFreshBtn" title="Generate a brand new script from your current intention. Useful if you've pasted or edited the script and want a fresh AI-generated version.">↻ regenerate fresh</button>
           <button class="btn secondary" id="autoTempoBtn">⏱ auto-tempo</button>
-          <button class="btn secondary" id="autoTempoOptsBtn" title="Auto-tempo cleanup options" style="padding:4px 8px">⚙</button>
+          <button class="btn secondary icon" id="autoTempoOptsBtn" title="Auto-tempo cleanup options">⚙</button>
           <button class="btn secondary" id="saveScriptBtn" title="Save this script to your library for reuse">💾 save</button>
           <button class="btn secondary" id="exportScriptBtn">↓ download .txt</button>
           <button class="btn secondary" id="shareConfigBtn" title="Create a shareable link for this session config">🔗 share link</button>
@@ -21800,13 +21860,57 @@ Start immediately:`;
     _genId: 0,              // bumped on cancel() to invalidate in-flight synth
     // CDN sources — pinned so updates don't break this app silently
     CDN_TRANSFORMERS: 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2',
-    SPEAKER_BASE: 'https://huggingface.co/datasets/Matthijs/cmu-arctic-xvectors/resolve/main/',
+    // Speaker embeddings live in the SpeechT5 demo Space, not the dataset root.
+    // The dataset (Matthijs/cmu-arctic-xvectors) stores them inside a parquet
+    // structure accessible only via the datasets library; the demo Space mirrors
+    // them as individual .npy files. Filenames are .npy (NumPy serialized) and
+    // use specific curated indices per speaker — these match the working demo
+    // at https://huggingface.co/spaces/Matthijs/speecht5-tts-demo
+    SPEAKER_BASE: 'https://huggingface.co/spaces/Matthijs/speecht5-tts-demo/resolve/main/spkemb/',
     SPEAKER_FILES: {
-      clb: 'cmu_us_clb_arctic-wav-arctic_a0001.bin',
-      slt: 'cmu_us_slt_arctic-wav-arctic_a0001.bin',
-      bdl: 'cmu_us_bdl_arctic-wav-arctic_a0001.bin',
-      rms: 'cmu_us_rms_arctic-wav-arctic_a0001.bin',
-      ksp: 'cmu_us_ksp_arctic-wav-arctic_a0001.bin',
+      clb: 'cmu_us_clb_arctic-wav-arctic_a0144.npy', // US female
+      slt: 'cmu_us_slt_arctic-wav-arctic_a0508.npy', // US female
+      bdl: 'cmu_us_bdl_arctic-wav-arctic_a0009.npy', // US male
+      rms: 'cmu_us_rms_arctic-wav-arctic_b0353.npy', // US male
+      ksp: 'cmu_us_ksp_arctic-wav-arctic_b0087.npy', // Indian male
+    },
+
+    /**
+     * Parse a NumPy .npy file buffer and extract the Float32Array data.
+     * Format reference: https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html
+     *   Bytes 0-5: \x93NUMPY magic
+     *   Bytes 6-7: version (major, minor)
+     *   Bytes 8-9 (v1) or 8-11 (v2/v3): header length (little-endian)
+     *   Header: ASCII Python dict — { 'descr': '<f4', 'fortran_order': False, 'shape': (N,) }
+     *   Padded to 64-byte boundary with spaces + final \n
+     *   Then raw little-endian float32 data
+     *
+     * For our use case all speaker embedding files are shape (512,) float32,
+     * but we parse the descr defensively so a future schema change surfaces
+     * as a clear error rather than garbled audio.
+     */
+    _parseNpy(buffer) {
+      const view = new DataView(buffer);
+      const magic = String.fromCharCode(...new Uint8Array(buffer, 0, 6));
+      if (magic !== '\x93NUMPY') throw new Error('not a .npy file');
+      const major = view.getUint8(6);
+      let headerLen, dataOffset;
+      if (major === 1) {
+        headerLen = view.getUint16(8, true);
+        dataOffset = 10 + headerLen;
+      } else {
+        headerLen = view.getUint32(8, true);
+        dataOffset = 12 + headerLen;
+      }
+      const headerBytes = new Uint8Array(buffer, major === 1 ? 10 : 12, headerLen);
+      const headerStr = String.fromCharCode(...headerBytes);
+      // Defensive — we only support little-endian float32 (descr '<f4').
+      // If the file shape ever changes to a different dtype the user sees
+      // a clear message instead of static.
+      if (!/'descr'\s*:\s*'<f4'/.test(headerStr)) {
+        throw new Error('unsupported .npy dtype (expected <f4)');
+      }
+      return new Float32Array(buffer, dataOffset);
     },
     /** Lazy-load Transformers.js + SpeechT5 model + speaker embedding. Idempotent —
      *  multiple calls during loading wait on the same promise. */
@@ -21855,13 +21959,36 @@ Start immediately:`;
           });
           setBar(85);
         }
-        // Load the speaker embedding (a small ~2KB tensor that conditions the voice)
+        // Load the speaker embedding (a small ~2KB tensor that conditions the voice).
+        // The .npy file has a NumPy header that needs parsing — we can't just
+        // wrap the buffer in a Float32Array directly. Try direct fetch first,
+        // fall back to Perchance's superFetch if CORS blocks (rare for HF
+        // assets, but we get the fallback for free).
         setStatus('Loading speaker voice…');
         const url = this.SPEAKER_BASE + this.SPEAKER_FILES[speakerName];
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('speaker fetch ' + res.status);
-        const buf = await res.arrayBuffer();
-        this.speakerEmbeddings = new Float32Array(buf);
+        let buf;
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('speaker fetch ' + res.status);
+          buf = await res.arrayBuffer();
+        } catch (fetchErr) {
+          // Try superFetch as fallback (works around CORS issues).
+          // Available via the Perchance super-fetch-plugin import.
+          if (typeof root !== 'undefined' && typeof root.superFetch === 'function') {
+            console.warn('[localTTS] direct fetch failed, trying superFetch:', fetchErr.message);
+            const res2 = await root.superFetch(url);
+            if (!res2 || !res2.ok) throw new Error('speaker fetch via superFetch ' + (res2?.status || 'failed'));
+            buf = await res2.arrayBuffer();
+          } else {
+            throw fetchErr;
+          }
+        }
+        this.speakerEmbeddings = this._parseNpy(buf);
+        // Sanity check — speaker embeddings are 512-dim x-vectors. Anything
+        // dramatically different means a wrong file or a schema change.
+        if (this.speakerEmbeddings.length !== 512) {
+          throw new Error(`speaker vector length ${this.speakerEmbeddings.length}, expected 512`);
+        }
         setBar(100);
         setStatus('Ready. The first sentence may take 1-3 seconds; later ones are faster.');
         this.ready = true;
@@ -25554,6 +25681,11 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
 
   // Post-session save
 
+  // Free voice options guide — opens a platform-aware modal with install
+  // instructions for high-quality narrator voices on Windows / iOS / macOS /
+  // Android / Linux. See _ensureFreeVoiceModal definition.
+  $('freeVoiceOptionsBtn')?.addEventListener('click', openFreeVoiceModal);
+
   // Voice preview with stop
   $('voicePreviewBtn').addEventListener('click', async () => {
     const voice = getSelectedVoice();
@@ -26927,7 +27059,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
           <div style="font-size:0.66rem;color:var(--text-faint)">${escapeHtml(item.kind)} · ${new Date(item.updatedAt || 0).toLocaleString()}</div>
         </div>
         <button class="btn secondary cloud-item-dl" data-id="${escapeHtml(item.id)}" data-kind="${escapeHtml(item.kind)}" style="padding:4px 10px;font-size:0.7rem">download</button>
-        <button class="btn secondary cloud-item-del" data-id="${escapeHtml(item.id)}" style="padding:4px 10px;font-size:0.7rem;color:#f87171">×</button>
+        <button class="btn secondary icon sm cloud-item-del" data-id="${escapeHtml(item.id)}" style="color:#f87171" title="Delete">×</button>
       </div>
     `).join('');
     list.querySelectorAll('.cloud-item-dl').forEach(b => b.addEventListener('click', async e => {
@@ -27104,6 +27236,220 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     } else {
       renderCloudUserSlug();
     }
+  }
+
+  // ====================================================================
+  // FREE NARRATOR OPTIONS GUIDE
+  // ====================================================================
+  // Cross-platform helper modal. Many Windows/iOS/macOS users don't realize
+  // they already have access to high-quality free voices — they just need
+  // to download them through OS settings or switch to a browser that
+  // exposes better voices. This modal detects the user's OS and shows the
+  // most relevant install instructions first, then the universal options.
+  //
+  // Lazy-built — costs nothing until the user clicks "find more free…".
+  // No network calls; everything is static guidance with verified links.
+
+  /** Detect the user's OS family. Permissive — false-positive just shows
+   *  the wrong section first, user can scroll to others. Returns one of:
+   *  'ios' | 'android' | 'macos' | 'windows' | 'linux' | 'unknown' */
+  function _detectOS() {
+    try {
+      const ua = (navigator.userAgent || '').toLowerCase();
+      // iPad on iOS 13+ reports as Macintosh — disambiguate via touch.
+      const isIPadOS = /macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+      if (/iphone|ipad|ipod/.test(ua) || isIPadOS) return 'ios';
+      if (/android/.test(ua)) return 'android';
+      if (/mac os x|macintosh/.test(ua)) return 'macos';
+      if (/windows nt|win64|win32/.test(ua)) return 'windows';
+      if (/linux|x11|cros/.test(ua)) return 'linux';
+    } catch {}
+    return 'unknown';
+  }
+
+  /** Sections of platform-specific guidance. Each is a function returning
+   *  HTML so we can compose dynamically + keep the markup readable. The
+   *  shape is { id, label, icon, html } so the renderer can iterate.
+   *
+   *  Links are pinned to authoritative top-level pages so they don't rot
+   *  when articles get republished.  */
+  const _FREE_VOICE_SECTIONS = [
+    {
+      id: 'ai-local',
+      label: 'Offline AI voice (any device)',
+      icon: '🎙',
+      html: `
+        <p>HNE includes an offline neural voice that works on any modern browser, regardless of OS. ~80&nbsp;MB downloads once and caches locally — no internet needed afterward, nothing leaves your device. Quality is roughly mid-grade for a 2023-era model; works for relaxation but a bit robotic for emotional content.</p>
+        <p style="margin:6px 0"><strong>To enable:</strong> in this same panel, scroll down to <em>"🎙 use local AI voice"</em> and tick the box. First-load downloads the model.</p>`,
+    },
+    {
+      id: 'edge',
+      label: 'Microsoft Edge for cloud-neural voices (any OS)',
+      icon: '🌐',
+      html: `
+        <p>The Microsoft Edge browser exposes Microsoft's cloud-neural TTS voices (Aria, Guy, Jenny, Christopher, Ana — many languages) directly to web pages via the standard Web&nbsp;Speech API. <strong>Once installed, these voices appear in HNE's voice picker automatically</strong> alongside your OS voices. Free, no account, no API key — but requires an internet connection during playback.</p>
+        <p style="margin:6px 0"><strong>To install:</strong> visit <a href="https://www.microsoft.com/edge" target="_blank" rel="noopener">microsoft.com/edge</a>, download, then open this HNE page in Edge. The new voices show up labelled like "Microsoft Aria Online (Natural)".</p>
+        <p style="font-size:0.7rem;color:var(--text-faint);margin:6px 0 0 0">Available on Windows, macOS, Linux, iOS (limited), Android. Some Linux distros have package-manager installs.</p>`,
+    },
+    {
+      id: 'ios',
+      label: 'iOS / iPadOS — download premium voices',
+      icon: '📱',
+      html: `
+        <p>iPhone and iPad ship with low-quality default voices to save space, but Apple offers free <strong>Premium</strong> and <strong>Enhanced</strong> quality voices (~100–600&nbsp;MB each) that you can download via Settings. Once downloaded, they appear in HNE's voice picker in Safari and Chrome.</p>
+        <ol style="margin:6px 0 6px 18px;padding:0;line-height:1.6">
+          <li>Open <strong>Settings</strong> → <strong>Accessibility</strong> → <strong>Spoken Content</strong> → <strong>Voices</strong>.</li>
+          <li>Tap your language (e.g. English).</li>
+          <li>Tap a voice (Samantha, Tom, Karen, Daniel, Moira…) and choose <strong>Premium</strong> or <strong>Enhanced</strong>. Wait for the download.</li>
+          <li>Reload HNE in your browser. The new voice should appear in the picker above.</li>
+        </ol>
+        <p style="margin:6px 0">Apple's official guide: <a href="https://support.apple.com/en-us/111798" target="_blank" rel="noopener">support.apple.com/en-us/111798</a>.</p>
+        <p style="font-size:0.7rem;color:var(--text-faint)">Note: Apple doesn't expose Siri voices to third-party apps via the Web Speech API. Premium/Enhanced voices are a separate (and very capable) family.</p>`,
+    },
+    {
+      id: 'macos',
+      label: 'macOS — download Premium voices',
+      icon: '💻',
+      html: `
+        <p>macOS ships low-quality defaults but offers free Premium/Enhanced voices (~300–600&nbsp;MB each) that show up in Safari and Chrome's Web&nbsp;Speech API once installed. The path varies by macOS version:</p>
+        <p style="margin:6px 0"><strong>macOS Sequoia 15+ / Tahoe 26+:</strong></p>
+        <ol style="margin:0 0 8px 18px;padding:0;line-height:1.6">
+          <li>Press <kbd>VO</kbd> + <kbd>Fn</kbd> + <kbd>F8</kbd> to open VoiceOver Utility (or System Settings → Accessibility → VoiceOver → Open VoiceOver Utility).</li>
+          <li>Sidebar → <strong>Speech</strong> → <strong>Voice</strong> → <strong>+ Add</strong>.</li>
+          <li>Pick a language and a Premium voice (Samantha, Tom, Daniel…). Wait for the download.</li>
+        </ol>
+        <p style="margin:6px 0"><strong>macOS Ventura 13 – Sonoma 14:</strong></p>
+        <ol style="margin:0 0 8px 18px;padding:0;line-height:1.6">
+          <li>System Settings → <strong>Accessibility</strong> → <strong>Spoken Content</strong>.</li>
+          <li>Click the <strong>System Voice</strong> dropdown → <strong>Manage Voices…</strong></li>
+          <li>Choose a Premium / Enhanced voice and download.</li>
+        </ol>
+        <p style="font-size:0.7rem;color:var(--text-faint);margin-top:6px">Reload HNE after the download; the picker above will list the new voice.</p>`,
+    },
+    {
+      id: 'windows',
+      label: 'Windows — download Microsoft Natural voices',
+      icon: '🪟',
+      html: `
+        <p>Windows 10 and 11 include free natural-sounding voices (Aria, Christopher, Eric, Guy, Jenny, Michelle…) that any browser's Web&nbsp;Speech API will use. They're not installed by default — you have to add them.</p>
+        <p style="margin:6px 0"><strong>Windows 11:</strong></p>
+        <ol style="margin:0 0 8px 18px;padding:0;line-height:1.6">
+          <li>Settings → <strong>Time &amp; language</strong> → <strong>Speech</strong>.</li>
+          <li>Under <strong>Manage voices</strong>, click <strong>+ Add voices</strong>.</li>
+          <li>Search for the language you want, pick the voices, click <strong>Add</strong>. Wait for the install.</li>
+        </ol>
+        <p style="margin:6px 0"><strong>Windows 10:</strong></p>
+        <ol style="margin:0 0 8px 18px;padding:0;line-height:1.6">
+          <li>Settings → <strong>Time &amp; Language</strong> → <strong>Speech</strong>.</li>
+          <li>Under <strong>Manage voices</strong>, <strong>+ Add voices</strong>.</li>
+        </ol>
+        <p style="margin:6px 0"><strong>For the highest-quality option:</strong> install <a href="https://www.microsoft.com/edge" target="_blank" rel="noopener">Microsoft Edge</a> and use HNE through it — Edge exposes Microsoft's cloud-neural voices (the "Online (Natural)" set) which sound noticeably better than the offline Windows voices, free, no account required.</p>
+        <p style="font-size:0.7rem;color:var(--text-faint)">Reload HNE after install; new voices appear in the picker.</p>`,
+    },
+    {
+      id: 'android',
+      label: 'Android — Google TTS engine',
+      icon: '🤖',
+      html: `
+        <p>Most Android phones come with Google Text-to-speech which exposes neural voices to Chrome via Web&nbsp;Speech API. If yours doesn't, or to update it:</p>
+        <ol style="margin:6px 0 6px 18px;padding:0;line-height:1.6">
+          <li>Install / update <a href="https://play.google.com/store/apps/details?id=com.google.android.tts" target="_blank" rel="noopener">Google Text-to-Speech</a> from Play Store.</li>
+          <li>Settings → <strong>General Management</strong> → <strong>Text-to-speech</strong>.</li>
+          <li>Set <strong>Preferred engine</strong> = Google Speech Services.</li>
+          <li>Tap the gear next to it → <strong>Install voice data</strong> → pick your language → download enhanced voices.</li>
+        </ol>
+        <p style="font-size:0.7rem;color:var(--text-faint);margin-top:6px">Samsung devices may default to Samsung TTS — switch to Google for better Web Speech API voices, or install both and pick per-app.</p>`,
+    },
+    {
+      id: 'linux',
+      label: 'Linux — better than eSpeak',
+      icon: '🐧',
+      html: `
+        <p>Most Linux browsers default to <strong>eSpeak NG</strong> via the Web&nbsp;Speech API, which is robotic. Better options:</p>
+        <ol style="margin:6px 0 6px 18px;padding:0;line-height:1.6">
+          <li><strong>Use HNE's offline AI voice</strong> (in this panel below) — works in any Linux browser without extra setup.</li>
+          <li><strong>Install Microsoft Edge for Linux</strong> from <a href="https://www.microsoft.com/edge" target="_blank" rel="noopener">microsoft.com/edge</a> — gives you cloud-neural voices via Web Speech API.</li>
+          <li><strong>RHVoice</strong>: <code>sudo apt install rhvoice rhvoice-english</code> (Debian/Ubuntu) — better-quality offline voices than eSpeak.</li>
+          <li><strong>Piper TTS</strong>: <a href="https://github.com/rhasspy/piper" target="_blank" rel="noopener">github.com/rhasspy/piper</a> — neural-quality offline voices, requires CLI setup.</li>
+        </ol>`,
+    },
+    {
+      id: 'cloud-services',
+      label: 'Cloud TTS services (free tier, requires API key)',
+      icon: '☁',
+      html: `
+        <p>If you want top-tier neural voices and don't mind setting up an API key, several services have generous free tiers. <strong>HNE doesn't currently integrate these as narrator backends</strong> — you'd use them by exporting the script (📋&nbsp;copy / ↓&nbsp;download .txt) and pasting into the service's playground or web app, then playing the resulting audio alongside HNE's visuals.</p>
+        <ul style="margin:6px 0 6px 18px;padding:0;line-height:1.7">
+          <li><strong><a href="https://azure.microsoft.com/en-us/products/ai-services/ai-speech" target="_blank" rel="noopener">Microsoft Azure AI Speech</a></strong> — 500,000 chars/month free. Best price/quality for free tier. Supports SSML for fine pacing.</li>
+          <li><strong><a href="https://cloud.google.com/text-to-speech" target="_blank" rel="noopener">Google Cloud Text-to-Speech</a></strong> — 1M standard chars/month + 4M WaveNet/Neural2 chars/month free.</li>
+          <li><strong><a href="https://elevenlabs.io" target="_blank" rel="noopener">ElevenLabs</a></strong> — ~10,000 chars/month free. Most expressive, especially for sustained emotional prose.</li>
+          <li><strong><a href="https://www.openai.com/api/" target="_blank" rel="noopener">OpenAI TTS</a></strong> — paid (no free tier as of writing), but very high quality.</li>
+        </ul>
+        <p style="font-size:0.7rem;color:var(--text-faint);margin-top:6px">Each service has its own terms — check before uploading sensitive content. For hypnosis scripts, prefer in-browser options (HNE's offline AI voice or your OS Premium voices) so nothing leaves your device.</p>`,
+    },
+  ];
+
+  let _freeVoiceModalEl = null;
+  function _ensureFreeVoiceModal() {
+    if (_freeVoiceModalEl) return _freeVoiceModalEl;
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'freeVoiceModal';
+
+    // Build the section list, OS-detected first. Other sections still
+    // appear below — the detection just prioritizes display order.
+    const os = _detectOS();
+    const priorityIds = {
+      ios: ['ios', 'cloud-services', 'edge', 'ai-local'],
+      macos: ['macos', 'edge', 'ai-local', 'cloud-services'],
+      windows: ['windows', 'edge', 'ai-local', 'cloud-services'],
+      android: ['android', 'edge', 'ai-local', 'cloud-services'],
+      linux: ['linux', 'ai-local', 'edge', 'cloud-services'],
+      unknown: ['ai-local', 'edge'],
+    }[os] || [];
+    // Reorder: priority first, then anything not in priority
+    const orderedSections = [
+      ...priorityIds.map(id => _FREE_VOICE_SECTIONS.find(s => s.id === id)).filter(Boolean),
+      ..._FREE_VOICE_SECTIONS.filter(s => !priorityIds.includes(s.id)),
+    ];
+
+    const osLabel = { ios:'iOS / iPadOS', macos:'macOS', windows:'Windows', android:'Android', linux:'Linux', unknown:'your device' }[os];
+    const detectionLine = os === 'unknown'
+      ? 'Showing all options.'
+      : `Detected <strong>${osLabel}</strong>. Most relevant options shown first; if the detection is wrong, scroll down.`;
+
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:680px;max-height:88vh;display:flex;flex-direction:column">
+        <h2 style="margin:0 0 6px 0">free narrator voices for your device</h2>
+        <div style="font-size:0.74rem;color:var(--text-dim);line-height:1.55;margin-bottom:14px">
+          ${detectionLine} Every option below is free. Once installed, voices appear automatically in HNE's voice picker (it reads from the standard Web&nbsp;Speech API).
+        </div>
+        <div id="freeVoiceSections" style="flex:1;min-height:0;overflow-y:auto;padding-right:6px">
+          ${orderedSections.map((s, i) => `
+            <details class="fv-section" ${i === 0 ? 'open' : ''} style="margin-bottom:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.02)">
+              <summary style="cursor:pointer;padding:10px 12px;font-size:0.84rem;font-weight:600;color:var(--text);user-select:none">
+                <span style="margin-right:6px">${s.icon}</span>${escapeHtml(s.label)}
+              </summary>
+              <div class="fv-section-body" style="padding:0 12px 12px 12px;font-size:0.78rem;color:var(--text-dim);line-height:1.55">
+                ${s.html}
+              </div>
+            </details>`).join('')}
+        </div>
+        <div class="modal-actions" style="margin-top:12px">
+          <button class="btn" id="freeVoiceModalClose">close</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _freeVoiceModalEl = wrap;
+    $('freeVoiceModalClose').addEventListener('click', () => wrap.classList.remove('visible'));
+    wrap.addEventListener('click', e => {
+      if (e.target.id === 'freeVoiceModal') wrap.classList.remove('visible');
+    });
+    return wrap;
+  }
+  function openFreeVoiceModal() {
+    _ensureFreeVoiceModal().classList.add('visible');
   }
 
   // ====================================================================
