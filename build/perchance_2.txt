@@ -2593,6 +2593,7 @@ padding: 6px 10px; font-size: 1.1rem;
         <details>
           <summary>stats</summary>
           <button class="btn secondary" id="openStatsBtn" style="width:100%;font-size:0.72rem;padding:8px;margin:6px 0">📊 view stats &amp; charts</button>
+          <button class="btn secondary" id="openAnnualReviewBtn" style="width:100%;font-size:0.72rem;padding:8px;margin:0 0 6px 0;display:none">🗓 annual review</button>
           <div id="sidebarStats"></div>
           <div id="heatmapWrap" style="margin-top:6px"></div>
         </details>
@@ -2780,6 +2781,13 @@ padding: 6px 10px; font-size: 1.1rem;
           <button type="button" class="session-tag-chip" data-tag="emotional">processing emotion</button>
           <button type="button" class="session-tag-chip" data-tag="curious">just exploring</button>
         </div>
+        <!-- Custom tag entry — appended dynamically to #customTagChips above
+             the input. Stored at CUSTOM_TAGS_KEY, surfaced across sessions. -->
+        <div id="customTagChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <input type="text" id="customTagInput" placeholder="add your own tag (e.g. 'after meeting')" maxlength="30" style="flex:1;font-size:0.74rem;padding:5px 8px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text)">
+          <button type="button" class="btn secondary" id="customTagAddBtn" style="font-size:0.7rem;padding:5px 10px;min-height:0">+ add</button>
+        </div>
         <div class="sublabel" style="font-size:0.66rem;margin-top:4px">Helps the Director learn what you reach for this app for. Stays on your device.</div>
       </div>
 
@@ -2944,7 +2952,8 @@ I return to myself easily"></textarea>
             <option value="drone" selected>Engine drone — low hum, road-noise feel</option>
             <option value="bowls">Singing bowls — periodic resonant strikes</option>
             <option value="heartbeat">Heartbeat — steady lub-dub rhythm</option>
-            <option value="binaural">Binaural beats (θ 6Hz) — requires headphones</option>
+            <option value="binaural">Binaural beats (phase-locked α/θ/δ) — needs headphones</option>
+            <option value="isochronic">Isochronic tones (phase-locked α/θ/δ) — works on any speaker</option>
             <option value="chimes">Wind chimes — random soft tones</option>
           </optgroup>
           <optgroup label="Noise">
@@ -3034,6 +3043,9 @@ I return to myself easily"></textarea>
           <optgroup label="Minimal">
             <option value="pulse">CSS pulse rings (lightest)</option>
             <option value="none">None — black screen only</option>
+          </optgroup>
+          <optgroup label="Experimental">
+            <option value="gamma-flicker">40Hz gamma flicker (alpha-grade) — soft luminance pulse</option>
           </optgroup>
           <optgroup label="Flagship">
             <option value="neural-bloom">Neural Bloom ✨ — WebGL, audio-reactive</option>
@@ -3304,6 +3316,11 @@ I return to myself easily"></textarea>
       <div class="script-preview" id="scriptPreview">
         <h3>session script</h3>
         <div class="script-stats" id="scriptStats"></div>
+        <!-- Director-shows-its-work card. Populated by renderDirectorWorkCard()
+             whenever the script preview becomes visible. Hidden when there's
+             nothing to show (cold start, SD off, no recommendations) so it
+             doesn't add visual noise for new users. -->
+        <div id="directorWorkCard" style="display:none;margin:10px 0;padding:10px 12px;background:var(--bg-deep);border-left:2px solid var(--neon-cyan);font-size:0.74rem;line-height:1.55"></div>
         <textarea class="script-text" id="scriptText" spellcheck="false"></textarea>
         <div class="script-actions">
           <button class="btn secondary" id="regenScriptBtn">regenerate</button>
@@ -3977,6 +3994,19 @@ I return to myself easily"></textarea>
           <span>balanced</span>
           <span>lean forward</span>
         </div>
+        <!-- Pace axis — slower ↔ faster speech rate. Layered onto
+             state._phaseRateMult during sessions, so this adjusts the
+             ambient pacing without changing trigger thresholds. -->
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:10px;margin-bottom:4px">
+          <span class="panel-section-title" style="font-size:0.74rem;text-transform:none;letter-spacing:0">Pace</span>
+          <span id="directorPaceLabel" class="ai-slider-val" style="font-size:0.66rem">average</span>
+        </div>
+        <input type="range" id="directorPaceSlider" min="-3" max="3" step="1" value="0" style="width:100%">
+        <div style="display:flex;justify-content:space-between;font-size:0.58rem;color:var(--text-faint);margin-top:2px;letter-spacing:0.04em;text-transform:uppercase">
+          <span>slower</span>
+          <span>average</span>
+          <span>faster</span>
+        </div>
         <div class="hint" style="font-size:0.66rem;margin-top:6px;line-height:1.4">
           If sessions feel too intense or the Director pushes too hard → shift cautious.
           If the Director holds back too much or sessions feel muted → shift forward.
@@ -3985,6 +4015,14 @@ I return to myself easily"></textarea>
         <!-- Concrete impact preview — updates live with the slider. Helps the
              user see what a notch actually changes, not just "lean cautious". -->
         <div id="directorBiasImpact" style="font-size:0.62rem;line-height:1.45;margin-top:6px;padding:6px 8px;background:var(--bg-deep);color:var(--text-dim);border-left:2px solid var(--glass-border)"></div>
+        <!-- Per-domain offsets. Layered on top of the global bias. Compact
+             so it doesn't dominate the section but accessible for users
+             who want different cautiousness for sleep vs skill-building. -->
+        <details style="margin-top:8px">
+          <summary style="font-size:0.66rem;color:var(--text-faint);cursor:pointer;letter-spacing:0.04em;text-transform:uppercase">per-intention offsets <span style="text-transform:none;font-size:0.62rem">(advanced)</span></summary>
+          <div id="directorDomainOffsets" style="margin-top:8px;display:flex;flex-direction:column;gap:5px"></div>
+          <div style="font-size:0.6rem;color:var(--text-faint);margin-top:4px;line-height:1.45">Each offset adds to the global bias for that intention type only. Range −3 to +3, capped after combining.</div>
+        </details>
       </div>
       <label class="toggle-row" for="runtimeRulesEnabled" style="align-items:flex-start;margin-top:12px">
         <input type="checkbox" id="runtimeRulesEnabled">
@@ -4995,6 +5033,14 @@ I return to myself easily"></textarea>
     remoteProcessingOptIn: false,
     smartDirectorEnabled: true,
     directorBias: 0, // -3..+3. Negative = lean cautious, positive = lean forward.
+    // Pace axis — -3..+3, scales speech rate via _phaseRateMult during sessions.
+    // Independent from intensity bias so users can tune timing without
+    // changing how thresholds compute. -3 ≈ 12% slower, +3 ≈ 12% faster.
+    directorPace: 0,
+    // Per-domain bias offsets — { [intentionType]: -3..+3 }. Layered on top
+    // of the global directorBias. Lets users tune e.g. cautious for sleep
+    // and forward for skill-building without rebalancing the global slider.
+    directorBiasByDomain: {},
     runtimeRulesEnabled: false, // opt-in; when true, tickRulesEngine fires default rules during playback
     activeSessionMode: 'standard', // session mode preset id — see SESSION_MODES below
     playbackDynamics: { ...{ enabled: false, mode: 'engagement', startScale: 0.90, endScale: 1.10, curve: 'sine', engagementMin: 0.85, engagementMax: 1.15, smoothingSec: 8 } }, // adaptive speech-rate modulation
@@ -6410,8 +6456,15 @@ I return to myself easily"></textarea>
     const c = getSafetyConfig();
     const r = Number(requested);
     if (!Number.isFinite(r)) return 1.0;
-    const clamped = Math.max(c.minSpeechRate, Math.min(c.maxSpeechRate, r));
-    if (Math.abs(clamped - r) > 0.001) {
+    // Audio safeties relaxed → wider rate band (0.4× to 2.0×) and silent
+    // clamp. Engaged users picked their pace; we don't second-guess via
+    // notify popups. Hard absolute floor/ceiling stays so a runaway rule
+    // can't blow speakers or render speech inaudible.
+    const relaxed = (typeof _audioVizSafetiesRelaxed === 'function') && _audioVizSafetiesRelaxed();
+    const lo = relaxed ? 0.4 : c.minSpeechRate;
+    const hi = relaxed ? 2.0 : c.maxSpeechRate;
+    const clamped = Math.max(lo, Math.min(hi, r));
+    if (!relaxed && Math.abs(clamped - r) > 0.001) {
       notify.warn(`Safety: speech rate clamped from ${r.toFixed(2)}× to ${clamped.toFixed(2)}×`);
     }
     return clamped;
@@ -6422,8 +6475,12 @@ I return to myself easily"></textarea>
     const c = getSafetyConfig();
     const v = Number(requested);
     if (!Number.isFinite(v)) return 0;
-    const clamped = Math.max(0, Math.min(c.maxSoundscapeVolume, v));
-    if (Math.abs(clamped - v) > 0.001) {
+    // Same relax pattern as speech rate — engaged users get the full
+    // 0..1 range and silent clamping.
+    const relaxed = (typeof _audioVizSafetiesRelaxed === 'function') && _audioVizSafetiesRelaxed();
+    const hi = relaxed ? 1.0 : c.maxSoundscapeVolume;
+    const clamped = Math.max(0, Math.min(hi, v));
+    if (!relaxed && Math.abs(clamped - v) > 0.001) {
       notify.warn(`Safety: soundscape volume clamped from ${Math.round(v*100)}% to ${Math.round(clamped*100)}%`);
     }
     return clamped;
@@ -6776,9 +6833,14 @@ I return to myself easily"></textarea>
     const baseRate = state._baseSpeechRate ?? state.speechRate ?? 1.0;
     // Phase-aware multiplier — set by the session phase loop. Layers on top
     // of the audio-reactive smoothedScale, so the effective rate is
-    // userBase × phaseMult × audioReactiveScale, gated by the safety layer.
+    // userBase × phaseMult × paceBiasMult × audioReactiveScale, gated by the safety layer.
     const phaseMult = state._phaseRateMult ?? 1.0;
-    const rawNew = baseRate * phaseMult * _playbackDynamicsState.smoothedScale;
+    // Pace bias — user-adjustable -3..+3 multiplied into the rate stack.
+    // Each notch ≈ 4% rate change, multiplicative; ±3 notches ≈ ±12%.
+    // The safety layer still hard-caps the final value.
+    const paceBias = Math.max(-3, Math.min(3, Math.round(Number(state.directorPace) || 0)));
+    const paceMult = 1 + paceBias * 0.04;
+    const rawNew = baseRate * phaseMult * paceMult * _playbackDynamicsState.smoothedScale;
     state.speechRate = gateSpeechRate(rawNew); // safety layer enforces hard caps
   }
 
@@ -7052,6 +7114,10 @@ I return to myself easily"></textarea>
       const _onPrmChange = (ev) => {
         state.caps.reducedMotion = ev.matches;
         if (!ev.matches) return; // user disabled reduced-motion; don't auto-undo
+        // Engaged users (profile age set) keep their settings intact —
+        // we record the preference but don't override their viz / audio
+        // choices mid-session. Anonymous users still get the safety swap.
+        if (typeof _audioVizSafetiesRelaxed === 'function' && _audioVizSafetiesRelaxed()) return;
         const INTENSE_VIZ = new Set(['flowfield','plasma','kaleidoscope-flow','kaleidoscope-plasma','starfield','tunnel','vortex']);
         // Halve dynamics live
         if (state.vizSettings) {
@@ -7734,6 +7800,8 @@ I return to myself easily"></textarea>
       remoteProcessingOptIn: !!$('remoteProcessingOptIn')?.checked,
       smartDirectorEnabled: !!$('smartDirectorEnabled')?.checked,
       directorBias: Number($('directorBiasSlider')?.value ?? state.directorBias ?? 0),
+      directorPace: Number($('directorPaceSlider')?.value ?? state.directorPace ?? 0),
+      directorBiasByDomain: { ...(state.directorBiasByDomain || {}) },
       runtimeRulesEnabled: !!$('runtimeRulesEnabled')?.checked,
       // Session mode preset id — bundles rules+triggers+safety overrides
       activeSessionMode: state.activeSessionMode || 'standard',
@@ -7781,6 +7849,21 @@ I return to myself easily"></textarea>
     if (s.directorBias == null) s.directorBias = 0;
     // Clamp to -3..+3 (slider range). Tolerates legacy/bad values without breaking the app.
     s.directorBias = Math.max(-3, Math.min(3, Math.round(Number(s.directorBias) || 0)));
+    // Pace axis — same -3..+3 clamp.
+    if (s.directorPace == null) s.directorPace = 0;
+    s.directorPace = Math.max(-3, Math.min(3, Math.round(Number(s.directorPace) || 0)));
+    // Per-domain offsets — older saved settings don't have this field.
+    // Coerce values to clamped integers, drop zeros to keep storage clean.
+    if (!s.directorBiasByDomain || typeof s.directorBiasByDomain !== 'object') {
+      s.directorBiasByDomain = {};
+    } else {
+      const cleaned = {};
+      for (const [k, v] of Object.entries(s.directorBiasByDomain)) {
+        const n = Math.max(-3, Math.min(3, Math.round(Number(v) || 0)));
+        if (n !== 0) cleaned[k] = n;
+      }
+      s.directorBiasByDomain = cleaned;
+    }
     if (s.settingsVersion == null) s.settingsVersion = 1;
     return s;
   }
@@ -8037,7 +8120,13 @@ I return to myself easily"></textarea>
       const sdcb = $('smartDirectorEnabled'); if (sdcb) sdcb.checked = state.smartDirectorEnabled;
       state.directorBias = s.directorBias ?? 0;
       const dbSlider = $('directorBiasSlider'); if (dbSlider) dbSlider.value = state.directorBias;
+      // Pace axis
+      state.directorPace = s.directorPace ?? 0;
+      const dpSlider = $('directorPaceSlider'); if (dpSlider) dpSlider.value = state.directorPace;
       _updateDirectorBiasUI(); // update label + enabled state
+      // Per-domain offsets
+      state.directorBiasByDomain = (s.directorBiasByDomain && typeof s.directorBiasByDomain === 'object') ? { ...s.directorBiasByDomain } : {};
+      if (typeof renderDirectorDomainOffsets === 'function') renderDirectorDomainOffsets();
       state.runtimeRulesEnabled = !!s.runtimeRulesEnabled;
       const rrcb = $('runtimeRulesEnabled'); if (rrcb) rrcb.checked = state.runtimeRulesEnabled;
       // Safety config — merge defaults with persisted overrides. Sanitizes via
@@ -8480,6 +8569,27 @@ I return to myself easily"></textarea>
       shareAppearance: $('pfShareAppearance') ? !!$('pfShareAppearance').checked : true,
       shareGoals:      $('pfShareGoals')      ? !!$('pfShareGoals').checked      : true,
     };
+  }
+
+  /** Audio/viz safety relaxation gate. Returns true when the user has
+   *  set their profile age — a low-friction signal that they're an
+   *  engaged adult who's made their own decisions about the app. When
+   *  this is true the various audio/viz auto-degrades and confirmation
+   *  modals are skipped: intense visualizers stay where the user puts
+   *  them, gamma-flicker doesn't gate behind a popup, prefers-reduced-
+   *  motion is honored as a setting but not as a forced override, and
+   *  warning labels soften.
+   *
+   *  When age is unset, all the original safeties stay in effect — that
+   *  catches casual / drive-by users who haven't given the app any
+   *  signal of who they are. Falls open (returns false / safeties on)
+   *  if the form element isn't yet rendered. */
+  function _audioVizSafetiesRelaxed() {
+    try {
+      const ageEl = $('pfAge');
+      if (!ageEl) return false; // pre-render; safeties default on
+      return !!ageEl.value;
+    } catch { return false; }
   }
 
   function applyProfileToForm(profile, opts = {}) {
@@ -9013,8 +9123,15 @@ I return to myself easily"></textarea>
     const snap = living.snapshot;
     // User-adjustable bias, -3..+3. Negative = lean cautious (easier triggers,
     // stricter caps); positive = lean forward (harder triggers, looser caps).
+    // Per-domain offsets allow per-intentionType tuning (e.g. cautious for
+    // sleep, forward for skill-building) layered on top of the global bias.
     // Clamped defensively in case the setting is stale or out of range.
-    const bias = Math.max(-3, Math.min(3, Math.round(Number(state.directorBias) || 0)));
+    const globalBias = Math.max(-3, Math.min(3, Math.round(Number(state.directorBias) || 0)));
+    const domain = (session.intention && state.intentionType) || state.intentionType || null;
+    const domainOffset = domain && state.directorBiasByDomain
+      ? Math.round(Number(state.directorBiasByDomain[domain]) || 0)
+      : 0;
+    const bias = Math.max(-3, Math.min(3, globalBias + domainOffset));
     const brief = {
       generatedAt: Date.now(),
       bias,
@@ -9154,6 +9271,21 @@ I return to myself easily"></textarea>
     if (toneNote) parts.push(toneNote);
 
     if (parts.length === 0) return '';
+    // Tier-aware shape. Anthropic/OpenAI handle longer structured briefs
+    // well — surface reasoning + warnings as labeled sections so the model
+    // can reference specific rationale. Perchance keeps the compact form
+    // to protect the prefix cache.
+    const tier = (typeof getAITier === 'function') ? getAITier() : 'perchance';
+    if (tier === 'anthropic' || tier === 'openai') {
+      const sections = ['DIRECTOR BRIEF: ' + parts.join(' ')];
+      if (brief.reasoning?.length) {
+        sections.push('Rationale: ' + brief.reasoning.slice(0, 4).join(' / '));
+      }
+      if (brief.warnings?.length) {
+        sections.push('Warnings: ' + brief.warnings.slice(0, 3).join(' / '));
+      }
+      return '\n' + sections.join('\n');
+    }
     return '\nDIRECTOR BRIEF: ' + parts.join(' ');
   }
 
@@ -9587,12 +9719,43 @@ I return to myself easily"></textarea>
 
   // ── Phase 5 & 8: Recommendation engine ──
   function getRecommendation(adaptive, analytics) {
-    const topW = (map) => Object.entries(map).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    // Compute top weight + confidence (separation from second choice).
+    // Low-confidence picks (close to 2nd) are suppressed so adaptive
+    // doesn't over-commit on early data. Also requires a minimum sample
+    // size on the underlying counter so single-session preferences don't
+    // dominate. analytics.* maps tally usage; adaptive.w.* are weighted
+    // reward sums.
+    const topW = (weightMap, countMap, minSamples = 3, minSeparation = 0.15) => {
+      const entries = Object.entries(weightMap || {}).sort((a, b) => b[1] - a[1]);
+      if (!entries.length) return { id: null, confidence: 0 };
+      const [top, second] = entries;
+      const topCount = (countMap || {})[top[0]] || 0;
+      if (topCount < minSamples) return { id: null, confidence: 0 };
+      const separation = second ? (top[1] - second[1]) : top[1];
+      // Confidence: how much the top wins by, normalized. Caps at 1.0.
+      const denom = Math.max(Math.abs(top[1]) + Math.abs(second?.[1] ?? 0), 0.01);
+      const confidence = Math.max(0, Math.min(1, separation / denom));
+      if (confidence < minSeparation) return { id: null, confidence };
+      return { id: top[0], confidence };
+    };
+    const aP = analytics?.p || {}, aM = analytics?.m || {}, aS = analytics?.s || {}, aL = analytics?.ln || {};
+    const personaPick    = topW(adaptive.w.p,  aP);
+    const methodPick     = topW(adaptive.w.m,  aM);
+    const soundscapePick = topW(adaptive.w.s,  aS, 3, 0.10); // sound is lower-stakes; ease threshold
+    const lengthPick     = topW(adaptive.w.ln, aL);
     const rec = {
-      persona: topW(adaptive.w.p),
-      method: topW(adaptive.w.m),
-      soundscape: topW(adaptive.w.s),
-      length: topW(adaptive.w.ln),
+      persona:    personaPick.id,
+      method:     methodPick.id,
+      soundscape: soundscapePick.id,
+      length:     lengthPick.id,
+      // Per-field confidence, exposed for UI labelling. Power users / the
+      // adaptive panel can show "highly confident" / "tentative" / etc.
+      _confidence: {
+        persona:    personaPick.confidence,
+        method:     methodPick.confidence,
+        soundscape: soundscapePick.confidence,
+        length:     lengthPick.confidence,
+      },
     };
     // Difficulty-based length override
     if (adaptive.recoveryMode) rec.length = 'short';
@@ -10185,6 +10348,7 @@ Practitioner profile (full, natural sentences):`;
     // Reset session tags too — they're per-session by design.
     if (state._sessionTags) state._sessionTags.clear(); else state._sessionTags = new Set();
     document.querySelectorAll('#sessionTagChips .session-tag-chip.selected').forEach(c => c.classList.remove('selected'));
+    document.querySelectorAll('#customTagChips .session-tag-chip.selected').forEach(c => c.classList.remove('selected'));
     // Reset readiness display
     if (typeof _updateReadinessScore === 'function') _updateReadinessScore();
     if (!preserveSelections) {
@@ -10211,6 +10375,10 @@ Practitioner profile (full, natural sentences):`;
       // which was always false after any session.)
       if (!adaptive || !analytics || (analytics.comp?.total || 0) < 3) return;
       const rec = getRecommendation(adaptive, analytics);
+      // Stash for UI surfaces (Director-shows-its-work card, etc.). Includes
+      // per-field confidence so UI can label recommendations as
+      // tentative/confident.
+      state._lastAdaptiveRec = rec;
       if (rec.persona && state.personas.find(p => p.id === rec.persona)) state.selectedPersonaId = rec.persona;
       if (rec.method && METHODS.find(m => m.id === rec.method)) state.selectedMethodId = rec.method;
       if (rec.length) { state.length = rec.length; const el = $('lengthSelect'); if (el) el.value = rec.length; }
@@ -11498,12 +11666,38 @@ ${messages}
         };
         beat();
       } else if (type === 'binaural') {
-        const carrier = 200, beatHz = 6; // Theta range
+        // Phase-locked binaural beats. Carrier 200Hz is comfortable below
+        // most ambient noise floors. Beat frequency starts at theta (6Hz)
+        // but setPhaseFreq() now ramps it per-phase: alpha for settling/
+        // wake, theta for induction/work, slower theta-delta for deepener.
+        // Refs stashed on `this` so setPhaseFreq can find them.
+        const carrier = 200, beatHz = 6;
         const oL = mkOsc(carrier - beatHz / 2); const oR = mkOsc(carrier + beatHz / 2);
         const gL = mkGain(0.3); const gR = mkGain(0.3);
         const merger = c.createChannelMerger(2); ns.push(merger);
         oL.connect(gL).connect(merger, 0, 0); oR.connect(gR).connect(merger, 0, 1);
         merger.connect(m);
+        this._binauralRefs = { oL, oR, gL, gR, carrier };
+      } else if (type === 'isochronic') {
+        // Isochronic tones — single carrier with amplitude modulation at
+        // the entrainment frequency. Works on any speaker (no stereo
+        // separation needed), unlike binaural. Same per-phase frequency
+        // map. The LFO is shaped through a bandpass to soften the AM
+        // envelope away from harsh on/off clicking.
+        const carrier = 220;
+        const beatHz = 6; // initial; setPhaseFreq ramps from here
+        const carrierOsc = mkOsc(carrier);
+        const carrierGain = mkGain(0); // baseline silenced; LFO drives it
+        carrierOsc.connect(carrierGain).connect(m);
+        // LFO: a sine that the carrier gain follows, biased to 0..0.4 swing.
+        const lfo = mkOsc(beatHz);
+        const lfoDepth = mkGain(0.2);     // half-amplitude of swing
+        const lfoBias  = c.createConstantSource(); ns.push(lfoBias);
+        lfoBias.offset.value = 0.2;        // baseline so swing is 0..0.4
+        lfoBias.start();
+        lfo.connect(lfoDepth).connect(carrierGain.gain);
+        lfoBias.connect(carrierGain.gain);
+        this._isochronicRefs = { lfo, carrierOsc, carrierGain };
       } else if (type === 'pink' || type === 'brown' || type === 'white') {
         const noise = mkNoise(type === 'pink' ? 'lowpass' : type, type === 'pink' ? 800 : undefined);
         const ng = mkGain(type === 'white' ? 0.15 : 0.35); connect(noise, ng, m);
@@ -11858,11 +12052,53 @@ ${messages}
     }
 
     setPhaseFreq(phase) {
-      if (this.type !== 'drone' || !this.ctx) return;
-      const freqMap = { settling: 70, induction: 67, deepener: 63, work: 60, lightener: 66, wake: 72, reintroduction: 74, emergence: 72 };
-      const target = freqMap[phase] || 70;
-      if (this.nodes[0]?.frequency) this.nodes[0].frequency.linearRampToValueAtTime(target, this.ctx.currentTime + 4);
-      if (this.nodes[2]?.frequency) this.nodes[2].frequency.linearRampToValueAtTime(target * 2.01, this.ctx.currentTime + 4);
+      const baseKey = String(phase || '').replace(/-\d+$/, '');
+      // Drone carrier ramp — original behavior, only on type 'drone'.
+      if (this.type === 'drone' && this.ctx) {
+        const freqMap = { settling: 70, induction: 67, deepener: 63, level: 62, work: 60, affirm: 64, lightener: 66, wake: 72, reintroduction: 74, emergence: 72 };
+        const target = freqMap[baseKey] || 70;
+        if (this.nodes[0]?.frequency) this.nodes[0].frequency.linearRampToValueAtTime(target, this.ctx.currentTime + 4);
+        if (this.nodes[2]?.frequency) this.nodes[2].frequency.linearRampToValueAtTime(target * 2.01, this.ctx.currentTime + 4);
+      }
+      // Phase-locked binaural beat — ramps L/R oscillators around the
+      // carrier so the difference frequency tracks the user's intended
+      // brain-wave state. Long ramp (6s) is below auditory threshold for
+      // pitch change so the user perceives a smooth deepening, not a
+      // jump. Stays in healthy frequency bands per literature: alpha
+      // 8-12Hz for awake/relaxed; theta 4-7Hz for hypnotic/meditative;
+      // theta-delta 3.5Hz for deepest trance (kept above pure delta to
+      // avoid putting the user fully asleep mid-session).
+      const beatMap = {
+        settling:       8,    // alpha — calm awareness
+        induction:      6,    // theta — light trance entry
+        deepener:       3.5,  // theta-delta — deeper
+        level:          4,    // theta hold
+        work:           5,    // theta — receptive
+        affirm:         5,    // theta
+        lightener:      7,    // theta — emerging
+        wake:          12,    // alpha — re-alertness
+        reintroduction: 14,   // beta — fully alert
+        emergence:     12,
+      };
+      if (this.type === 'binaural' && this.ctx && this._binauralRefs) {
+        const beatHz = beatMap[baseKey] ?? 6;
+        const { oL, oR, carrier } = this._binauralRefs;
+        if (oL?.frequency && oR?.frequency) {
+          const t = this.ctx.currentTime + 6;
+          oL.frequency.linearRampToValueAtTime(carrier - beatHz / 2, t);
+          oR.frequency.linearRampToValueAtTime(carrier + beatHz / 2, t);
+        }
+      }
+      // Isochronic tones — same beat map applied to the AM LFO. The
+      // amplitude-modulating sine ramps from its old rate to the new
+      // phase rate over 6s, audibly cross-fading the entrainment band.
+      if (this.type === 'isochronic' && this.ctx && this._isochronicRefs) {
+        const beatHz = beatMap[baseKey] ?? 6;
+        const { lfo } = this._isochronicRefs;
+        if (lfo?.frequency) {
+          lfo.frequency.linearRampToValueAtTime(beatHz, this.ctx.currentTime + 6);
+        }
+      }
     }
 
     async stop() {
@@ -11874,6 +12110,8 @@ ${messages}
       state.audioReactive._fftBuffer = null;
       try { this.ctx.suspend(); } catch(e) {}
       this.ctx = null; this.master = null; this._duckGain = null; this.compressor = null; this.nodes = []; this.running = false;
+      this._binauralRefs = null; // drop binaural osc refs so fresh sessions get fresh nodes
+      this._isochronicRefs = null; // same for isochronic LFO refs
       // Drop any pending duck requests — fresh start next session, otherwise
       // a rule that ducked but didn't unduck before backToEdit would leak
       // its 'rules' entry into the next session's first _recomputeDuckLevel.
@@ -13686,6 +13924,65 @@ ${messages}
     ctx.fillStyle = 'rgba(255,255,240,0.9)'; ctx.fill();
   }
 
+  /** 40Hz gamma flicker — alpha-grade entrainment visualizer.
+   *
+   *  Targets gamma-band brain stimulation (Iaccarino et al. 2016 and
+   *  follow-on work). Efficacy in human cognition is actively contested;
+   *  the implementation is conservative to minimize photosensitive
+   *  seizure risk while still presenting a 40Hz luminance signal:
+   *
+   *  - Modulates ONLY a centered radial pulse (~45% radius), never the
+   *    full screen. Avoids the broad-field high-contrast pattern that
+   *    drives most photosensitive responses.
+   *  - Alpha modulation 5-15% only. Peak luminance change well under
+   *    the 20% threshold flagged by W3C / ITU-R BT.1702 guidance.
+   *  - Cyan/blue palette default; reds skipped (highest seizure risk
+   *    color band per Harding & Jeavons 1994 work).
+   *  - Auto-falls-back to a slow 0.2Hz breath rhythm if the device
+   *    reports prefers-reduced-motion. Anyone who's set that flag
+   *    explicitly opted out of fast modulation.
+   *  - Background stays solid dark — no rolling textures or competing
+   *    rhythms that could combine to form unsafe patterns. */
+  function renderGammaFlicker(ctx, W, H, t, color) {
+    const rgb = hexToRgb(color);
+    // Solid base — re-paint each frame to fully clear, no trail.
+    ctx.fillStyle = 'rgb(8,12,18)'; ctx.fillRect(0, 0, W, H);
+    // Frequency selection. With audio/viz safeties relaxed (profile age
+    // set), the user has explicitly chosen this visualizer — we honor it
+    // at the full 40Hz regardless of OS prefers-reduced-motion. With
+    // safeties on (anonymous user), prefers-reduced-motion downgrades
+    // to a 0.2Hz breath pace. Either way the sine output is normalized 0..1.
+    const reducedMotion = state.caps?.reducedMotion === true;
+    const honourReducedMotion = reducedMotion && !_audioVizSafetiesRelaxed();
+    const freqHz = honourReducedMotion ? 0.2 : 40;
+    // sine(2π · f · t), normalized 0..1
+    const phase = (Math.sin(2 * Math.PI * freqHz * t) + 1) / 2;
+    // Alpha range: 5%..15% (peak swing 10%). Stays well under
+    // photosensitive-flash thresholds even at 40Hz.
+    const baseAlpha = 0.05 + phase * 0.10;
+    // Voice envelope — adds a small (max +5%) bump on top of the
+    // constant 40Hz signal. Keeps the entrainment pattern intact while
+    // giving the visualizer a session-coupled feel. Skipped under
+    // honoured reduced-motion since the user opted out of dynamic motion.
+    const voiceBoost = (!honourReducedMotion && state.audioReactive)
+      ? Math.min(0.05, (state.audioReactive.voiceEnvelope || 0) * 0.08)
+      : 0;
+    const alpha = baseAlpha + voiceBoost;
+    // Centered radial pulse — soft edges, narrow coverage.
+    const cx = W/2, cy = H/2;
+    const radius = Math.min(W, H) * 0.45;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    grad.addColorStop(0,    `rgba(${rgb},${alpha.toFixed(3)})`);
+    grad.addColorStop(0.6,  `rgba(${rgb},${(alpha * 0.4).toFixed(3)})`);
+    grad.addColorStop(1,    'transparent');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    // Subtle fixation dot at center — gives the eye a still anchor so
+    // accommodation doesn't try to follow the pulse, which can amplify
+    // discomfort.
+    ctx.fillStyle = `rgba(${rgb},0.45)`;
+    ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fill();
+  }
+
   // Flow-field particles — simplex noise driven, additive glow
   // Uses a simplified 2D noise (value noise with smoothstep) since we can't import simplex
   function renderFlowField(ctx, W, H, t, color) {
@@ -14059,6 +14356,7 @@ ${messages}
     fireflies: renderFireflies,
     ripples: renderRipples,
     ink: renderInk,
+    'gamma-flicker': renderGammaFlicker,
   };
 
   // Phase-based speed multipliers for visuals
@@ -17135,6 +17433,68 @@ Start immediately:`;
     $('scriptStats').innerHTML = `<strong>${metrics.words}</strong> words · <strong>${metrics.pauses}</strong> pauses (${metrics.pauseSecs}s) · <strong>${metrics.phaseCount}</strong> phases · <strong>${metrics.workBlocks}</strong> work block${metrics.workBlocks === 1 ? '' : 's'} · estimated: <strong>${metrics.estimatedMin} min</strong><br>Phase header lines are internal structure markers. Spoken content is preserved below them.`;
     $('scriptPreview').classList.add('visible');
     renderPhaseEditor();
+    renderDirectorWorkCard();
+  }
+
+  /** Render the "why this session was shaped this way" card on the script
+   *  preview. Surfaces Director state so users see what's been computed
+   *  rather than feeling steered by an opaque system. Gracefully empty
+   *  when SD is off, cold-start, or no recommendations are available. */
+  function renderDirectorWorkCard() {
+    const card = $('directorWorkCard');
+    if (!card) return;
+    const sdOn = state.smartDirectorEnabled !== false;
+    if (!sdOn) {
+      card.style.display = 'none';
+      card.innerHTML = '';
+      return;
+    }
+    const lines = [];
+    const rec = state._lastAdaptiveRec;
+    const brief = state._lastDirectorBrief;
+    const tagsCount = state._sessionTags?.size || 0;
+    // Skip the card entirely on first session (no signal, would just show "applying defaults")
+    if (!rec && !brief && tagsCount === 0) {
+      card.style.display = 'none';
+      card.innerHTML = '';
+      return;
+    }
+    const confLabel = (c) => {
+      if (c == null) return '';
+      if (c >= 0.6) return ' <span style="color:var(--accent-green);font-size:0.62rem">strong</span>';
+      if (c >= 0.3) return ' <span style="color:var(--text-faint);font-size:0.62rem">moderate</span>';
+      if (c >= 0.15) return ' <span style="color:var(--text-faint);font-size:0.62rem">tentative</span>';
+      return '';
+    };
+    if (rec) {
+      const persona = state.personas.find(p => p.id === rec.persona)?.name;
+      const method  = METHODS.find(m => m.id === rec.method)?.name;
+      const adaptive = [];
+      if (persona)         adaptive.push(`guide <strong>${escapeHtml(persona)}</strong>${confLabel(rec._confidence?.persona)}`);
+      if (method)          adaptive.push(`method <strong>${escapeHtml(method)}</strong>${confLabel(rec._confidence?.method)}`);
+      if (rec.length)      adaptive.push(`length <strong>${escapeHtml(rec.length)}</strong>${confLabel(rec._confidence?.length)}`);
+      if (rec.soundscape && rec.soundscape !== 'none') adaptive.push(`soundscape <strong>${escapeHtml(rec.soundscape)}</strong>${confLabel(rec._confidence?.soundscape)}`);
+      if (adaptive.length) lines.push('<div>Adaptive picks: ' + adaptive.join(' · ') + '</div>');
+    }
+    if (brief?.recoveryMode) {
+      lines.push('<div style="color:var(--neon-amber)">Recovery mode active — lighter session shape.</div>');
+    }
+    const bias = state.directorBias || 0;
+    if (bias !== 0) {
+      const dir = bias > 0 ? 'forward' : 'cautious';
+      lines.push(`<div>Calibration: ${bias > 0 ? '+' : ''}${bias} (${dir} tone)</div>`);
+    }
+    if (tagsCount > 0) {
+      const tagList = [...state._sessionTags].slice(0, 5).join(', ');
+      lines.push(`<div style="color:var(--text-faint)">Session tagged: ${escapeHtml(tagList)}</div>`);
+    }
+    if (!lines.length) {
+      card.style.display = 'none';
+      card.innerHTML = '';
+      return;
+    }
+    card.style.display = '';
+    card.innerHTML = `<div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint);margin-bottom:6px">why this session is shaped this way</div>${lines.join('')}`;
   }
   function hideScript() { state.fullScript = null; state.parsedScript = null; state.generatedPhaseOrder = []; state.scriptSections = []; $('scriptPreview').classList.remove('visible'); renderPhaseEditor(); updateStepUI(); history.clear(); }
 
@@ -17511,13 +17871,14 @@ Start immediately:`;
     if (h.length >= 5 && h.slice(0, 5).every(r => r.methodId === h[0].methodId)) {
       out.push({ rank: 4, msg: `Last 5 sessions all used the same method — try something different to broaden your response patterns.` });
     }
-    // 5) Welcome-back. Fires only if there's been a meaningful gap.
+    // 5) Long-gap re-orientation. ONLY fires for 60+ day gaps where a
+    // gentle re-entry has actual practical value. Shorter gaps don't get
+    // a callout — returning users land in the interface without
+    // performative "welcome back" framing.
     if (h[0]) {
       const daysSince = Math.floor((Date.now() - h[0].date) / 86400000);
-      if (daysSince >= 14 && daysSince < 60) {
-        out.push({ rank: 3, msg: `Welcome back — it's been ${daysSince} days. Your previous calibration is preserved.` });
-      } else if (daysSince >= 60) {
-        out.push({ rank: 5, msg: `It's been ${daysSince}+ days since your last session — start with a short, gentle one to re-orient.` });
+      if (daysSince >= 60) {
+        out.push({ rank: 5, msg: `It's been a while since your last session — a short, gentle one might re-orient your settings before going deeper.` });
       }
     }
     // 6) Strong improvement streak — positive feedback to keep momentum.
@@ -17576,7 +17937,18 @@ Start immediately:`;
       const calloutHtml = callouts.length
         ? `<div style="margin-bottom:8px;padding:6px 8px;background:var(--bg-deep);border-left:2px solid var(--neon-cyan);font-size:0.66rem;line-height:1.45;color:var(--text-dim)">${callouts.map(c => `<div style="margin:2px 0">${escapeHtml(c)}</div>`).join('')}</div>`
         : '';
-      let html = calloutHtml + `
+      // Weekly digest — passive surface, picked up from state when available.
+      // Rendered alongside callouts; users discover when they open the panel
+      // rather than being interrupted on boot.
+      const wd = state._weeklyDigest;
+      const digestHtml = wd
+        ? `<div style="margin-bottom:8px;padding:6px 8px;background:var(--bg-deep);border-left:2px solid var(--neon-amber);font-size:0.62rem;line-height:1.5;color:var(--text-dim)">
+            <div style="text-transform:uppercase;letter-spacing:0.08em;color:var(--text-faint);font-size:0.56rem;margin-bottom:3px">past 7 days</div>
+            <div>${wd.sessionCount} session${wd.sessionCount === 1 ? '' : 's'} · ${wd.completionPct}% completed${wd.avgMoodDelta != null ? ` · mood ${wd.avgMoodDelta >= 0 ? '+' : ''}${wd.avgMoodDelta.toFixed(1)}` : ''}</div>
+            ${wd.topPersona ? `<div style="color:var(--text-faint)">top guide: ${escapeHtml(wd.topPersona)}${wd.topMethod ? ` · top method: ${escapeHtml(wd.topMethod)}` : ''}</div>` : ''}
+          </div>`
+        : '';
+      let html = calloutHtml + digestHtml + `
         <div class="sidebar-stat-row"><span>Sessions</span><span class="sidebar-stat-val">${totalSessions}</span></div>
         <div class="sidebar-stat-row"><span>Minutes</span><span class="sidebar-stat-val">${totalMinutes}</span></div>
         <div class="sidebar-stat-row"><span>Streak</span><span class="sidebar-stat-val">${streak} days</span></div>
@@ -19392,6 +19764,27 @@ Start immediately:`;
     document.body.classList.remove('in-session'); document.body.classList.remove('controls-hidden'); clearTimeout(_controlsTimer);
     switchScreen('post-screen');
 
+    // Posthypnotic intrusion-test scheduler. 30 seconds after switching
+    // to the post-screen, prompt a fresh test of the trigger. Reaction-time
+    // signal — the strongest signal we get for actual trance depth on a
+    // demonstration session. Skipped on emergency exit (user needs
+    // grounding, not testing) and when there's no real trigger (ongoing-
+    // state suggestions don't have a discrete fire to test).
+    clearTimeout(state._intrusionTestTimer);
+    if (!wasEmergency
+        && state.craftedSuggestion?.trigger
+        && state.craftedSuggestion.trigger !== 'ongoing state') {
+      const triggerText = state.craftedSuggestion.trigger;
+      state._intrusionTestTimer = setTimeout(() => {
+        // Only fire if we're still on the post-screen — user might have
+        // navigated away (back to script, started another session) and
+        // we don't want to hijack their flow.
+        const stillOnPostScreen = document.getElementById('post-screen')?.classList.contains('active');
+        if (!stillOnPostScreen) return;
+        notify.info(`If you'd like to test "${triggerText}" — now's a natural moment. The trigger card has a "fired today" button if it works.`, 9000);
+      }, 30000);
+    }
+
     // Release wake lock
     try { state._wakeLock?.release(); } catch(e) {}
 
@@ -19532,12 +19925,22 @@ Start immediately:`;
         const fires = (await idbGet(TRIGGER_FIRES_KEY)) || {};
         fireCount = (fires[state.craftedSuggestion.trigger]?.firedDates?.length) || 0;
       } catch {}
+      // Passive recall probe — if a previous session's trigger was due
+      // for a check-in (set by the boot-time scan into state._pendingRecallProbe),
+      // fold a quiet line into the trigger card. No popup, no interruption;
+      // user reads if they reach the screen.
+      const recall = state._pendingRecallProbe;
+      const showRecall = recall && recall.trigger === state.craftedSuggestion.trigger;
+      const recallHtml = showRecall
+        ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--glass-border);font-size:0.74rem;color:var(--text-dim)"><span style="color:var(--text-faint);font-size:0.62rem;text-transform:uppercase;letter-spacing:0.06em">recall check</span> · From your session ${recall.daysAgo} day${recall.daysAgo === 1 ? '' : 's'} ago — has it fired since then? If yes, tap above.</div>`
+        : '';
+      if (showRecall) state._pendingRecallProbe = null; // one-shot
       triggerBox.innerHTML = `
         <div class="post-trigger-title">your trigger</div>
         <div class="post-trigger-text">${escapeHtml(state.craftedSuggestion.trigger)}</div>
         <div class="post-trigger-sub">→ ${escapeHtml(state.craftedSuggestion.coreResponse || '')}</div>
         <button class="btn secondary" id="triggerFiredBtn" style="margin-top:8px;font-size:0.74rem;padding:6px 12px" data-trigger="${escapeHtml(state.craftedSuggestion.trigger)}">${fireCount > 0 ? `✓ fired today (${fireCount} total)` : '✓ trigger fired today'}</button>
-        <div class="sublabel" style="font-size:0.62rem;margin-top:4px;color:var(--text-faint)">Tap when you notice the trigger working in real life — feedback shapes future sessions.</div>`;
+        <div class="sublabel" style="font-size:0.62rem;margin-top:4px;color:var(--text-faint)">Tap when you notice the trigger working in real life — feedback shapes future sessions.</div>${recallHtml}`;
     } else if (state.craftedSuggestion && state.craftedSuggestion.coreResponse) {
       triggerBox.style.display = '';
       triggerBox.innerHTML = `
@@ -20038,6 +20441,86 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       }
     });
   });
+
+  // Custom tags — user-defined chip vocabulary. Lives in IDB so it
+  // persists across reloads. Normalized lowercase + spaces collapsed.
+  // Cap 20 tags to keep the UI compact.
+  const CUSTOM_TAGS_KEY = 'stillness_custom_tags_v1';
+  const CUSTOM_TAGS_CAP = 20;
+  function normalizeTag(s) {
+    return String(s || '').toLowerCase().trim().replace(/\s+/g, ' ').slice(0, 30);
+  }
+  async function loadCustomTags() {
+    try { return (await idbGet(CUSTOM_TAGS_KEY)) || []; } catch { return []; }
+  }
+  async function saveCustomTags(arr) {
+    try { await idbSet(CUSTOM_TAGS_KEY, (arr || []).slice(0, CUSTOM_TAGS_CAP)); } catch {}
+  }
+  async function renderCustomTagChips() {
+    const wrap = $('customTagChips');
+    if (!wrap) return;
+    const tags = await loadCustomTags();
+    if (!tags.length) { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = tags.map(t => {
+      const isSelected = state._sessionTags?.has(t);
+      const safe = escapeHtml(t);
+      return `<button type="button" class="session-tag-chip${isSelected ? ' selected' : ''}" data-tag="${safe}" data-custom="1" style="padding-right:6px;display:inline-flex;align-items:center;gap:4px">${safe}<span class="custom-tag-x" data-del="${safe}" title="Remove tag" style="opacity:0.5;cursor:pointer;font-size:0.78rem;line-height:1">×</span></button>`;
+    }).join('');
+  }
+  // Render once on init from saved tags.
+  renderCustomTagChips().catch(() => {});
+  // Click delegation on the custom chip wrapper — toggle on chip body,
+  // delete on the × icon.
+  $('customTagChips')?.addEventListener('click', async (e) => {
+    const delEl = e.target.closest('[data-del]');
+    if (delEl) {
+      e.stopPropagation();
+      const tag = delEl.dataset.del;
+      const tags = await loadCustomTags();
+      const next = tags.filter(t => t !== tag);
+      await saveCustomTags(next);
+      state._sessionTags?.delete(tag);
+      await renderCustomTagChips();
+      return;
+    }
+    const chipEl = e.target.closest('.session-tag-chip');
+    if (!chipEl) return;
+    const tag = chipEl.dataset.tag;
+    if (state._sessionTags.has(tag)) {
+      state._sessionTags.delete(tag);
+      chipEl.classList.remove('selected');
+    } else {
+      state._sessionTags.add(tag);
+      chipEl.classList.add('selected');
+    }
+  });
+  // Add button + Enter-key handler on the input.
+  async function _addCustomTag() {
+    const input = $('customTagInput');
+    if (!input) return;
+    const raw = normalizeTag(input.value);
+    if (!raw) return;
+    const tags = await loadCustomTags();
+    if (tags.includes(raw)) {
+      input.value = '';
+      notify.info('Tag already exists.');
+      return;
+    }
+    if (tags.length >= CUSTOM_TAGS_CAP) {
+      notify.warn(`You can keep up to ${CUSTOM_TAGS_CAP} custom tags. Remove one to add another.`);
+      return;
+    }
+    tags.push(raw);
+    await saveCustomTags(tags);
+    input.value = '';
+    state._sessionTags.add(raw); // auto-select the just-added tag
+    await renderCustomTagChips();
+  }
+  $('customTagAddBtn')?.addEventListener('click', _addCustomTag);
+  $('customTagInput')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); _addCustomTag(); }
+  });
+
   $('userAffirmations')?.addEventListener('input', () => { saveUserSettings(); updateStepUI(); markFeatureUsed(FEAT.AFFIRMATIONS); });
   $('affirmationMode')?.addEventListener('change', () => { state.affirmationMode = $('affirmationMode').value; saveUserSettings(); });
   $('craftBtn').addEventListener('click', craftSuggestion);
@@ -20090,12 +20573,30 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     state.droneEnabled = e.target.value !== 'none';
     state._soundscapeOverridden = true; // don't auto-override if user later changes method
     saveUserSettings();
-    const hint = $('soundscapeHint');
-    if (hint) {
-      if (e.target.value === 'binaural') hint.textContent = '⚠ Binaural beats require stereo headphones. Efficacy is contested in peer-reviewed literature.';
-      else hint.textContent = 'Procedurally generated — never loops. Use headphones for best experience.';
-    }
+    _refreshSoundscapeHint();
   });
+
+  /** Update the soundscape sublabel based on the current selection and
+   *  whether audio/viz safeties are relaxed. Standalone helper so the
+   *  age-field handler can call it without triggering save side-effects. */
+  function _refreshSoundscapeHint() {
+    const hint = $('soundscapeHint');
+    if (!hint) return;
+    const ss = $('soundscapeSelect');
+    const value = ss?.value || state.soundscape;
+    const relaxed = (typeof _audioVizSafetiesRelaxed === 'function') && _audioVizSafetiesRelaxed();
+    if (value === 'binaural') {
+      hint.textContent = relaxed
+        ? 'Binaural beats — best with stereo headphones. Phase-locked frequency map ramps per session phase.'
+        : '⚠ Binaural beats require stereo headphones. Efficacy is contested in peer-reviewed literature.';
+    } else if (value === 'isochronic') {
+      hint.textContent = relaxed
+        ? 'Isochronic tones — amplitude-modulated, works on any speaker. Phase-locked frequency map ramps per session phase.'
+        : 'Isochronic tones — amplitude-modulated entrainment that works on any speaker (no headphones needed). Efficacy is contested in peer-reviewed literature.';
+    } else {
+      hint.textContent = 'Procedurally generated — never loops. Use headphones for best experience.';
+    }
+  }
   $('droneVolume').addEventListener('input', e => {
     state.droneVolume = parseInt(e.target.value,10)/100; drone.setVolume(state.droneVolume);
     const v = $('droneVolVal'); if (v) v.textContent = e.target.value;
@@ -20123,8 +20624,30 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   });
 
   // Step 5 — visual controls
-  $('vizSelect')?.addEventListener('change', e => {
-    state.vizOverride = e.target.value;
+  $('vizSelect')?.addEventListener('change', async e => {
+    const newValue = e.target.value;
+    // One-time photosensitivity acknowledgement for the gamma-flicker
+    // option. Only gates when the user hasn't set a profile age — i.e.
+    // a casual / drive-by user. Engaged adults skip the modal. The
+    // conservative renderer (5-15% alpha, 45% radius, cyan palette,
+    // reduced-motion fallback) is the actual safety; the modal was
+    // belt-and-suspenders.
+    if (newValue === 'gamma-flicker' && !_audioVizSafetiesRelaxed()) {
+      const ackKey = 'stillness_gamma_flicker_ack_v1';
+      if (!localStorage.getItem(ackKey)) {
+        const ok = await confirmAsync(
+          '40Hz gamma flicker is experimental. The implementation is conservative — only a soft centered pulse, low-contrast cyan, well under standard photosensitive thresholds — but if you have epilepsy, photosensitivity, migraine triggered by flicker, or any history of seizures, do not enable this. The visualizer auto-falls-back to a slow breath rhythm if your OS reports prefers-reduced-motion.\n\nSet your profile age to skip this prompt in future. You understand and want to enable it?'
+        );
+        if (!ok) {
+          // Revert to previous value. state.vizOverride still holds the
+          // pre-change value at this point.
+          e.target.value = state.vizOverride || 'auto';
+          return;
+        }
+        try { localStorage.setItem(ackKey, '1'); } catch {}
+      }
+    }
+    state.vizOverride = newValue;
     saveUserSettings();
   });
 
@@ -20730,12 +21253,51 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     persistPostCheckin();
   });
 
-  // Journal save
+  // Journal save + tier-aware sentiment classification. The basic save runs
+  // on every blur. Sentiment is a paid-tier-only enhancement: when user is
+  // on Anthropic/OpenAI, a small classification call runs once per journal
+  // entry and feeds the adaptive system a richer post-session quality
+  // signal than just mood-delta. Perchance tier skips this — keeps quotas
+  // available for the actual script generation.
   $('journalText')?.addEventListener('blur', async () => {
     const text = $('journalText')?.value?.trim();
     if (!text) return;
     const history = (await idbGet('stillness_history_v1')) || [];
-    if (history.length > 0) { history[0].journal = text; await idbSet('stillness_history_v1', history); }
+    if (history.length === 0) return;
+    history[0].journal = text;
+    await idbSet('stillness_history_v1', history);
+    // Sentiment pass — gated on tier + entry length. Short entries
+    // ("good", "fine") don't reward the round-trip; long ones do.
+    const tier = (typeof getAITier === 'function') ? getAITier() : 'perchance';
+    if ((tier === 'anthropic' || tier === 'openai') && text.length >= 25) {
+      // Skip if this entry has already been classified.
+      if (history[0].journalSentiment && history[0].journalSentimentText === text) return;
+      try {
+        const data = await aiGenerate(
+          `Classify the emotional tone of this hypnosis-session journal entry. Respond with ONLY a single JSON object, no preamble: {"valence":-1.0..1.0,"intensity":0.0..1.0,"integration":"weak"|"moderate"|"strong"}. valence: negative→positive feeling. intensity: how strongly felt. integration: how well the user describes embodying the work in language.\n\nEntry: ${text}\n\nJSON:`,
+          { source: 'journal-sentiment', maxTokens: 80, stopSequences: ['\n\n'] }
+        );
+        if (!data || data.stopReason === 'error') return;
+        const raw = (data.generatedText || '').trim();
+        const s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+        if (s < 0 || e <= s) return;
+        const parsed = JSON.parse(raw.slice(s, e + 1));
+        const sentiment = {
+          valence:    Math.max(-1, Math.min(1, Number(parsed.valence) || 0)),
+          intensity:  Math.max(0, Math.min(1, Number(parsed.intensity) || 0)),
+          integration: ['weak', 'moderate', 'strong'].includes(parsed.integration) ? parsed.integration : 'moderate',
+          ts: Date.now(),
+        };
+        // Re-fetch history in case it changed since blur.
+        const fresh = (await idbGet('stillness_history_v1')) || [];
+        if (fresh.length && fresh[0].journal === text) {
+          fresh[0].journalSentiment = sentiment;
+          fresh[0].journalSentimentText = text;
+          await idbSet('stillness_history_v1', fresh);
+          sdLog('journal sentiment captured', sentiment);
+        }
+      } catch (err) { console.warn('[journal-sentiment] failed:', err); }
+    }
   });
 
   // Voice journaling — webkitSpeechRecognition (Chrome/Edge). Reveal the
@@ -20812,6 +21374,93 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('statsModal')?.addEventListener('click', e => { if (e.target.id === 'statsModal') closeStatsModal(); });
   document.querySelectorAll('.stats-tile').forEach(tile => {
     tile.addEventListener('click', () => toggleStatsTile(tile));
+  });
+
+  // Annual review — opt-in modal showing year-shape from history. Button
+  // only reveals when there's enough history to be worth reviewing
+  // (≥30 days since the oldest session). Pure aggregation over IDB,
+  // no AI calls, no notifies.
+  async function _showAnnualReviewBtnIfReady() {
+    try {
+      const btn = $('openAnnualReviewBtn');
+      if (!btn) return;
+      const history = (await idbGet('stillness_history_v1')) || [];
+      if (!history.length) { btn.style.display = 'none'; return; }
+      const oldest = history[history.length - 1];
+      const daysSpan = (Date.now() - oldest.date) / 86400000;
+      btn.style.display = (daysSpan >= 30 && history.length >= 5) ? '' : 'none';
+    } catch { /* leave hidden */ }
+  }
+  _showAnnualReviewBtnIfReady();
+  $('openAnnualReviewBtn')?.addEventListener('click', async () => {
+    try {
+      const history = (await idbGet('stillness_history_v1')) || [];
+      const analytics = await getAnalytics();
+      if (!history.length) {
+        alertModal('Annual review', 'No sessions on record yet. Come back after a few weeks of practice.');
+        return;
+      }
+      // Year window — the trailing 365 days from now.
+      const now = Date.now();
+      const yearAgo = now - 365 * 86400000;
+      const inWindow = history.filter(r => r.date >= yearAgo);
+      const days = Math.min(365, Math.ceil((now - history[history.length - 1].date) / 86400000));
+      const completed = inWindow.filter(r => r.completed).length;
+      const completionPct = inWindow.length ? Math.round(completed / inWindow.length * 100) : 0;
+      const minutes = Math.round(inWindow.reduce((s, r) => s + (r.durationSec || 0), 0) / 60);
+      // Top picks
+      const personaCount = {}, methodCount = {}, tagCount = {};
+      for (const r of inWindow) {
+        if (r.guide)  personaCount[r.guide]  = (personaCount[r.guide]  || 0) + 1;
+        if (r.method) methodCount[r.method]  = (methodCount[r.method]  || 0) + 1;
+        for (const t of (r.sessionTags || [])) tagCount[t] = (tagCount[t] || 0) + 1;
+      }
+      const topN = (map, n) => Object.entries(map).sort((a,b) => b[1]-a[1]).slice(0, n);
+      const topPersonas = topN(personaCount, 3);
+      const topMethods  = topN(methodCount, 3);
+      const topTags     = topN(tagCount, 5);
+      // Mood arc
+      const withMood = inWindow.filter(r => r.preMood != null && r.postMood != null);
+      const avgPre  = withMood.length ? (withMood.reduce((s,r) => s + r.preMood, 0)  / withMood.length) : null;
+      const avgPost = withMood.length ? (withMood.reduce((s,r) => s + r.postMood, 0) / withMood.length) : null;
+      const avgDelta = (avgPre != null && avgPost != null) ? (avgPost - avgPre) : null;
+      // Longest streak — walk history (already sorted newest-first)
+      // counting consecutive days. Two-day grace gap allowed for one
+      // missed day, matching the sidebar streak behavior.
+      let longest = 0, current = 0, lastDay = null;
+      const sortedByDate = [...inWindow].sort((a,b) => a.date - b.date);
+      for (const r of sortedByDate) {
+        const day = new Date(r.date); day.setHours(0,0,0,0);
+        const dayMs = day.getTime();
+        if (lastDay == null) { current = 1; }
+        else {
+          const gap = (dayMs - lastDay) / 86400000;
+          if (gap === 0) { /* same day, no change */ }
+          else if (gap === 1) { current++; }
+          else if (gap === 2) { current++; /* one-day grace */ }
+          else { current = 1; }
+        }
+        if (current > longest) longest = current;
+        lastDay = dayMs;
+      }
+      const fmt = (arr) => arr.map(([k,v]) => `${k} (${v})`).join(', ');
+      const lines = [
+        `Window: trailing ${days < 365 ? `${days} days` : 'year'}`,
+        `Sessions: ${inWindow.length} · ${minutes} minutes total`,
+        `Completion rate: ${completionPct}%`,
+        `Longest streak: ${longest} day${longest === 1 ? '' : 's'}`,
+        avgDelta != null
+          ? `Average mood arc: ${avgPre.toFixed(1)} → ${avgPost.toFixed(1)} (Δ ${avgDelta >= 0 ? '+' : ''}${avgDelta.toFixed(1)})`
+          : `Mood data: not enough check-ins for an average`,
+        topPersonas.length ? `Most-used guides: ${fmt(topPersonas)}` : '',
+        topMethods.length  ? `Most-used methods: ${fmt(topMethods)}`  : '',
+        topTags.length     ? `Most-tagged contexts: ${fmt(topTags)}`  : '',
+      ].filter(Boolean);
+      alertModal('Annual review', lines.join('\n\n'));
+    } catch (err) {
+      console.warn('[annual-review] failed:', err);
+      alertModal('Annual review', 'Could not generate the review — try again later.');
+    }
   });
 
   // Config presets
@@ -21079,6 +21728,13 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     if (type !== 'none') {
       await drone.start(state.droneVolume, type);
       if (myToken !== _liveSoundscapeToken) return; // superseded during start; let the newer handler take over
+      // Re-apply the current phase's frequency to the newly-started
+      // engine so phase-locked binaural / isochronic / drone catches
+      // up to the live session position. Without this they sit at
+      // their initial defaults until the next phase boundary.
+      if (state._currentPhase) {
+        try { drone.setPhaseFreq(state._currentPhase); } catch {}
+      }
       const ai = $('audioIndicator');
       if (ai) ai.textContent = '· ' + type + ' ·';
     } else {
@@ -22323,6 +22979,15 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     if (!slider || !label || !row) return;
     const bias = Math.max(-3, Math.min(3, Math.round(Number(slider.value) || 0)));
     label.textContent = DIRECTOR_BIAS_LABELS[String(bias)] || 'balanced';
+    // Pace label — separate axis. Updated alongside intensity so the two
+    // labels stay in lockstep with their sliders.
+    const paceSlider = $('directorPaceSlider');
+    const paceLabel  = $('directorPaceLabel');
+    const pace = paceSlider ? Math.max(-3, Math.min(3, Math.round(Number(paceSlider.value) || 0))) : 0;
+    if (paceLabel) {
+      const PACE_LABELS = { '-3':'much slower', '-2':'slower', '-1':'a touch slower', '0':'average', '1':'a touch faster', '2':'faster', '3':'much faster' };
+      paceLabel.textContent = PACE_LABELS[String(pace)] || 'average';
+    }
     // Render concrete impact for the current notch — same math as
     // computeDirectorBrief so the user sees the actual thresholds in play.
     const impact = $('directorBiasImpact');
@@ -22337,12 +23002,16 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
         : bias === 1 ? 'slightly forward, warm momentum'
         : 'forward-momentum, energizing';
       const beginnerNote = bias >= 3 ? 'beginner cap may be skipped at this notch' : 'beginner cap still in effect';
-      impact.innerHTML = `<strong>at this notch:</strong> cold-start ends after ${coldStart} session${coldStart === 1 ? '' : 's'} · completion floor ${compFloorPct}% · re-entry treated after ${reentryDays} days · ${beginnerNote} · tone: ${tone}`;
+      const paceNote = pace === 0
+        ? 'pace at base'
+        : `pace ${pace > 0 ? '+' : ''}${pace * 4}% (multiplied into speech rate)`;
+      impact.innerHTML = `<strong>at these notches:</strong> cold-start ends after ${coldStart} session${coldStart === 1 ? '' : 's'} · completion floor ${compFloorPct}% · re-entry treated after ${reentryDays} days · ${beginnerNote} · tone: ${tone} · ${paceNote}`;
     }
     // Grey out when Smart Director is off — bias has no effect if nothing runs.
     const enabled = state.smartDirectorEnabled !== false;
     row.style.opacity = enabled ? '' : '0.4';
     slider.disabled = !enabled;
+    if (paceSlider) paceSlider.disabled = !enabled;
     $('directorBiasResetBtn') && ($('directorBiasResetBtn').disabled = !enabled);
   }
   $('directorBiasSlider')?.addEventListener('input', e => {
@@ -22354,13 +23023,66 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     saveUserSettings();
     sdLog('directorBias saved', state.directorBias);
   });
+  // Pace slider — same input/change pattern.
+  $('directorPaceSlider')?.addEventListener('input', e => {
+    state.directorPace = Number(e.target.value);
+    _updateDirectorBiasUI();
+  });
+  $('directorPaceSlider')?.addEventListener('change', () => saveUserSettings());
   $('directorBiasResetBtn')?.addEventListener('click', () => {
     const slider = $('directorBiasSlider');
     if (slider) slider.value = 0;
     state.directorBias = 0;
+    // Reset pace too — the visible button is labeled "reset to balanced"
+    // and users would expect both axes to neutralize.
+    const paceSlider = $('directorPaceSlider');
+    if (paceSlider) paceSlider.value = 0;
+    state.directorPace = 0;
     _updateDirectorBiasUI();
     saveUserSettings();
   });
+
+  /** Render the per-domain offset rows. Domains read from the intentionType
+   *  <select> so they stay in sync with available types. Each row stores
+   *  state.directorBiasByDomain[domainId] on change. */
+  function renderDirectorDomainOffsets() {
+    const wrap = $('directorDomainOffsets');
+    if (!wrap) return;
+    const sel = $('intentionType');
+    if (!sel) { wrap.innerHTML = ''; return; }
+    // Pull all option elements regardless of optgroup nesting.
+    const opts = Array.from(sel.querySelectorAll('option')).filter(o => o.value);
+    if (!state.directorBiasByDomain) state.directorBiasByDomain = {};
+    wrap.innerHTML = opts.map(o => {
+      const id = o.value;
+      const label = o.textContent.trim();
+      const cur = Number(state.directorBiasByDomain[id]) || 0;
+      return `<label style="display:flex;align-items:center;gap:8px;font-size:0.66rem;color:var(--text-dim)">
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(label)}</span>
+        <input type="range" min="-3" max="3" step="1" value="${cur}" data-domain="${escapeHtml(id)}" style="flex:1;max-width:120px">
+        <span class="domain-offset-val" data-for="${escapeHtml(id)}" style="font-variant-numeric:tabular-nums;width:20px;text-align:right;color:${cur === 0 ? 'var(--text-faint)' : 'var(--neon-cyan)'}">${cur > 0 ? '+' : ''}${cur}</span>
+      </label>`;
+    }).join('');
+  }
+  // Render once on init. Re-render is cheap so just always re-run when the
+  // bias UI updates.
+  renderDirectorDomainOffsets();
+  // Delegate input handler — sliders persist their offset to state on input.
+  $('directorDomainOffsets')?.addEventListener('input', e => {
+    const target = e.target;
+    if (!target?.dataset?.domain) return;
+    const domain = target.dataset.domain;
+    const val = Math.max(-3, Math.min(3, parseInt(target.value, 10) || 0));
+    if (!state.directorBiasByDomain) state.directorBiasByDomain = {};
+    if (val === 0) delete state.directorBiasByDomain[domain];
+    else state.directorBiasByDomain[domain] = val;
+    const valEl = $('directorDomainOffsets').querySelector(`[data-for="${CSS.escape(domain)}"]`);
+    if (valEl) {
+      valEl.textContent = (val > 0 ? '+' : '') + val;
+      valEl.style.color = val === 0 ? 'var(--text-faint)' : 'var(--neon-cyan)';
+    }
+  });
+  $('directorDomainOffsets')?.addEventListener('change', () => saveUserSettings());
   $('remoteConsentCancelBtn')?.addEventListener('click', () => {
     const cb = $('remoteProcessingOptIn'); if (cb) cb.checked = false;
     state.remoteProcessingOptIn = false;
@@ -22384,6 +23106,15 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   });
   ['pfPronouns', 'pfAge', 'pfExperience', 'pfUseFirstName', 'pfShareAge', 'pfShareAppearance', 'pfShareGoals'].forEach(id => {
     $(id)?.addEventListener('change', saveProfile);
+  });
+  // When the age field changes, surfaces sensitive to the relaxation
+  // gate refresh in place so the user sees the effect immediately —
+  // softer soundscape hints, no nag prompts, etc. Existing dropdown
+  // ordering doesn't reflow (would feel unstable mid-session); changes
+  // there require a reload, but that's fine since the order isn't
+  // user-actionable.
+  $('pfAge')?.addEventListener('change', () => {
+    if (typeof _refreshSoundscapeHint === 'function') _refreshSoundscapeHint();
   });
 
   // AI activity log — read-only modal. Lists recent AI calls' metadata
@@ -22755,19 +23486,15 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     // is jarring during page load if it appears before the grid paints.
     setTimeout(() => { checkPersonaUnlocks().catch(() => {}); }, 1200);
 
-    // Weekly digest — surfaces a once-per-week summary banner of the user's
-    // recent activity. Skipped if there aren't enough sessions to be useful
-    // (≥ 2 sessions in the last 7 days). Last-shown timestamp persists in
-    // localStorage to enforce one-per-ISO-week display.
+    // Weekly digest — computed quietly on init and stashed on state for
+    // passive surface (sidebar stats panel). Previously fired a notify on
+    // first-load-of-week which felt aggressive for returning users.
     setTimeout(async () => {
       try {
-        const WEEKLY_KEY = 'stillness_weekly_digest_last';
-        const lastShown = parseInt(localStorage.getItem(WEEKLY_KEY) || '0', 10);
-        const now = Date.now();
-        const SEVEN_DAYS = 7 * 86400000;
-        if (lastShown && (now - lastShown) < SEVEN_DAYS) return;
         const history = (await idbGet('stillness_history_v1')) || [];
         if (history.length < 2) return;
+        const now = Date.now();
+        const SEVEN_DAYS = 7 * 86400000;
         const cutoff = now - SEVEN_DAYS;
         const recent = history.filter(r => r.date >= cutoff);
         if (recent.length < 2) return;
@@ -22777,7 +23504,6 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
         const avgDelta = withMood.length
           ? (withMood.reduce((s, r) => s + (r.postMood - r.preMood), 0) / withMood.length)
           : null;
-        // Top guide + method by count
         const personaCount = {}, methodCount = {};
         for (const r of recent) {
           if (r.guide) personaCount[r.guide] = (personaCount[r.guide] || 0) + 1;
@@ -22785,14 +23511,59 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
         }
         const topPersona = Object.entries(personaCount).sort((a, b) => b[1] - a[1])[0]?.[0];
         const topMethod  = Object.entries(methodCount).sort((a, b) => b[1] - a[1])[0]?.[0];
-        const moodPart = avgDelta != null
-          ? `, avg mood ${avgDelta >= 0 ? '+' : ''}${avgDelta.toFixed(1)}`
-          : '';
-        const summary = `Past 7 days: ${recent.length} session${recent.length === 1 ? '' : 's'}, ${completionPct}% completed${moodPart}${topPersona ? ` · top guide: ${topPersona}` : ''}${topMethod ? ` · top method: ${topMethod}` : ''}`;
-        notify.info(summary, 9000);
-        localStorage.setItem(WEEKLY_KEY, String(now));
+        // Stash for the sidebar to pick up the next time it renders. Passive
+        // surface: users discover when they choose to open stats.
+        state._weeklyDigest = {
+          sessionCount: recent.length,
+          completionPct,
+          avgMoodDelta: avgDelta,
+          topPersona: topPersona || null,
+          topMethod:  topMethod || null,
+          windowDays: 7,
+          generatedAt: now,
+        };
+        // Trigger a re-render of the sidebar stats so the digest tile
+        // appears immediately if the panel happens to be open.
+        try { renderSidebarStats(); } catch {}
       } catch (e) { console.warn('[weekly-digest] failed:', e); }
     }, 2500);
+
+    // 24-hour recall probe — same passive treatment. The recall question
+    // surfaces inside the post-session trigger card the next time the
+    // user gets there organically; no push notification on boot.
+    setTimeout(async () => {
+      try {
+        const history = (await idbGet('stillness_history_v1')) || [];
+        if (!history.length) return;
+        const now = Date.now();
+        const ONE_DAY = 86400000;
+        const cutoffOld = now - 3 * ONE_DAY;
+        const cutoffYoung = now - 0.75 * ONE_DAY;
+        const candidate = history.find(r =>
+          r.date >= cutoffOld && r.date <= cutoffYoung &&
+          r.completed &&
+          r.craftedSuggestion?.trigger &&
+          r.craftedSuggestion.trigger !== 'ongoing state'
+        );
+        if (!candidate) return;
+        // Skip if user already logged a fire after that session — they
+        // already gave us the signal.
+        try {
+          const fires = (await idbGet(TRIGGER_FIRES_KEY)) || {};
+          const slot = fires[candidate.craftedSuggestion.trigger];
+          if (slot?.firedDates?.length) {
+            const lastFire = new Date(slot.firedDates[0]).getTime();
+            if (lastFire > candidate.date) return;
+          }
+        } catch {}
+        // Stash for the post-session card to show when next reached.
+        state._pendingRecallProbe = {
+          trigger: candidate.craftedSuggestion.trigger,
+          daysAgo: Math.round((now - candidate.date) / ONE_DAY),
+          sessionDate: candidate.date,
+        };
+      } catch (e) { console.warn('[recall-probe] failed:', e); }
+    }, 4500);
 
     // Sync debug state from DOM (checkboxes default unchecked, but this guarantees
     // state._debug matches the visible UI in all cases). Banner re-renders from here.
@@ -22805,8 +23576,15 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     // hasn't explicitly chosen a viz / settings (hadSavedSettings === false).
     // The list below is the "intense" category from the viz dropdown — visuals
     // most likely to be motion-sickness-inducing or seizure-risk-adjacent.
-    const INTENSE_VIZUALS = new Set(['flowfield', 'plasma', 'kaleidoscope-flow', 'kaleidoscope-plasma', 'starfield', 'tunnel', 'vortex']);
-    if (state.caps.reducedMotion) {
+    const INTENSE_VIZUALS = new Set(['flowfield', 'plasma', 'kaleidoscope-flow', 'kaleidoscope-plasma', 'starfield', 'tunnel', 'vortex', 'gamma-flicker']);
+    // Skip the whole reduced-motion auto-degrade path when audio/viz
+    // safeties are relaxed (profile age set). The OS preference is still
+    // available to renderers that want to consult it (gamma-flicker
+    // currently does), but we don't reorder dropdowns, retag options
+    // with ⚠, or push a "we changed your settings" notify at engaged
+    // adults. Casual / unidentified users still get the original
+    // protection.
+    if (state.caps.reducedMotion && !_audioVizSafetiesRelaxed()) {
       // Tag intense viz options visually so any future selection signals the risk
       const vizSel = $('vizSelect');
       if (vizSel) {
