@@ -6724,6 +6724,7 @@ I return to myself easily"></textarea>
           provider: e.provider,
           source: e.source,
           bytes: e.bytes,
+          ...(e.contextBytes != null ? { contextBytes: e.contextBytes, taskBytes: e.taskBytes } : {}),
         })),
         // localStorage budget snapshot — surfaces approximate usage and
         // remaining headroom. HNE keeps most data in IDB but mirrors
@@ -9355,27 +9356,71 @@ I return to myself easily"></textarea>
     return 1 - dot / denom;
   }
 
-  /** Embed a digest and store its vector alongside the digest's sessionId. */
-  async function embedAndStoreDigest(sessionId, digestText) {
+  /** Embed a digest (and optionally the user's intention text) and store
+   *  vectors keyed by the digest's sessionId. Round 22e (F5) extends this
+   *  to also embed `intentionText` under an `intent_<sessionId>` namespace
+   *  so retrieval can ask "show me sessions whose INTENT was similar to
+   *  today's intent" — different from digest-similarity (which finds
+   *  sessions whose AI-summarized SCRIPT was similar). */
+  async function embedAndStoreDigest(sessionId, digestText, intentionText) {
     if (!window.textEmbedderFunction || !digestText) return false;
     try {
       const modelName = window.thread?.textEmbeddingModelName;
-      const [vec] = await window.embedTexts({ textArr: [digestText], modelName });
-      if (!vec || vec.length === 0) return false;
-      // Serialize Float32Array → plain array for IDB.
-      const arr = Array.from(vec);
+      // Batch both embeddings into a single embedTexts call when intention
+      // is present — half the round-trip cost vs two sequential calls.
+      const intentClean = (typeof intentionText === 'string') ? intentionText.trim() : '';
+      const includeIntent = intentClean.length >= 4;
+      const textArr = includeIntent ? [digestText, intentClean] : [digestText];
+      const vecs = await window.embedTexts({ textArr, modelName });
+      if (!vecs || !vecs[0] || vecs[0].length === 0) return false;
       const store = await _getEmbedStore();
-      store.vectors[String(sessionId)] = arr;
-      // Cap store at 100 vectors, newest kept.
+      // Digest vector — primary signal, used by findRelevantDigests.
+      store.vectors[String(sessionId)] = Array.from(vecs[0]);
+      // Intention vector — secondary, used by findRelevantIntents.
+      // Namespace by `intent_` prefix so digest searches can filter it out.
+      if (includeIntent && vecs[1] && vecs[1].length) {
+        store.vectors[`intent_${sessionId}`] = Array.from(vecs[1]);
+      }
+      // Cap store at 200 vectors (was 100; doubled for paired embeddings).
+      // ~50 sessions × 2 vectors = 100; 200 gives headroom for users with
+      // some intent-only or digest-only entries (e.g., short intents skipped).
       const ids = Object.keys(store.vectors);
-      if (ids.length > 100) {
-        // We don't have dates here, but digests are stored in insertion order —
-        // just drop the oldest half to stay simple.
-        for (const old of ids.slice(0, ids.length - 100)) delete store.vectors[old];
+      if (ids.length > 200) {
+        for (const old of ids.slice(0, ids.length - 200)) delete store.vectors[old];
       }
       await _saveEmbedStore(store);
       return true;
     } catch (e) { console.warn('embedAndStoreDigest failed:', e); return false; }
+  }
+
+  /** Round 22e (F5): find sessions whose user-typed INTENTION was similar
+   *  to the query text. Distinct from findRelevantDigests, which searches
+   *  AI-summarized script content. Useful when the AI prompt wants to
+   *  surface "the last few times you came in saying you wanted X" as
+   *  separate context from "the last few times your scripts contained X".
+   *  Returns [{ digest, distance, sessionId }] (digest carried for
+   *  consumers that want to pull the matched session's record). */
+  async function findRelevantIntents(queryText, k = 3) {
+    if (!window.textEmbedderFunction || !queryText || queryText.length < 4) return [];
+    try {
+      const modelName = window.thread?.textEmbeddingModelName;
+      const [qVec] = await window.embedTexts({ textArr: [queryText], modelName });
+      if (!qVec) return [];
+      const qArr = Array.from(qVec);
+      const store = await _getEmbedStore();
+      const memory = await getMemory();
+      const digestsById = Object.fromEntries((memory.sessionDigests || []).map(d => [String(d.sessionId), d]));
+      const scored = [];
+      for (const [key, vec] of Object.entries(store.vectors)) {
+        if (!key.startsWith('intent_')) continue;
+        const sessionId = key.slice('intent_'.length);
+        const d = digestsById[sessionId];
+        if (!d) continue; // digest pruned, orphan intent vector
+        scored.push({ digest: d, sessionId, distance: cosineDistance(qArr, vec) });
+      }
+      scored.sort((a, b) => a.distance - b.distance);
+      return scored.slice(0, k);
+    } catch (e) { console.warn('findRelevantIntents failed:', e); return []; }
   }
 
   /**
@@ -9406,6 +9451,10 @@ I return to myself easily"></textarea>
       const lowMood = preMood != null && preMood <= 4;
       const scored = [];
       for (const [id, vec] of Object.entries(store.vectors)) {
+        // Round 22e (F5): skip intent_-prefixed vectors — those belong to
+        // findRelevantIntents and are semantically different (user-typed
+        // goal vs AI-summarized script content).
+        if (id.startsWith('intent_')) continue;
         const d = digestsById[id];
         if (!d) continue; // digest was pruned, orphan vector
         // Domain filter — keep digests with no tag (legacy) OR matching tag.
@@ -9852,6 +9901,37 @@ I return to myself easily"></textarea>
     return entry;
   }
 
+  // ── Round 22e (F1): cfg circular buffer helpers ────────────────────
+  // Replace running-sum storage with last-N-samples retention. Same
+  // total bytes (~256 with cap=32 across 4 fields) but enables slope /
+  // median / distribution at read-time. Outliers no longer contaminate
+  // forever — they age out of the buffer naturally.
+  const _CFG_CAP = 32;
+  function _cfgPush(cfg, field, value) {
+    if (!Array.isArray(cfg[field])) cfg[field] = [];
+    cfg[field].push(value);
+    if (cfg[field].length > _CFG_CAP) cfg[field].shift();
+  }
+  function _cfgMean(arr) {
+    if (!Array.isArray(arr) || arr.length === 0) return null;
+    return arr.reduce((s, x) => s + x, 0) / arr.length;
+  }
+  function _cfgSlope(arr) {
+    // Linear regression slope over array indices. >0 = creeping up,
+    // <0 = creeping down. Returns null when sample count is too small
+    // to be meaningful (B6 setting-drift detection consumes this).
+    if (!Array.isArray(arr) || arr.length < 8) return null;
+    const n = arr.length;
+    const meanX = (n - 1) / 2;
+    const meanY = arr.reduce((s, y) => s + y, 0) / n;
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) {
+      num += (i - meanX) * (arr[i] - meanY);
+      den += (i - meanX) * (i - meanX);
+    }
+    return den === 0 ? 0 : num / den;
+  }
+
   function normalizeAnalyticsData(data) {
     const base = {
       v: 3,
@@ -9861,8 +9941,10 @@ I return to myself easily"></textarea>
       comp: { total: 0, finished: 0, emergency: 0 },
       dur: { sum: 0, n: 0 },
       shape: { phaseSum: 0, workSum: 0, affirmSum: 0, n: 0 },
-      cfg: { rateSum: 0, pitchSum: 0, volSum: 0, droneSum: 0, n: 0 },
-      feat: 0,
+      cfg: { rate: [], pitch: [], vol: [], drone: [] },
+      // Round 22e (F4 + A5): feat as { [FEATURE_NAME]: firstUsedAt } map.
+      // Migration of legacy bitmask happens below in the body.
+      feat: {},
       ts: Date.now(),
     };
     const a = { ...base, ...(data || {}) };
@@ -9875,7 +9957,35 @@ I return to myself easily"></textarea>
     a.comp = { ...base.comp, ...(a.comp || {}) };
     a.dur = { ...base.dur, ...(a.dur || {}) };
     a.shape = { ...base.shape, ...(a.shape || {}) };
-    a.cfg = { ...base.cfg, ...(a.cfg || {}) };
+    // ── Round 22e (F1) cfg migration ──────────────────────────────────
+    // Detect legacy shape ({rateSum, pitchSum, volSum, droneSum, n}) and
+    // seed the new circular buffers with the historical mean × min(n,cap)
+    // entries. Preserves the AVERAGE the old format gave us; new entries
+    // arriving in real-time give us slope/median/distribution going forward.
+    const cfgRaw = a.cfg || {};
+    const isLegacy = cfgRaw.rateSum != null && !Array.isArray(cfgRaw.rate);
+    if (isLegacy) {
+      const n = Math.min(Math.max(0, cfgRaw.n || 0), _CFG_CAP);
+      const seed = (sum) => n > 0 ? Array.from({ length: n }, () => sum / cfgRaw.n) : [];
+      a.cfg = {
+        rate:  seed(cfgRaw.rateSum  || 0),
+        pitch: seed(cfgRaw.pitchSum || 0),
+        vol:   seed(cfgRaw.volSum   || 0),
+        drone: seed(cfgRaw.droneSum || 0),
+      };
+    } else {
+      a.cfg = {
+        rate:  Array.isArray(cfgRaw.rate)  ? cfgRaw.rate.slice(-_CFG_CAP)  : [],
+        pitch: Array.isArray(cfgRaw.pitch) ? cfgRaw.pitch.slice(-_CFG_CAP) : [],
+        vol:   Array.isArray(cfgRaw.vol)   ? cfgRaw.vol.slice(-_CFG_CAP)   : [],
+        drone: Array.isArray(cfgRaw.drone) ? cfgRaw.drone.slice(-_CFG_CAP) : [],
+      };
+    }
+    // ── Round 22e (F4 + A5) feat migration ──────────────────────────
+    // Convert legacy bitmask to {NAME: firstUsedAt} map. Lossy on
+    // historical timestamps (seeds 0 = "unknown when first used"), but
+    // mark-on-write paths set real ts for any subsequent feature touch.
+    a.feat = _migrateFeatBitmask(a.feat);
     return a;
   }
 
@@ -9892,8 +10002,24 @@ I return to myself easily"></textarea>
     for (const k of ['total','finished','emergency']) a.comp[k] = (a.comp[k] || 0) + (b.comp[k] || 0);
     for (const k of ['sum','n']) a.dur[k] = (a.dur[k] || 0) + (b.dur[k] || 0);
     for (const k of ['phaseSum','workSum','affirmSum','n']) a.shape[k] = (a.shape[k] || 0) + (b.shape[k] || 0);
-    for (const k of ['rateSum','pitchSum','volSum','droneSum','n']) a.cfg[k] = (a.cfg[k] || 0) + (b.cfg[k] || 0);
-    a.feat = (a.feat || 0) | (b.feat || 0);
+    // Round 22e (F1): cfg buffers concat then keep last cap. Newest-wins
+    // semantics — backup imports don't double-count, recent samples
+    // dominate. Both `a` and `b` are normalized so guaranteed array shape.
+    for (const k of ['rate','pitch','vol','drone']) {
+      a.cfg[k] = [...(a.cfg[k] || []), ...(b.cfg[k] || [])].slice(-_CFG_CAP);
+    }
+    // Round 22e (F4): feat is a {NAME: firstUsedAt} map. Merge with
+    // min-timestamp wins so backup-restore preserves the EARLIEST
+    // discovery time across both halves. Treat 0 as "unknown" — any
+    // real timestamp beats 0.
+    const featMerged = { ...(a.feat || {}) };
+    for (const [name, ts] of Object.entries(b.feat || {})) {
+      const cur = featMerged[name];
+      if (cur == null) featMerged[name] = ts;
+      else if (cur === 0 && ts > 0) featMerged[name] = ts;
+      else if (ts > 0 && cur > 0) featMerged[name] = Math.min(cur, ts);
+    }
+    a.feat = featMerged;
     a.ts = Math.max(a.ts || 0, b.ts || 0, Date.now());
     return a;
   }
@@ -10778,6 +10904,8 @@ I return to myself easily"></textarea>
       provider: e.provider,
       sourceId: e.source,
       bytes: e.bytes,
+      contextBytes: e.contextBytes,
+      taskBytes: e.taskBytes,
     }));
 
     // Session history — last 30, lightweight summary
@@ -10878,8 +11006,16 @@ I return to myself easily"></textarea>
       }
     } else if (cat === 'ai') {
       label = e.sourceId || 'unknown';
-      const kb = (e.bytes || 0) >= 1024 ? `${((e.bytes || 0) / 1024).toFixed(1)} KB` : `${e.bytes || 0} B`;
-      body = `${_escDB(e.provider || '?')} · ${kb} sent <span style="color:var(--text-faint)">(content not logged)</span>`;
+      const fmt = b => (b || 0) >= 1024 ? `${((b || 0) / 1024).toFixed(1)} KB` : `${b || 0} B`;
+      const total = fmt(e.bytes);
+      // Round 22e (F2): show context vs task split when caller provided
+      // structured parts. Helps diagnose "why is this call slow?" —
+      // long context (big shared profile/memory block) vs long task
+      // (complex per-phase instruction) are different problems.
+      const split = (e.contextBytes != null)
+        ? ` <span style="color:var(--text-faint);font-size:0.92em">(${fmt(e.contextBytes)} ctx + ${fmt(e.taskBytes)} task)</span>`
+        : '';
+      body = `${_escDB(e.provider || '?')} · ${total}${split} sent <span style="color:var(--text-faint)">(content not logged)</span>`;
     } else if (cat === 'session') {
       label = `${_escDB(e.guide)} · ${_escDB(e.method)}`;
       const moodBit = (e.preMood != null && e.postMood != null)
@@ -11736,13 +11872,13 @@ I return to myself easily"></textarea>
       comp: { total: 0, finished: 0, emergency: 0 },
       dur: { sum: 0, n: 0 },
       shape: { phaseSum: 0, workSum: 0, affirmSum: 0, n: 0 },
-      // Settings usage (running sums for averages)
-      cfg: { rateSum: 0, pitchSum: 0, volSum: 0, droneSum: 0, n: 0 },
-      // Feature flags: which features the user has tried
-      // bitmask: 1=affirmations 2=programs 4=custom-persona 8=skip-to-script
-      // 16=timing-fixer 32=share 64=backup 128=double-induction 256=pre-gen
-      // 512=cloud-upload 1024=comments
-      feat: 0,
+      // Round 22e (F1): per-field circular buffer of last 32 samples.
+      // Replaces running sums to recover slope/median/distribution.
+      cfg: { rate: [], pitch: [], vol: [], drone: [] },
+      // Round 22e (F4 + A5): {NAME: firstUsedAt} map, replacing the
+      // legacy bit-OR'd integer. FEAT.X bit constants kept for caller
+      // compatibility — markFeatureUsed translates internally.
+      feat: {},
       // Timestamp
       ts: Date.now(),
     };
@@ -11791,11 +11927,13 @@ I return to myself easily"></textarea>
       }
 
       // Settings averages
-      a.cfg.rateSum += (record.speechRate || 0.65);
-      a.cfg.pitchSum += (record.voicePitch || 0.85);
-      a.cfg.volSum += (record.voiceVolume ?? 1.0);
-      a.cfg.droneSum += (record.droneVolume ?? 0.35);
-      a.cfg.n++;
+      // Round 22e (F1): push samples into circular buffers (cap=32) so
+      // we retain distribution and can compute slope. Old running-sum
+      // form lost outliers and trend information.
+      _cfgPush(a.cfg, 'rate',  (record.speechRate  || 0.65));
+      _cfgPush(a.cfg, 'pitch', (record.voicePitch  || 0.85));
+      _cfgPush(a.cfg, 'vol',   (record.voiceVolume ?? 1.0));
+      _cfgPush(a.cfg, 'drone', (record.droneVolume ?? 0.35));
 
       const metrics = record.metrics || {};
       a.shape.phaseSum += metrics.phaseCount || (Array.isArray(record.phaseOrder) ? record.phaseOrder.length : 0);
@@ -11825,29 +11963,79 @@ I return to myself easily"></textarea>
   }
 
   /** Set a feature-used flag (bitmask) */
+  // ── Round 22e (F4 + A5): feat stored as { [FEATURE_NAME]: firstUsedAt }
+  // map instead of a bit-OR'd integer. Same 12 callers keep using FEAT.X
+  // bit constants — markFeatureUsed translates internally. Free win: every
+  // feature now carries its first-use timestamp, unblocking Director nudges
+  // like "you discovered programs after 12 sessions, ready for the deeper
+  // ones?" without any new instrumentation.
+  const FEAT = { AFFIRMATIONS: 1, PROGRAMS: 2, CUSTOM_PERSONA: 4, SKIP_SCRIPT: 8, TIMING_FIX: 16, SHARE: 32, BACKUP: 64, DOUBLE_INDUCT: 128, PRE_GEN: 256, CLOUD_UPLOAD: 512, COMMENTS: 1024 };
+  const _FEAT_BIT_TO_NAME = Object.fromEntries(Object.entries(FEAT).map(([n, b]) => [b, n]));
+
+  /** Migrate legacy bitmask `feat: number` to map `feat: {NAME: ts}`.
+   *  Lossy on timestamps (we don't know when the user first hit each
+   *  feature historically) — seeds 0, which the UI shows as "(unknown)".
+   *  Subsequent markFeatureUsed calls set real timestamps as features
+   *  get re-touched. */
+  function _migrateFeatBitmask(featRaw) {
+    if (featRaw && typeof featRaw === 'object' && !Array.isArray(featRaw)) return featRaw;
+    if (typeof featRaw !== 'number' || featRaw === 0) return {};
+    const map = {};
+    for (const [bit, name] of Object.entries(_FEAT_BIT_TO_NAME)) {
+      if (featRaw & Number(bit)) map[name] = 0;
+    }
+    return map;
+  }
+
   async function markFeatureUsed(bit) {
     try {
+      const name = _FEAT_BIT_TO_NAME[bit];
+      if (!name) return; // unknown bit — refuse to write garbage
       const a = await getAnalytics();
-      if (!(a.feat & bit)) {
-        a.feat |= bit;
+      // Migrate-on-write: handle legacy number-shaped feat from cold-start
+      // default or partially-migrated state.
+      if (typeof a.feat !== 'object' || Array.isArray(a.feat)) {
+        a.feat = _migrateFeatBitmask(a.feat);
+      }
+      // First-use semantics: only set ts if not already present. Repeated
+      // feature touches don't update — we want DISCOVERY time, not last-use.
+      if (!a.feat[name]) {
+        a.feat[name] = Date.now();
         await idbSet(ANALYTICS_KEY, a);
       }
     } catch {}
   }
 
-  // Feature bit constants
-  const FEAT = { AFFIRMATIONS: 1, PROGRAMS: 2, CUSTOM_PERSONA: 4, SKIP_SCRIPT: 8, TIMING_FIX: 16, SHARE: 32, BACKUP: 64, DOUBLE_INDUCT: 128, PRE_GEN: 256, CLOUD_UPLOAD: 512, COMMENTS: 1024 };
+  /** True when the user has ever touched the feature with the given bit.
+   *  Provided for legacy bitmask-style call sites (`if (a.feat & FEAT.X)`)
+   *  to migrate to (`if (featUsed(a, FEAT.X))`) cleanly. */
+  function featUsed(analytics, bit) {
+    const name = _FEAT_BIT_TO_NAME[bit];
+    if (!name || !analytics) return false;
+    const f = analytics.feat;
+    if (typeof f === 'number') return !!(f & bit); // legacy fallback
+    return !!(f && f[name]);
+  }
 
   /** Rebuild analytics from remaining history — called after deletes to keep data consistent */
   async function rebuildAnalytics(historyArr) {
     try {
       const existing = await getAnalytics();
-      const feat = existing.feat || 0; // preserve feature flags
+      // Round 22e (F4 + A5): feat is now a {NAME: firstUsedAt} map.
+      // Preserve it across rebuild so users don't lose discovery
+      // timestamps when they delete a session. Migrate any legacy
+      // bitmask still floating around defensively.
+      const feat = (existing.feat && typeof existing.feat === 'object' && !Array.isArray(existing.feat))
+        ? { ...existing.feat }
+        : _migrateFeatBitmask(existing.feat);
       const a = { v: 3, p: {}, m: {}, i: {}, s: {}, z: {}, ln: {}, am: {}, vc: {},
         hr: new Array(24).fill(0), dw: new Array(7).fill(0),
         mood: { preSum: 0, postSum: 0, deltaSum: 0, n: 0, postN: 0 },
         comp: { total: 0, finished: 0, emergency: 0 },
-        dur: { sum: 0, n: 0 }, shape: { phaseSum: 0, workSum: 0, affirmSum: 0, n: 0 }, cfg: { rateSum: 0, pitchSum: 0, volSum: 0, droneSum: 0, n: 0 },
+        dur: { sum: 0, n: 0 }, shape: { phaseSum: 0, workSum: 0, affirmSum: 0, n: 0 },
+        // Round 22e (F1): circular-buffer cfg shape from the start so
+        // post-rebuild data doesn't mix new+legacy keys.
+        cfg: { rate: [], pitch: [], vol: [], drone: [] },
         feat, ts: Date.now() };
       const inc = (map, key) => { if (key) map[key] = (map[key] || 0) + 1; };
       for (const r of historyArr) {
@@ -11860,8 +12048,12 @@ I return to myself easily"></textarea>
         if (r.completed) a.comp.finished++;
         else a.comp.emergency++; // history entries without completed=true were emergency-ended
         if (r.durationSec > 0) { a.dur.sum += r.durationSec; a.dur.n++; }
-        a.cfg.rateSum += (r.speechRate || 0.65); a.cfg.pitchSum += (r.voicePitch || 0.85);
-        a.cfg.volSum += (r.voiceVolume ?? 1.0); a.cfg.droneSum += (r.droneVolume ?? 0.35); a.cfg.n++;
+        // Round 22e (F1): push to circular buffers. Bounded by _CFG_CAP
+        // inside _cfgPush so very long histories naturally tail-bias.
+        _cfgPush(a.cfg, 'rate',  (r.speechRate  || 0.65));
+        _cfgPush(a.cfg, 'pitch', (r.voicePitch  || 0.85));
+        _cfgPush(a.cfg, 'vol',   (r.voiceVolume ?? 1.0));
+        _cfgPush(a.cfg, 'drone', (r.droneVolume ?? 0.35));
         const metrics = r.metrics || {};
         a.shape.phaseSum += metrics.phaseCount || (Array.isArray(r.phaseOrder) ? r.phaseOrder.length : 0);
         a.shape.workSum += r.workBlockCount || metrics.workBlocks || 0;
@@ -11894,12 +12086,14 @@ I return to myself easily"></textarea>
       avgDurationSec: avgDur, completionRate: a.comp.total > 0 ? Math.round(a.comp.finished / a.comp.total * 100) : 0,
       peakHour, peakDayName: dayNames[peakDay] || '—',
       totalSessions: a.comp.total,
-      avgSpeechRate: a.cfg.n > 0 ? (a.cfg.rateSum / a.cfg.n).toFixed(2) : null,
+      avgSpeechRate: (a.cfg.rate?.length > 0) ? _cfgMean(a.cfg.rate).toFixed(2) : null,
       avgPhaseCount: a.shape?.n > 0 ? (a.shape.phaseSum / a.shape.n).toFixed(1) : null,
       avgWorkBlocks: a.shape?.n > 0 ? (a.shape.workSum / a.shape.n).toFixed(1) : null,
       favAffirmationMode: topKey(a.am || {}),
       favVoice: topKey(a.vc || {}),
-      featuresUsed: Object.entries(FEAT).filter(([,bit]) => a.feat & bit).map(([name]) => name.toLowerCase().replace('_',' ')),
+      featuresUsed: Object.entries(FEAT)
+        .filter(([, bit]) => featUsed(a, bit))
+        .map(([name]) => name.toLowerCase().replace('_', ' ')),
     };
   }
 
@@ -12225,14 +12419,30 @@ I return to myself easily"></textarea>
       try { await idbSet(AI_AUDIT_KEY, _aiAuditLog); } catch {}
     }, 1500);
   }
-  function logAICall(provider, source, instruction) {
+  function logAICall(provider, source, instruction, parts) {
     if (!_aiAuditLoaded) _loadAuditLog(); // fire-and-forget; OK if first call lacks history
     const bytes = (typeof instruction === 'string') ? instruction.length : 0;
+    // Round 22e (F2): split bytes into context vs task when caller provides
+    // the parts array used by trimToTokenBudget. Lets the audit panel
+    // distinguish "long shared context" from "long task prompt" — useful
+    // for diagnosing slow generations. Optional — single-block callers
+    // (image-tag, craft-suggestion, journal-sentiment) leave it unset.
+    let contextBytes, taskBytes;
+    if (Array.isArray(parts)) {
+      contextBytes = 0;
+      taskBytes = 0;
+      for (const p of parts) {
+        const len = (p?.text?.length) || 0;
+        if (p?.name === 'sharedContext' || p?.name === 'priorSummary') contextBytes += len;
+        else if (p?.name === 'taskBlock' || p?.name === 'diversity') taskBytes += len;
+      }
+    }
     _aiAuditLog.unshift({
       ts: Date.now(),
       provider: provider || 'unknown',
       source: source || 'unknown',
       bytes,
+      ...(contextBytes != null ? { contextBytes, taskBytes } : {}),
     });
     if (_aiAuditLog.length > AI_AUDIT_CAP) _aiAuditLog.length = AI_AUDIT_CAP;
     _scheduleAuditSave();
@@ -12245,7 +12455,7 @@ I return to myself easily"></textarea>
     // Audit log — record metadata about this call. Skips content for
     // privacy. opts.source identifies the caller (e.g. 'phase-gen',
     // 'craft-suggestion', 'memory-digest', 'image-tag', 'affirm-gen').
-    try { logAICall(provider, opts.source || 'unknown', instruction); } catch {}
+    try { logAICall(provider, opts.source || 'unknown', instruction, opts.parts); } catch {}
     // Helper — ensure a returned object always has a usable shape and
     // surfaces empty/failed generations as errors rather than silent empty
     // strings that propagate into scripts.
@@ -12638,7 +12848,7 @@ Practitioner profile (full, natural sentences):`;
         // also persist an embedding vector so future sessions can
         // retrieve semantically relevant digests (not just recent ones).
         // Guarded — silent no-op if embedTexts isn't available in this browser.
-        embedAndStoreDigest(entry.sessionId, digest).catch(() => {});
+        embedAndStoreDigest(entry.sessionId, digest, record.intentionText).catch(() => {});
       }
       await updateRollingMemory(memory);
       await updateLongTermProfile(memory);
@@ -19854,14 +20064,33 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
           domain: state.intentionType,
           preMood: state._preMood,
         });
+        // Round 22e (F5): parallel intent-similarity search. The user's
+        // freshly-typed intention is a stronger "this is the state I'm
+        // arriving in" probe than the rough script outline. Distinct
+        // signal from digest-similarity (which is "this is what scripts
+        // I've heard before"). Limited to k=2 to keep token budget tight.
+        const userIntent = ($('intentionInput')?.value || '').trim();
+        const relevantIntents = userIntent.length >= 4
+          ? await findRelevantIntents(userIntent, 2)
+          : [];
         const relevantBlock = relevant.length
           ? '\nMOST RELEVANT PAST SESSIONS (by semantic similarity to this intention):\n' +
             relevant.map(r => `- [similarity ${((1 - r.distance) * 100).toFixed(0)}%] ${r.digest.digest}`).join('\n')
           : '';
+        // Intent-similarity block — separate from digest similarity. Filter
+        // out any session already in `relevant` so we don't repeat the same
+        // digest under two banners.
+        const dedupIntents = relevantIntents.filter(i =>
+          !relevant.some(r => String(r.digest?.sessionId) === String(i.sessionId))
+        );
+        const intentBlock = dedupIntents.length
+          ? '\nPAST SESSIONS WITH SIMILAR INTENT (what they came in saying):\n' +
+            dedupIntents.map(r => `- [intent match ${((1 - r.distance) * 100).toFixed(0)}%] ${r.digest.digest}`).join('\n')
+          : '';
         const baseBlock = (mem.rollingWindow || mem.longTermProfile)
           ? `\nPRACTITIONER MEMORY:${mem.longTermProfile ? '\nProfile: ' + mem.longTermProfile : ''}${mem.rollingWindow ? '\nRecent patterns: ' + mem.rollingWindow : ''}`
           : '';
-        memoryCtx = baseBlock + relevantBlock;
+        memoryCtx = baseBlock + relevantBlock + intentBlock;
         // Token-budget-aware trimming. Perchance plugin exposes
         // `getMetaObject` with idealMaxContextTokens + countTokens. Per
         // perchance-api §6.3, leave an 800-token buffer to protect the
@@ -20096,12 +20325,19 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
     // Token budget — drop the prior-summary block first if we're over budget.
     // The sharedContext + task block are priority 5 (never trimmed).
     // The diversity block is priority 5 too — it's the whole point of a re-roll.
-    const finalInstruction = trimToTokenBudget([
+    const _parts = [
       { name: 'sharedContext', text: gs.sharedContext, priority: 5 },
       { name: 'priorSummary',  text: summaryBlock,     priority: 1 },
       { name: 'taskBlock',     text: taskBlock,        priority: 5 },
       { name: 'diversity',     text: diversityBlock,   priority: 5 },
-    ], 900);
+    ];
+    const finalInstruction = trimToTokenBudget(_parts, 900);
+
+    // Round 22e (F2): audit log the call. Phase generation is the biggest
+    // AI consumer (5-15 calls per script) and previously bypassed the
+    // audit log entirely. Pass `_parts` so the entry captures
+    // contextBytes vs taskBytes split.
+    try { logAICall(state.extAiProvider || 'perchance', 'phase-gen', finalInstruction, _parts); } catch {}
 
     // Streaming — render text as it arrives so users see progress
     // within ~1s instead of waiting ~30-60s for the full phase.
@@ -22378,37 +22614,45 @@ Start immediately:`;
     });
   }
 
-  function drawFeatureGrid(canvasId, featBitmask) {
+  function drawFeatureGrid(canvasId, featData) {
     const canvas = $(canvasId); if (!canvas) return;
     const dpr = window.devicePixelRatio || 1;
     const W = canvas.offsetWidth || 360, H = canvas.offsetHeight || 200;
     canvas.width = W * dpr; canvas.height = H * dpr;
     const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
-    // Keep in sync with the FEAT constant defined earlier. Order matches
-    // the bit values for grep-ability. Adding a new feature: extend FEAT
-    // and add an entry here with the matching bit value + display name.
+    // Round 22e (F4): featData is now {NAME: firstUsedAt} map. Legacy
+    // bitmask callers still supported via the bit-AND fallback path.
+    const isMap = featData && typeof featData === 'object' && !Array.isArray(featData);
     const features = [
-      { name: 'Affirmations',     bit: 1 },
-      { name: 'Programs',         bit: 2 },
-      { name: 'Custom Persona',   bit: 4 },
-      { name: 'Skip-to-Script',   bit: 8 },
-      { name: 'Timing Fix',       bit: 16 },
-      { name: 'Share',            bit: 32 },
-      { name: 'Backup',           bit: 64 },
-      { name: 'Double Induction', bit: 128 },
-      { name: 'Pre-Gen',          bit: 256 },
-      { name: 'Cloud Upload',     bit: 512 },
-      { name: 'Comments',         bit: 1024 },
+      { name: 'Affirmations',     key: 'AFFIRMATIONS',   bit: 1 },
+      { name: 'Programs',         key: 'PROGRAMS',       bit: 2 },
+      { name: 'Custom Persona',   key: 'CUSTOM_PERSONA', bit: 4 },
+      { name: 'Skip-to-Script',   key: 'SKIP_SCRIPT',    bit: 8 },
+      { name: 'Timing Fix',       key: 'TIMING_FIX',     bit: 16 },
+      { name: 'Share',            key: 'SHARE',          bit: 32 },
+      { name: 'Backup',           key: 'BACKUP',         bit: 64 },
+      { name: 'Double Induction', key: 'DOUBLE_INDUCT',  bit: 128 },
+      { name: 'Pre-Gen',          key: 'PRE_GEN',        bit: 256 },
+      { name: 'Cloud Upload',     key: 'CLOUD_UPLOAD',   bit: 512 },
+      { name: 'Comments',         key: 'COMMENTS',       bit: 1024 },
     ];
     const rowH = (H - 10) / features.length;
     features.forEach((f, i) => {
       const y = 8 + i * rowH;
-      const used = !!(featBitmask & f.bit);
+      const used = isMap ? !!featData[f.key] : !!(featData & f.bit);
       ctx.fillStyle = used ? CHART_COLORS.cyan : 'rgba(255,255,255,0.06)';
       const rx = 20, ry = y, rw = W - 40, rh = rowH - 4, rr = 4;
       ctx.beginPath(); ctx.moveTo(rx + rr, ry); ctx.lineTo(rx + rw - rr, ry); ctx.arcTo(rx + rw, ry, rx + rw, ry + rr, rr); ctx.lineTo(rx + rw, ry + rh - rr); ctx.arcTo(rx + rw, ry + rh, rx + rw - rr, ry + rh, rr); ctx.lineTo(rx + rr, ry + rh); ctx.arcTo(rx, ry + rh, rx, ry + rh - rr, rr); ctx.lineTo(rx, ry + rr); ctx.arcTo(rx, ry, rx + rr, ry, rr); ctx.closePath(); ctx.fill();
       ctx.fillStyle = used ? '#111' : CHART_COLORS.label; ctx.font = `${used ? 'bold ' : ''}11px sans-serif`; ctx.textAlign = 'left';
-      ctx.fillText(`${used ? '✓' : '○'}  ${f.name}`, 30, y + rowH/2 + 1);
+      // Round 22e (A5): when we have a real first-use timestamp, append
+      // a relative "(Nd ago)" tail to the row label. Skips when ts=0
+      // (migrated from legacy bitmask, real ts unknown).
+      let label = f.name;
+      if (isMap && featData[f.key] > 0) {
+        const days = Math.floor((Date.now() - featData[f.key]) / 86400000);
+        if (days >= 1) label += ` · ${days}d ago`;
+      }
+      ctx.fillText(`${used ? '✓' : '○'}  ${label}`, 30, y + rowH/2 + 1);
     });
   }
 
@@ -22449,11 +22693,13 @@ Start immediately:`;
         ]); break;
       }
       case 'settings': {
-        if (a.cfg.n > 0) {
+        const cfgN = a.cfg.rate?.length || 0;
+        if (cfgN > 0) {
           const avgPhase = a.shape?.n ? (a.shape.phaseSum / a.shape.n) : 0;
           const avgWork = a.shape?.n ? (a.shape.workSum / a.shape.n) : 0;
           const cL = ['Rate','Pitch','Narr Vol','Drone','Phases','Work'];
-          const cV = [a.cfg.rateSum/a.cfg.n, a.cfg.pitchSum/a.cfg.n, a.cfg.volSum/a.cfg.n, a.cfg.droneSum/a.cfg.n, avgPhase / 10, avgWork / 5];
+          // Round 22e (F1): mean from circular buffer (was rateSum / n).
+          const cV = [_cfgMean(a.cfg.rate), _cfgMean(a.cfg.pitch), _cfgMean(a.cfg.vol), _cfgMean(a.cfg.drone), avgPhase / 10, avgWork / 5];
           drawHorizBars('chartSettings', cL, cV, 1.2, [CHART_COLORS.cyan, CHART_COLORS.blue, CHART_COLORS.amber, CHART_COLORS.green, CHART_COLORS.purple || CHART_COLORS.cyan, CHART_COLORS.blue]);
         } else drawBarChart('chartSettings', [], [], CHART_COLORS.cyan);
         break;
@@ -31277,6 +31523,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     }));
     const aiEntries = (_aiAuditLog || []).map(e => ({
       ts: e.ts, category: 'ai', provider: e.provider, sourceId: e.source, bytes: e.bytes,
+      contextBytes: e.contextBytes, taskBytes: e.taskBytes,
     }));
     let sessionEntries = [];
     try {
