@@ -108,6 +108,82 @@ This file tracks improvements not yet shipped, ordered roughly by least to most 
 | Phase audition | 🔊 audition button on every phase row. Speaks the phase aloud using current voice settings (system or local TTS). Single global slot — clicking another phase cancels the previous; clicking same button stops. Strips PAUSE markers + leading phase header. Disabled during live sessions. Active button gets cyan border + tinted background |
 | Adaptive playback dynamics default-on for engaged users | When profile age is set AND no saved settings exist, `playbackDynamics.enabled` defaults to true. Anonymous users keep conservative off-default. One-time flip; persisted value wins on subsequent loads |
 
+### Round 6 — Step 5 layout polish
+
+| Item | Note |
+|------|------|
+| Slider rows refactored | Slider sits on top, `.slider-meta` line beneath. Canonical `.toggle-row-cb` pattern (checkbox-left). Cleans up the muddled grid that ran labels next to controls inconsistently |
+| Local-AI-voice block loosened | Toast notifications + retry button replace the inline error UI. Block gets graceful fallback when initialization fails |
+| Style preset chips active state strengthened | ✓ checkmark + 2px neon border on active chips, replacing the prior subtle background-only treatment that was easy to miss |
+| Generate buttons relabeled | "+1 image" / "+5 images" / "-1" / "clear queue" replace the prior generic "generate" / "stop" verbs that didn't tell the user how many came out |
+| Hide Gallery bug | Was using truthy check on `style.display` (always truthy unless empty string). Now uses `_galleryOpen` boolean. Closed gallery actually closes |
+
+### Round 7 — Image gen enhance + Guide Builder
+
+| Item | Note |
+|------|------|
+| ✨ enhance button on Step 5 image gen | Length picker (short / medium / long) using `BG_ENHANCE_INSTRUCTIONS` adapted from promptyx PROMPT_INSTRUCTIONS. Engineer pass tightens the prompt without mutating the textarea until user accepts |
+| Guide Builder modal | New "✨ Build a Guide" entry on Step 1. Multi-step AI pipeline mirroring character-sfx's pattern: Identity (name+category+tagline) → Voice (rich systemPrompt) → Reminder (derived from Voice) → Image accents (prefix+suffix). Each step rendered as a `.gb-step` row with status icon + per-step ↻ regenerate. Smart cascade: regenerating Identity invalidates Voice + Reminder + Image. Cancel via shared `_gbToken`. Save gate: Identity + Voice required. Stored as custom persona via existing `saveCustomPersonas` |
+
+### Round 8 — Post-session check-in parity + bug-hunt pass 1
+
+| Item | Note |
+|------|------|
+| Post-session "type it instead" toggle | Mirrors the pre-session pattern. POST_CHECKIN_LEXICON + `parsePostCheckinText` parse mood / alertness / depth from free text and push values onto the three sliders. Same lexicon shape as pre-session, tuned for post-session vocabulary ("calmer", "drowsy", "went deep") |
+| applyConfigSnapshot wrong DOM IDs | Two cases where the snapshot loader referenced IDs that don't exist: `voiceVolumeVal` → `voiceVolVal`, `useLocalTTS` (a state property) → `localVoiceToggle` (the actual checkbox). Fix means loading a saved preset now updates these two visible elements correctly instead of leaving them stuck on prior values |
+| autoSelectVoiceForPersona orphan wired | Function existed with VOICE_PACKS table mapping persona category → preferred voice, but was never called. Now fires on persona-click in renderPersonaGrid; internal `_savedVoiceName` guard prevents override of user choice |
+
+### Round 9 — Pre-gen for tomorrow's program
+
+| Item | Note |
+|------|------|
+| Consent-based pre-gen offer | After completing a program day, post-session screen surfaces a card: "Want me to pre-generate tomorrow's session in the background?" Yes → schedules via `schedulePreGenForProgramDay`; Skip → dismisses. User chose to be in control of when AI calls fire — no silent quota burn. Toast on completion: "✨ Tomorrow's session is ready" or "Couldn't pre-generate — you can generate when you start the day" |
+| Stealth pre-gen runner | `runPreGenForProgramDay` snapshots state, mutates to mirror tomorrow's settings (the same logic startProgramDay would set up), runs `generateFullScript` in headless mode (DOM writes guarded by `state._preGenMode` flag), restores state, caches result keyed by program+day |
+| Cache + 26h expiry | `PROGRAM_PREGEN_KEY = 'stillness_program_pregen_v1'`. Most-recent 3 entries kept. `getCachedPreGen` checks freshness; `clearPreGenCache` removes a specific entry; `cancelActivePreGen` aborts in-flight generation |
+| Pre-gen badge on Step 6 | When startProgramDay loads a cached script, a small `#preGenBadge` mounts above `#scriptText`: "✨ Pre-generated for you 6 hours ago — ready to play, or **regenerate fresh**." Click regenerate-fresh clears the cache and triggers a fresh generation. Click × dismisses the badge |
+| Conflict resolution | When user starts a session OR clicks generate-fresh during in-flight pre-gen, the conflict path cancels pre-gen first (sets `state._preGenCanceled`, polls for lock-clear up to 4s). Pre-gen runner's `finally` block fires the appropriate toast outside `_preGenMode` so the notify gate doesn't suppress it |
+
+### Round 10 — Saved Scripts library on Step 6
+
+| Item | Note |
+|------|------|
+| Saved Scripts panel | New collapsible `<details class="presets-collapsible" id="savedScriptsDetails">` above `<h3>session script</h3>`. Live count badge in summary line. Empty state for new users. Newest-first ordering |
+| Save current script | 💾 button in script-actions row. Defaults name to `${persona.name} · ${intentionText}` (or persona+method if no intention). Uses `promptAsync` for naming. Auto-opens the details panel after save so the new entry is visible |
+| Load + rename + delete | Load confirms before clobbering unsaved edits; load path writes through `state.fullScript`, `state.parsedScript`, `state.generatedPhaseOrder`, and `$('scriptText').value` so phase metrics + timeline + Director card all refresh. Rename inline via `promptAsync`. Delete confirms first |
+| `SAVED_SCRIPTS_KEY` IDB store | `stillness_saved_scripts_v1`, capped at 30 entries (newest kept on overflow). Schema: `{id, name, script, savedAt, sourceMeta:{persona,method,length,intention}}` |
+
+### Round 11 — Themed app-intro + tour refresh
+
+| Item | Note |
+|------|------|
+| App-intro panel | Replaced hastily-tacked `<div class="description">` with a properly themed `<details class="app-intro">`. Closed: one-line pitch + "tap for what this is" hint with chevron rotation. Open: italic blockquote (the "single-most complete" line treated as design rather than rendered noise), one-paragraph lede, 8-tile use-case grid (sleep / focus / decompression / processing / mindfulness / visualizations / habit reinforcement / creative-state), three numbered onboarding paths, foot-tags. Cyan accent border-left ties to active-state language used elsewhere |
+| Smart open/close | First-time visitors (no session history) → open by default. Returning users (any completed sessions) → collapsed. Manual toggle persists separately to `stillness_intro_open_v1` |
+| Onboarding tour refresh | Tour grew 12 → 14 steps. Adds Guide Builder coverage (Step 3), step dedicated to image-gen ✨ enhance + style chips (new step), Saved Scripts library + 💾 save mention (Step 6 step), pre-gen for tomorrow's program (new step). Tightened existing prose, updated method/persona counts. Same TOUR_KEY so existing users aren't re-prompted |
+
+### Round 12 — Bug-hunt passes 2 + 3
+
+| Item | Note |
+|------|------|
+| `state._startedUnsafe` wired | Previously set in startSession on safety-gate bypass but never read. Now propagates to `history[0].startedUnsafe` in the session record AND surfaces inline in the post-session reflection card as a quiet amber-bordered note ("this session ran with the pre-session safety check bypassed…") |
+| `_rulesPreDuckVolume` removed | Vestigial cleanup from pre-stack-based duck implementation. Cleared in two places (line 21381 + 23927) but never set/read. Both lines deleted; comment at second site softened to drop the duck-snapshot reference |
+| `getEmergencyCooldownRemaining` DRY | Helper existed but startSession had inlined the same calculation. Replaced inline with helper |
+| `HNE.storage()` + `HNE.clearMetrics(true)` | Console diagnostic shim extended. `storage()` exposes `checkStorageBudget` (orphan utility); `clearMetrics(true)` exposes `clearMetricsHistory` (orphan with broken doc claim). The clear method requires explicit `true` arg so accidental autocomplete can't fire it |
+| Dead-code removal | Deleted `getPreferred` (generic top-N utility, no caller) and `getSpokenScriptPreviewText` (TTS preview builder, no caller — probably remnant of an unshipped "preview entire script aloud" feature) |
+| `stepsCompleted` shape consistency | Init had keys 1-5 but every reassignment had keys 1-6. Added `6: false` to init so the shape matches everywhere |
+| `.app-intro-paths-label` orphan CSS | Class rule existed but markup never had a label element. Added "Three ways to start" label markup paralleling the "Try it for" label above the uses grid |
+| `idbSet` / `idbDel` silent error swallowing | Both used empty `catch {}`. Storage-budget exceeded, permission errors, IDB version conflicts all failed silently with no developer signal. Now log via `console.warn` while preserving the void-return caller contract — affects ~40 IDB write sites |
+| `backToEditBtn` cleanup gap | When user aborted a session via "back to script", three things weren't reset that finishSession does: webcam stream kept running until navigation elsewhere, playback dynamics state leaked into next session, drone.stop was fire-and-forget instead of awaited. All three now mirror finishSession's contract |
+
+### Round 13 — Conversational check-in + phase-editor generate + regen-button extension
+
+| Item | Note |
+|------|------|
+| Text-first check-in (Step 5 + post-session) | Conversational text input is the default; sliders are the alternative behind a `use sliders instead` toggle. Both check-ins get a chat-style header (avatar circle 💬 + framed question + toggle) and the textarea below. Pre-session: "how are you arriving?". Post-session: "how did that land?" — visually elevated with `.post-checkin-elevated` cyan-border-left card. Auto-apply on textarea blur so users who type and click another button (next →, restart, etc.) don't lose their signal — silent on auto-apply, no nag if nothing parses |
+| Post-session feedback echo | New `#postCheckinFeedbackEcho` block below the input — a quiet quote-block-styled acknowledgment that surfaces parsed signals as natural language rather than raw numbers. "So: **better than before** · **a little drowsy** · **went very deep**. Got it." 4-5 phrase bands per dimension tuned to score ranges |
+| In-row "✨ generate" button on phase editor | Every non-custom phase row now has a generate button (custom blocks keep their existing ✨ reimagine). Two visual states: idle (subtle, like reimagine) and pending (cyan-tinted with 2.4s soft pulse animation) — pending fires when section text matches `scaffoldForPhase` output. Hot path uses `_genStateRetryHandler`; cold path falls back to `generateFullScript` so first-time generation has proper shared context |
+| Content-aware `syncGenStateWithPhases` | Detects scaffold-only sections via comparison with `scaffoldForPhase` output. Renamed phases (work → work-1 / work-2 promotion) carrying real content keep 'done' status; freshly-added scaffold-only phases correctly read as 'pending'. Also fills `gs.phaseResults` for done renamed phases from `state.scriptSections` so re-rolls can show proper diff. Fixes the bug where adding a 2nd work block reverted the existing work block to pending |
+| Regenerate button now picks up pending phases | Step-6 `regenScriptBtn` previously only retried `error` / `warn` phases. Now also picks up `pending` (user added a phase via editor that hasn't been generated). Calls `syncGenStateWithPhases` first to ensure stateMask reflects current sections. Messaging picks language: "filled in" if mostly pending, "regenerated" if mostly failed, neutral for mixed. Tooltip updated to explain the new behavior |
+
 ---
 
 ## 1 · Analysis: AI steering controls (Profile Options + Debug)

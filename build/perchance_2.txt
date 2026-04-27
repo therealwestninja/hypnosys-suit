@@ -4046,7 +4046,7 @@ I return to myself easily"></textarea>
         <div id="directorWorkCard" style="display:none;margin:10px 0;padding:10px 12px;background:var(--bg-deep);border-left:2px solid var(--neon-cyan);font-size:0.74rem;line-height:1.55"></div>
         <textarea class="script-text" id="scriptText" spellcheck="false"></textarea>
         <div class="script-actions">
-          <button class="btn secondary" id="regenScriptBtn">regenerate</button>
+          <button class="btn secondary" id="regenScriptBtn" title="Re-generate any phase that failed, or fill in phases you added via the editor below. Click ✨ on a single row to target just that phase.">regenerate</button>
           <button class="btn secondary" id="regenFreshBtn" title="Generate a brand new script from your current intention. Useful if you've pasted or edited the script and want a fresh AI-generated version.">↻ regenerate fresh</button>
           <button class="btn secondary" id="autoTempoBtn">⏱ auto-tempo</button>
           <button class="btn secondary" id="autoTempoOptsBtn" title="Auto-tempo cleanup options" style="padding:4px 8px">⚙</button>
@@ -17563,14 +17563,19 @@ End with a brief acknowledgment that you're now continuing — bridging back to 
   /**
    * Step-6 "Regenerate" button (the one below the script textarea, before auto-tempo).
    *
-   * Behavior — sequentially retries any chunks that failed to generate the first
-   * time (stateMask is 'error' or 'warn'). The button itself is disabled while
-   * running so a user can't accidentally double-trigger.
+   * Behavior — sequentially picks up any phase that needs (re)generation:
+   *   - 'error': hard failure on initial pass
+   *   - 'warn':  soft issue, content present but flagged
+   *   - 'pending': user added the phase via the editor after initial gen,
+   *                or scaffold text never got replaced with AI content
+   *
+   * The button itself is disabled while running so a user can't accidentally
+   * double-trigger.
    *
    * Decision tree:
    *   • _genState is null → no prior generation; offer full regen via confirm
-   *   • all phases done → no failures to retry; offer full regen via confirm
-   *   • some phases failed → run retryPhase for each in order, awaiting each
+   *   • all phases done → nothing to fill in; offer full regen via confirm
+   *   • some phases need work → run retryPhase for each in order, awaiting each
    *
    * Why sequential not parallel: the retry path uses _genStateRetryHandler which
    * gates on _aiInProgress, so concurrent retries would just queue and notify.
@@ -17589,21 +17594,29 @@ End with a brief acknowledgment that you're now continuing — bridging back to 
       return;
     }
 
-    // Find indices that need retry. Treat both 'error' (hard failure) and 'warn'
-    // (soft issue, content present but flagged) as candidates so the user gets
-    // the maximum benefit from the retry button.
-    const failedIdx = [];
+    // Sync first so any editor changes (added/renamed phases) are reflected
+    // in stateMask before we pick targets. Without this a phase added via
+    // "+ add work block" right before clicking regenerate would be invisible
+    // to the loop below.
+    syncGenStateWithPhases();
+
+    // Pick up phases that need generation. Pending = user added a phase
+    // since the last full pass; Error/Warn = previous attempt didn't land.
+    // All three deserve attention from the regenerate button.
+    const targetIdx = [];
+    const pendingCount = _genState.stateMask.filter(s => s === 'pending').length;
+    const failedCount = _genState.stateMask.filter(s => s === 'error' || s === 'warn').length;
     _genState.stateMask.forEach((s, i) => {
-      if (s === 'error' || s === 'warn') failedIdx.push(i);
+      if (s === 'error' || s === 'warn' || s === 'pending') targetIdx.push(i);
     });
 
-    // No failures — offer full regen as a fallback rather than silently no-op.
-    if (failedIdx.length === 0) {
+    // Nothing to do — offer full regen as a fallback rather than silently no-op.
+    if (targetIdx.length === 0) {
       const editedText = $('scriptText')?.value?.trim();
       const hasManualEdits = state.fullScript && editedText && editedText !== state.fullScript.trim();
       const msg = hasManualEdits
-        ? 'No failed chunks to regenerate. Discard your manual edits and regenerate the full script?'
-        : 'No failed chunks to regenerate. Regenerate the full script anyway?';
+        ? 'All phases are generated. Discard your manual edits and regenerate the full script?'
+        : 'All phases are generated. Regenerate the full script anyway?';
       if (await confirmAsync(msg)) return generateFullScript();
       return;
     }
@@ -17619,11 +17632,12 @@ End with a brief acknowledgment that you're now continuing — bridging back to 
     const retry = _genStateRetryHandler; // snapshot — generateFullScript reassigns this
 
     try {
-      for (const idx of failedIdx) {
+      for (const idx of targetIdx) {
         // Re-check current status — the user may have manually retried one
-        // mid-loop via the indicator click. Skip if it's no longer failed.
+        // mid-loop via the indicator click or in-row generate button. Skip
+        // if it's no longer pending/failed.
         const cur = _genState.stateMask[idx];
-        if (cur !== 'error' && cur !== 'warn') {
+        if (cur !== 'error' && cur !== 'warn' && cur !== 'pending') {
           succeeded++; // already fixed by user — count as a win
           continue;
         }
@@ -17642,12 +17656,16 @@ End with a brief acknowledgment that you're now continuing — bridging back to 
       if (btn) btn.disabled = false;
     }
 
+    // Messaging picks language based on what was processed. If the run was
+    // mostly pending phases (user just added some), say "filled in"; if
+    // mostly failed retries, say "regenerated"; mixed gets neutral wording.
+    const verb = pendingCount > failedCount ? 'filled in' : 'regenerated';
     if (failed === 0) {
-      notify.success(`Regenerated ${succeeded} failed chunk${succeeded === 1 ? '' : 's'}.`);
+      notify.success(`${verb.charAt(0).toUpperCase() + verb.slice(1)} ${succeeded} phase${succeeded === 1 ? '' : 's'}.`);
     } else if (succeeded === 0) {
-      notify.warn(`Could not regenerate any of the ${failed} failed chunk${failed === 1 ? '' : 's'}. Click indicators to retry individually.`);
+      notify.warn(`Could not generate any of the ${failed} phase${failed === 1 ? '' : 's'}. Click ✨ on individual rows to retry.`);
     } else {
-      notify.warn(`Regenerated ${succeeded}, ${failed} still failing. Click red indicators to retry individually.`);
+      notify.warn(`${verb.charAt(0).toUpperCase() + verb.slice(1)} ${succeeded}, ${failed} still failing. Click ✨ on individual rows to retry.`);
     }
   }
 
