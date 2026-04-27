@@ -9939,16 +9939,16 @@ I return to myself easily"></textarea>
 
   function buildFreshnessBlock() {
     if (state.smartDirectorEnabled === false) return '';
-    // Perchance statically analyzes chained list-path patterns and chokes
-    // on chained access into a top-level list. Use a local alias so only
-    // `root.freshSeeds` appears literally in source — the .pick call lands
-    // on the local.
-    const seedsList = (typeof root !== 'undefined') ? root.freshSeeds : null;
-    if (!seedsList || typeof seedsList.pick !== 'function') return '';
+    // Perchance can't expose a `.pick` sub-method on a list — top-level
+    // functions must be called directly. So root.freshSeeds is itself the
+    // pick function: signature (opts) => string[]. Defensive check covers
+    // both "no root" (HTML-panel preview outside Perchance) and "freshSeeds
+    // not defined in DSL".
+    if (typeof root === 'undefined' || typeof root.freshSeeds !== 'function') return '';
     try {
       const tags = deriveProfileTags();
       if (tags.length < FRESHNESS_MIN_TAGS) return '';
-      const phrases = seedsList.pick({
+      const phrases = root.freshSeeds({
         profileTags: tags,
         n: FRESHNESS_COUNT,
         excludeSet: _recentAnchors,

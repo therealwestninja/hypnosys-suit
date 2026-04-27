@@ -1,168 +1,67 @@
-// ════════════════════════════════════════════════════════════════════════════
-// Advanced Hypnosis Narration Engine — Perchance generator (top editor)
-//
-// This is the Perchance-DSL half of HNE. It does FOUR things:
-//   1. $meta — declares the title, description, and dynamic link-preview
-//      metadata so shared URLs render rich previews on Discord/Slack/etc.
-//   2. Imports — pulls in the Perchance plugins HNE consumes via root.*
-//      (ai-text-plugin for narration, text-to-image-plugin for backgrounds,
-//      uploadPlugin for share links, dynamicImport for community packs,
-//      superFetch for CORS-bypassed external resource fetches, bugReport
-//      for debug-rich issue submission, fullscreenButtonPlugin for the
-//      session screen).
-//   3. freshSeeds — a tagged phrase library the AI consumes via
-//      root.freshSeeds.pick(...) for cross-session variation. HNE asks for
-//      n phrases matching the user's profile tags and excluding recently
-//      used anchors; this prevents the same metaphors from showing up
-//      session after session.
-//   4. communityPacks — lazy-loaded slots where third-party generators
-//      can contribute personas, methods, presets, or programs.
-//
-// The HTML panel (perchance_2.txt) is where the actual app logic lives.
-// ════════════════════════════════════════════════════════════════════════════
-
 $meta
   title = Advanced Hypnosis Narration Engine
-  description = Free, science-based hypnosis session generator. Adaptive personal-profile system, 25+ guides across 6 categories, 35+ induction methods (therapeutic, demonstration, sleep, breath-work, ideomotor), multi-day structured programs, in-session AI narration with ambient soundscapes and hypnotic visuals. Includes Smart Director (AI tuning to your history), conversational pre/post check-ins, opt-in clinical phase types (teaching, training, mission, goal), pre-generation for tomorrow's program, saved-script library, and emergency rescue protocols.
+  description = Full-featured, FREE, science-based, high-quality hypnosis experience generator. Narrated voiceovers, ambient soundscapes, hypnotic visual effects, custom backgrounds (Ai image generation, local files, YouTube videos), mental health tracking tools, adaptive personal profile system, and much more! Useful for relaxation, mindfulness, grounding, meditation, and hypnosis.
   header
-    mode = minimal // More room for visuals — the session screen takes over
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // dynamic(inputs) — link-preview metadata generator.
-  // CRITICAL: must be fully self-contained — no `root.*` refs, no outside
-  // variables. Anything we reference from a sibling list MUST be duplicated
-  // inline here. Keep this in sync with the actual METHODS / PRESETS /
-  // PROGRAMS / INTENTIONS arrays in perchance_2.txt's HTML panel when those
-  // change. This is intentional duplication — the cost of Perchance's
-  // sandboxing of $meta.dynamic.
-  // ──────────────────────────────────────────────────────────────────────────
+    mode = minimal // More room for visuals
+  // Dynamic link-preview metadata — MUST be fully self-contained (no root.* refs).
+  // If a user shares a session config or persona link, show a tailored title/description
+  // in Discord, Slack, iMessage, Twitter etc. Otherwise fall back to defaults.
   async dynamic(inputs) =>
     let defaultTitle = "Advanced Hypnosis Narration Engine";
-    let defaultDesc  = "Free, science-based hypnosis session generator with AI narration, ambient soundscapes, adaptive personal profile, multi-day programs, and clinical-grade phase types (teaching, training, mission, goal).";
+    let defaultDesc  = "Free, science-based hypnosis session generator with narration, ambient soundscapes, and adaptive personalization.";
     let defaultImage = "";
     try {
       let params = inputs.urlParams || {};
       let hash = (inputs.urlHash || "").replace(/^#/, "");
-
-      // ─── Inline catalogs ─────────────────────────────────────────────────
-      // Method labels — every method id in perchance_2.txt's METHODS array.
-      // Group by clinical category for clarity in this duplicate (but the
-      // map is flat — the HTML panel groups them when rendering the grid).
+      // Inline label map — CANNOT reference root.METHODS or root.BUILTIN_PERSONAS from here.
       let methodLabel = {
-        // Therapeutic / classical
-        "highway":"Highway Induction","spiral":"Spiral Fixation",
-        "betty-erickson":"Betty Erickson 3-2-1","staircase":"Staircase Descent",
+        "highway":"Highway Induction","spiral":"Spiral Fixation","betty-erickson":"Betty Erickson 3-2-1",
+        "staircase":"Staircase Descent","hand-heaviness":"Hand Heaviness","confusion":"Confusion Method",
+        "fractionation":"Fractionation","eye-roll":"Eye-Roll (Spiegel)","breath-478":"4-7-8 Breath",
         "progressive":"Progressive Relaxation","ericksonian":"Ericksonian Conversational",
-        "dave-elman":"Dave Elman","fractionation":"Fractionation",
-        "regression":"Age Regression","somnambulism":"Somnambulism Approach",
-        // Breath-work
-        "breath-478":"4-7-8 Breath","heartbeat-sync":"Heartbeat Sync",
-        // Eye / fixation
-        "eye-roll":"Eye-Roll (Spiegel)","magnetic-gaze":"Magnetic Gaze",
-        // Ideomotor / convincers (demonstration)
-        "hand-heaviness":"Hand Heaviness","magnetic-hands":"Magnetic Hands",
-        "arm-catalepsy":"Arm Catalepsy","arm-drop":"Arm Drop",
-        "pendulum":"Chevreul's Pendulum","automatic-writing":"Automatic Writing",
-        "stuck-to-seat":"Stuck to Your Seat","floating-body":"Floating Body",
-        // Confusion / shock
-        "confusion":"Confusion Method","shock-induction":"Shock Induction",
-        "handshake-interrupt":"Handshake Interrupt",
-        // Sensory / phenomenon
+        "magnetic-hands":"Magnetic Hands","arm-catalepsy":"Arm Catalepsy","pendulum":"Chevreul's Pendulum",
         "tipsy":"Tipsy Without Drinking","laughter-trigger":"Laughter Trigger",
-        "number-amnesia":"Number Amnesia","thermal-hand":"Hot/Cold Hand",
-        "glove-anesthesia":"Glove Anesthesia","anesthesia-full":"Full-Body Anesthesia",
-        "hallucination-pos":"Positive Hallucination","hallucination-neg":"Negative Hallucination",
-        "time-distortion":"Time Distortion",
-        // Body / scan
-        "body-awareness":"Body Awareness Scan","pain-dial":"Pain Dial",
-        // Advanced
+        "number-amnesia":"Number Amnesia","thermal-hand":"Hot/Cold Hand","stuck-to-seat":"Stuck to Your Seat",
+        "body-awareness":"Body Awareness Scan","floating-body":"Floating Body","glove-anesthesia":"Glove Anesthesia",
         "double-induction":"Double Induction"
       };
-
-      // Intention labels — every value in the intention dropdown.
       let intentionLabel = {
-        "trigger":"Post-hypnotic trigger","emotional":"Emotional state shift",
-        "behavior":"Behavior change","release":"Release / let go",
-        "perception":"Perception shift","anchor":"Anchor installation",
-        "trance":"Pure trance","performance":"Peak performance",
-        "focus":"Deep focus","creativity":"Creative flow",
-        "pain":"Pain management","sleep":"Sleep induction",
-        "energy":"Energy boost","convincer":"Convincer demo",
-        "novelty":"Novelty effect","time":"Time distortion",
-        "amnesia":"Suggested amnesia","identity":"Persona / identity play",
+        "trigger":"Post-hypnotic trigger","reframe":"Belief reframe","habit":"Habit change","trance":"Pure trance",
+        "sleep":"Sleep induction","performance":"Peak performance","focus":"Deep focus","creativity":"Creative flow",
+        "pain":"Pain management","energy":"Energy boost","convincer":"Convincer demo","novelty":"Novelty effect",
+        "time":"Time distortion","amnesia":"Suggested amnesia","identity":"Identity exploration",
         "surrender":"Surrender","conditioning":"Behavioral conditioning"
       };
-
-      // Length labels — must match the lengthSelect dropdown.
-      let lengthLabel = {
-        "micro":"micro (~2 min)","quick":"quick (~5 min)","short":"short (~12 min)",
-        "medium":"medium (~20 min)","long":"long (~30 min)",
-        "extended":"extended (~45 min)","deep":"deep (~60 min)","marathon":"marathon (~90 min)"
-      };
-
-      // Preset labels — every preset id in perchance_2.txt's PRESETS array,
-      // plus the four new opt-in presets (method-intro, skill-build,
-      // mission-brief, goal-lock). Used both for /?preset=<id> URL routing
-      // (link previews) and for the curated-share link description.
-      let presetLabel = {
-        "sleep":"Sleep","calm":"Quick Calm","focus":"Deep Focus","demo":"Demo Night",
-        "pain":"Pain Relief","micro":"Micro Reset","anxiety":"Anxiety Relief",
-        "confidence":"Confidence","flow":"Peak Flow","habits":"Habit Change",
-        "creativity":"Creative Flow","energy":"Energy Boost","deep-dive":"Deep Dive",
-        "nightcap":"Nightcap","journey":"Train Journey","temple":"Temple Sit",
-        // Opt-in presets that include new phase types
-        "method-intro":"Method Intro (psychoeducation)","skill-build":"Skill Builder (training)",
-        "mission-brief":"Mission Brief (posthypnotic)","goal-lock":"Goal Lock-in (future-pace)"
-      };
-
-      // Program labels — multi-day arcs.
-      let programLabel = {
-        "sleep-7":"7-Day Sleep","anxiety-14":"14-Day Calm","confidence-10":"10-Day Confidence",
-        "pain-6":"6-Week Pain","focus-7":"7-Day Focus","depth-7":"7-Day Depth",
-        "stress-5":"5-Day Stress Reset"
-      };
-
-      // Phase-type labels — used when describing what's special about a
-      // shared session. The four new opt-in types get full names so users
-      // know what they're previewing.
-      let phaseTypeLabel = {
-        "settling":"Settling","induction":"Induction","deepener":"Deepener",
-        "level":"Level","work":"Work","affirm":"Affirmation","lightener":"Lightener",
-        "wake":"Wake","reintroduction":"Reintroduction","sounding":"Sounding",
-        "custom":"Custom","teaching":"Teaching","training":"Training",
-        "mission":"Mission","goal":"Goal"
-      };
-
-      // ─── Route 1: shared full-config URL — /?#cfg=p=...&m=...&i=...&l=...&t=...
+      // Config-share URL: /?#cfg=p=...&m=...&i=...&l=...&t=... (URL-encoded intention text)
       if (hash.indexOf("cfg=") === 0) {
         let qs = new URLSearchParams(hash.slice(4));
         let m = methodLabel[qs.get("m")] || "custom method";
         let i = intentionLabel[qs.get("i")] || "";
-        let lLbl = lengthLabel[qs.get("l")] || "";
+        let lenLabel = { micro:"micro", quick:"quick", short:"short", medium:"medium", long:"long", extended:"extended" }[qs.get("l")] || "";
         let intent = (qs.get("t") || "").trim();
         if (intent) try { intent = decodeURIComponent(intent); } catch(e){}
-        let parts = [m, lLbl, i].filter(Boolean);
+        let parts = [m, lenLabel && lenLabel + " session", i].filter(Boolean);
         return {
           title: "Shared Hypnosis Session · " + parts.slice(0,2).join(" · "),
-          description: (intent
-            ? "Intention: " + intent.slice(0,140) + (intent.length>140?"…":"")
-            : parts.join(" · ")) + " — Click to open in the Hypnosis Narration Engine.",
+          description: (intent ? "Intention: " + intent.slice(0,140) + (intent.length>140?"…":"") : parts.join(" · ")) + " — Click to open in the Hypnosis Narration Engine.",
           image: defaultImage,
         };
       }
-
-      // ─── Route 2: uploadPlugin payload share — /?data=<fileId>.gz
-      // Can't fetch the payload from $meta.dynamic (no network here), so show
-      // a generic preview and let the client render details on load.
+      // Uploaded-payload share: /?data=<fileId>.gz (handles both full configs and custom personas).
+      // Can't fetch the payload from $meta.dynamic (no network in this context), so show a generic
+      // "shared content" preview and let the client render details on load.
       if (params.data) {
         return {
           title: "Shared Hypnosis Content",
-          description: "Someone shared a custom session, persona, program, or saved script with you. Open to review and add it to your library.",
+          description: "Someone shared a custom session, persona, or program with you. Open to review and add it to your library.",
           image: defaultImage,
         };
       }
-
-      // ─── Route 3: named-preset URL — /?preset=<id>
+      // Named-character or named-preset URL: /?char=<name> or /?preset=<name>
+      let presetLabel = {
+        "quick-stress-reset":"Quick Stress Reset","deep-sleep":"Deep Sleep Induction",
+        "focus-boost":"Focus Boost","creative-flow":"Creative Flow","confidence":"Confidence Anchor"
+      };
       if (params.preset && presetLabel[params.preset]) {
         return {
           title: presetLabel[params.preset] + " · Hypnosis Narration Engine",
@@ -170,231 +69,147 @@ $meta
           image: defaultImage,
         };
       }
-
-      // ─── Route 4: named-program URL — /?program=<id>
-      if (params.program && programLabel[params.program]) {
-        return {
-          title: programLabel[params.program] + " · Hypnosis Narration Engine",
-          description: "A structured multi-day hypnosis program. " + defaultDesc,
-          image: defaultImage,
-        };
-      }
     } catch(e) {}
     return { title: defaultTitle, description: defaultDesc, image: defaultImage };
 
-// ─── PLUGIN IMPORTS ─────────────────────────────────────────────────────────
-// Required imports — loaded eagerly at page start because the HTML panel
-// references them via root.* during initial render.
 aiTextPlugin = {import:ai-text-plugin}
 textToImagePlugin = {import:text-to-image-plugin}
 fullscreenButtonPlugin = {import:fullscreen-button-plugin}
 uploadPlugin = {import:upload-plugin}
 dynamicImport = {import:dynamic-import-plugin}
 
-// Optional imports — power useful features but the HTML panel degrades
-// gracefully when they're unavailable (typeof root.X !== 'undefined' guards).
+// ──────────────────────────────────────────────────────────────────────────────
+// Fresh metaphor anchors for Smart Director (item #4)
+// ──────────────────────────────────────────────────────────────────────────────
+// The HTML panel's buildFreshnessBlock() calls root.freshSeeds(opts) to draw
+// session-specific anchor phrases that get fed to the AI as optional imagery.
+// Without this, the AI tends to converge on the same metaphors (staircase, warm
+// light, deep ocean, etc.) for similar requests across different sessions.
 //
-// superFetch     — CORS-bypassed external fetch. Useful for pulling in
-//                  background images from arbitrary URLs (e.g. user-pasted
-//                  Pinterest/Imgur links) that browsers would otherwise
-//                  block due to cross-origin policy.
-// bugReport      — packages browser/device debug info into a one-click
-//                  report payload. Helps when users hit edge cases on
-//                  Safari iOS / Firefox Android / etc.
-superFetch = {import:super-fetch-plugin}
-bugReport = {import:bug-report-plugin}
-
-// ─── FRESHNESS SEEDS — tagged anchor-phrase library ─────────────────────────
-// HNE's Smart Director queries root.freshSeeds.pick({ profileTags, n,
-// excludeSet }) when generating scripts to inject fresh metaphor anchors
-// the AI hasn't recently used. This combats "same-session-feel" — without
-// freshness seeds, the AI tends to converge on a small repertoire of
-// images (the staircase, the warm light, the deep ocean) for similar
-// requests.
+// freshSeeds is a sync top-level function with signature:
+//   freshSeeds({ profileTags: string[], n: number, excludeSet: string[] }) → string[]
 //
-// Each entry is a `{tag, phrase}` object. Multiple tags per entry: split
-// with a pipe `|` (e.g. `tag:sleep|anxiety,phrase:...`).
-// Phrases should be:
-//   • Sensory rather than abstract ("warm gravity pulling shoulders down"
-//     not "deep relaxation")
-//   • Not too long — 6-14 words is the sweet spot for AI to weave in
-//   • Voice-neutral — the AI will adapt them to the active persona
+// Returns up to n phrases that match at least one profileTag, excluding any
+// phrase in excludeSet (the rotation memory of recently-used anchors).
 //
-// To extend: add lines below, OR contribute via a community pack (see
-// communityPacks slot at the bottom of this file).
-// ────────────────────────────────────────────────────────────────────────────
-freshSeedsBank
-  // ── sleep / drowsiness ──
-  {tag:sleep, phrase:the velvet edge of sleep where thoughts turn to feathers}
-  {tag:sleep, phrase:slow tide pulling you under without effort}
-  {tag:sleep, phrase:eyelids growing heavy like wet silk}
-  {tag:sleep, phrase:the warm hollow your body has been looking for}
-  {tag:sleep, phrase:a long evening dissolving into one quiet breath}
-  {tag:sleep|trance, phrase:drift between waking and the next dream}
-  {tag:sleep, phrase:gravity becoming a kind of friend}
-
-  // ── anxiety / nervous system regulation ──
-  {tag:anxiety, phrase:a wide quiet meadow where worry has no name}
-  {tag:anxiety, phrase:warm water dissolving the edges of unease}
-  {tag:anxiety, phrase:the chest softening on its own, no instruction needed}
-  {tag:anxiety, phrase:a slow exhale finding the floor of the lungs}
-  {tag:anxiety|emotional, phrase:placing the day down for a moment, like a heavy bag}
-  {tag:anxiety|release, phrase:the nervous system remembering it's safe here}
-  {tag:anxiety|emotional, phrase:thoughts passing like cars on a distant road}
-
-  // ── performance / flow / sport ──
-  {tag:performance, phrase:the calm focus of a still archer}
-  {tag:performance, phrase:flow state arriving like a familiar room}
-  {tag:performance|focus, phrase:eyes finding the target before the mind does}
-  {tag:performance, phrase:hands knowing exactly where to be}
-  {tag:performance|confidence, phrase:standing in the center of your own quiet}
-  {tag:performance, phrase:the breath that comes just before the shot}
-
-  // ── focus / cognitive sharpening ──
-  {tag:focus, phrase:the world narrows to what's in front of you}
-  {tag:focus, phrase:attention settling like dust in a still glass}
-  {tag:focus|trance, phrase:everything else becoming pleasantly distant}
-  {tag:focus, phrase:one thing, then the next, with no friction between}
-  {tag:focus|creativity, phrase:thoughts arriving in clean rooms}
-
-  // ── creativity / unblocking ──
-  {tag:creativity, phrase:bridges forming between thoughts you'd not yet connected}
-  {tag:creativity, phrase:images arriving from somewhere you can't quite see}
-  {tag:creativity|trance, phrase:the door at the back of the mind opening on its own}
-  {tag:creativity, phrase:words showing up before you reach for them}
-
-  // ── pain / discomfort management ──
-  {tag:pain, phrase:sensation softening into background hum}
-  {tag:pain, phrase:the dial turning down a notch, then another}
-  {tag:pain, phrase:warm water flowing through the sore place}
-  {tag:pain|release, phrase:the body remembering it knows how to ease itself}
-
-  // ── general trance depth ──
-  {tag:trance, phrase:layers of stillness, each one easier than the last}
-  {tag:trance, phrase:the edges of the room becoming soft suggestions}
-  {tag:trance, phrase:time loosening its grip}
-  {tag:trance, phrase:falling inward without falling at all}
-  {tag:trance|sleep, phrase:the slow cathedral of the breath}
-
-  // ── confidence / self-worth ──
-  {tag:confidence|emotional, phrase:standing taller without having to think about it}
-  {tag:confidence, phrase:a quiet certainty, the kind that doesn't need to prove itself}
-  {tag:confidence|performance, phrase:meeting the moment from inside, not from above}
-
-  // ── habit / behavior change ──
-  {tag:behavior|habit, phrase:the old path overgrowing while a new one becomes obvious}
-  {tag:behavior, phrase:the part of you that already chose, just letting it through}
-  {tag:behavior|conditioning, phrase:the cue arriving and the new response simply being there}
-
-  // ── grounding / re-orientation (post-session) ──
-  {tag:grounding|emergence, phrase:the room making itself available again}
-  {tag:grounding, phrase:weight returning to the soles of the feet}
-  {tag:grounding|emergence, phrase:the daylight finding the same eyes that left}
-
-// freshSeeds — the API HNE actually calls. Wraps the bank with filter +
-// exclude logic. Returns up to `n` phrase strings.
-//
-// opts.profileTags  — array of tag names derived from the user's profile
-//                     (e.g. ['sleep','anxiety']). Phrases match if ANY of
-//                     their pipe-separated tags appears in profileTags.
-//                     If empty/missing, no tag filter applied (returns
-//                     uniformly random phrases).
-// opts.n            — how many phrases to return. Default 3. Capped to bank size.
-// opts.excludeSet   — array OR Set of phrases to skip (recently-used anchors).
-//
-// Pure JS — no Perchance list-syntax magic. Returns [] on any error so the
-// HTML panel's `if (!phrases || !phrases.length) return ''` guard fires.
-freshSeeds.pick = (opts) =>
-  try {
-    opts = opts || {};
-    let bank = root.freshSeedsBank || [];
-    if (!bank.length) return [];
-    let n = Math.max(1, Math.min(parseInt(opts.n) || 3, bank.length));
-    let tags = Array.isArray(opts.profileTags) ? opts.profileTags.map(t => String(t).toLowerCase()) : [];
-    let excludeSet = opts.excludeSet instanceof Set
-      ? opts.excludeSet
-      : new Set(Array.isArray(opts.excludeSet) ? opts.excludeSet : []);
-
-    // Filter bank by tag overlap (ANY-match) + not in excludeSet.
-    let candidates = bank.filter(entry => {
-      if (!entry || !entry.phrase) return false;
-      if (excludeSet.has(entry.phrase)) return false;
-      if (!tags.length) return true; // no tag filter — accept all
-      let entryTags = String(entry.tag || '').toLowerCase().split('|').map(s => s.trim()).filter(Boolean);
-      if (!entryTags.length) return false;
-      return entryTags.some(et => tags.includes(et));
-    });
-
-    // If the strict tag filter is too restrictive (< n results), back off
-    // to ANY phrase not in excludeSet. Better to return some variety than
-    // nothing — the AI will adapt regardless of perfect tag match.
-    if (candidates.length < n) {
-      candidates = bank.filter(entry => entry && entry.phrase && !excludeSet.has(entry.phrase));
+// IMPORTANT: corpus is embedded INLINE in the function body — Perchance's parser
+// rejects chained list access (treats dot paths through root as list names),
+// so we can't keep the bank as a separate list and reach into it. Inlined
+// here, only `root.freshSeeds(...)` ever appears in HTML-panel source.
+freshSeeds(opts) =>
+  let { profileTags, n, excludeSet } = opts || {};
+  if(!Array.isArray(profileTags)) profileTags = [];
+  if(!Number.isFinite(n) || n < 1) n = 5;
+  let exclude = new Set(Array.isArray(excludeSet) ? excludeSet : []);
+  // 60+ tagged sensory anchors across 12 tag categories. Each entry has
+  // pipe-separated tags (any-match for filtering) and a one-line phrase.
+  // Add new entries by extending this array — function picks them up
+  // automatically.
+  let bank = [
+    {tags:"sleep|trance",       phrase:"the slow pull of evening tide"},
+    {tags:"sleep|grounding",    phrase:"a heavy quilt settling over the chest"},
+    {tags:"sleep",              phrase:"streetlights softening one by one"},
+    {tags:"sleep|trance",       phrase:"the room dissolving into low blue"},
+    {tags:"sleep|emotional",    phrase:"a single distant train horn, three blocks away"},
+    {tags:"anxiety|release",    phrase:"a tight knot loosening one strand at a time"},
+    {tags:"anxiety|grounding",  phrase:"feet finding the floor again"},
+    {tags:"anxiety|release",    phrase:"the breath remembering its own rhythm"},
+    {tags:"anxiety|emotional",  phrase:"a held shoulder finally dropping"},
+    {tags:"anxiety|release",    phrase:"static fading from a quiet radio"},
+    {tags:"performance|confidence", phrase:"the moment before the move, already won"},
+    {tags:"performance|focus",  phrase:"the world narrowing to one clean line"},
+    {tags:"performance|confidence", phrase:"the crowd noise becoming background hum"},
+    {tags:"performance",        phrase:"hands knowing what the mind hasn't named yet"},
+    {tags:"performance|focus",  phrase:"the held breath of a clean draw"},
+    {tags:"focus",              phrase:"a single lit window in a dark building"},
+    {tags:"focus|trance",       phrase:"the page becoming the only room"},
+    {tags:"focus",              phrase:"a cursor blinking in absolute stillness"},
+    {tags:"focus|grounding",    phrase:"the world's volume slowly turning down"},
+    {tags:"focus",              phrase:"a thread you can follow without effort"},
+    {tags:"creativity",         phrase:"a door appearing where the wall was"},
+    {tags:"creativity|trance",  phrase:"shapes shifting just behind the eyelids"},
+    {tags:"creativity",         phrase:"two ideas meeting that have never met"},
+    {tags:"creativity|emotional", phrase:"the room you find when you stop looking for it"},
+    {tags:"creativity",         phrase:"ink moving on its own across the page"},
+    {tags:"pain|release",       phrase:"the dial turning slowly counter-clockwise"},
+    {tags:"pain|grounding",     phrase:"warmth pooling where the cold was"},
+    {tags:"pain|release",       phrase:"a held grip relaxing finger by finger"},
+    {tags:"pain",               phrase:"the signal quieting from a shout to a whisper"},
+    {tags:"pain|release",       phrase:"ice giving way to slow steady water"},
+    {tags:"trance|grounding",   phrase:"a long hallway of doors, each one easier"},
+    {tags:"trance",             phrase:"the line between watching and being, dissolving"},
+    {tags:"trance|grounding",   phrase:"sinking into the chair you forgot you were in"},
+    {tags:"trance",             phrase:"a slow descending counter from ten"},
+    {tags:"trance|focus",       phrase:"the candle becoming the whole room"},
+    {tags:"confidence|performance", phrase:"shoulders that don't ask for permission"},
+    {tags:"confidence|emotional", phrase:"a voice that lands where it's aimed"},
+    {tags:"confidence",         phrase:"walking into a room you already own"},
+    {tags:"confidence|emotional", phrase:"the weight of a settled spine"},
+    {tags:"confidence",         phrase:"eye contact that doesn't flinch"},
+    {tags:"behavior",           phrase:"the hand pausing one second before the old reach"},
+    {tags:"behavior|grounding", phrase:"a small fork in the road, taken on purpose"},
+    {tags:"behavior",           phrase:"the new groove that wasn't there last week"},
+    {tags:"behavior|confidence", phrase:"the quiet pride of a kept small promise"},
+    {tags:"behavior",           phrase:"a habit loop opening at exactly the right link"},
+    {tags:"grounding",          phrase:"the chair's edge against the back of the legs"},
+    {tags:"grounding",          phrase:"the temperature of the air on bare forearms"},
+    {tags:"grounding|trance",   phrase:"five things the room is doing right now"},
+    {tags:"grounding",          phrase:"the sound of your own breath, found again"},
+    {tags:"grounding|emotional", phrase:"the weight of the body in the world"},
+    {tags:"release|emotional",  phrase:"a long-held tear finally allowed"},
+    {tags:"release",            phrase:"the jaw remembering what unclenched feels like"},
+    {tags:"release|trance",     phrase:"a knot underwater, slowly coming undone"},
+    {tags:"release|emotional",  phrase:"setting something down that you didn't know you were carrying"},
+    {tags:"release",            phrase:"breath leaving longer than it came in"},
+    {tags:"emotional|grounding", phrase:"the small relief of being witnessed without comment"},
+    {tags:"emotional",          phrase:"a feeling allowed all the way through"},
+    {tags:"emotional|release",  phrase:"warmth returning to a place that went cold"},
+    {tags:"emotional|confidence", phrase:"the soft clarity that comes after weeping"},
+    {tags:"emotional",          phrase:"the part of you that has always been okay"},
+  ];
+  // Tag overlap filter — entry passes if it shares at least one tag with profileTags.
+  let tagSet = new Set(profileTags.map(t => String(t).toLowerCase()));
+  let filtered = bank.filter(entry => {
+    if(exclude.has(entry.phrase)) return false;
+    if(!entry.tags) return true; // untagged entries are universal
+    let entryTags = String(entry.tags).split('|').map(t => t.trim().toLowerCase());
+    return entryTags.some(t => tagSet.has(t));
+  });
+  // Fallback: if filtered set is too thin, loosen to ANY non-excluded entry
+  // so callers always get something. Matters for cold-start users with empty
+  // profileTags array.
+  if(filtered.length < n) {
+    let fallback = bank.filter(entry => !exclude.has(entry.phrase));
+    let seen = new Set(filtered.map(e => e.phrase));
+    for(let e of fallback) {
+      if(!seen.has(e.phrase)) { filtered.push(e); seen.add(e.phrase); }
     }
-    if (!candidates.length) return [];
-
-    // Fisher-Yates shuffle, take first n.
-    let pool = candidates.slice();
-    for (let i = pool.length - 1; i > 0; i--) {
-      let j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-    return pool.slice(0, n).map(e => e.phrase);
-  } catch (e) {
-    console.warn('freshSeeds.pick failed:', e);
-    return [];
   }
+  // Fisher-Yates shuffle, then take first n
+  let arr = filtered.slice();
+  for(let i = arr.length - 1; i > 0; i--) {
+    let j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.slice(0, n).map(e => e.phrase);
 
-// ─── KNOWN PROJECT METADATA ─────────────────────────────────────────────────
-// Exposed via root.knownProject so the HTML panel can read project-level
-// info without duplicating it. Currently used for diagnostic banners and
-// the bug-report payload — the HTML reads version + phaseTypes for its
-// HNE.diagnose() shim.
-knownProject
-  name = Advanced Hypnosis Narration Engine
-  shortName = HNE
-  version = 0.14
-  // Phase types recognized by the script generator. Any phase id whose
-  // base appears here gets full pipeline treatment (AI instructions,
-  // scaffold, insertion logic, editor row chrome). Phases not in this
-  // list pass through generation as user-authored text.
-  phaseTypes = settling, induction, deepener, level, work, affirm, lightener, wake, reintroduction, sounding, custom, teaching, training, mission, goal
-  // Length buckets recognized by PHASE_DURATIONS. Determines per-phase
-  // word-budget targets when the AI generates each phase.
-  lengthBuckets = micro, quick, short, medium, long, extended, deep, marathon
-  // The four opt-in phase types — distinct from the always-included core
-  // phases. Presets and programs may declare these via phaseExtras to
-  // automatically include them in the default blueprint.
-  optInPhaseTypes = teaching, training, mission, goal
-
-// ─── COMMUNITY CONTENT PACKS (lazy-loaded) ──────────────────────────────────
-// Each pack is another Perchance generator that exposes one or more of:
-//   • personas    — array of `{id, name, tagline, category, systemPrompt, ...}`
-//   • methods     — array of `{id, name, detail, category, pacing, ...}`
-//   • presets     — array of `{id, icon, name, desc, persona, method, ...}`
-//   • programs    — array of `{id, name, days, arc, dayOverrides, ...}`
-//
-// Packs are fetched LAZILY via `dynamicImport` on first reference, so they
-// don't add to page-load cost. Shape MUST match the HTML panel's existing
-// loaders (loadCommunityPersonas at line ~8131 for personas, etc.).
+// ──────────────────────────────────────────────────────────────────────────────
+// Community content packs (item #3 — dynamicImport lane)
+// ──────────────────────────────────────────────────────────────────────────────
+// Each pack is another Perchance generator that exposes a `personas` list
+// (optionally `methods`, `presets`, `programs`). Packs are fetched LAZILY on
+// first use, so they don't add to page-load cost.
 //
 // To publish a pack:
-//   1. Create a new Perchance generator with a top editor like:
+//   1. Create a new Perchance generator whose top editor defines:
 //        personas
-//          {"id":"my-guide","name":"My Guide","tagline":"...","category":"contemplative","systemPrompt":"You are..."}
-//          {"id":"another","name":"Another","tagline":"...","category":"directive","systemPrompt":"You are..."}
-//   2. Add its generator id to the slot below.
+//          {"id":"custom-id","name":"...","tagline":"...","category":"...","systemPrompt":"..."}
+//          ...
+//   2. Add its generator-id to the list below.
 //
-// To consume from the HTML panel:
-//   if (root.communityPacks?.examplePersonaPack) {
-//     const personas = root.communityPacks.examplePersonaPack.personas || [];
-//     // ...merge into state.personas
-//   }
-// ────────────────────────────────────────────────────────────────────────────
+// To consume, the client reads `root.communityPacks?.personas` etc.
 communityPacks
-  // examplePersonaPack = [dynamicImport('your-perchance-generator-id-here')]
-  // exampleMethodPack  = [dynamicImport('another-generator-id-here')]
-  // examplePresetPack  = [dynamicImport('yet-another-id')]
-  // exampleProgramPack = [dynamicImport('and-one-more')]
+  // Example slot (commented — replace with real generator IDs when published):
+  // examplePersonaPack = [dynamicImport('your-generator-id-here')]
 
 $output
