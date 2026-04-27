@@ -2553,11 +2553,14 @@ padding: 14px 12px;
     width: 30px; height: 30px;
     border-radius: 50%;
     background: var(--neon-cyan-soft, rgba(0,212,230,0.15));
-    color: var(--neon-cyan);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em;
+    overflow: hidden;
     flex-shrink: 0;
+    /* Used to be a flex container for centering initials text; now it's
+       a 1×1 frame for an SVG. The SVG's preserveAspectRatio handles the
+       rest. Border-radius on the parent + overflow:hidden clips the
+       square SVG to a circle. */
   }
+  .cloud-user-avatar svg { display: block; width: 100%; height: 100%; }
   .cloud-user-info { flex: 1; min-width: 0; }
   .cloud-user-name {
     font-size: 0.82rem; font-weight: 600; color: var(--text);
@@ -3349,6 +3352,7 @@ padding: 6px 10px; font-size: 1.1rem;
              a distinct subsystem from the profile + stats below. -->
         <div class="cloud-user-slug" id="cloudUserSlug"></div>
         <button class="btn secondary" id="openCommentsBtn" style="width:100%;font-size:0.74rem;padding:7px;margin-top:6px">💬 community comments</button>
+        <button class="btn secondary" id="openCommunityBrowserBtn" style="width:100%;font-size:0.74rem;padding:7px;margin-top:6px">🌐 community gallery</button>
         <div class="sidebar-separator" aria-hidden="true"></div>
         <div class="sidebar-profile" id="sidebarProfileHeader">
           <div class="sidebar-avatar">🧠</div>
@@ -3393,6 +3397,34 @@ padding: 6px 10px; font-size: 1.1rem;
           <div class="pf-row"><label class="pf-label">About You</label><textarea id="pfAbout" class="pf-textarea" rows="2" maxlength="300" placeholder="Anything you'd like to share..."></textarea></div>
           <div class="pf-row"><label class="pf-label">Your Appearance</label><textarea id="pfAppearance" class="pf-textarea" rows="2" maxlength="300" placeholder="Hair, eyes, build... for AI personalization"></textarea></div>
           <div class="pf-row"><label class="pf-label">Goals</label><textarea id="pfGoals" class="pf-textarea" rows="2" maxlength="300" placeholder="What do you want from hypnosis?"></textarea></div>
+          <!-- ── Extended profile signals (Round 16) ─────────────────────
+               These fields give the Smart Director and AI prompts richer
+               personalization material. Default values are blank/neutral
+               so users who skip them get the same experience as before. -->
+          <div class="pf-row"><label class="pf-label">Preferred Environments</label>
+            <input type="text" id="pfPreferredEnvironments" class="pf-input" maxlength="180" placeholder="e.g. forest, beach, mountains, garden, library">
+            <div class="sublabel" style="font-size:0.58rem">Comma-separated. Used as anchor imagery in scripts and for soundscape suggestions.</div>
+          </div>
+          <div class="pf-row"><label class="pf-label">Vocal Pace Preference</label>
+            <select id="pfVocalPace" class="pf-select">
+              <option value="">no preference (use defaults)</option>
+              <option value="slow">slow — long pauses, deliberate</option>
+              <option value="medium">medium — balanced</option>
+              <option value="fast">fast — keeps you engaged</option>
+            </select>
+          </div>
+          <div class="pf-row"><label class="pf-label">Energy Pattern</label>
+            <select id="pfEnergyPattern" class="pf-select">
+              <option value="">no preference</option>
+              <option value="morning">morning person — alert early</option>
+              <option value="evening">evening person — sharper at night</option>
+              <option value="variable">variable / shift work</option>
+            </select>
+          </div>
+          <div class="pf-row"><label class="pf-label">Sensory Sensitivities</label>
+            <textarea id="pfSensorySensitivities" class="pf-textarea" rows="2" maxlength="300" placeholder="e.g. avoid water imagery, no countdowns, dislikes feeling enclosed..."></textarea>
+            <div class="sublabel" style="font-size:0.58rem">The AI is told to avoid these themes. Local-only when "Use profile details" is off.</div>
+          </div>
           <div class="sublabel" style="font-size:0.58rem;margin-top:4px">Profile stays on your device. Local recommendations always use these fields; the AI only sees them when "Use profile details in script" is on.</div>
         </div>
         <details>
@@ -8753,7 +8785,7 @@ I return to myself easily"></textarea>
   /** Share the current session config (persona + method + intention + settings). */
   async function shareCurrentConfig() {
     const payload = {
-      version: 1,
+      version: 2,
       kind: 'session-config',
       createdAt: Date.now(),
       config: {
@@ -8765,10 +8797,22 @@ I return to myself easily"></textarea>
         vizOverride: state.vizOverride,
         speechRate: state.speechRate,
         voicePitch: state.voicePitch,
+        voiceVolume: state.voiceVolume,
         tempoMultiplier: state.tempoMultiplier,
+        droneEnabled: state.droneEnabled,
+        droneVolume: state.droneVolume,
         affirmationMode: state.affirmationMode,
         intentionInput: $('intentionInput')?.value?.slice(0, 500) || '',
         userAffirmations: $('userAffirmations')?.value?.slice(0, 500) || '',
+        // Round 14 — opt-in phase extras (teaching/training/mission/goal).
+        // Without sharing these, recipients get a baseline session arc even
+        // when the sender configured custom phases.
+        phaseExtras: Array.isArray(state._phaseExtras) ? state._phaseExtras.slice() : [],
+        // Visual + custom-bg config — defines the look of the session
+        bgPrompt: state.bgPrompt || '',
+        bgNegativePrompt: state.bgNegativePrompt || '',
+        bgOrientation: state.bgOrientation || '',
+        bgActiveStylePresetIds: Array.isArray(state.bgActiveStylePresetIds) ? state.bgActiveStylePresetIds.slice() : [],
         // Include crafted suggestion if present (opt-in — only if user set one)
         craftedSuggestion: state.craftedSuggestion || null,
         // Optionally include generated script for a "share exact session"
@@ -9661,7 +9705,7 @@ I return to myself easily"></textarea>
       _profileChangeLog.length = DIFF_BOUNCE_THRESHOLDS.logCap;
     }
     saveProfile();
-    renderProfileDiffs(); // refresh the visible "what AI sees" panel
+    renderProfileDiffs(); // refresh the unified activity timeline (renderProfileDiffs is now a shim → renderTimeline)
   }
 
   /** Render the activity timeline panel.
@@ -9684,6 +9728,11 @@ I return to myself easily"></textarea>
       about: $('pfAbout')?.value?.trim() || '',
       appearance: $('pfAppearance')?.value?.trim() || '',
       goals: $('pfGoals')?.value?.trim() || '',
+      // Round 16 extended fields. All optional; default empty/neutral.
+      preferredEnvironments:  $('pfPreferredEnvironments')?.value?.trim() || '',
+      vocalPace:              $('pfVocalPace')?.value || '',
+      energyPattern:          $('pfEnergyPattern')?.value || '',
+      sensorySensitivities:   $('pfSensorySensitivities')?.value?.trim() || '',
       // Per-field "share with AI" toggles. Default true so older profiles
       // (saved before these existed) keep their previous behavior of
       // sharing everything. The local Director never reads these — they
@@ -9731,6 +9780,12 @@ I return to myself easily"></textarea>
     setVal('pfAbout', p.about, '');
     setVal('pfAppearance', p.appearance, '');
     setVal('pfGoals', p.goals, '');
+    // Round 16 extended fields. Backward-compat: undefined → empty string
+    // so old profiles still load cleanly without surfacing as "edits".
+    setVal('pfPreferredEnvironments', p.preferredEnvironments, '');
+    setVal('pfVocalPace', p.vocalPace, '');
+    setVal('pfEnergyPattern', p.energyPattern, '');
+    setVal('pfSensorySensitivities', p.sensorySensitivities, '');
     // Share toggles — default true when missing so old profiles keep parity.
     const shareAge = $('pfShareAge'); if (shareAge) shareAge.checked = (p.shareAge !== false);
     const shareApp = $('pfShareAppearance'); if (shareApp) shareApp.checked = (p.shareAppearance !== false);
@@ -9741,6 +9796,10 @@ I return to myself easily"></textarea>
     const shareAll = $('pfShareAll');
     if (shareAll) shareAll.checked = (p.shareAge !== false) && (p.shareAppearance !== false) && (p.shareGoals !== false);
     const nameEl = $('sidebarDisplayName');
+    // FIREWALL: app-domain sidebar greeting reads ONLY from profile (the
+    // user's personal hypnosis identity). Never falls back to cloudUser
+    // (community/chat identity). The two systems are deliberately
+    // independent — see the firewall declaration above the cloud module.
     if (nameEl) nameEl.textContent = p.name || 'Practitioner';
     if (opts.save !== false) saveProfile();
   }
@@ -9754,7 +9813,9 @@ I return to myself easily"></textarea>
         profile.changeLog = _profileChangeLog.slice(0, DIFF_BOUNCE_THRESHOLDS.logCap);
         if (_kv) await _kv.settings.set(PROFILE_KEY, profile);
         localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-        // Update sidebar display name
+        // Update sidebar display name. App-domain only — uses profile.name
+        // or 'Practitioner'. Never reads cloudUser (community identity).
+        // See firewall comment above the cloud module for the reasoning.
         const nameEl = $('sidebarDisplayName');
         if (nameEl) nameEl.textContent = profile.name || 'Practitioner';
       } catch {}
@@ -9780,11 +9841,13 @@ I return to myself easily"></textarea>
    *  type: 'text' for prose-ish fields (pct-of-chars threshold)
    *        'csv'  for list-ish fields (entry-count threshold) */
   const TRACKED_FIELDS = [
-    { id: 'pfGoals',          type: 'csv'  }, // "Goals" textarea
-    { id: 'pfAbout',          type: 'text' }, // "About You" freeform
-    { id: 'intentionInput',   type: 'text' }, // per-session intention
-    { id: 'userAffirmations', type: 'csv'  }, // newline-delimited affirmations
-    { id: 'bgPromptInput',    type: 'csv'  }, // image-gen prompt tags
+    { id: 'pfGoals',                  type: 'csv'  }, // "Goals" textarea
+    { id: 'pfAbout',                  type: 'text' }, // "About You" freeform
+    { id: 'intentionInput',           type: 'text' }, // per-session intention
+    { id: 'userAffirmations',         type: 'csv'  }, // newline-delimited affirmations
+    { id: 'bgPromptInput',            type: 'csv'  }, // image-gen prompt tags
+    { id: 'pfPreferredEnvironments',  type: 'csv'  }, // Round 16 — env keywords
+    { id: 'pfSensorySensitivities',   type: 'text' }, // Round 16 — freeform prose
   ];
 
   function initDiffBouncers() {
@@ -9947,6 +10010,7 @@ I return to myself easily"></textarea>
         pfGoals: 'goals', pfAbout: 'about', pfAppearance: 'appearance', pfName: 'name',
         intentionInput: 'intention', userAffirmations: 'affirmations',
         bgPromptInput: 'bg prompt', bgImage: 'image',
+        pfPreferredEnvironments: 'environments', pfSensorySensitivities: 'sensitivities',
       }[id] || id);
       label = srcLabel(e.sourceId);
       if (e.type === 'csv' && e.diff) {
@@ -10090,6 +10154,13 @@ I return to myself easily"></textarea>
   setTimeout(() => { refreshInferredModality().catch(() => {}); }, 1500);
 
   function getProfileContext() {
+    // FIREWALL: this function is the canonical bridge from APP-DOMAIN
+    // user data into the AI prompt pipeline. It MUST read only from
+    // getProfile() (the app-domain profile) and MUST NOT reference
+    // state.cloudUser, comments, presence, or any chat-domain source.
+    // See the firewall declaration above the cloud module for the
+    // privacy/safety reasoning. Smart Director kill-switch (above)
+    // also gates this whole path off when the user opts out.
     if (state.smartDirectorEnabled === false) {
       sdLog('getProfileContext returning empty — Smart Director off');
       return '';
@@ -10106,6 +10177,32 @@ I return to myself easily"></textarea>
     if (p.about)                                     parts.push(`About the subject: ${p.about}.`);
     if (p.appearance && p.shareAppearance !== false) parts.push(`Appearance: ${p.appearance}.`);
     if (p.goals && p.shareGoals !== false)           parts.push(`Goals: ${p.goals}.`);
+    // Round 16 extended signals. preferredEnvironments and sensory
+    // sensitivities ride under the goals share-toggle since they're
+    // functionally goal-adjacent privacy-wise. Vocal pace + energy
+    // pattern are pacing hints, ungated since they're not personal.
+    if (p.preferredEnvironments && p.shareGoals !== false) {
+      parts.push(`Preferred imagery environments: ${p.preferredEnvironments}. Lean toward these when picking metaphors.`);
+    }
+    if (p.sensorySensitivities && p.shareGoals !== false) {
+      parts.push(`Sensory sensitivities to AVOID: ${p.sensorySensitivities}. Do not include any of these themes; if forced to, replace with a neutral alternative.`);
+    }
+    if (p.vocalPace) {
+      const paceHint = {
+        slow:   'Long pauses, very deliberate phrasing, plenty of [PAUSE 4-6] markers between thoughts.',
+        medium: 'Balanced pacing, normal pause distribution.',
+        fast:   'Tighter phrasing, fewer dead-air pauses, keeps momentum.',
+      }[p.vocalPace];
+      if (paceHint) parts.push(`Pacing preference: ${p.vocalPace}. ${paceHint}`);
+    }
+    if (p.energyPattern) {
+      const energyHint = {
+        morning:  'Most alert in the morning — script can be slightly more direct/assertive without overwhelming.',
+        evening:  'Most alert in the evening — comfortable with introspective, dimmer-lit imagery.',
+        variable: 'Variable energy — favour adaptive language that meets them wherever they are.',
+      }[p.energyPattern];
+      if (energyHint) parts.push(`Energy pattern: ${p.energyPattern}. ${energyHint}`);
+    }
 
     // Phase 4: inferred sensory modality. Only surfaced when inference is
     // confident (see inferModality). Wrong guidance is worse than silence.
@@ -10123,7 +10220,7 @@ I return to myself easily"></textarea>
     // weighted by age (exp(-days/14)); entries below 0.1 weight drop out.
     // Recent (≤7 days) changes also get a "first session since" callout so
     // the AI explicitly knows this generation reflects a new direction.
-    const srcLabel = id => ({ pfGoals:'goals', pfAbout:'about', intentionInput:'intention', userAffirmations:'affirmations', bgPromptInput:'bg-prompt', bgImage:'image-gen' }[id] || id);
+    const srcLabel = id => ({ pfGoals:'goals', pfAbout:'about', intentionInput:'intention', userAffirmations:'affirmations', bgPromptInput:'bg-prompt', bgImage:'image-gen', pfPreferredEnvironments:'environments', pfSensorySensitivities:'sensitivities' }[id] || id);
     try {
       const recent = (_profileChangeLog || []).slice(0, 10);
       if (recent.length) {
@@ -10198,6 +10295,18 @@ I return to myself easily"></textarea>
     if (/(water|ocean|river|rain)/.test(intention)) tags.add('water');
     if (/(warm|sun|fire|glow)/.test(intention)) tags.add('warm');
     if (/(cool|cold|ice|winter)/.test(intention)) tags.add('cool');
+    // Round 16: preferred environments → tags. Map common env words to
+    // existing freshSeeds tags. Conservative: only adds tags that have
+    // matching corpus entries so we don't generate blank pulls.
+    const envs = (p.preferredEnvironments || '').toLowerCase();
+    if (/(beach|ocean|sea|water|river|lake|stream)/.test(envs)) tags.add('water');
+    if (/(forest|wood|tree|moss)/.test(envs))                    tags.add('forest');
+    if (/(mountain|alpine|peak|valley)/.test(envs))              tags.add('mountain');
+    if (/(garden|meadow|flower)/.test(envs))                     tags.add('garden');
+    if (/(desert|dune|sand)/.test(envs))                         tags.add('warm');
+    if (/(snow|ice|winter|cold)/.test(envs))                     tags.add('cool');
+    if (/(library|study|book)/.test(envs))                       tags.add('focus');
+    if (/(home|cozy|cabin|hearth|fire)/.test(envs))              tags.add('warm');
     // Aesthetic preferences from the diff-bounce image log, if populated
     try {
       const imgEntries = (_profileChangeLog || []).filter(e => e.source === 'bgImage').slice(0, 5);
@@ -10661,6 +10770,7 @@ I return to myself easily"></textarea>
       // Feature flags: which features the user has tried
       // bitmask: 1=affirmations 2=programs 4=custom-persona 8=skip-to-script
       // 16=timing-fixer 32=share 64=backup 128=double-induction 256=pre-gen
+      // 512=cloud-upload 1024=comments
       feat: 0,
       // Timestamp
       ts: Date.now(),
@@ -10755,7 +10865,7 @@ I return to myself easily"></textarea>
   }
 
   // Feature bit constants
-  const FEAT = { AFFIRMATIONS: 1, PROGRAMS: 2, CUSTOM_PERSONA: 4, SKIP_SCRIPT: 8, TIMING_FIX: 16, SHARE: 32, BACKUP: 64, DOUBLE_INDUCT: 128, PRE_GEN: 256 };
+  const FEAT = { AFFIRMATIONS: 1, PROGRAMS: 2, CUSTOM_PERSONA: 4, SKIP_SCRIPT: 8, TIMING_FIX: 16, SHARE: 32, BACKUP: 64, DOUBLE_INDUCT: 128, PRE_GEN: 256, CLOUD_UPLOAD: 512, COMMENTS: 1024 };
 
   /** Rebuild analytics from remaining history — called after deletes to keep data consistent */
   async function rebuildAnalytics(historyArr) {
@@ -20676,6 +20786,8 @@ Start immediately:`;
       { name: 'Backup',           bit: 64 },
       { name: 'Double Induction', bit: 128 },
       { name: 'Pre-Gen',          bit: 256 },
+      { name: 'Cloud Upload',     bit: 512 },
+      { name: 'Comments',         bit: 1024 },
     ];
     const rowH = (H - 10) / features.length;
     features.forEach((f, i) => {
@@ -20872,10 +20984,37 @@ Start immediately:`;
         if (c.vizOverride) { state.vizOverride = c.vizOverride; const el = $('vizSelect'); if (el) el.value = c.vizOverride; }
         if (typeof c.speechRate === 'number') state.speechRate = c.speechRate;
         if (typeof c.voicePitch === 'number') state.voicePitch = c.voicePitch;
+        if (typeof c.voiceVolume === 'number') state.voiceVolume = c.voiceVolume;
         if (typeof c.tempoMultiplier === 'number') state.tempoMultiplier = c.tempoMultiplier;
+        if (typeof c.droneEnabled === 'boolean') state.droneEnabled = c.droneEnabled;
+        if (typeof c.droneVolume === 'number') state.droneVolume = c.droneVolume;
         if (c.affirmationMode) { state.affirmationMode = c.affirmationMode; const el = $('affirmationMode'); if (el) el.value = c.affirmationMode; }
         if (c.intentionInput) { const el = $('intentionInput'); if (el) el.value = c.intentionInput.slice(0, 500); }
         if (c.userAffirmations) { const el = $('userAffirmations'); if (el) el.value = c.userAffirmations.slice(0, 500); }
+        // ── v2 fields — silently ignored when restoring a v1 payload ────
+        // _phaseExtras drives the opt-in Round-14 phase types (teaching,
+        // training, mission, goal). Without this restore, shared configs
+        // would default back to baseline phase shape regardless of sender.
+        if (Array.isArray(c.phaseExtras)) state._phaseExtras = c.phaseExtras.slice();
+        if (typeof c.bgPrompt === 'string') {
+          state.bgPrompt = c.bgPrompt;
+          const el = $('bgPromptInput'); if (el) el.value = c.bgPrompt;
+        }
+        if (typeof c.bgNegativePrompt === 'string') {
+          state.bgNegativePrompt = c.bgNegativePrompt;
+          const el = $('bgNegativePromptInput'); if (el) el.value = c.bgNegativePrompt;
+        }
+        if (typeof c.bgOrientation === 'string') {
+          state.bgOrientation = c.bgOrientation;
+          const el = $('bgOrientationSelect'); if (el) el.value = c.bgOrientation;
+        }
+        if (Array.isArray(c.bgActiveStylePresetIds)) {
+          state.bgActiveStylePresetIds = c.bgActiveStylePresetIds.slice();
+          // If the bg style preset rendering helper exists, refresh the chips.
+          if (typeof renderBgStylePresets === 'function') {
+            try { renderBgStylePresets(); } catch {}
+          }
+        }
         if (c.craftedSuggestion) state.craftedSuggestion = c.craftedSuggestion;
         if (c.script) {
           const scriptEl = $('scriptText'); if (scriptEl) scriptEl.value = c.script;
@@ -21151,11 +21290,87 @@ Start immediately:`;
         const hasExistingProfile = !!($('pfName')?.value?.trim() || $('pfAbout')?.value?.trim() || $('pfGoals')?.value?.trim());
         if (!hasExistingProfile) applyProfileToForm(backup.profile, { save: true });
       }
+      // ── Round 14b restore — counterparts to the export above. ─────────
+      // Each slice gets a slice-appropriate merge: union for maps/arrays
+      // by ID, single-set for atomic objects, "first-write wins" for the
+      // memory store (merging structured memory entries is too risky to
+      // do automatically — we'd rather miss a few imports than corrupt
+      // the Director's worldview).
+      let importedScripts = 0, importedPresets = 0, importedTags = 0,
+          importedTriggers = 0, importedAB = 0;
+      if (Array.isArray(backup.savedScripts) && backup.savedScripts.length) {
+        const existing = (await idbGet('stillness_saved_scripts_v1')) || [];
+        const ids = new Set(existing.map(s => s.id));
+        const fresh = backup.savedScripts.filter(s => s && s.id && !ids.has(s.id));
+        if (fresh.length) {
+          await idbSet('stillness_saved_scripts_v1', [...fresh, ...existing]);
+          importedScripts = fresh.length;
+          if (typeof renderSavedScripts === 'function') renderSavedScripts();
+        }
+      }
+      if (Array.isArray(backup.configPresets) && backup.configPresets.length) {
+        const existing = (await idbGet('stillness_config_presets_v1')) || [];
+        const ids = new Set(existing.map(p => p.id));
+        const fresh = backup.configPresets.filter(p => p && p.id && !ids.has(p.id));
+        if (fresh.length) {
+          await idbSet('stillness_config_presets_v1', [...fresh, ...existing]);
+          importedPresets = fresh.length;
+          if (typeof renderPresetDropdown === 'function') renderPresetDropdown();
+        }
+      }
+      if (Array.isArray(backup.customTags) && backup.customTags.length) {
+        const existing = (await idbGet('stillness_custom_tags_v1')) || [];
+        // Custom tags are simple {id, label, kind, ...} — dedupe by id+label
+        // since older exports may not have id stamped.
+        const seen = new Set(existing.map(t => `${t.id || ''}::${t.label || ''}`));
+        const fresh = backup.customTags.filter(t => t && !seen.has(`${t.id || ''}::${t.label || ''}`));
+        if (fresh.length) {
+          await idbSet('stillness_custom_tags_v1', [...existing, ...fresh]);
+          importedTags = fresh.length;
+          if (typeof renderCustomTagChips === 'function') renderCustomTagChips();
+        }
+      }
+      if (Array.isArray(backup.triggerFires) && backup.triggerFires.length) {
+        const existing = (await idbGet('stillness_trigger_fires_v1')) || [];
+        // Trigger fires are timestamped events — dedupe by ts+sessionId
+        const seen = new Set(existing.map(f => `${f.ts || 0}::${f.sessionId || ''}`));
+        const fresh = backup.triggerFires.filter(f => f && !seen.has(`${f.ts || 0}::${f.sessionId || ''}`));
+        if (fresh.length) {
+          await idbSet('stillness_trigger_fires_v1', [...existing, ...fresh]);
+          importedTriggers = fresh.length;
+        }
+      }
+      if (Array.isArray(backup.abResults) && backup.abResults.length) {
+        const existing = (await idbGet('stillness_ab_results_v1')) || [];
+        const seen = new Set(existing.map(r => `${r.ts || 0}::${r.sessionId || ''}`));
+        const fresh = backup.abResults.filter(r => r && !seen.has(`${r.ts || 0}::${r.sessionId || ''}`));
+        if (fresh.length) {
+          await idbSet('stillness_ab_results_v1', [...existing, ...fresh]);
+          importedAB = fresh.length;
+        }
+      }
+      if (backup.memory && !(await idbGet('stillness_memory_v1'))) {
+        // Memory store gets first-write-wins to avoid mangling the
+        // Director's recollection of past sessions. If user already has
+        // memory, keep theirs untouched — they can clear and re-import
+        // if they really want the backup version.
+        await idbSet('stillness_memory_v1', backup.memory);
+      }
       await rebuildAnalytics((await idbGet('stillness_history_v1')) || []);
       renderSidebarStats();
       renderHeatmap();
       renderSparkline();
-      notify.success(`Imported: ${np.length} personas, ${nh.length} sessions.`);
+      // Show all the slices that came in, not just personas+sessions, so
+      // the user knows their library wasn't silently dropped.
+      const counts = [];
+      if (np.length)             counts.push(`${np.length} persona${np.length === 1 ? '' : 's'}`);
+      if (nh.length)             counts.push(`${nh.length} session${nh.length === 1 ? '' : 's'}`);
+      if (importedScripts)       counts.push(`${importedScripts} script${importedScripts === 1 ? '' : 's'}`);
+      if (importedPresets)       counts.push(`${importedPresets} preset${importedPresets === 1 ? '' : 's'}`);
+      if (importedTags)          counts.push(`${importedTags} tag${importedTags === 1 ? '' : 's'}`);
+      if (importedTriggers)      counts.push(`${importedTriggers} trigger fire${importedTriggers === 1 ? '' : 's'}`);
+      if (importedAB)            counts.push(`${importedAB} A/B result${importedAB === 1 ? '' : 's'}`);
+      notify.success(counts.length ? `Imported: ${counts.join(', ')}.` : 'Backup imported (nothing new to add).');
     } catch(e) { notify.error('Import failed: ' + e.message); }
   }
 
@@ -22527,6 +22742,11 @@ Start immediately:`;
     renderHeatmap(); // Refresh activity heatmap
     renderSparkline(); // Refresh rising-score sparkline
     renderSidebarStats(); // Refresh sidebar stats
+    // If the user has Session History details already open, refresh the
+    // session list AND the unified activity timeline so the just-finished
+    // session shows up immediately. Lazy renderers handle the closed case.
+    if (typeof renderSessionHistory === 'function') renderSessionHistory();
+    if (typeof renderTimeline === 'function') renderTimeline();
     // Hidden-guide unlock check — runs after history is committed so the new
     // session participates in the metric calculation. Non-blocking; the modal
     // (if any unlocks fire) appears on top of whatever post-session UI loads.
@@ -24103,6 +24323,13 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   // list at the end so a freshly-uploaded script could show some kind
   // of indicator in future (currently just renders to keep state fresh).
   async function _uploadSavedScriptToCloud(id) {
+    // FIREWALL: this is an EXPLICIT user-initiated upload of user-authored
+    // content (script they generated, named, and chose to upload via the
+    // per-row ☁ button). The user's agency is the consent. The cloud
+    // sign-in modal already warns "treat anything you upload as semi-
+    // public". Different from silent fallbacks or auto-fills, which the
+    // firewall principle prohibits. Same exemption applies to the
+    // persona ☁ button.
     if (!state.cloudUser) {
       notify.warn('Sign in to upload to cloud.');
       openCloudSignInModal();
@@ -24838,15 +25065,18 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     }
     setLoading('cloudBackupUploadBtn', true);
     try {
-      // Snapshot the same settings object that exportBackup ships locally
-      // — keeps the round-trip predictable: cloud-uploaded settings can be
-      // applied just like an imported .gz backup. Excludes the bulky slices
-      // (history, analytics) since users mostly care about config sync.
+      // FIREWALL: cloud upload payloads must NOT include profile data
+      // (pfName, pfAbout, pfGoals, pfAppearance, intentions, etc.) —
+      // profile is app-domain sensitive content. Settings (audio
+      // preferences, auto-tempo config, voice picks, UI prefs) are
+      // non-sensitive config and DO sync. For profile sync across
+      // devices, use the local .gz backup → import flow which stays
+      // on-device. See firewall declaration in the cloud module.
       const snapshot = {
         version: 6,
         exportedAt: Date.now(),
         settings: _buildSettingsObj(),
-        profile: getProfile(),
+        // profile DELIBERATELY OMITTED — see comment above.
       };
       const name = `settings-${new Date().toISOString().slice(0, 10)}`;
       await cloudUploadContent('settings', name, JSON.stringify(snapshot));
@@ -25662,6 +25892,12 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       // not if it was paused because the user paused the session.
       if (!state.paused && _recorder && _recorder.state === 'paused') {
         try { _recorder.resume(); } catch {}
+      }
+      // Cloud presence — fire an immediate heartbeat so this user reappears
+      // in the "active in last 90s" count without waiting for the next
+      // scheduled tick. Best-effort; no-op if presence isn't running.
+      if (state.cloudUser && state._presenceTimer && typeof _sendPresence === 'function') {
+        try { _sendPresence(); } catch {}
       }
     } else if (document.visibilityState === 'hidden' && state._sessionStartTime && !state.abortFlag) {
       // Mark the start of a hidden window so the visible branch can
@@ -26524,7 +26760,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   // ====================================================================
   const TOUR_KEY = 'stillness_tour_v2';
   const TOUR_STEPS = [
-    { icon: '🌀', title: 'Welcome to the Hypnosis Engine', body: 'A complete browser-based hypnosis studio. Generate guided sessions with AI-written narration, ambient soundscapes, hypnotic visuals — all running locally. No data leaves your device unless you explicitly opt in. This 14-step tour shows you what\'s in the box.' },
+    { icon: '🌀', title: 'Welcome to the Hypnosis Engine', body: 'A complete browser-based hypnosis studio. Generate guided sessions with AI-written narration, ambient soundscapes, hypnotic visuals — all running locally. No data leaves your device unless you explicitly opt in. This 16-step tour shows you what\'s in the box.' },
     { icon: '⚡', title: 'Three ways to start', body: 'In a hurry: tap a <strong>Quick-Start Preset</strong> on Step 1 — one click sets guide, method, intention, soundscape, and length. For full control: walk the 6-step wizard. Already have a script: tap <strong>"use my own script"</strong> in the wizard footer to skip straight to the player.' },
     { icon: '👤', title: 'Step 1 — Choose a Guide', body: '25+ built-in personas across four temperaments — contemplative, showman, somatic, authoritarian. Each has a distinct voice and therapeutic style. You can also <strong>create custom personas</strong> three ways: write the voice yourself, import from a .txt URL, or use the new <strong>✨ Guide Builder</strong> at the bottom of Step 1 — describe your idea and AI designs name + tagline + voice + image accents in a four-step pipeline you can selectively re-roll.' },
     { icon: '🔮', title: 'Step 2 — Choose a Method', body: '37+ induction techniques from gentle progressive relaxation to dramatic shock inductions. Rapid and advanced methods unlock after 3 and 7 completed sessions — building experience safely. Locked methods show a 🔒 with a tooltip explaining why.' },
@@ -26537,6 +26773,8 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     { icon: '📊', title: 'Your sidebar', body: 'The left sidebar tracks stats, streak (with grace day), activity heatmap, pattern callouts, weekly digest, and your full <strong>Session History</strong> (with the unified <strong>activity timeline</strong> showing profile edits, AI calls, and sessions in one feed). Every session stores its complete script — click ▶ to replay any past session. The 📦 <strong>export bundle</strong> on post-session packages script + metadata as a .zip.' },
     { icon: '🎵', title: 'During a session', body: '<strong>Space</strong> pauses everything. <strong>Escape</strong> triggers an emergency re-alert in your guide\'s voice. <strong>← back to script</strong> returns and lets you edit mid-session. The ⚙ panel adjusts audio and visuals live. With Reactive Rules on, the engine may nudge you if you go silent for too long, or duck the soundscape during work phases.' },
     { icon: '🔒', title: 'Privacy by default', body: 'Everything stays in your browser. <strong>Remote backup &amp; processing</strong> is OFF by default — no data leaves your device, and intrusive UI (like "page may be stuck" warnings) stays silent too. Turn it on in Options if you want cross-device features. <strong>Debug mode</strong> in Options surfaces dev affordances; a red badge appears whenever it\'s on.' },
+    { icon: '☁', title: 'Optional cloud account', body: 'At the top of the sidebar, <strong>sign in / create account</strong> gives you a community-shared cloud space (PerDB) for cross-device sync of your scripts, personas, and settings. Each upload is opt-in — nothing syncs automatically. The 💬 <strong>community comments</strong> button next to it opens a public channel; everyone using HNE sees the same messages, so be kind. <span style="color:var(--text-faint)">Cloud is community-shared infrastructure, not Anthropic-managed.</span>' },
+    { icon: '🎙', title: 'High-quality narrator voices', body: 'In Step 5, below the voice picker, <strong>"find more free high-quality voices for your device ↗"</strong> opens an OS-detected guide showing how to install free Premium / Enhanced / Neural voices on iOS, macOS, Windows, Android, and Linux. Or enable the <strong>offline AI voice</strong> right above it — runs entirely in your browser, ~80MB one-time download.' },
     { icon: '✨', title: 'You\'re ready', body: 'Pick a guide and method, or tap a preset. Your first session takes about 2 minutes to set up. Backup your data anytime from the sidebar — <strong>Restore</strong> your data anytime, on any device, with the same backup. Crisis resources live behind the <strong>help &amp; safety</strong> link in the footer.' },
   ];
 
@@ -26579,10 +26817,288 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   }
 
   // ====================================================================
+  // DETERMINISTIC SVG AVATARS
+  // ====================================================================
+  // Generates a unique-looking SVG avatar for a given seed string (typically
+  // the user's username). Same seed → same avatar, every time, on every
+  // device. Pure-JS, no network, no plugin calls.
+  //
+  // NOTE on plugin choice: the user originally suggested using Perchance's
+  // pattern-maker plugin for this. Pattern-maker uses the Wave Function
+  // Collapse algorithm and has no seed parameter — calling it twice with
+  // the same input produces different outputs. That's the wrong shape
+  // for "user X always sees their own avatar." A hash-based SVG generator
+  // gives true per-user determinism and runs offline. Pattern-maker stays
+  // available for OTHER use cases (e.g. session-background generation)
+  // where stochastic-similar-to-input is what we want.
+  //
+  // Six pattern types ensure visual variety even between users with
+  // similar names. Each pattern is simple SVG primitives — no libraries,
+  // no DOM mutation. Avatars render instantly into any element via
+  // innerHTML or as data URIs into <img src>.
+  // ====================================================================
+
+  /** FNV-1a 32-bit hash over a string, run multiple times with different
+   *  start states to extract 6 uint32 values. Collisions are fine — we
+   *  use these as roll-the-dice indices, not cryptographic identifiers. */
+  function _hashStringToSeed(str) {
+    const s = String(str || '');
+    const out = [];
+    let basis = 2166136261 >>> 0;
+    for (let round = 0; round < 6; round++) {
+      let h = basis;
+      for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      // Mix in the round number so each value is different even for
+      // single-char strings (which would otherwise repeat).
+      h ^= round * 2654435761;
+      h = Math.imul(h ^ (h >>> 13), 16777619);
+      out.push(h >>> 0);
+      basis = h >>> 0;
+    }
+    return out;
+  }
+
+  /** Curated 5-color palettes. First color is BG, second-fifth are FG.
+   *  Designed to harmonize with HNE's warm-amber + cyan accent palette
+   *  while still giving users visually distinct identities. */
+  const _AVATAR_PALETTES = [
+    ['#1a2530', '#00d4e6', '#5fa8d3', '#c9a855', '#3d5a6d'], // cyan dawn
+    ['#241a2e', '#b88aff', '#5fa8d3', '#ffd166', '#7a4ec9'], // violet dusk
+    ['#2c1810', '#d4a574', '#8b5a3c', '#c9a855', '#5a3a26'], // warm earth
+    ['#0f2920', '#5cb87a', '#88d8b0', '#c9a855', '#2d5d44'], // forest moss
+    ['#2a1a1a', '#e07d5b', '#d4a574', '#ffd166', '#a04f3a'], // sunset clay
+    ['#1a1a2e', '#ff6b9d', '#5fa8d3', '#b88aff', '#fb8500'], // jewel night
+    ['#0d1f2d', '#00d4e6', '#88d8b0', '#5fa8d3', '#264653'], // deep ocean
+    ['#1f0f1f', '#ffd166', '#d4a574', '#e07d5b', '#9d4e3a'], // candlelight
+    ['#101820', '#a8dadc', '#457b9d', '#e63946', '#1d3557'], // arctic blue
+    ['#2d2d2d', '#f5deb3', '#d4a574', '#8b7355', '#5d4e37'], // parchment
+    ['#1a2e1a', '#88d8b0', '#a8dadc', '#5cb87a', '#2d5d44'], // jade fern
+    ['#0a1929', '#fb8500', '#ffd166', '#5fa8d3', '#023e8a'], // ember sky
+  ];
+
+  /** Helper: pick from array deterministically using one hash uint32. */
+  function _pick(arr, h) { return arr[h % arr.length]; }
+
+  /** Helper: float in [0,1) from one hash uint32. */
+  function _frand(h) { return (h % 100000) / 100000; }
+
+  /** Pattern A — Geometric mosaic. 5×5 grid of triangles with mirror
+   *  symmetry so the result feels intentional rather than noisy. */
+  function _avatarMosaic(hash, palette, size) {
+    const cell = size / 5;
+    const fg = palette.slice(1); // omit bg
+    let cells = '';
+    // Generate left half + center column (3 cols × 5 rows = 15 cells),
+    // mirror to the right side. 30 bits of hash needed.
+    let bits = (BigInt(hash[2]) << 32n) | BigInt(hash[3]);
+    for (let y = 0; y < 5; y++) {
+      for (let x = 0; x < 3; x++) {
+        const filled = (bits & 1n) === 1n;
+        bits >>= 1n;
+        const colorIdx = Number(bits & 3n);
+        bits >>= 2n;
+        if (filled) {
+          const c = fg[colorIdx % fg.length];
+          // Left side
+          cells += `<rect x="${x * cell}" y="${y * cell}" width="${cell}" height="${cell}" fill="${c}"/>`;
+          // Mirror to right side (skip center column to avoid double-paint)
+          if (x < 2) {
+            cells += `<rect x="${(4 - x) * cell}" y="${y * cell}" width="${cell}" height="${cell}" fill="${c}"/>`;
+          }
+        }
+      }
+    }
+    return cells;
+  }
+
+  /** Pattern B — Concentric rings. 4-7 rings with varied stroke widths. */
+  function _avatarRings(hash, palette, size) {
+    const cx = size / 2, cy = size / 2;
+    const fg = palette.slice(1);
+    const ringCount = 4 + (hash[2] % 4);
+    let out = '';
+    for (let i = 0; i < ringCount; i++) {
+      const r = ((i + 1) / (ringCount + 1)) * (size / 2) * 0.95;
+      const sw = 2 + ((hash[3] >> i) & 0x7);
+      const c = fg[(hash[4] + i) % fg.length];
+      out += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c}" stroke-width="${sw}" opacity="${0.55 + (i * 0.08) % 0.4}"/>`;
+    }
+    return out;
+  }
+
+  /** Pattern C — Beam burst. Radiating lines from center, count + colors
+   *  derived from hash. */
+  function _avatarBeams(hash, palette, size) {
+    const cx = size / 2, cy = size / 2;
+    const fg = palette.slice(1);
+    const beamCount = 8 + (hash[2] % 9); // 8..16
+    const r = size * 0.48;
+    let out = '';
+    for (let i = 0; i < beamCount; i++) {
+      const angle = (i / beamCount) * Math.PI * 2 + _frand(hash[3]) * 0.5;
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+      const c = fg[(hash[4] + i) % fg.length];
+      const sw = 1 + ((hash[5] >> (i % 16)) & 3);
+      out += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(2)}" y2="${y.toFixed(2)}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`;
+    }
+    // Center dot
+    out += `<circle cx="${cx}" cy="${cy}" r="${size * 0.08}" fill="${fg[0]}"/>`;
+    return out;
+  }
+
+  /** Pattern D — Hexagon weave. Three overlapping hexes, rotated. */
+  function _avatarHexes(hash, palette, size) {
+    const cx = size / 2, cy = size / 2;
+    const fg = palette.slice(1);
+    let out = '';
+    for (let i = 0; i < 3; i++) {
+      const r = size * (0.42 - i * 0.1);
+      const rot = (hash[2 + i] % 60) * (Math.PI / 180);
+      const pts = [];
+      for (let k = 0; k < 6; k++) {
+        const a = rot + (k / 6) * Math.PI * 2;
+        pts.push(`${(cx + Math.cos(a) * r).toFixed(2)},${(cy + Math.sin(a) * r).toFixed(2)}`);
+      }
+      const c = fg[(hash[5] + i) % fg.length];
+      out += `<polygon points="${pts.join(' ')}" fill="none" stroke="${c}" stroke-width="${2 + i}" opacity="${0.85 - i * 0.15}"/>`;
+    }
+    return out;
+  }
+
+  /** Pattern E — Wave field. Horizontal sine bands with offset phases. */
+  function _avatarWaves(hash, palette, size) {
+    const fg = palette.slice(1);
+    const bands = 3 + (hash[2] % 3);
+    let out = '';
+    for (let b = 0; b < bands; b++) {
+      const yOffset = (b / bands) * size + size * 0.1;
+      const amp = size * 0.06 * (1 + (hash[3] >> b & 3));
+      const phase = _frand(hash[4 + b % 2]) * Math.PI * 2;
+      const freq = 1 + (hash[5] % 3);
+      let path = `M 0 ${yOffset.toFixed(2)} `;
+      const steps = 24;
+      for (let s = 1; s <= steps; s++) {
+        const x = (s / steps) * size;
+        const y = yOffset + Math.sin(phase + (s / steps) * freq * Math.PI * 2) * amp;
+        path += `L ${x.toFixed(2)} ${y.toFixed(2)} `;
+      }
+      const c = fg[(hash[5] + b) % fg.length];
+      out += `<path d="${path}" fill="none" stroke="${c}" stroke-width="${2 + b}" stroke-linecap="round" opacity="${0.7 + b * 0.08}"/>`;
+    }
+    return out;
+  }
+
+  /** Pattern F — Stippled blob. Cluster of dots with size variance. */
+  function _avatarBlob(hash, palette, size) {
+    const cx = size / 2, cy = size / 2;
+    const fg = palette.slice(1);
+    let out = '';
+    const dotCount = 16 + (hash[2] % 12);
+    // Linear-congruential pseudo-random walk seeded from hash[3]
+    let r = hash[3] >>> 0;
+    const next = () => { r = Math.imul(r, 1664525) + 1013904223 >>> 0; return r / 4294967296; };
+    for (let i = 0; i < dotCount; i++) {
+      const angle = next() * Math.PI * 2;
+      const dist = next() * size * 0.42;
+      const x = cx + Math.cos(angle) * dist;
+      const y = cy + Math.sin(angle) * dist;
+      const dotR = 1.5 + next() * 4;
+      const c = fg[Math.floor(next() * fg.length)];
+      out += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${dotR.toFixed(1)}" fill="${c}" opacity="${(0.6 + next() * 0.4).toFixed(2)}"/>`;
+    }
+    return out;
+  }
+
+  const _AVATAR_GENERATORS = [
+    _avatarMosaic, _avatarRings, _avatarBeams,
+    _avatarHexes,  _avatarWaves, _avatarBlob,
+  ];
+
+  /**
+   * Generate a complete SVG string for the given seed string. The same
+   * seed always produces the same SVG. Output is sized to `size`x`size`
+   * pixels with a viewBox so it scales cleanly when the consumer applies
+   * different display sizes.
+   *
+   * @param {string} seed - typically a username; falls back to "?" if empty
+   * @param {number} size - pixel size for both width and height (default 64)
+   * @returns {string} an `<svg>...</svg>` string ready to embed
+   */
+  function generateAvatarSvg(seed, size = 64) {
+    const hash = _hashStringToSeed(seed || '?');
+    const palette = _pick(_AVATAR_PALETTES, hash[0]);
+    const generator = _pick(_AVATAR_GENERATORS, hash[1]);
+    const inner = generator(hash, palette, size);
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="user avatar"><rect width="${size}" height="${size}" fill="${palette[0]}"/>${inner}</svg>`;
+  }
+
+  /**
+   * Generate a data URI for the avatar (useful for <img src> or comments
+   * plugin's setAvatarUrlForNextComment). Wraps generateAvatarSvg with
+   * a btoa-safe encoding (handles non-ASCII characters in the seed).
+   */
+  function generateAvatarDataUri(seed, size = 64) {
+    const svg = generateAvatarSvg(seed, size);
+    // encodeURIComponent is fine for SVG and supports unicode seeds; we
+    // base64 only because some embedded contexts (CSS background-image,
+    // some email clients) don't accept percent-encoded data URIs.
+    try {
+      return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+    } catch {
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+  }
+
+  // ====================================================================
   // CLOUD USER · COMMENTS · PRESENCE
   // ====================================================================
   // PerDB-backed user accounts + content sync, plus a public comments
   // channel and a live "users online" counter via presence heartbeats.
+  //
+  // ──────────────────────────── FIREWALL ────────────────────────────
+  // The CHAT/COMMUNITY domain (this module + comments-plugin) and the
+  // APP domain (profile, Smart Director, AI prompts, sessions, memory,
+  // analytics) are SEPARATE INDEPENDENT SYSTEMS. They MUST NOT share
+  // data in either direction. Concretely:
+  //
+  //   1. APP → CHAT must not happen.
+  //      • Profile data (pfName, pfAbout, pfGoals, pfAppearance, etc.)
+  //        must NEVER reach this module, the comments plugin, presence,
+  //        or PerDB. Cloud uploads of user content (scripts, personas,
+  //        settings) are user-initiated and explicit — they aren't
+  //        considered profile data crossing.
+  //      • Sidebar greeting and other app-domain UI must NOT fall
+  //        back to cloudUser.displayName when profile.name is empty.
+  //        It reads only profile fields.
+  //
+  //   2. CHAT → APP must not happen.
+  //      • Comments content, presence count, cloud user records, and
+  //        chat-side metadata MUST NEVER reach AI prompts, Smart
+  //        Director, getProfileContext, buildPhaseInstructions,
+  //        analytics, embeddings, memory, or the activity timeline.
+  //      • Smart Director does not subscribe to comment events,
+  //        does not see who's online, does not reference cloud user
+  //        identity in any prompt or recommendation.
+  //
+  //   3. AVATAR EXEMPTION.
+  //      • generateAvatarSvg(seed) is a pure deterministic visual
+  //        derived from a single string. Using cloudUser.username as
+  //        the seed is allowed because the visual carries no semantic
+  //        information about either domain — it's just identicon
+  //        pixels keyed off the handle.
+  //
+  // Why this matters: hypnosis sessions involve sensitive personal
+  // material (intentions, goals, insecurities, traumas). Mixing this
+  // with a public community channel — even accidentally via auto-fill
+  // or fallback chains — would break user trust and could expose
+  // private context publicly. The firewall is enforced by code
+  // discipline, not at runtime; future edits to either side must
+  // re-read this comment.
+  // ──────────────────────────────────────────────────────────────────
   //
   // Backend: PerDB (https://perdb.koyeb.app/api) — a simple hosted REST
   // key-value store. The `pk_live_*` API key below is the public one
@@ -26722,12 +27238,18 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     try { localStorage.setItem(CLOUD_USER_KEY, JSON.stringify(user)); } catch {}
     renderCloudUserSlug();
     _startPresenceBeacon();
+    // Saved-scripts rows show a per-row ☁ upload button whose enabled
+    // state depends on cloud sign-in. Re-render so the visual state
+    // updates immediately. NOTE: this is UI affordance refresh only —
+    // no cloud DATA flows into saved-scripts content.
+    if (typeof renderSavedScripts === 'function') renderSavedScripts();
   }
   function _clearCloudUser() {
     state.cloudUser = null;
     try { localStorage.removeItem(CLOUD_USER_KEY); } catch {}
     renderCloudUserSlug();
     _stopPresenceBeacon();
+    if (typeof renderSavedScripts === 'function') renderSavedScripts();
   }
 
   // Validate a username — matches the community-gallery convention so
@@ -26850,6 +27372,11 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     if (!res || res.error) { notify.error('Upload failed: ' + (res?.error || 'network')); return null; }
     cloudDB.clearCache('hne_user_content');
     notify.success(`Uploaded ${kind}: ${safeName}`);
+    // Mark the cloud-upload feature bit so it shows up in the
+    // "features tried" chart. Fire-and-forget; never blocks the upload.
+    if (typeof markFeatureUsed === 'function') {
+      try { markFeatureUsed(FEAT.CLOUD_UPLOAD); } catch {}
+    }
     return res.id || res._id || res.data?.id;
   }
 
@@ -26884,10 +27411,12 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       `;
       $('cloudSignInBtn')?.addEventListener('click', openCloudSignInModal);
     } else {
-      const initials = (u.displayName || u.username || '?').slice(0, 2).toUpperCase();
+      // Avatar derived deterministically from the username — same user
+      // sees their own avatar on every device, every refresh.
+      const avatarSvg = generateAvatarSvg(u.username || u.id || u.displayName || '?', 32);
       el.innerHTML = `
         <div class="cloud-user-card">
-          <div class="cloud-user-avatar">${escapeHtml(initials)}</div>
+          <div class="cloud-user-avatar">${avatarSvg}</div>
           <div class="cloud-user-info">
             <div class="cloud-user-name">${escapeHtml(u.displayName || u.username)}</div>
             <div class="cloud-user-handle">@${escapeHtml(u.username)}</div>
@@ -27020,10 +27549,11 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     wrap.innerHTML = `
       <div class="modal" style="max-width:600px">
         <h2>my cloud content</h2>
+        <div id="cloudContentHeader" style="margin-bottom:12px"></div>
         <div style="font-size:0.74rem;color:var(--text-dim);line-height:1.5;margin-bottom:12px">
           Items you've uploaded from this app. Use the buttons in each panel (saved scripts, custom personas, settings) to upload new items.
         </div>
-        <div id="cloudContentList" style="max-height:60vh;overflow:auto"></div>
+        <div id="cloudContentList" style="max-height:55vh;overflow:auto"></div>
         <div class="modal-actions" style="margin-top:14px">
           <button class="btn secondary" id="cloudContentRefresh">refresh</button>
           <button class="btn" id="cloudContentClose">done</button>
@@ -27042,6 +27572,21 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   async function _renderCloudContentList() {
     const list = $('cloudContentList');
     if (!list) return;
+    // Refresh the header avatar/name strip — picks up any sign-in change
+    // since the modal was last shown.
+    const header = $('cloudContentHeader');
+    if (header && state.cloudUser) {
+      const u = state.cloudUser;
+      const avatarSvg = generateAvatarSvg(u.username || u.id || u.displayName || '?');
+      header.innerHTML = `
+        <div class="cloud-user-card">
+          <div class="cloud-user-avatar">${avatarSvg}</div>
+          <div class="cloud-user-info">
+            <div class="cloud-user-name">${escapeHtml(u.displayName || u.username)}</div>
+            <div class="cloud-user-handle">@${escapeHtml(u.username)}</div>
+          </div>
+        </div>`;
+    }
     list.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:20px">loading…</div>';
     cloudDB.clearCache('hne_user_content');
     const items = await cloudListMyContent();
@@ -27051,17 +27596,27 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     }
     items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     const ICON = { script: '📝', persona: '🧠', settings: '⚙', guide: '📖' };
+    // Three actions per item: import → local, download as file, delete.
+    // Import is the most common after a fresh device — re-attach a script
+    // to the saved-scripts library, or a persona to custom personas.
     list.innerHTML = items.map(item => `
-      <div class="cloud-item" style="padding:10px;border:1px solid var(--glass-border);border-radius:8px;margin-bottom:8px;display:flex;gap:10px;align-items:center">
+      <div class="cloud-item" style="padding:10px;border:1px solid var(--glass-border);border-radius:8px;margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <div style="font-size:1.4rem">${ICON[item.kind] || '📄'}</div>
-        <div style="flex:1;min-width:0">
+        <div style="flex:1;min-width:120px">
           <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(item.name)}</div>
           <div style="font-size:0.66rem;color:var(--text-faint)">${escapeHtml(item.kind)} · ${new Date(item.updatedAt || 0).toLocaleString()}</div>
         </div>
-        <button class="btn secondary cloud-item-dl" data-id="${escapeHtml(item.id)}" data-kind="${escapeHtml(item.kind)}" style="padding:4px 10px;font-size:0.7rem">download</button>
-        <button class="btn secondary icon sm cloud-item-del" data-id="${escapeHtml(item.id)}" style="color:#f87171" title="Delete">×</button>
+        <button class="btn secondary cloud-item-import" data-id="${escapeHtml(item.id)}" style="padding:4px 10px;font-size:0.7rem" title="Add this back into your local library">↓ import</button>
+        <button class="btn secondary cloud-item-dl" data-id="${escapeHtml(item.id)}" style="padding:4px 10px;font-size:0.7rem" title="Download as a file">file</button>
+        <button class="btn secondary icon sm cloud-item-del" data-id="${escapeHtml(item.id)}" style="color:#f87171" title="Delete from cloud">×</button>
       </div>
     `).join('');
+    list.querySelectorAll('.cloud-item-import').forEach(b => b.addEventListener('click', async e => {
+      const id = e.target.dataset.id;
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      await _importCloudItemToLocal(item);
+    }));
     list.querySelectorAll('.cloud-item-dl').forEach(b => b.addEventListener('click', async e => {
       const id = e.target.dataset.id;
       const item = items.find(i => i.id === id);
@@ -27077,8 +27632,6 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     }));
   }
   function _downloadCloudItem(item) {
-    // Re-apply the payload to local state where applicable, AND offer a file
-    // download for portability. Two paths because users may want either.
     const blob = new Blob([item.payload], { type: 'text/plain' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -27087,6 +27640,73 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     notify.success(`Downloaded: ${item.name}`);
+  }
+
+  // Re-attach a cloud item to the appropriate local store. Closes the
+  // round-trip — without this, "my cloud" was a one-way archive (could
+  // only download as files which then needed manual paste/import).
+  async function _importCloudItemToLocal(item) {
+    if (!item || !item.payload) { notify.error('Item has no payload.'); return; }
+    try {
+      if (item.kind === 'script') {
+        const data = JSON.parse(item.payload);
+        const existing = (await idbGet('stillness_saved_scripts_v1')) || [];
+        // De-dupe by name to avoid stacking duplicates if the user
+        // imports the same item twice. They can rename to keep both.
+        const collision = existing.find(e => (e.name || '').toLowerCase() === (data.name || '').toLowerCase());
+        if (collision) {
+          if (!confirm(`A script named "${data.name}" already exists locally. Replace it?`)) return;
+        }
+        const filtered = collision ? existing.filter(e => e.id !== collision.id) : existing;
+        const newEntry = {
+          id: collision?.id || ('script_' + Date.now()),
+          name: data.name || item.name,
+          script: data.script || '',
+          sourceMeta: data.sourceMeta || {},
+          savedAt: data.savedAt || Date.now(),
+        };
+        await idbSet('stillness_saved_scripts_v1', [newEntry, ...filtered]);
+        if (typeof renderSavedScripts === 'function') renderSavedScripts();
+        notify.success(`Imported script: ${newEntry.name}`);
+      } else if (item.kind === 'persona') {
+        const data = JSON.parse(item.payload);
+        if (!data.name || !data.systemPrompt) { notify.error('Persona payload missing required fields.'); return; }
+        const existing = loadCustomPersonas();
+        const dup = existing.find(p => p.id === data.id);
+        if (dup) {
+          if (!confirm(`A persona with id "${data.id}" already exists. Replace it?`)) return;
+          saveCustomPersonas(existing.filter(p => p.id !== data.id).concat([data]));
+        } else {
+          saveCustomPersonas([...existing, data]);
+        }
+        refreshPersonas();
+        if (typeof renderPersonaGrid === 'function') renderPersonaGrid();
+        notify.success(`Imported persona: ${data.name}`);
+      } else if (item.kind === 'settings') {
+        if (!confirm('Replace your current settings with the cloud snapshot? Your active session config will be overwritten.')) return;
+        const snap = JSON.parse(item.payload);
+        // FIREWALL: only apply snap.settings. Even if a legacy snapshot
+        // somehow contains snap.profile (it shouldn't post-Round-17), we
+        // do NOT restore profile from cloud — profile is app-domain and
+        // does not flow through chat infrastructure. Profile sync uses
+        // the local .gz backup path instead.
+        if (snap.settings) {
+          const merged = normalizeSettings({ ..._buildSettingsObj(), ...normalizeSettings(snap.settings) });
+          try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged)); } catch {}
+          await loadUserSettings();
+          notify.success('Settings restored from cloud snapshot.');
+        } else {
+          notify.warn('Settings snapshot has no settings field.');
+        }
+      } else {
+        // Unknown kind — fall through to file download so user can inspect
+        notify.info(`Unknown kind "${item.kind}" — downloading as file instead.`);
+        _downloadCloudItem(item);
+      }
+    } catch (e) {
+      console.error('[importCloudItem]', e);
+      notify.error('Import failed: ' + (e.message || 'invalid payload'));
+    }
   }
   function openCloudContentModal() {
     _ensureCloudContentModal().classList.add('visible');
@@ -27117,6 +27737,12 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   }
   async function _sendPresence() {
     if (!state.cloudUser) return;
+    // Don't heartbeat when the tab is backgrounded — keeps the "active in
+    // last 90s" count honest (a tab minimized for hours shouldn't read as
+    // online) and saves PerDB writes. The user falls out of the window
+    // naturally after 90s of no heartbeat, then re-appears via the
+    // immediate-heartbeat-on-visible hook in the visibilitychange handler.
+    if (typeof document !== 'undefined' && document.hidden) return;
     try {
       // We re-add a new record each time rather than update — simpler,
       // and PerDB doesn't expose upsert. The list query below filters
@@ -27163,7 +27789,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     wrap.className = 'modal-backdrop';
     wrap.id = 'commentsModal';
     wrap.innerHTML = `
-      <div class="modal" style="max-width:640px;height:80vh;display:flex;flex-direction:column">
+      <div class="modal" style="max-width:640px;max-height:88vh;display:flex;flex-direction:column">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <h2 style="margin:0">community</h2>
           <button class="btn secondary" id="commentsClose" style="padding:4px 12px">close</button>
@@ -27171,7 +27797,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
         <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:10px;line-height:1.5">
           Public comments channel — anyone using HNE sees these. Be kind. <span style="color:var(--text-faint)">This is the perchance comments plugin; messages are persistent and moderated by Perchance. Don't share session content here unless you want it public.</span>
         </div>
-        <div id="commentsHost" style="flex:1;min-height:0;overflow:hidden;border:1px solid var(--glass-border);border-radius:8px"></div>
+        <div id="commentsHost" style="overflow:auto;border:1px solid var(--glass-border);border-radius:8px"></div>
       </div>
     `;
     document.body.appendChild(wrap);
@@ -27193,27 +27819,37 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     }
     try {
       // Channel is namespaced "hne-public" so it doesn't collide with
-      // other Perchance generators. Pre-fill nickname from cloud user
-      // if signed in — the plugin still uses the per-IP user ID for
-      // moderation, but the displayed nickname matches our app.
+      // other Perchance generators on the same comments-plugin backend.
+      // Options are limited to documented fields — undocumented options
+      // we tried earlier (commentPlaceholderText, submitButtonText) are
+      // silently ignored by the plugin and add noise to the API surface.
       const opts = {
         channel: 'hne-public',
+        channelLabel: '🌙 HNE community',
         width: '100%',
-        height: '100%',
-        commentPlaceholderText: 'Share a thought (be kind)',
-        submitButtonText: 'send',
+        height: 520,                 // px — percentages don't propagate reliably through the iframe nesting
+        newestCommentsAtTop: true,
       };
-      _commentsInstance = root.commentsPlugin(opts);
-      // Insert the plugin's container into our host
-      // (commentsPlugin injects into document.body by default; we'll
-      // move it into our host after a tick).
-      setTimeout(() => {
-        const iframe = document.querySelector('.comments-plugin-ctn');
-        if (iframe && host && !host.contains(iframe)) host.appendChild(iframe);
-        if (state.cloudUser && _commentsInstance?.setNicknameForNextComment) {
-          try { _commentsInstance.setNicknameForNextComment(state.cloudUser.displayName || state.cloudUser.username); } catch {}
-        }
-      }, 200);
+      // commentsPlugin returns a String-like marker. We insert it as
+      // innerHTML; the plugin's MutationObserver then detects the marker
+      // landing in document.body and swaps it for the iframe container.
+      const result = root.commentsPlugin(opts);
+      host.innerHTML = String(result);
+      _commentsInstance = result;
+      // Pre-fill nickname from cloud user. setNicknameForNextComment
+      // posts a message to the iframe; if the iframe hasn't loaded yet,
+      // the plugin will queue the call internally. Safe to invoke now.
+      if (state.cloudUser && typeof result.setNicknameForNextComment === 'function') {
+        try { result.setNicknameForNextComment(state.cloudUser.displayName || state.cloudUser.username); } catch {}
+      }
+      // Same for avatar — deterministic data URI keyed off username so
+      // the community can recognize regular contributors visually.
+      if (state.cloudUser && typeof result.setAvatarUrlForNextComment === 'function') {
+        try {
+          const avatarUri = generateAvatarDataUri(state.cloudUser.username || state.cloudUser.id);
+          result.setAvatarUrlForNextComment(avatarUri);
+        } catch {}
+      }
     } catch (e) {
       console.error('[comments embed]', e);
       host.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-faint)">Comments plugin failed: ${escapeHtml(e.message || 'unknown')}</div>`;
@@ -27222,11 +27858,440 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   function openCommentsModal() {
     _ensureCommentsModal().classList.add('visible');
     _embedCommentsPlugin();
+    if (typeof markFeatureUsed === 'function') {
+      try { markFeatureUsed(FEAT.COMMENTS); } catch {}
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // COMMUNITY GALLERY — browse community-uploaded Guides + Scripts
+  // ════════════════════════════════════════════════════════════════════
+  // Public browser for cloud-uploaded community content. Companion to
+  // "my cloud" (which shows only your own uploads).
+  //
+  // FIREWALL CONSTRAINTS (see cloud-module declaration):
+  //   • Lists ONLY kind ∈ {'persona', 'script'}. The browser NEVER shows
+  //     'settings' (those can contain user-private config), 'guide'
+  //     (legacy unused kind), or any kind we add later — explicit
+  //     allowlist, not a denylist.
+  //   • Author identity rendered = cloud username + display name only.
+  //     No profile fields ever fetched, displayed, or referenced.
+  //   • Author's avatar = generateAvatarSvg(username) — the firewall-
+  //     exempt deterministic visual.
+  //   • Item content (voice instruction / script text) IS shown in
+  //     preview because that's the user-uploaded artifact the browser
+  //     exists to display. The author chose to upload it.
+  //
+  // Authoring controls: items where r.userId === state.cloudUser.id
+  // get a "delete" affordance. Anyone can "report" any item. Reports
+  // write to a separate hne_reports collection for out-of-band review
+  // (no in-app moderator UI yet — flagged items aren't auto-removed).
+  //
+  // Pagination is currently single-page (200 items max via cloudDB.get
+  // limit). When the community grows past that, add cursor-paging via
+  // updatedAt < oldest.updatedAt; for now this comment marks the spot.
+  // ════════════════════════════════════════════════════════════════════
+
+  const COMMUNITY_KINDS_ALLOWED = ['persona', 'script']; // explicit allowlist
+  state._communityBrowser = {
+    filter: 'all',          // 'all' | 'persona' | 'script'
+    search: '',
+    items: [],              // raw filtered+sorted items
+    loading: false,
+  };
+
+  // Fetch the latest content from PerDB and apply the firewall allowlist.
+  // The shared PerDB collection includes everyone's uploads; we filter
+  // here. Returns an array of items, sorted newest first.
+  async function fetchCommunityContent() {
+    state._communityBrowser.loading = true;
+    try {
+      cloudDB.clearCache('hne_user_content');
+      const all = await cloudDB.get('hne_user_content', 200, false);
+      // Allowlist filter — never include settings or unknown kinds even
+      // if the server returns them.
+      const filtered = (all || []).filter(r => r && COMMUNITY_KINDS_ALLOWED.includes(r.kind));
+      filtered.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      state._communityBrowser.items = filtered;
+      return filtered;
+    } catch (e) {
+      console.warn('[community] fetch failed:', e);
+      state._communityBrowser.items = [];
+      return [];
+    } finally {
+      state._communityBrowser.loading = false;
+    }
+  }
+
+  // Lazy-build the modal scaffold. Stable element IDs are populated
+  // by renderCommunityBrowser on each refresh.
+  let _communityBrowserModalEl = null;
+  function _ensureCommunityBrowserModal() {
+    if (_communityBrowserModalEl) return _communityBrowserModalEl;
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'communityBrowserModal';
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:720px;max-height:88vh;display:flex;flex-direction:column">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h2 style="margin:0">community gallery</h2>
+          <button class="btn secondary icon sm" id="communityBrowserClose" title="close">×</button>
+        </div>
+        <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;line-height:1.5">
+          Browse Guides and Scripts uploaded by other practitioners. <span style="color:var(--text-faint)">Settings and personal data are never shown here. Items are user-authored — review before importing.</span>
+        </div>
+        <div class="community-controls" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+          <div class="timeline-filter-row" id="communityFilterRow" style="display:flex;flex-wrap:wrap;gap:4px">
+            <button class="timeline-chip active" data-filter="all" type="button">All</button>
+            <button class="timeline-chip" data-filter="persona" type="button">Guides</button>
+            <button class="timeline-chip" data-filter="script" type="button">Scripts</button>
+          </div>
+          <input type="text" id="communitySearchInput" placeholder="search by name or author…" style="flex:1;min-width:160px;padding:5px 9px;font-size:0.74rem;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-family:inherit">
+          <button class="btn secondary" id="communityRefreshBtn" style="font-size:0.7rem;padding:5px 12px" title="refresh from server">↻</button>
+        </div>
+        <div id="communityResultCount" style="font-size:0.66rem;color:var(--text-faint);margin-bottom:6px"></div>
+        <div id="communityList" style="flex:1;min-height:0;overflow-y:auto;padding-right:6px"></div>
+        <div class="modal-actions" style="margin-top:10px">
+          <button class="btn" id="communityBrowserDone">close</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _communityBrowserModalEl = wrap;
+    $('communityBrowserClose').addEventListener('click', () => wrap.classList.remove('visible'));
+    $('communityBrowserDone').addEventListener('click', () => wrap.classList.remove('visible'));
+    wrap.addEventListener('click', e => {
+      if (e.target.id === 'communityBrowserModal') wrap.classList.remove('visible');
+    });
+    // Filter chips
+    wrap.querySelectorAll('#communityFilterRow .timeline-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        state._communityBrowser.filter = chip.dataset.filter || 'all';
+        wrap.querySelectorAll('#communityFilterRow .timeline-chip').forEach(c => {
+          c.classList.toggle('active', c.dataset.filter === state._communityBrowser.filter);
+        });
+        renderCommunityBrowser(); // re-render only — no refetch needed
+      });
+    });
+    // Search — debounced so each keystroke isn't a full re-render
+    let searchTimer = null;
+    $('communitySearchInput').addEventListener('input', e => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state._communityBrowser.search = (e.target.value || '').trim().toLowerCase();
+        renderCommunityBrowser();
+      }, 180);
+    });
+    $('communityRefreshBtn').addEventListener('click', async () => {
+      $('communityList').innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:30px">refreshing…</div>';
+      await fetchCommunityContent();
+      renderCommunityBrowser();
+    });
+    return wrap;
+  }
+
+  // Render the filtered list. Pure DOM update — fetchCommunityContent
+  // is called separately when fresh data is needed.
+  function renderCommunityBrowser() {
+    const list = $('communityList');
+    const countEl = $('communityResultCount');
+    if (!list) return;
+    const { filter, search, items } = state._communityBrowser;
+    let visible = items.slice();
+    if (filter !== 'all') visible = visible.filter(r => r.kind === filter);
+    if (search) {
+      visible = visible.filter(r =>
+        (r.name || '').toLowerCase().includes(search)
+        || (r.username || '').toLowerCase().includes(search)
+      );
+    }
+    if (countEl) {
+      const total = items.length;
+      countEl.textContent = visible.length === total
+        ? `${total} item${total === 1 ? '' : 's'}`
+        : `${visible.length} of ${total} item${total === 1 ? '' : 's'}`;
+    }
+    if (!visible.length) {
+      list.innerHTML = items.length
+        ? '<div style="text-align:center;color:var(--text-faint);padding:30px">No items match your filters.</div>'
+        : '<div style="text-align:center;color:var(--text-faint);padding:30px">No community uploads yet. Be the first — open a Guide editor or a saved Script and tap ☁ to share.</div>';
+      return;
+    }
+    const ICON = { script: '📝', persona: '🧠' };
+    const KIND_LABEL = { script: 'script', persona: 'guide' };
+    const myId = state.cloudUser?.id;
+    list.innerHTML = visible.map(item => {
+      const author = item.username || 'unknown';
+      const isMine = myId && item.userId === myId;
+      const avatarSvg = generateAvatarSvg(author);
+      const ageMs = Date.now() - (item.updatedAt || 0);
+      const ageStr = (typeof _relTimeDB === 'function') ? _relTimeDB(item.updatedAt || 0) : 'recently';
+      // Don't try to extract a tagline here — payloads are lazily parsed
+      // in the preview to keep the list cheap. Show kind + age + author.
+      return `
+        <div class="community-item" data-id="${escapeHtml(item.id)}" style="padding:10px;border:1px solid var(--glass-border);border-radius:8px;margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div class="community-avatar" style="width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0">${avatarSvg}</div>
+          <div style="flex:1;min-width:140px">
+            <div style="font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <span style="font-size:1.1rem">${ICON[item.kind] || '📄'}</span>
+              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(item.name || 'untitled')}</span>
+              ${isMine ? '<span style="font-size:0.6rem;background:rgba(0,212,230,0.18);color:var(--neon-cyan);padding:1px 6px;letter-spacing:0.04em">YOU</span>' : ''}
+            </div>
+            <div style="font-size:0.66rem;color:var(--text-faint)">${escapeHtml(KIND_LABEL[item.kind] || item.kind)} · by @${escapeHtml(author)} · ${escapeHtml(ageStr)}</div>
+          </div>
+          <button class="btn secondary community-preview" data-id="${escapeHtml(item.id)}" style="padding:4px 10px;font-size:0.7rem">preview</button>
+          <button class="btn secondary community-import" data-id="${escapeHtml(item.id)}" style="padding:4px 10px;font-size:0.7rem">↓ import</button>
+          ${isMine
+            ? `<button class="btn secondary icon sm community-delete" data-id="${escapeHtml(item.id)}" style="color:#f87171" title="Delete (only you can delete your own)">×</button>`
+            : `<button class="btn secondary icon sm community-report" data-id="${escapeHtml(item.id)}" title="Report this item">⚐</button>`}
+        </div>`;
+    }).join('');
+    // Wire actions
+    list.querySelectorAll('.community-preview').forEach(b => b.addEventListener('click', e => {
+      const id = e.currentTarget.dataset.id;
+      const item = visible.find(i => i.id === id);
+      if (item) _previewCommunityItem(item);
+    }));
+    list.querySelectorAll('.community-import').forEach(b => b.addEventListener('click', e => {
+      const id = e.currentTarget.dataset.id;
+      const item = visible.find(i => i.id === id);
+      if (item) _importCloudItemToLocal(item);
+    }));
+    list.querySelectorAll('.community-delete').forEach(b => b.addEventListener('click', async e => {
+      const id = e.currentTarget.dataset.id;
+      if (!confirm('Delete your upload from the community gallery? This cannot be undone.')) return;
+      const ok = await cloudDeleteContent(id);
+      if (ok) {
+        notify.success('Deleted from community.');
+        // Remove from in-memory list immediately so the row disappears
+        state._communityBrowser.items = state._communityBrowser.items.filter(r => r.id !== id);
+        renderCommunityBrowser();
+      } else notify.error('Delete failed.');
+    }));
+    list.querySelectorAll('.community-report').forEach(b => b.addEventListener('click', e => {
+      const id = e.currentTarget.dataset.id;
+      const item = visible.find(i => i.id === id);
+      if (item) _reportCommunityItem(item);
+    }));
+  }
+
+  // Preview sub-modal — kind-specific body. Built lazily; reused.
+  let _communityPreviewModalEl = null;
+  function _ensureCommunityPreviewModal() {
+    if (_communityPreviewModalEl) return _communityPreviewModalEl;
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'communityPreviewModal';
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:600px;max-height:88vh;display:flex;flex-direction:column">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <h2 style="margin:0" id="communityPreviewTitle">preview</h2>
+          <button class="btn secondary icon sm" id="communityPreviewClose" title="close">×</button>
+        </div>
+        <div id="communityPreviewBody" style="flex:1;min-height:0;overflow-y:auto;padding-right:6px"></div>
+        <div class="modal-actions" style="margin-top:10px">
+          <button class="btn secondary" id="communityPreviewBack">back</button>
+          <button class="btn" id="communityPreviewImport">↓ import to my library</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _communityPreviewModalEl = wrap;
+    $('communityPreviewClose').addEventListener('click', () => wrap.classList.remove('visible'));
+    $('communityPreviewBack').addEventListener('click', () => wrap.classList.remove('visible'));
+    wrap.addEventListener('click', e => {
+      if (e.target.id === 'communityPreviewModal') wrap.classList.remove('visible');
+    });
+    return wrap;
+  }
+  function _previewCommunityItem(item) {
+    _ensureCommunityPreviewModal();
+    const titleEl = $('communityPreviewTitle');
+    const bodyEl = $('communityPreviewBody');
+    const importBtn = $('communityPreviewImport');
+    if (!titleEl || !bodyEl || !importBtn) return;
+    let parsed = null;
+    try { parsed = JSON.parse(item.payload); } catch {}
+    const author = item.username || 'unknown';
+    const avatarSvg = generateAvatarSvg(author);
+    const KIND_LABEL = { script: 'script', persona: 'guide' };
+    titleEl.textContent = `${KIND_LABEL[item.kind] || item.kind} preview`;
+    let body = '';
+    if (item.kind === 'persona' && parsed) {
+      const category = parsed.category || 'contemplative';
+      const tagline = parsed.tagline || '';
+      const systemPrompt = parsed.systemPrompt || '';
+      body = `
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+          <div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0">${avatarSvg}</div>
+          <div>
+            <div style="font-size:1.1rem;font-weight:600">${escapeHtml(parsed.name || item.name)}</div>
+            <div style="font-size:0.7rem;color:var(--text-faint)">by @${escapeHtml(author)} · ${escapeHtml(category)}</div>
+          </div>
+        </div>
+        ${tagline ? `<div style="font-style:italic;color:var(--text-dim);margin-bottom:12px;padding:8px 12px;border-left:2px solid var(--neon-cyan);background:rgba(0,212,230,0.04)">${escapeHtml(tagline)}</div>` : ''}
+        <div style="font-size:0.66rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Voice instruction</div>
+        <div style="font-family:var(--font-mono, ui-monospace, monospace);font-size:0.78rem;line-height:1.5;background:var(--bg-deep);padding:10px 12px;white-space:pre-wrap;max-height:50vh;overflow-y:auto">${escapeHtml(systemPrompt)}</div>
+      `;
+    } else if (item.kind === 'script' && parsed) {
+      const meta = parsed.sourceMeta || {};
+      const metaBits = [];
+      if (meta.persona) metaBits.push(`Guide: ${escapeHtml(meta.persona)}`);
+      if (meta.method) metaBits.push(`Method: ${escapeHtml(meta.method)}`);
+      if (meta.length) metaBits.push(`Length: ${escapeHtml(meta.length)}`);
+      const scriptText = parsed.script || '';
+      const charCount = scriptText.length;
+      body = `
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+          <div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0">${avatarSvg}</div>
+          <div>
+            <div style="font-size:1.1rem;font-weight:600">${escapeHtml(parsed.name || item.name)}</div>
+            <div style="font-size:0.7rem;color:var(--text-faint)">by @${escapeHtml(author)} · ${charCount.toLocaleString()} chars</div>
+          </div>
+        </div>
+        ${metaBits.length ? `<div style="font-size:0.74rem;color:var(--text-dim);margin-bottom:10px">${metaBits.join(' · ')}</div>` : ''}
+        <div style="font-size:0.66rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Script</div>
+        <div style="font-family:var(--font-mono, ui-monospace, monospace);font-size:0.76rem;line-height:1.55;background:var(--bg-deep);padding:10px 12px;white-space:pre-wrap;max-height:50vh;overflow-y:auto">${escapeHtml(scriptText)}</div>
+      `;
+    } else {
+      body = `<div style="color:var(--text-faint);text-align:center;padding:20px">Unable to preview — payload may be corrupted.</div>`;
+    }
+    bodyEl.innerHTML = body;
+    // Replace the import button so any prior click handler from a
+    // previous preview doesn't fire on the wrong item.
+    const newImport = importBtn.cloneNode(true);
+    importBtn.parentNode.replaceChild(newImport, importBtn);
+    newImport.addEventListener('click', () => {
+      _importCloudItemToLocal(item);
+      _communityPreviewModalEl.classList.remove('visible');
+    });
+    _communityPreviewModalEl.classList.add('visible');
+  }
+
+  // Report flow — writes to the hne_reports collection. Requires sign-in
+  // so each report has an authenticated reporter. Reported items aren't
+  // auto-removed; this is a flag for out-of-band moderation review.
+  async function _reportCommunityItem(item) {
+    if (!state.cloudUser) {
+      notify.warn('Sign in to report content.');
+      openCloudSignInModal();
+      return;
+    }
+    const reason = prompt(
+      `Report "${item.name}" by @${item.username}?\n\nReason (optional, max 200 chars):\n\nThis sends a report to the community moderators. Reported items are reviewed but not removed automatically.`,
+      ''
+    );
+    if (reason === null) return; // cancelled
+    try {
+      await cloudDB.add('hne_reports', {
+        itemId: item.id,
+        itemKind: item.kind,
+        itemName: (item.name || '').slice(0, 100),
+        authorId: item.userId,
+        authorUsername: item.username || '',
+        reporterId: state.cloudUser.id,
+        reporterUsername: state.cloudUser.username,
+        reason: (reason || '').slice(0, 200),
+        ts: Date.now(),
+      });
+      notify.success('Report submitted. Thank you.');
+    } catch (e) {
+      console.error('[community report]', e);
+      notify.error('Could not submit report. Try again later.');
+    }
+  }
+
+  async function openCommunityBrowserModal() {
+    _ensureCommunityBrowserModal().classList.add('visible');
+    // Fresh fetch on every open — community is dynamic. The cloudDB
+    // cache TTL is 60s so back-to-back opens still get fast paint.
+    const list = $('communityList');
+    if (list) list.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:30px">loading…</div>';
+    await fetchCommunityContent();
+    renderCommunityBrowser();
   }
 
   // ── Boot: rehydrate cloud session if we had one before ────────────────
   // Run AFTER the sidebar slug element exists. Called from the existing
   // boot flow at end of script — see the wireup section below.
+  // ── Deterministic SVG avatar (identicon-style) ───────────────────────
+  // Pure-JS generator — no plugin dependency, fully deterministic from
+  // a seed string (typically username or user id). Same seed always
+  // produces the same avatar across devices and sessions.
+  //
+  // Algorithm:
+  //   1. FNV-1a-like rolling hash → 32-bit integer
+  //   2. Hash bits drive hue, lightness, and a 5×5 cell pattern
+  //      (3 unique columns × 5 rows = 15 bits, mirrored on Y for
+  //      GitHub-identicon symmetry)
+  //   3. Returns an SVG string sized 100×100 in viewBox units —
+  //      the caller's container determines the actual pixel size.
+  //
+  // Future: if more diversity is needed, swap in the Perchance
+  // pattern-maker plugin via root.patternMaker — but for usernames
+  // 5×5 mirrored bits gives 32k distinct patterns × 360 hues,
+  // plenty for community-scale uniqueness.
+  function _hashSeed(str) {
+    let h = 0x811c9dc5; // FNV-1a 32-bit offset basis
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = (h * 0x01000193) >>> 0; // FNV prime; >>>0 forces uint32
+    }
+    return h >>> 0;
+  }
+  function _hashStream(seed) {
+    // Returns a stateful generator that yields successive integers
+    // derived from `seed`. Each .next() advances the hash via xorshift.
+    let s = seed || 1;
+    return {
+      next() {
+        s ^= s << 13; s >>>= 0;
+        s ^= s >>> 17;
+        s ^= s << 5; s >>>= 0;
+        return s;
+      }
+    };
+  }
+  function generateAvatarSvg(seedStr, opts = {}) {
+    const seed = _hashSeed(String(seedStr || 'anonymous'));
+    const rng = _hashStream(seed);
+    // Color picks
+    const hue = seed % 360;
+    const sat = 55 + (rng.next() % 25);          // 55–79
+    const bgL = 18 + (rng.next() % 12);           // dark background
+    const fgL = 62 + (rng.next() % 18);           // bright foreground
+    const bg = `hsl(${hue}, ${sat}%, ${bgL}%)`;
+    const fg = `hsl(${(hue + 30) % 360}, ${Math.min(80, sat + 10)}%, ${fgL}%)`;
+    // Grid: 5 rows × 5 cols, mirrored on Y (cols 0,1,2 unique; 3=col1, 4=col0)
+    const rows = 5, cols = 5;
+    const cellSize = 100 / cols;
+    const cells = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < 3; c++) { // 3 unique columns
+        if ((rng.next() & 1) === 0) continue; // 50% fill rate
+        // mirror across the centre column
+        cells.push([c, r]);
+        if (c < 2) cells.push([cols - 1 - c, r]);
+      }
+    }
+    const rects = cells.map(([c, r]) =>
+      `<rect x="${c * cellSize}" y="${r * cellSize}" width="${cellSize}" height="${cellSize}" fill="${fg}"/>`
+    ).join('');
+    const padding = opts.padding === false ? 0 : 6; // small inner inset by default
+    const inner = padding ? `<g transform="translate(${padding},${padding}) scale(${(100 - padding * 2) / 100})">${rects}</g>` : rects;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+      <rect width="100" height="100" fill="${bg}"/>
+      ${inner}
+    </svg>`;
+  }
+  function generateAvatarDataUri(seedStr, _sizePxIgnored) {
+    // Returns a data: URI for places that need a string source (e.g. an
+    // <img src> or an avatar URL parameter to a third-party plugin).
+    // Size is encoded in the SVG itself via viewBox; the consumer scales.
+    const svg = generateAvatarSvg(seedStr);
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  }
+
   function bootCloudUser() {
     const u = _loadCloudUser();
     if (u) {
@@ -28525,6 +29590,9 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     try { bootCloudUser(); } catch (e) { console.warn('[bootCloudUser]', e); }
     // Wire the comments-launcher button now that the sidebar markup exists.
     $('openCommentsBtn')?.addEventListener('click', openCommentsModal);
+    // Wire the community gallery button — browses public uploads (Guides
+    // and Scripts only; settings/profile filtered out by the firewall).
+    $('openCommunityBrowserBtn')?.addEventListener('click', openCommunityBrowserModal);
     renderPersonaGrid();
     renderPersonaDetail();
     renderMethodGrid();

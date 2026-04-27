@@ -34,6 +34,39 @@ Session structure editor rework. **Shipped:**
 
 ## Already shipped ✅
 
+### §0 Recent infrastructure rounds
+
+#### Round 14b — Backup completeness audit
+- `exportBackup` now packages 6 previously-missing slices: `memory`, `configPresets`, `savedScripts`, `triggerFires`, `customTags`, `abResults`. Backup `version` bumped to 5 then 6.
+- Round 14 also added 4 opt-in phase types — `teaching` / `training` / `mission` / `goal` — wired through `_phaseExtras` state, with eleven-place ripple to phase resolution, `buildPhaseInstructions`, presets, programs, and tour copy.
+
+#### Round 15 — Cloud + auto-tempo + free voices
+- **Auto-tempo bug-hunt.** Six bugs in `_stripScriptChars` / `_stripOrphanPunctuation` / `fixScriptTimings`: missing whitespace collapse after char strip (caused TTS pacing artifacts), no ellipsis support, ellipsis orphans not caught, wrong pipeline order, defensive whitespace scrub missing, scattered hardcoded defaults. Fixed via new `_normalizeEllipsis`, `collapseSpaces` parameter, `_autoTempoDefaults()` / `_autoTempoOpts()` helpers. Settings `version` bumped 5→6. UI got two new controls (3-way ellipsis mode + collapse-spaces toggle) in the auto-tempo cleanup options modal. 21 unit tests pass.
+- **Cloud accounts via PerDB.** Backend at `https://perdb.koyeb.app/api`, three collections (`hne_users` / `hne_user_content` / `hne_presence`), shared community API key with deploy-your-own swap path documented inline. PBKDF2-HMAC-SHA256 100k-iter password hashing, per-user salt, hex-encoded. State at `state.cloudUser` mirrored to `localStorage CLOUD_USER_KEY`. Sidebar slug at top of sidebar (with separator below) shows three states: signed-out / signed-in card / loading. Sign-in modal with sign-in + sign-up tabs. Cloud upload buttons added to: per-script row in saved-scripts (`☁`), persona editor (`☁ cloud`), backup section (`☁ upload settings` + `☁ my cloud`).
+- **Comments + presence.** `comments-plugin` imported in perchance_1.txt, channel `hne-public`, lazy-embedded only when modal opens. Live presence beacon: 30s heartbeat to `hne_presence`, count = distinct user IDs with `lastSeen` in last 90s, polled every 60s. `document.hidden` guard so backgrounded tabs fall out of count automatically.
+- **Unified Activity Timeline** (replaced 3 separate panels: change log + "what AI sees" + AI activity log) — single chronological feed merging `_profileChangeLog` + `_aiAuditLog` + last 30 sessions, with filter chips (All / Profile edits / AI calls / Sessions) and a "view full →" expand modal. `renderProfileDiffs()` and `renderChangeLog()` kept as backward-compat shims.
+- **Charts modernized** — added 4 new chart tiles (visuals / voices / length / affirmation modes — these were tracked in analytics for ages but never charted), fixed `drawFeatureGrid` missing `PRE_GEN` (bit 256).
+- **Button width fixes** — base `.btn` got `box-sizing: border-box; min-width: 0; overflow-wrap: anywhere;` so flex/grid kids can shrink and long labels wrap inside the button. New `.btn.icon` and `.btn.icon.sm` modifiers for single-glyph buttons. `.script-actions` switched grid → flex-wrap.
+- **Local AI voice 404 fixed** — `SPEAKER_BASE` was pointing at the dataset root which doesn't host individual files. Switched to the demo Space at `/spaces/Matthijs/speecht5-tts-demo/resolve/main/spkemb/` with curated `.npy` filenames per speaker. Added `_parseNpy()` helper for the NumPy header (4 unit tests pass).
+- **Free narrator voices guide modal** — OS-detected priority sections for iOS / iPadOS / macOS (version-aware path for Sequoia 15+) / Windows 10/11 / Android / Linux + universal sections (HNE's offline AI voice / Microsoft Edge for cloud-neural voices / cloud TTS services with free tiers). All links verified before shipping.
+
+#### Round 16 — Cross-system audit + ripples
+- **`importBackup` rebuilt** to restore the 6 slices `exportBackup` was already packaging (memory, configPresets, savedScripts, triggerFires, customTags, abResults). Each slice gets a slice-appropriate merge strategy (union by ID for arrays, first-write-wins for memory). Per-slice counts in the success notification.
+- **Share-config payload v1 → v2** to include `_phaseExtras`, `bgPrompt`, `bgNegativePrompt`, `bgOrientation`, `bgActiveStylePresetIds`, `droneEnabled`, `droneVolume`. v1 payloads still work — v2 fields are conditionally restored.
+- **Comments-plugin embed flow corrected** — was using wrong protocol (the plugin returns a String marker for the host to insert, not auto-injecting). Switched to documented-only options (channel, channelLabel, width, height numeric, newestCommentsAtTop). Removed the dead `generateAvatarDataUri` reference (now resolved — see avatars below).
+- **Presence beacon visibility lifecycle** — `_sendPresence` early-returns on `document.hidden`; immediate heartbeat fires in the `visibilitychange` handler when tab becomes visible.
+- **Post-session refresh** — `renderSessionHistory` and `renderTimeline` now called after `recordSessionInMetricsHistory` so an open Session History details shows new entries immediately.
+- **Deterministic SVG avatars** — `_hashSeed` (FNV-1a 32-bit) + xorshift stream → `generateAvatarSvg(seed)` returns a 5×5 mirrored identicon SVG with HSL-derived colors. Same seed → same avatar across devices and refreshes. Used in: cloud sidebar slug, my-cloud modal header, comments avatar (via `setAvatarUrlForNextComment` data URI). 9 unit tests pass.
+- **Cloud round-trip closed** — my-cloud modal now has `↓ import` per item that re-attaches the content to the local library (script → saved-scripts library; persona → custom personas; settings → applied with confirmation). Old `download` button kept as `file` for portability.
+- **Saved-scripts re-renders on cloud sign-in/out** so per-row `☁` upload button enables/disables live.
+- **FEAT bitmask extended** — `CLOUD_UPLOAD: 512`, `COMMENTS: 1024`. Both tracked in `cloudUploadContent` and `openCommentsModal`. `drawFeatureGrid` updated to match.
+- **Sidebar display name fallback** — `profile.name` → `cloudUser.displayName` → `'Practitioner'`. Refreshed on cloud sign-in/out via `_refreshSidebarDisplayName`. Cloud handle is community identity, NOT used in AI prompts.
+- **Tour expanded** to 16 steps adding Cloud + Free Voice Options coverage.
+
+---
+
+### §1 Earlier shipped features
+
 | # | Item | Shipped change |
 |---|------|---------------|
 | 1 | `uploadPlugin` share links | `createShareUpload`, `shareCurrentConfig`, `shareCurrentPersona`, `loadUploadedSharePayload`; share buttons on script preview + persona editor |
