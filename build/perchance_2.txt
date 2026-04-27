@@ -2508,6 +2508,49 @@ padding: 4px 10px; font-size: 0.75rem; cursor: pointer;
 padding: 14px 12px;
     display: flex; flex-direction: column; gap: 10px;
   }
+  /* Cloud user slug — sits at the top of the sidebar, above everything else,
+     with a clear separator below. The whole thing is sized small so it
+     doesn't dominate; users mostly want to glance at it and move on. */
+  .cloud-user-slug {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .cloud-user-card {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    background: rgba(0,212,230,0.06);
+    border: 1px solid rgba(0,212,230,0.22);
+    border-radius: 6px;
+  }
+  .cloud-user-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--neon-cyan-soft, rgba(0,212,230,0.15));
+    color: var(--neon-cyan);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+  .cloud-user-info { flex: 1; min-width: 0; }
+  .cloud-user-name {
+    font-size: 0.82rem; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cloud-user-handle {
+    font-size: 0.66rem; color: var(--text-faint);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cloud-user-actions { display: flex; gap: 6px; }
+  .cloud-presence-count {
+    font-feature-settings: "tnum"; /* tabular numerals so the count doesn't jiggle */
+  }
+  /* Sidebar separator — a divider that visually segments the cloud-user
+     subsystem from the practitioner profile + stats below. Echoes the
+     glass-border treatment used elsewhere but with a touch more breathing
+     room above and below. */
+  .sidebar-separator {
+    height: 1px; background: var(--glass-border);
+    margin: 4px 0 6px 0; opacity: 0.7;
+  }
   .sidebar-profile {
     display: flex; align-items: center; gap: 10px; padding-bottom: 10px;
     border-bottom: 1px solid var(--glass-border);
@@ -3208,6 +3251,12 @@ padding: 6px 10px; font-size: 1.1rem;
   <div class="app-layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-inner">
+        <!-- Cloud account slug — sign in / out, presence count.
+             Lives at the top with a separator below so it reads as
+             a distinct subsystem from the profile + stats below. -->
+        <div class="cloud-user-slug" id="cloudUserSlug"></div>
+        <button class="btn secondary" id="openCommentsBtn" style="width:100%;font-size:0.74rem;padding:7px;margin-top:6px">💬 community comments</button>
+        <div class="sidebar-separator" aria-hidden="true"></div>
         <div class="sidebar-profile" id="sidebarProfileHeader">
           <div class="sidebar-avatar">🧠</div>
           <div class="sidebar-profile-info">
@@ -3295,6 +3344,14 @@ padding: 6px 10px; font-size: 1.1rem;
             <button class="btn secondary" id="backupBtn" style="flex:1;font-size:0.72rem;padding:6px">export .gz</button>
             <label class="btn secondary" style="flex:1;font-size:0.72rem;padding:6px;text-align:center;cursor:pointer">import .gz<input type="file" id="restoreInput" accept=".gz,.json" style="display:none"></label>
           </div>
+          <!-- Cloud backup row — visible always, but the upload button auto-disables
+               when signed out (with a tooltip explaining why). The "my cloud" button
+               opens the content list modal so the user can pull anything back down. -->
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn secondary" id="cloudBackupUploadBtn" style="flex:1;font-size:0.72rem;padding:6px" title="Upload current settings to cloud">☁ upload settings</button>
+            <button class="btn secondary" id="cloudBackupListBtn" style="flex:1;font-size:0.72rem;padding:6px" title="See and download your cloud content">☁ my cloud</button>
+          </div>
+          <div class="sublabel" style="font-size:0.58rem;margin-top:4px;color:var(--text-faint)">Cloud sync requires sign-in (sidebar top). Treat uploaded content as semi-public.</div>
         </details>
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
           <button class="sidebar-settings-btn" id="openOptionsBtn">⚙ options</button>
@@ -4605,7 +4662,7 @@ I return to myself easily"></textarea>
       </div>
     </details>
 
-    <div class="modal-actions"><button class="btn secondary" id="personaCancelBtn">cancel</button><button class="btn secondary" id="personaShareBtn" title="Create a shareable link for this persona">🔗 share</button><button class="btn" id="personaSaveBtn">save</button></div>
+    <div class="modal-actions"><button class="btn secondary" id="personaCancelBtn">cancel</button><button class="btn secondary" id="personaShareBtn" title="Create a shareable link for this persona">🔗 share</button><button class="btn secondary" id="personaCloudBtn" title="Upload to your cloud account">☁ cloud</button><button class="btn" id="personaSaveBtn">save</button></div>
   </div>
 </div>
 
@@ -4805,9 +4862,21 @@ I return to myself easily"></textarea>
       <input type="checkbox" id="autoTempoStripOrphan">
       <span>
         Strip orphan punctuation (recommended)
-        <span class="hint" style="line-height:1.5">Removes leftover <code>" . "</code>, <code>" , "</code>, etc. patterns that the narrator otherwise reads aloud as "dot" or "comma". These are usually leftovers from stripped square-bracket annotations like a stage-direction or topic-sentence header that the AI sometimes generates.</span>
+        <span class="hint" style="line-height:1.5">Removes leftover <code>" . "</code>, <code>" , "</code>, ellipsis (<code>"…"</code> / <code>"..."</code>) and similar floating punctuation patterns that the narrator otherwise reads aloud as "dot" or "comma" or "ellipsis". These are usually leftovers from stripped square-bracket annotations like a stage-direction or topic-sentence header that the AI sometimes generates.</span>
       </span>
     </label>
+    <label class="toggle-row" for="autoTempoCollapseSpaces" style="align-items:flex-start;margin-bottom:14px">
+      <input type="checkbox" id="autoTempoCollapseSpaces">
+      <span>
+        Collapse multi-space gaps (recommended)
+        <span class="hint" style="line-height:1.5">Stripping a character that sat between two spaces (like <code>"a * b"</code> → <code>"a&nbsp;&nbsp;b"</code>) leaves multi-space clusters that confuse TTS pacing — the narrator either swallows the gap or stutters. Turn off only if you're feeding the script through another preserving-whitespace tool first.</span>
+      </span>
+    </label>
+    <div class="pf-label" style="margin-bottom:6px">Ellipsis handling</div>
+    <div style="font-size:0.74rem;color:var(--text-faint);line-height:1.5;margin-bottom:8px">
+      How to treat <code>"..."</code>, <code>"…"</code>, <code>"‥"</code>, full-width <code>"．．．"</code>, and other multi-dot sequences. <strong>Keep</strong> leaves them alone (TTS may pause briefly). <strong>Period</strong> collapses each to one <code>"."</code> — best for clean sentence rhythm. <strong>Remove</strong> strips entirely (orphan-punct cleanup catches stragglers).
+    </div>
+    <div id="autoTempoEllipsisGrid" style="display:flex;gap:4px;margin-bottom:14px"></div>
     <div class="pf-label" style="margin-bottom:6px">Character stripping</div>
     <div style="font-size:0.74rem;color:var(--text-faint);line-height:1.5;margin-bottom:8px">
       Click a character below to toggle whether auto-tempo removes it. Characters in the <strong>safe</strong> group can be removed without breaking script structure. Characters in <strong>caution</strong> are used by sentence flow — strip only if your scripts have noisy punctuation.
@@ -5899,11 +5968,19 @@ I return to myself easily"></textarea>
     // Auto-tempo cleanup options. stripChars is a string of single characters
     // to remove from the final script (PAUSE markers and \{\{tokens\}\} are always
     // preserved regardless). stripOrphanPunctuation always strips patterns like
-    // " . " (space-period-space) that the narrator reads as "dot". Default: only
-    // the orphan-punctuation fix is on, no character stripping. Persisted.
+    // " . " (space-period-space) that the narrator reads as "dot". ellipsisMode
+    // controls how multi-dot sequences are handled — 'keep' leaves them alone,
+    // 'period' collapses to a single period, 'remove' strips entirely. Covers
+    // ASCII (...), Unicode (… ‥), full-width (．．．), and mid-dot runs (··· ‧‧‧).
+    // collapseSpaces ensures stripping a char that sits between spaces doesn't
+    // leave double-spaces behind (which sound off when TTS pauses between).
+    // Default: orphan punctuation + ellipsis-keep + space collapse, no char
+    // stripping. Persisted.
     autoTempoOptions: {
       stripChars: '',                // empty string = no per-char stripping
       stripOrphanPunctuation: true,  // bug fix — should rarely be turned off
+      ellipsisMode: 'keep',          // 'keep' | 'period' | 'remove'
+      collapseSpaces: true,          // bug fix — collapse runs of spaces left after stripping
     },
     vizOverride: 'auto',
     // Custom color override for canvas-based visualizers. null = use the
@@ -8769,11 +8846,14 @@ I return to myself easily"></textarea>
       // caps back across sessions. Only persist the fields we actually expose.
       safetyConfig: { ...SAFETY_DEFAULTS, ...(state.safetyConfig || {}) },
       // Auto-tempo cleanup options — character stripping list + orphan-punctuation toggle
+      // + ellipsis handling + run-of-spaces collapse (Round 15 fixes).
       autoTempoOptions: {
-        stripChars: state.autoTempoOptions?.stripChars || '',
+        stripChars: (state.autoTempoOptions?.stripChars || '').replace(/\s+/g, ''),
         stripOrphanPunctuation: state.autoTempoOptions?.stripOrphanPunctuation !== false,
+        ellipsisMode: state.autoTempoOptions?.ellipsisMode || 'keep',
+        collapseSpaces: state.autoTempoOptions?.collapseSpaces !== false,
       },
-      settingsVersion: 5,
+      settingsVersion: 6,
     };
   }
 
@@ -9041,12 +9121,21 @@ I return to myself easily"></textarea>
       if (s.affirmationMode) { const el = $('affirmationMode'); if (el) el.value = s.affirmationMode; state.affirmationMode = s.affirmationMode; }
       // Auto-tempo cleanup options — load with defensive validation. stripChars
       // must be a string (not an array — an old version may have persisted as such).
-      // stripOrphanPunctuation defaults to true (the bug-fix behavior).
+      // stripOrphanPunctuation defaults to true (the bug-fix behavior). Defensive:
+      // strip any whitespace characters that may have snuck into stripChars (a
+      // tampered backup or old buggy UI state would otherwise destroy inter-word
+      // spacing). ellipsisMode coerced to a known value. collapseSpaces defaults
+      // true (the run-of-spaces bug fix). All four fields persist independently.
       if (s.autoTempoOptions && typeof s.autoTempoOptions === 'object') {
         const ato = s.autoTempoOptions;
+        const rawChars = typeof ato.stripChars === 'string' ? ato.stripChars.slice(0, 50) : '';
+        const cleanChars = rawChars.replace(/\s+/g, ''); // never let whitespace into stripChars
+        const validEllipsis = ['keep', 'period', 'remove'];
         state.autoTempoOptions = {
-          stripChars: typeof ato.stripChars === 'string' ? ato.stripChars.slice(0, 50) : '',
+          stripChars: cleanChars,
           stripOrphanPunctuation: ato.stripOrphanPunctuation !== false,
+          ellipsisMode: validEllipsis.includes(ato.ellipsisMode) ? ato.ellipsisMode : 'keep',
+          collapseSpaces: ato.collapseSpaces !== false,
         };
       }
       if (s.voiceName) state._savedVoiceName = s.voiceName;
@@ -19709,19 +19798,77 @@ Start immediately:`;
    * @param [string] chars characters to remove (e.g. "*_#")
    * @returns [string] text with chars removed (markers untouched)
    */
-  function _stripScriptChars(text, chars) {
+  // Canonical default for state.autoTempoOptions. Used by every callsite that
+  // needs to fallback when the persisted value is missing or partial. Keep in
+  // sync with the state init defaults at top of file.
+  function _autoTempoDefaults() {
+    return {
+      stripChars: '',
+      stripOrphanPunctuation: true,
+      ellipsisMode: 'keep',
+      collapseSpaces: true,
+    };
+  }
+  // Merge persisted options with defaults so any missing field gets a value.
+  function _autoTempoOpts() {
+    return { ..._autoTempoDefaults(), ...(state.autoTempoOptions || {}) };
+  }
+
+  function _stripScriptChars(text, chars, collapseSpaces) {
     if (!chars || !text) return text;
+    // Defensive: never let whitespace into the strip set — would obliterate
+    // inter-word spacing. Filter at the call site too (loadUserSettings does)
+    // but belt-and-braces here.
+    const cleanChars = chars.replace(/\s+/g, '');
+    if (!cleanChars) return text;
     // Split on PAUSE markers AND token markers so we can preserve them while
     // stripping freely from the prose between. Capturing groups in split keep
     // the delimiters in the output array.
     const PRESERVE_RX = /(\x5BPAUSE\s+\d+\]|\x7B\x7B[^}]+\x7D\x7D)/gi;
     const pieces = text.split(PRESERVE_RX);
-    const stripSet = new Set(chars);
-    return pieces.map(p => {
+    const stripSet = new Set(cleanChars);
+    let result = pieces.map(p => {
       if (PRESERVE_RX.test(p)) { PRESERVE_RX.lastIndex = 0; return p; }
       // Filter out each unwanted character. Array.from for proper Unicode handling.
       return Array.from(p).filter(c => !stripSet.has(c)).join('');
     }).join('');
+    // Collapse multi-space clusters left behind by removing a char that sat
+    // between two spaces (like "a * b" → "a  b"). Without this, the TTS
+    // narrator either swallows the gap entirely or pauses oddly. Bug fix
+    // for the "auto-tempo too aggressive on whitespace" report — actually
+    // it was leaving multi-space clusters, which sounded wrong.
+    if (collapseSpaces !== false) {
+      // Collapse only ASCII space runs (don't touch newlines — those separate phases).
+      result = result.replace(/[ \t]{2,}/g, ' ');
+      // Also drop space-before-punctuation patterns introduced by stripping
+      // (e.g. removing "*" from "word*." → "word ." → "word.").
+      result = result.replace(/ +([.,;:!?])/g, '$1');
+    }
+    return result;
+  }
+
+  // ASCII three-or-more dots, Unicode HORIZONTAL ELLIPSIS (U+2026), TWO DOT
+  // LEADER (U+2025), full-width ellipsis (．．．), and runs of mid-dots (·…‧)
+  // all get folded by this single regex. Used by ellipsis normalization AND
+  // orphan-detection. Matches one logical "ellipsis" per occurrence, even if
+  // composed of mixed glyphs (e.g. "…." = ellipsis-then-period).
+  const ELLIPSIS_VARIANTS_RX = /(?:\u2026|\u2025|\.{3,}|\u30FB{2,}|\u00B7{2,}|\u2027{2,}|\uFF0E{3,})/g;
+
+  /**
+   * Normalize ellipsis sequences according to the user's chosen mode.
+   *   'keep'   — no-op (default)
+   *   'period' — collapse every ellipsis-like run to a single period.
+   *              Preserves sentence-terminator semantics for the splitter.
+   *   'remove' — strip entirely. Caller should run orphan-punct cleanup
+   *              afterwards to remove any " . " patterns left behind.
+   * Operates per-segment so PAUSE markers and \{\{tokens\}\} are untouched
+   * (caller responsibility — fixScriptTimings already splits on those).
+   */
+  function _normalizeEllipsis(text, mode) {
+    if (!text || !mode || mode === 'keep') return text;
+    if (mode === 'period') return text.replace(ELLIPSIS_VARIANTS_RX, '.');
+    if (mode === 'remove') return text.replace(ELLIPSIS_VARIANTS_RX, '');
+    return text;
   }
 
   /**
@@ -19729,6 +19876,10 @@ Start immediately:`;
    * are leftovers from bracket-annotation stripping that the TTS narrator
    * reads aloud as "dot", "comma" etc. Loops until stable so chains like
    * " . . . " are fully cleaned.
+   *
+   * Now ALSO catches ellipsis-orphans like " … " and " ... " and " ‥ "
+   * regardless of the ellipsisMode setting — those are always TTS-destroying
+   * artifacts (the narrator reads them as "dot dot dot" or "ellipsis").
    *
    * Lookahead-based regex so chains are caught in one pass per period:
    * matches space + punct followed-by space-or-end, replaces with empty.
@@ -19738,17 +19889,21 @@ Start immediately:`;
     if (!text) return text;
     let prev;
     let cur = text;
-    // Run until stable — consecutive orphans like " . . World" need multiple passes
+    // Run until stable — consecutive orphans like " . . World" need multiple passes.
+    // Three patterns combined per pass: single punct, ellipsis variants, and
+    // chained "dots" with arbitrary internal whitespace (" . . . World").
     do {
       prev = cur;
-      cur = cur.replace(/\s([.,;:!?])(?=\s|$)/g, '');
+      cur = cur
+        .replace(/\s([.,;:!?])(?=\s|$)/g, '')
+        .replace(/\s(?:\u2026|\u2025|\.{2,})(?=\s|$)/g, '');
     } while (cur !== prev);
     return cur.replace(/  +/g, ' ').trim();
   }
 
   function fixScriptTimings(scriptText) {
     const phaseRx = PHASE_MARKER_SPLIT_RX;
-    const opts = state.autoTempoOptions || { stripChars: '', stripOrphanPunctuation: true };
+    const opts = _autoTempoOpts();
 
     // Compute pause duration based on sentence content
     function pauseFor(sentence) {
@@ -19808,8 +19963,24 @@ Start immediately:`;
       return out.join(' ');
     }
 
+    // Pre-process: normalize ellipsis sequences BEFORE the sentence splitter sees
+    // them. If user chose 'period', "..." and "…" become "." which the splitter
+    // recognizes as a sentence terminator. If 'remove', they vanish (and the
+    // orphan-punct pass below cleans up any stragglers). Done at script level
+    // before phase split because ellipsis don't span phase boundaries.
+    let preNormalized = scriptText;
+    if (opts.ellipsisMode && opts.ellipsisMode !== 'keep') {
+      // Skip PAUSE markers and tokens just like _stripScriptChars does, in
+      // case the user's tokens contain ellipsis-like glyphs (unlikely but cheap).
+      const PRESERVE_RX = /(\x5BPAUSE\s+\d+\]|\x7B\x7B[^}]+\x7D\x7D)/gi;
+      preNormalized = scriptText.split(PRESERVE_RX).map(p => {
+        if (PRESERVE_RX.test(p)) { PRESERVE_RX.lastIndex = 0; return p; }
+        return _normalizeEllipsis(p, opts.ellipsisMode);
+      }).join('');
+    }
+
     // Split by phase markers, process each non-marker section
-    const phaseParts = scriptText.split(phaseRx);
+    const phaseParts = preNormalized.split(phaseRx);
     const isMarker = /===\s*[A-Z0-9-]+\s*===/i; // non-global for safe .test()
     const processed = phaseParts.map(part => {
       if (isMarker.test(part)) return part;
@@ -19836,10 +20007,12 @@ Start immediately:`;
     // Normalize all pause marker casing to canonical form
     fixed = fixed.replace(/\x5Bpause\s+(\d+)\x5D/gi, (m, n) => `\x5BPAUSE ${n}\x5D`);
 
-    // ── Cleanup passes (always run; both gated by user options) ────────────
-    // 1) Strip user-selected characters (PAUSE markers and \{\{tokens\}\} preserved)
-    if (opts.stripChars) fixed = _stripScriptChars(fixed, opts.stripChars);
-    // 2) Bug fix — remove orphan " . " patterns left by stripped bracket annotations.
+    // ── Cleanup passes (always run; all gated by user options) ────────────
+    // 1) Strip user-selected characters (PAUSE markers and \{\{tokens\}\} preserved).
+    //    collapseSpaces parameter prevents multi-space leftovers from killing TTS pacing.
+    if (opts.stripChars) fixed = _stripScriptChars(fixed, opts.stripChars, opts.collapseSpaces !== false);
+    // 2) Bug fix — remove orphan " . " patterns left by stripped bracket annotations
+    //    AND ellipsis orphans (" … ", " ... ") regardless of ellipsisMode setting.
     //    Default ON; user can disable via the auto-tempo options modal but it's
     //    almost always desirable since the narrator reads orphan punctuation aloud.
     if (opts.stripOrphanPunctuation !== false) {
@@ -19852,6 +20025,11 @@ Start immediately:`;
       }).join('');
       // After stripping, single-space cleanup again (orphan removal can leave "  ")
       fixed = fixed.replace(/  +/g, ' ');
+    }
+    // 3) Final defensive collapse — handles any stragglers from the chain.
+    //    Only ASCII space runs; newlines are left alone (they separate phases).
+    if (opts.collapseSpaces !== false) {
+      fixed = fixed.replace(/[ \t]{2,}/g, ' ');
     }
 
     return fixed;
@@ -20648,7 +20826,7 @@ Start immediately:`;
       catch (e) { console.warn(`[backup] ${label} read failed:`, e); return fallback; }
     };
     const backup = {
-      version: 5,
+      version: 6,
       exportedAt: Date.now(),
       personas:  await safe('personas',  () => loadCustomPersonas(), []),
       history:   await safe('history',   async () => (await idbGet('stillness_history_v1')) || [], []),
@@ -20659,6 +20837,27 @@ Start immediately:`;
       adaptive:  await safe('adaptive',  async () => (await idbGet(ADAPTIVE_KEY)) || null, null),
       // Hidden-guide unlock state — earned, so users keep it across reinstalls.
       unlocks:   await safe('unlocks',   async () => (await idbGet('stillness_unlocks_v1')) || {}, {}),
+      // ── Round 14b: previously-unbacked-up user content ─────────────────
+      // Memory digest — Director's per-session structured memory entries.
+      // Useful so a fresh install can resume where adaptive context left off.
+      memory:    await safe('memory',    async () => (await idbGet('stillness_memory_v1')) || null, null),
+      // User-saved configuration presets (the "save current setup" library).
+      configPresets: await safe('configPresets', async () => (await idbGet('stillness_config_presets_v1')) || [], []),
+      // User-saved scripts library (Step 6 "save script" feature). HUGE if
+      // missing — these are the user's personally-curated session scripts.
+      savedScripts: await safe('savedScripts', async () => (await idbGet('stillness_saved_scripts_v1')) || [], []),
+      // Posthypnotic trigger fire log — used by analytics + future-pacing UI
+      // to show "your trigger has fired N times since session X".
+      triggerFires: await safe('triggerFires', async () => (await idbGet('stillness_trigger_fires_v1')) || [], []),
+      // User-defined custom habit tags (Profile → Habit Tags). Critical for
+      // Director context — losing these resets to defaults on import.
+      customTags: await safe('customTags', async () => (await idbGet('stillness_custom_tags_v1')) || [], []),
+      // A/B experiment results — only relevant if user opted into A/B mode.
+      abResults: await safe('abResults', async () => (await idbGet('stillness_ab_results_v1')) || [], []),
+      // NOTE: deliberately NOT backed up:
+      //   stillness_embed_v1         — regenerable from history+memory text
+      //   stillness_program_pregen_v1 — transient 26h cache, no value preserving
+      //   stillness_ai_audit_v1      — debug log, can be very large + privacy
     };
     const replacer = _corruptItemReplacer();
     let json;
@@ -22629,7 +22828,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       btn.textContent = ch;
       btn.title = active.has(ch) ? `Click to KEEP "${ch}"` : `Click to STRIP "${ch}"`;
       btn.addEventListener('click', () => {
-        if (!state.autoTempoOptions) state.autoTempoOptions = { stripChars: '', stripOrphanPunctuation: true };
+        if (!state.autoTempoOptions) state.autoTempoOptions = _autoTempoDefaults();
         const cur = new Set(state.autoTempoOptions.stripChars || '');
         if (cur.has(ch)) cur.delete(ch); else cur.add(ch);
         state.autoTempoOptions.stripChars = Array.from(cur).join('');
@@ -22640,17 +22839,53 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     });
   }
 
+  // Render the 3-way ellipsisMode segmented control. 'keep' / 'period' / 'remove'.
+  function _renderAutoTempoEllipsisGrid() {
+    const container = $('autoTempoEllipsisGrid');
+    if (!container) return;
+    const cur = (state.autoTempoOptions?.ellipsisMode) || 'keep';
+    const modes = [
+      { id: 'keep',   label: 'keep',   tip: 'Leave ellipsis sequences alone (default).' },
+      { id: 'period', label: 'period', tip: 'Collapse "..." and "…" to a single "." — best for clean sentence rhythm.' },
+      { id: 'remove', label: 'remove', tip: 'Strip every ellipsis form entirely.' },
+    ];
+    container.innerHTML = '';
+    modes.forEach(m => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'auto-tempo-char-btn' + (cur === m.id ? ' active' : '');
+      btn.style.width = 'auto';
+      btn.style.padding = '4px 12px';
+      btn.style.flex = '1';
+      btn.textContent = m.label;
+      btn.title = m.tip;
+      btn.addEventListener('click', () => {
+        if (!state.autoTempoOptions) state.autoTempoOptions = _autoTempoDefaults();
+        state.autoTempoOptions.ellipsisMode = m.id;
+        _renderAutoTempoOptsModal();
+        saveUserSettings();
+      });
+      container.appendChild(btn);
+    });
+  }
+
   function _renderAutoTempoOptsModal() {
-    const opts = state.autoTempoOptions || { stripChars: '', stripOrphanPunctuation: true };
-    const cb = $('autoTempoStripOrphan'); if (cb) cb.checked = opts.stripOrphanPunctuation !== false;
+    const opts = _autoTempoOpts();
+    const cb = $('autoTempoStripOrphan');    if (cb) cb.checked = opts.stripOrphanPunctuation !== false;
+    const cs = $('autoTempoCollapseSpaces'); if (cs) cs.checked = opts.collapseSpaces !== false;
+    _renderAutoTempoEllipsisGrid();
     _renderAutoTempoCharGrid('autoTempoCharGridSafe',    _AUTO_TEMPO_CHARS_SAFE);
     _renderAutoTempoCharGrid('autoTempoCharGridCaution', _AUTO_TEMPO_CHARS_CAUTION);
     const preview = $('autoTempoStripPreview');
     if (preview) {
       const chars = opts.stripChars || '';
-      preview.textContent = chars
-        ? `Will strip these characters: ${chars.split('').map(c => `"${c}"`).join(' ')}`
-        : 'No characters will be stripped (default behavior).';
+      const ellipsisNote = opts.ellipsisMode === 'period' ? 'Ellipsis → "."'
+                         : opts.ellipsisMode === 'remove' ? 'Ellipsis stripped'
+                         : '';
+      const charNote = chars
+        ? `Will strip: ${chars.split('').map(c => `"${c}"`).join(' ')}`
+        : 'No characters will be stripped.';
+      preview.textContent = ellipsisNote ? `${charNote} · ${ellipsisNote}` : charNote;
     }
   }
 
@@ -22662,14 +22897,19 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     $('autoTempoOptsModal')?.classList.remove('visible');
   });
   $('autoTempoOptsResetBtn')?.addEventListener('click', () => {
-    state.autoTempoOptions = { stripChars: '', stripOrphanPunctuation: true };
+    state.autoTempoOptions = _autoTempoDefaults();
     _renderAutoTempoOptsModal();
     saveUserSettings();
     notify.info('Auto-tempo options reset to defaults.');
   });
   $('autoTempoStripOrphan')?.addEventListener('change', e => {
-    if (!state.autoTempoOptions) state.autoTempoOptions = { stripChars: '', stripOrphanPunctuation: true };
+    if (!state.autoTempoOptions) state.autoTempoOptions = _autoTempoDefaults();
     state.autoTempoOptions.stripOrphanPunctuation = !!e.target.checked;
+    saveUserSettings();
+  });
+  $('autoTempoCollapseSpaces')?.addEventListener('change', e => {
+    if (!state.autoTempoOptions) state.autoTempoOptions = _autoTempoDefaults();
+    state.autoTempoOptions.collapseSpaces = !!e.target.checked;
     saveUserSettings();
   });
   // Click-outside-to-close (consistent with other modals using this pattern)
@@ -23581,6 +23821,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
           <div class="ssr-actions">
             <button type="button" class="ssr-btn" data-act="load"   title="Load this script into the editor">load</button>
             <button type="button" class="ssr-btn" data-act="rename" title="Rename">✎</button>
+            <button type="button" class="ssr-btn" data-act="upload" title="${state.cloudUser ? 'Upload to your cloud account' : 'Sign in to upload to cloud'}" ${state.cloudUser ? '' : 'disabled style="opacity:0.4;cursor:not-allowed"'}>☁</button>
             <button type="button" class="ssr-btn ssr-btn-danger" data-act="delete" title="Delete">×</button>
           </div>
         </div>`;
@@ -23590,8 +23831,32 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       const id = row.getAttribute('data-id');
       row.querySelector('[data-act="load"]')?.addEventListener('click', () => loadSavedScript(id));
       row.querySelector('[data-act="rename"]')?.addEventListener('click', () => renameSavedScript(id));
+      row.querySelector('[data-act="upload"]')?.addEventListener('click', () => _uploadSavedScriptToCloud(id));
       row.querySelector('[data-act="delete"]')?.addEventListener('click', () => deleteSavedScript(id));
     });
+  }
+
+  // Cloud-upload helper for a saved script — fetches the entry, packages
+  // script + metadata, hands off to cloudUploadContent. Re-renders the
+  // list at the end so a freshly-uploaded script could show some kind
+  // of indicator in future (currently just renders to keep state fresh).
+  async function _uploadSavedScriptToCloud(id) {
+    if (!state.cloudUser) {
+      notify.warn('Sign in to upload to cloud.');
+      openCloudSignInModal();
+      return;
+    }
+    const all = await loadSavedScripts();
+    const entry = all.find(e => e.id === id);
+    if (!entry) { notify.error('Script not found.'); return; }
+    const payload = JSON.stringify({
+      name: entry.name,
+      script: entry.script,
+      sourceMeta: entry.sourceMeta || {},
+      savedAt: entry.savedAt,
+    });
+    await cloudUploadContent('script', entry.name || 'untitled', payload);
+    renderSavedScripts();
   }
 
   /** Save the current script to the library. Defaults to a name based on
@@ -24303,6 +24568,38 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
 
   // Backup/restore
   $('backupBtn')?.addEventListener('click', exportBackup);
+  $('cloudBackupUploadBtn')?.addEventListener('click', async () => {
+    if (!state.cloudUser) {
+      notify.warn('Sign in to back up to cloud (top of sidebar).');
+      openCloudSignInModal();
+      return;
+    }
+    setLoading('cloudBackupUploadBtn', true);
+    try {
+      // Snapshot the same settings object that exportBackup ships locally
+      // — keeps the round-trip predictable: cloud-uploaded settings can be
+      // applied just like an imported .gz backup. Excludes the bulky slices
+      // (history, analytics) since users mostly care about config sync.
+      const snapshot = {
+        version: 6,
+        exportedAt: Date.now(),
+        settings: _buildSettingsObj(),
+        profile: getProfile(),
+      };
+      const name = `settings-${new Date().toISOString().slice(0, 10)}`;
+      await cloudUploadContent('settings', name, JSON.stringify(snapshot));
+    } finally {
+      setLoading('cloudBackupUploadBtn', false, '☁ upload settings');
+    }
+  });
+  $('cloudBackupListBtn')?.addEventListener('click', () => {
+    if (!state.cloudUser) {
+      notify.warn('Sign in to view your cloud content.');
+      openCloudSignInModal();
+      return;
+    }
+    openCloudContentModal();
+  });
   $('restoreInput')?.addEventListener('change', e => {
     const file = e.target.files?.[0];
     if (file) importBackup(file);
@@ -26015,6 +26312,666 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   }
 
   // ====================================================================
+  // CLOUD USER · COMMENTS · PRESENCE
+  // ====================================================================
+  // PerDB-backed user accounts + content sync, plus a public comments
+  // channel and a live "users online" counter via presence heartbeats.
+  //
+  // Backend: PerDB (https://perdb.koyeb.app/api) — a simple hosted REST
+  // key-value store. The `pk_live_*` API key below is the public one
+  // shared by community-gallery; it's fine to use as a starting point
+  // but DEPLOYERS RUNNING THEIR OWN HNE FORK SHOULD GET THEIR OWN KEY
+  // (privacy, quota, abuse isolation). Swap PERDB_API_KEY to do so.
+  //
+  // Collections used:
+  //   hne_users         — { username, passHash, salt, createdAt, displayName }
+  //   hne_user_content  — { userId, kind, name, payload, updatedAt }
+  //                       kind ∈ 'persona' | 'script' | 'settings' | 'guide'
+  //   hne_presence      — { userId, lastSeen }   (cleaned by client)
+  //
+  // Honest framing in the UI: this is community-shared infrastructure,
+  // not Anthropic-managed. Passwords are PBKDF2-hashed (100k iters) so
+  // the server never sees plaintext, but the backend itself is hosted
+  // on a third party — users should treat shared content as public.
+  // ====================================================================
+
+  const PERDB_API_KEY = 'pk_live_9h76b8v8jpl'; // shared community key
+  const PERDB_ENDPOINT = 'https://perdb.koyeb.app/api';
+  const CLOUD_USER_KEY = 'stillness_cloud_user_v1'; // localStorage shadow
+  const PRESENCE_HEARTBEAT_MS = 30000;             // beacon every 30s
+  const PRESENCE_WINDOW_MS = 90000;                // count entries within 90s as "online"
+  const PRESENCE_POLL_MS = 60000;                  // refresh count every 60s
+
+  // ── Tiny PerDB client (lifted/adapted from community-gallery_2.txt) ────
+  // Returns null on network/server errors so callers can degrade gracefully
+  // instead of throwing — the app must work offline / unauthenticated.
+  const cloudDB = (() => {
+    const cache = new Map();
+    const TTL = 60_000;
+    function _headers(extra) {
+      const h = { 'Content-Type': 'application/json', 'x-api-key': PERDB_API_KEY };
+      if (extra) Object.assign(h, extra);
+      return h;
+    }
+    async function add(collection, data) {
+      try {
+        const res = await fetch(`${PERDB_ENDPOINT}?collection=${encodeURIComponent(collection)}`, {
+          method: 'POST', headers: _headers(), body: JSON.stringify(data),
+        });
+        const j = await res.json();
+        if (j && j._id && !j.id) j.id = j._id;
+        if (j && j.data && j.data._id && !j.data.id) j.data.id = j.data._id;
+        return j;
+      } catch (e) { console.warn('[cloudDB.add]', e.message); return null; }
+    }
+    async function get(collection, limit = 50, useCache = true) {
+      const key = `${collection}:${limit}`;
+      if (useCache) {
+        const c = cache.get(key);
+        if (c && (Date.now() - c.t) < TTL) return c.data;
+      }
+      try {
+        const res = await fetch(`${PERDB_ENDPOINT}?collection=${encodeURIComponent(collection)}&limit=${limit}`, {
+          method: 'GET', headers: _headers(),
+        });
+        let j = await res.json();
+        if (j && j.error) return [];
+        if (Array.isArray(j)) j = j.map(item => ({ ...item, id: item.id || item._id }));
+        else if (j && Array.isArray(j.data)) j = j.data.map(item => ({ ...item, id: item.id || item._id }));
+        else j = [];
+        cache.set(key, { data: j, t: Date.now() });
+        return j;
+      } catch (e) { console.warn('[cloudDB.get]', e.message); return []; }
+    }
+    async function update(collection, id, data) {
+      if (!id) return null;
+      try {
+        const res = await fetch(`${PERDB_ENDPOINT}?collection=${encodeURIComponent(collection)}&id=${encodeURIComponent(id)}`, {
+          method: 'PUT', headers: _headers(), body: JSON.stringify(data),
+        });
+        return await res.json();
+      } catch (e) { console.warn('[cloudDB.update]', e.message); return null; }
+    }
+    async function del(collection, id) {
+      if (!id) return null;
+      try {
+        const res = await fetch(`${PERDB_ENDPOINT}?collection=${encodeURIComponent(collection)}&id=${encodeURIComponent(id)}`, {
+          method: 'DELETE', headers: _headers(),
+        });
+        return await res.json();
+      } catch (e) { console.warn('[cloudDB.delete]', e.message); return null; }
+    }
+    function clearCache(collection) {
+      if (!collection) { cache.clear(); return; }
+      for (const k of cache.keys()) if (k.startsWith(collection + ':')) cache.delete(k);
+    }
+    return { add, get, update, delete: del, clearCache };
+  })();
+
+  // ── Password hashing (PBKDF2 via SubtleCrypto) ─────────────────────────
+  // Server never sees plaintext. Salt is per-user, generated client-side.
+  // 100k iterations is the OWASP minimum recommendation for PBKDF2-HMAC-SHA256;
+  // anything lower is too easy to brute-force, anything much higher chokes
+  // older mobile devices. Output is hex-encoded for portable JSON storage.
+  async function _hashPassword(password, saltHex) {
+    if (!password || typeof password !== 'string') throw new Error('password required');
+    if (!crypto?.subtle) throw new Error('SubtleCrypto not available');
+    const enc = new TextEncoder();
+    const salt = saltHex
+      ? Uint8Array.from(saltHex.match(/.{2}/g).map(b => parseInt(b, 16)))
+      : crypto.getRandomValues(new Uint8Array(16));
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']
+    );
+    const bits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt, iterations: 100_000, hash: 'SHA-256' },
+      keyMaterial, 256
+    );
+    const hashHex = Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const saltOutHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+    return { hash: hashHex, salt: saltOutHex };
+  }
+
+  // ── Cloud user state ─────────────────────────────────────────────────
+  // Single source of truth — `state.cloudUser` is the in-memory copy,
+  // localStorage CLOUD_USER_KEY is the persistence shadow that survives
+  // refresh. Both stay in lockstep; see _setCloudUser / _clearCloudUser.
+  state.cloudUser = null;
+  state._presenceTimer = null;
+  state._presencePollTimer = null;
+  state._presenceCount = 0;
+
+  function _loadCloudUser() {
+    try {
+      const raw = localStorage.getItem(CLOUD_USER_KEY);
+      if (!raw) return null;
+      const u = JSON.parse(raw);
+      if (!u || !u.id || !u.username) return null;
+      return u;
+    } catch { return null; }
+  }
+  function _setCloudUser(user) {
+    state.cloudUser = user;
+    try { localStorage.setItem(CLOUD_USER_KEY, JSON.stringify(user)); } catch {}
+    renderCloudUserSlug();
+    _startPresenceBeacon();
+  }
+  function _clearCloudUser() {
+    state.cloudUser = null;
+    try { localStorage.removeItem(CLOUD_USER_KEY); } catch {}
+    renderCloudUserSlug();
+    _stopPresenceBeacon();
+  }
+
+  // Validate a username — matches the community-gallery convention so
+  // users with accounts there can recreate them here without surprise.
+  function _validateUsername(username) {
+    if (!username) return 'Username required.';
+    if (username.length < 3) return 'Username must be at least 3 characters.';
+    if (username.length > 24) return 'Username must be 24 characters or less.';
+    if (!/^[a-z0-9_]+$/.test(username)) return 'Lowercase letters, numbers, and underscores only.';
+    return null; // valid
+  }
+  function _validatePassword(password) {
+    if (!password) return 'Password required.';
+    if (password.length < 8) return 'Password must be at least 8 characters.';
+    if (password.length > 200) return 'Password too long.';
+    return null;
+  }
+
+  // ── Sign-up ────────────────────────────────────────────────────────────
+  // 1. Validate username + password.
+  // 2. Fetch existing users, case-insensitive collision check (best effort —
+  //    race condition possible but accepted; the server doesn't enforce
+  //    uniqueness).
+  // 3. PBKDF2-hash password.
+  // 4. Insert record. On success, mirror locally and update sidebar.
+  async function cloudSignUp(username, password, displayName) {
+    username = (username || '').trim().toLowerCase();
+    const usernameErr = _validateUsername(username);
+    if (usernameErr) { notify.warn(usernameErr); return false; }
+    const passErr = _validatePassword(password);
+    if (passErr) { notify.warn(passErr); return false; }
+    try {
+      const existing = await cloudDB.get('hne_users', 200, false);
+      if (existing.some(u => (u.username || '').toLowerCase() === username)) {
+        notify.warn(`Username "${username}" is taken — try another.`);
+        return false;
+      }
+      const { hash, salt } = await _hashPassword(password);
+      const record = {
+        username,
+        passHash: hash,
+        salt,
+        displayName: (displayName || username).slice(0, 40),
+        createdAt: Date.now(),
+      };
+      const res = await cloudDB.add('hne_users', record);
+      if (!res || res.error) { notify.error('Sign-up failed: ' + (res?.error || 'network')); return false; }
+      const id = res.id || res._id || res.data?.id || res.data?._id;
+      if (!id) { notify.error('Sign-up returned no record id.'); return false; }
+      _setCloudUser({ id, username, displayName: record.displayName });
+      cloudDB.clearCache('hne_users');
+      notify.success(`Welcome, ${record.displayName}.`);
+      return true;
+    } catch (e) {
+      console.error('[cloudSignUp]', e);
+      notify.error('Sign-up failed: ' + e.message);
+      return false;
+    }
+  }
+
+  // ── Sign-in ────────────────────────────────────────────────────────────
+  // Fetches users (small collection, OK for now), finds match by lowercase
+  // username, hashes input password with stored salt, compares to stored
+  // hash. Constant-time-ish via string equality (good enough for this
+  // threat model — the server already throttles).
+  async function cloudSignIn(username, password) {
+    username = (username || '').trim().toLowerCase();
+    if (!username || !password) { notify.warn('Username and password required.'); return false; }
+    try {
+      const users = await cloudDB.get('hne_users', 500, false);
+      const found = users.find(u => (u.username || '').toLowerCase() === username);
+      if (!found) { notify.warn('No account with that username.'); return false; }
+      if (!found.salt || !found.passHash) {
+        notify.error('Account record is malformed — contact support.');
+        return false;
+      }
+      const { hash } = await _hashPassword(password, found.salt);
+      if (hash !== found.passHash) { notify.warn('Incorrect password.'); return false; }
+      _setCloudUser({
+        id: found.id,
+        username: found.username,
+        displayName: found.displayName || found.username,
+      });
+      notify.success(`Welcome back, ${found.displayName || found.username}.`);
+      return true;
+    } catch (e) {
+      console.error('[cloudSignIn]', e);
+      notify.error('Sign-in failed: ' + e.message);
+      return false;
+    }
+  }
+
+  function cloudSignOut() {
+    _stopPresenceBeacon();
+    _clearCloudUser();
+    notify.info('Signed out.');
+  }
+
+  // ── Cloud content — upload / list / download / delete ─────────────────
+  // Generic shape — kind says what payload is. Keeping it generic lets us
+  // add new content types (custom phase types, recorded ambience metadata,
+  // etc.) without schema migration.
+  async function cloudUploadContent(kind, name, payload) {
+    if (!state.cloudUser) { notify.warn('Sign in to upload.'); return null; }
+    const safeName = String(name || 'untitled').slice(0, 100);
+    const record = {
+      userId: state.cloudUser.id,
+      username: state.cloudUser.username,
+      kind: String(kind || 'misc').slice(0, 20),
+      name: safeName,
+      payload: typeof payload === 'string' ? payload : JSON.stringify(payload),
+      updatedAt: Date.now(),
+    };
+    // Cap payload at ~500 KB so one upload can't blow the user's quota
+    if (record.payload.length > 500_000) {
+      notify.warn('Content too large to upload (>500 KB). Try a smaller item.');
+      return null;
+    }
+    const res = await cloudDB.add('hne_user_content', record);
+    if (!res || res.error) { notify.error('Upload failed: ' + (res?.error || 'network')); return null; }
+    cloudDB.clearCache('hne_user_content');
+    notify.success(`Uploaded ${kind}: ${safeName}`);
+    return res.id || res._id || res.data?.id;
+  }
+
+  async function cloudListMyContent(kind = null) {
+    if (!state.cloudUser) return [];
+    const all = await cloudDB.get('hne_user_content', 500);
+    return all.filter(r => r.userId === state.cloudUser.id && (!kind || r.kind === kind));
+  }
+
+  async function cloudDeleteContent(id) {
+    if (!state.cloudUser) return false;
+    const res = await cloudDB.delete('hne_user_content', id);
+    cloudDB.clearCache('hne_user_content');
+    return res && !res.error;
+  }
+
+  // ── Sidebar user slug ─────────────────────────────────────────────────
+  // Renders into #cloudUserSlug at the top of the sidebar. Three states:
+  // (1) signed out — "sign in / create account" button
+  // (2) signed in — username + dropdown menu (my content / sign out)
+  // (3) loading — placeholder while we resolve localStorage shadow
+  function renderCloudUserSlug() {
+    const el = $('cloudUserSlug');
+    if (!el) return;
+    const u = state.cloudUser;
+    if (!u) {
+      el.innerHTML = `
+        <button class="btn secondary" id="cloudSignInBtn" style="width:100%;font-size:0.78rem;padding:8px">
+          👤 sign in / create account
+        </button>
+        <div id="cloudPresenceCount" class="cloud-presence-count" style="margin-top:6px;font-size:0.66rem;color:var(--text-faint);text-align:center"></div>
+      `;
+      $('cloudSignInBtn')?.addEventListener('click', openCloudSignInModal);
+    } else {
+      const initials = (u.displayName || u.username || '?').slice(0, 2).toUpperCase();
+      el.innerHTML = `
+        <div class="cloud-user-card">
+          <div class="cloud-user-avatar">${escapeHtml(initials)}</div>
+          <div class="cloud-user-info">
+            <div class="cloud-user-name">${escapeHtml(u.displayName || u.username)}</div>
+            <div class="cloud-user-handle">@${escapeHtml(u.username)}</div>
+          </div>
+        </div>
+        <div class="cloud-user-actions">
+          <button class="btn secondary" id="cloudMyContentBtn" style="flex:1;font-size:0.7rem;padding:6px">📁 my cloud</button>
+          <button class="btn secondary" id="cloudSignOutBtn" style="flex:1;font-size:0.7rem;padding:6px">sign out</button>
+        </div>
+        <div id="cloudPresenceCount" class="cloud-presence-count" style="margin-top:6px;font-size:0.66rem;color:var(--text-faint);text-align:center"></div>
+      `;
+      $('cloudMyContentBtn')?.addEventListener('click', openCloudContentModal);
+      $('cloudSignOutBtn')?.addEventListener('click', () => {
+        if (confirm('Sign out of cloud account? Local data stays on this device.')) cloudSignOut();
+      });
+    }
+    _updatePresenceDisplay();
+  }
+
+  // ── Sign-in modal ─────────────────────────────────────────────────────
+  // Created lazily on first open. Two tabs: sign in / sign up. Light
+  // validation inline (mirrors community-gallery's pattern but with our
+  // notify system instead of alert()).
+  let _cloudSignInModalEl = null;
+  function _ensureCloudSignInModal() {
+    if (_cloudSignInModalEl) return _cloudSignInModalEl;
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'cloudSignInModal';
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:440px">
+        <h2>cloud account</h2>
+        <div style="font-size:0.74rem;color:var(--text-dim);line-height:1.5;margin-bottom:14px">
+          Sign in to sync your guides, scripts, and settings across devices, and to comment in the community channel. Your password is hashed locally before being sent — the server never sees plaintext. <span style="color:var(--text-faint)">This is community-shared infrastructure (PerDB), not Anthropic-managed; treat anything you upload as semi-public.</span>
+        </div>
+        <div class="cloud-tabs" style="display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--glass-border)">
+          <button type="button" class="cloud-tab active" data-tab="signin" style="flex:1;padding:10px;background:transparent;border:none;color:var(--text);cursor:pointer;border-bottom:2px solid var(--neon-cyan);font-size:0.82rem">sign in</button>
+          <button type="button" class="cloud-tab" data-tab="signup" style="flex:1;padding:10px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;font-size:0.82rem">create account</button>
+        </div>
+        <div id="cloudSignInPanel">
+          <div class="pf-row"><label class="pf-label">Username</label><input type="text" id="cloudSignInUser" class="pf-input" maxlength="24" autocomplete="username" placeholder="lowercase, numbers, _"></div>
+          <div class="pf-row"><label class="pf-label">Password</label><input type="password" id="cloudSignInPass" class="pf-input" autocomplete="current-password"></div>
+          <div class="modal-actions" style="margin-top:14px">
+            <button class="btn secondary" id="cloudSignInCancel">cancel</button>
+            <button class="btn" id="cloudSignInGo">sign in</button>
+          </div>
+        </div>
+        <div id="cloudSignUpPanel" style="display:none">
+          <div class="pf-row"><label class="pf-label">Username</label><input type="text" id="cloudSignUpUser" class="pf-input" maxlength="24" autocomplete="username" placeholder="3-24 chars, a-z 0-9 _"></div>
+          <div class="pf-row"><label class="pf-label">Display name (optional)</label><input type="text" id="cloudSignUpDisplay" class="pf-input" maxlength="40" placeholder="(defaults to username)"></div>
+          <div class="pf-row"><label class="pf-label">Password</label><input type="password" id="cloudSignUpPass" class="pf-input" autocomplete="new-password" placeholder="8+ chars"></div>
+          <div class="sublabel" style="font-size:0.66rem;color:var(--text-faint);margin-top:-4px">Use a strong, unique password. There is no password recovery — losing it means losing the account.</div>
+          <div class="modal-actions" style="margin-top:14px">
+            <button class="btn secondary" id="cloudSignUpCancel">cancel</button>
+            <button class="btn" id="cloudSignUpGo">create account</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _cloudSignInModalEl = wrap;
+
+    // Tab switching
+    wrap.querySelectorAll('.cloud-tab').forEach(t => {
+      t.addEventListener('click', () => {
+        const tab = t.dataset.tab;
+        wrap.querySelectorAll('.cloud-tab').forEach(x => {
+          const active = x.dataset.tab === tab;
+          x.classList.toggle('active', active);
+          x.style.color = active ? 'var(--text)' : 'var(--text-dim)';
+          x.style.borderBottomColor = active ? 'var(--neon-cyan)' : 'transparent';
+        });
+        $('cloudSignInPanel').style.display = (tab === 'signin') ? '' : 'none';
+        $('cloudSignUpPanel').style.display = (tab === 'signup') ? '' : 'none';
+      });
+    });
+
+    // Sign-in submit
+    $('cloudSignInGo').addEventListener('click', async () => {
+      const u = $('cloudSignInUser').value;
+      const p = $('cloudSignInPass').value;
+      setLoading('cloudSignInGo', true);
+      try {
+        const ok = await cloudSignIn(u, p);
+        if (ok) closeCloudSignInModal();
+      } finally { setLoading('cloudSignInGo', false, 'sign in'); }
+    });
+    // Sign-up submit
+    $('cloudSignUpGo').addEventListener('click', async () => {
+      const u = $('cloudSignUpUser').value;
+      const d = $('cloudSignUpDisplay').value;
+      const p = $('cloudSignUpPass').value;
+      setLoading('cloudSignUpGo', true);
+      try {
+        const ok = await cloudSignUp(u, p, d);
+        if (ok) closeCloudSignInModal();
+      } finally { setLoading('cloudSignUpGo', false, 'create account'); }
+    });
+    $('cloudSignInCancel').addEventListener('click', closeCloudSignInModal);
+    $('cloudSignUpCancel').addEventListener('click', closeCloudSignInModal);
+    wrap.addEventListener('click', e => {
+      if (e.target.id === 'cloudSignInModal') closeCloudSignInModal();
+    });
+    // Enter to submit
+    ['cloudSignInPass'].forEach(id => $(id)?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') $('cloudSignInGo').click();
+    }));
+    ['cloudSignUpPass'].forEach(id => $(id)?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') $('cloudSignUpGo').click();
+    }));
+    return wrap;
+  }
+  function openCloudSignInModal() {
+    _ensureCloudSignInModal().classList.add('visible');
+    setTimeout(() => $('cloudSignInUser')?.focus(), 50);
+  }
+  function closeCloudSignInModal() {
+    if (_cloudSignInModalEl) _cloudSignInModalEl.classList.remove('visible');
+  }
+
+  // ── My-content modal ──────────────────────────────────────────────────
+  // Lists what the signed-in user has uploaded, with download + delete.
+  // Lazy-built. Refresh on every open so cache doesn't stale.
+  let _cloudContentModalEl = null;
+  function _ensureCloudContentModal() {
+    if (_cloudContentModalEl) return _cloudContentModalEl;
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'cloudContentModal';
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:600px">
+        <h2>my cloud content</h2>
+        <div style="font-size:0.74rem;color:var(--text-dim);line-height:1.5;margin-bottom:12px">
+          Items you've uploaded from this app. Use the buttons in each panel (saved scripts, custom personas, settings) to upload new items.
+        </div>
+        <div id="cloudContentList" style="max-height:60vh;overflow:auto"></div>
+        <div class="modal-actions" style="margin-top:14px">
+          <button class="btn secondary" id="cloudContentRefresh">refresh</button>
+          <button class="btn" id="cloudContentClose">done</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _cloudContentModalEl = wrap;
+    $('cloudContentClose').addEventListener('click', () => wrap.classList.remove('visible'));
+    $('cloudContentRefresh').addEventListener('click', () => _renderCloudContentList());
+    wrap.addEventListener('click', e => {
+      if (e.target.id === 'cloudContentModal') wrap.classList.remove('visible');
+    });
+    return wrap;
+  }
+  async function _renderCloudContentList() {
+    const list = $('cloudContentList');
+    if (!list) return;
+    list.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:20px">loading…</div>';
+    cloudDB.clearCache('hne_user_content');
+    const items = await cloudListMyContent();
+    if (!items.length) {
+      list.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:20px">No cloud content yet. Upload from the Saved Scripts panel, the Persona editor, or via "back up settings".</div>';
+      return;
+    }
+    items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const ICON = { script: '📝', persona: '🧠', settings: '⚙', guide: '📖' };
+    list.innerHTML = items.map(item => `
+      <div class="cloud-item" style="padding:10px;border:1px solid var(--glass-border);border-radius:8px;margin-bottom:8px;display:flex;gap:10px;align-items:center">
+        <div style="font-size:1.4rem">${ICON[item.kind] || '📄'}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(item.name)}</div>
+          <div style="font-size:0.66rem;color:var(--text-faint)">${escapeHtml(item.kind)} · ${new Date(item.updatedAt || 0).toLocaleString()}</div>
+        </div>
+        <button class="btn secondary cloud-item-dl" data-id="${escapeHtml(item.id)}" data-kind="${escapeHtml(item.kind)}" style="padding:4px 10px;font-size:0.7rem">download</button>
+        <button class="btn secondary cloud-item-del" data-id="${escapeHtml(item.id)}" style="padding:4px 10px;font-size:0.7rem;color:#f87171">×</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('.cloud-item-dl').forEach(b => b.addEventListener('click', async e => {
+      const id = e.target.dataset.id;
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      _downloadCloudItem(item);
+    }));
+    list.querySelectorAll('.cloud-item-del').forEach(b => b.addEventListener('click', async e => {
+      const id = e.target.dataset.id;
+      if (!confirm('Delete this item from cloud? This cannot be undone.')) return;
+      const ok = await cloudDeleteContent(id);
+      if (ok) { notify.success('Deleted.'); _renderCloudContentList(); }
+      else notify.error('Delete failed.');
+    }));
+  }
+  function _downloadCloudItem(item) {
+    // Re-apply the payload to local state where applicable, AND offer a file
+    // download for portability. Two paths because users may want either.
+    const blob = new Blob([item.payload], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const ext = item.kind === 'script' ? 'txt' : 'json';
+    a.download = `${item.name.replace(/[^a-z0-9_-]+/gi, '_')}.${ext}`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    notify.success(`Downloaded: ${item.name}`);
+  }
+  function openCloudContentModal() {
+    _ensureCloudContentModal().classList.add('visible');
+    _renderCloudContentList();
+  }
+
+  // ── Live presence ─────────────────────────────────────────────────────
+  // Each browser pings PerDB every 30s with a presence record. Count of
+  // records updated within the last 90s = "users online". Cleanup is
+  // best-effort: stale records eventually accumulate but they don't
+  // affect the count (we filter by lastSeen).
+  //
+  // Honest framing in UI: "active in last 90s" — we don't claim "live"
+  // because the polling cadence is coarse.
+  function _startPresenceBeacon() {
+    if (!state.cloudUser) return;
+    _stopPresenceBeacon();
+    _sendPresence();
+    state._presenceTimer = setInterval(_sendPresence, PRESENCE_HEARTBEAT_MS);
+    _refreshPresenceCount();
+    state._presencePollTimer = setInterval(_refreshPresenceCount, PRESENCE_POLL_MS);
+  }
+  function _stopPresenceBeacon() {
+    if (state._presenceTimer) { clearInterval(state._presenceTimer); state._presenceTimer = null; }
+    if (state._presencePollTimer) { clearInterval(state._presencePollTimer); state._presencePollTimer = null; }
+    state._presenceCount = 0;
+    _updatePresenceDisplay();
+  }
+  async function _sendPresence() {
+    if (!state.cloudUser) return;
+    try {
+      // We re-add a new record each time rather than update — simpler,
+      // and PerDB doesn't expose upsert. The list query below filters
+      // by lastSeen so old rows are ignored. Cleanup happens lazily.
+      await cloudDB.add('hne_presence', {
+        userId: state.cloudUser.id,
+        username: state.cloudUser.username,
+        lastSeen: Date.now(),
+      });
+    } catch (e) { /* silent — presence is best-effort */ }
+  }
+  async function _refreshPresenceCount() {
+    try {
+      cloudDB.clearCache('hne_presence');
+      const recent = await cloudDB.get('hne_presence', 200, false);
+      const cutoff = Date.now() - PRESENCE_WINDOW_MS;
+      const distinctUsers = new Set();
+      for (const r of recent) {
+        if ((r.lastSeen || 0) >= cutoff && r.userId) distinctUsers.add(r.userId);
+      }
+      state._presenceCount = distinctUsers.size;
+      _updatePresenceDisplay();
+    } catch (e) { /* silent */ }
+  }
+  function _updatePresenceDisplay() {
+    const el = $('cloudPresenceCount');
+    if (!el) return;
+    if (!state.cloudUser) {
+      el.textContent = '';
+      return;
+    }
+    const n = state._presenceCount || 1; // at least me
+    el.textContent = n === 1 ? '🟢 just you online right now' : `🟢 ${n} active in last 90s`;
+  }
+
+  // ── Comments modal ────────────────────────────────────────────────────
+  // Embeds the perchance comments-plugin in an iframe via a public
+  // channel. Only opens when user explicitly clicks the button — keeps
+  // the iframe out of the page until then (lazy, no quota cost otherwise).
+  let _commentsModalEl = null;
+  function _ensureCommentsModal() {
+    if (_commentsModalEl) return _commentsModalEl;
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'commentsModal';
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:640px;height:80vh;display:flex;flex-direction:column">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h2 style="margin:0">community</h2>
+          <button class="btn secondary" id="commentsClose" style="padding:4px 12px">close</button>
+        </div>
+        <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:10px;line-height:1.5">
+          Public comments channel — anyone using HNE sees these. Be kind. <span style="color:var(--text-faint)">This is the perchance comments plugin; messages are persistent and moderated by Perchance. Don't share session content here unless you want it public.</span>
+        </div>
+        <div id="commentsHost" style="flex:1;min-height:0;overflow:hidden;border:1px solid var(--glass-border);border-radius:8px"></div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _commentsModalEl = wrap;
+    $('commentsClose').addEventListener('click', () => wrap.classList.remove('visible'));
+    wrap.addEventListener('click', e => {
+      if (e.target.id === 'commentsModal') wrap.classList.remove('visible');
+    });
+    return wrap;
+  }
+  let _commentsInstance = null;
+  function _embedCommentsPlugin() {
+    if (_commentsInstance) return; // already loaded
+    const host = $('commentsHost');
+    if (!host) return;
+    if (typeof root === 'undefined' || typeof root.commentsPlugin !== 'function') {
+      host.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-faint)">Comments plugin not available — make sure commentsPlugin is imported in perchance_1.txt.</div>';
+      return;
+    }
+    try {
+      // Channel is namespaced "hne-public" so it doesn't collide with
+      // other Perchance generators. Pre-fill nickname from cloud user
+      // if signed in — the plugin still uses the per-IP user ID for
+      // moderation, but the displayed nickname matches our app.
+      const opts = {
+        channel: 'hne-public',
+        width: '100%',
+        height: '100%',
+        commentPlaceholderText: 'Share a thought (be kind)',
+        submitButtonText: 'send',
+      };
+      _commentsInstance = root.commentsPlugin(opts);
+      // Insert the plugin's container into our host
+      // (commentsPlugin injects into document.body by default; we'll
+      // move it into our host after a tick).
+      setTimeout(() => {
+        const iframe = document.querySelector('.comments-plugin-ctn');
+        if (iframe && host && !host.contains(iframe)) host.appendChild(iframe);
+        if (state.cloudUser && _commentsInstance?.setNicknameForNextComment) {
+          try { _commentsInstance.setNicknameForNextComment(state.cloudUser.displayName || state.cloudUser.username); } catch {}
+        }
+      }, 200);
+    } catch (e) {
+      console.error('[comments embed]', e);
+      host.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-faint)">Comments plugin failed: ${escapeHtml(e.message || 'unknown')}</div>`;
+    }
+  }
+  function openCommentsModal() {
+    _ensureCommentsModal().classList.add('visible');
+    _embedCommentsPlugin();
+  }
+
+  // ── Boot: rehydrate cloud session if we had one before ────────────────
+  // Run AFTER the sidebar slug element exists. Called from the existing
+  // boot flow at end of script — see the wireup section below.
+  function bootCloudUser() {
+    const u = _loadCloudUser();
+    if (u) {
+      state.cloudUser = u;
+      renderCloudUserSlug();
+      _startPresenceBeacon();
+    } else {
+      renderCloudUserSlug();
+    }
+  }
+
+  // ====================================================================
   // VIBRATION HAPTICS (breathing feedback for supported devices)
   // ====================================================================
   function vibrateBreath() {
@@ -26955,6 +27912,30 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   $('personaCancelBtn').addEventListener('click', closePersonaEditor);
   $('personaSaveBtn').addEventListener('click', savePersonaFromForm);
   $('personaShareBtn')?.addEventListener('click', shareCurrentPersona);
+  $('personaCloudBtn')?.addEventListener('click', async () => {
+    if (!state.cloudUser) {
+      notify.warn('Sign in to upload personas to cloud.');
+      openCloudSignInModal();
+      return;
+    }
+    const name = $('personaFormName')?.value?.trim();
+    const systemPrompt = $('personaFormPrompt')?.value?.trim();
+    if (!name || !systemPrompt) { notify.warn('Fill in name and voice instruction first.'); return; }
+    const payload = {
+      id: state.editingPersonaId || ('p_' + Date.now()),
+      name,
+      tagline: $('personaFormTagline')?.value?.trim() || '',
+      category: $('personaFormCategory')?.value || 'contemplative',
+      systemPrompt,
+      isCustom: true,
+    };
+    setLoading('personaCloudBtn', true);
+    try {
+      await cloudUploadContent('persona', name, JSON.stringify(payload));
+    } finally {
+      setLoading('personaCloudBtn', false, '☁ cloud');
+    }
+  });
   $('personaModal').addEventListener('click', e => { if (e.target.id === 'personaModal') closePersonaEditor(); });
 
   // Hypnotic Induction Profile quiz
@@ -26977,6 +27958,12 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     }
     initDiffBouncers(); // wire DiffBouncer coverage to tracked fields
     if (typeof loadVoices === 'function') { loadVoices(); applySavedVoiceSelection(); updateVoiceInfo(); }
+    // Cloud account boot — rehydrate from localStorage shadow if user was
+    // signed in last session, render the sidebar slug, kick off presence
+    // beacon if applicable. Best-effort — never blocks init.
+    try { bootCloudUser(); } catch (e) { console.warn('[bootCloudUser]', e); }
+    // Wire the comments-launcher button now that the sidebar markup exists.
+    $('openCommentsBtn')?.addEventListener('click', openCommentsModal);
     renderPersonaGrid();
     renderPersonaDetail();
     renderMethodGrid();

@@ -77,6 +77,9 @@ textToImagePlugin = {import:text-to-image-plugin}
 fullscreenButtonPlugin = {import:fullscreen-button-plugin}
 uploadPlugin = {import:upload-plugin}
 dynamicImport = {import:dynamic-import-plugin}
+// Comments plugin — used by the in-app community channel modal. Iframe-based,
+// so it's lazy until the user clicks "💬 community comments" in the sidebar.
+commentsPlugin = {import:comments-plugin}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Fresh metaphor anchors for Smart Director (item #4)
