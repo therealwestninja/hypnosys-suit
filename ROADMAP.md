@@ -226,28 +226,17 @@ Mitigations to add:
   gates it behind an origin check. Perchance can't host this but can link to a
   template.
 
-### Perchance skill-checklist items
+### Perchance skill-checklist items ✅
 
-Running the §14 checklist from the `perchance-api` skill against the current code:
+Running the §14 checklist from the `perchance-api` skill against the current code — all items now satisfied:
 
-- [ ] `stopSequences` in all phase calls should include `"\n\n[["` as a safety
-      net against chat-format bleed. Currently uses `['\n\n\n\n']`. Low risk
-      for this app since we never use the `[[Name]]:` completion format, but
-      the defensive addition is cheap.
-- [ ] **iOS Safari `maximum-scale=1` viewport patch** is present (line ~2260) ✅
-- [ ] **`tryPersistBrowserStorageData()`** — `navigator.storage.persist()` is
-      called inside `_initStorage` ✅ but only on first run. Per the skill it
-      should be called once at end of page load too, to catch the case where
-      IDB was initialised but persistence was denied; after user interaction,
-      browsers are more likely to grant it.
-- [ ] **Mobile AI preload delay** is correctly implemented:
-      `if(window.innerWidth < 500) setTimeout(..., 5000)` ✅
-- [ ] **Emergency export timer** — the skill recommends a 10-second failsafe
-      that shows an export button if page load stalls. Worth adding given this
-      app has a lot of IDB migration on first load.
-- [ ] **`exportRawDb`** fallback pattern — current `exportBackup` assumes
-      clean data. For users with corrupt records (rare but reported), the
-      skill's `corruptItemReplacer` pattern saves the export from aborting.
+- [x] **`stopSequences` chat-format-bleed safety net** — `generateSinglePhase` uses `['\n\n\n\n', '\n\n[[', '\n[[']` (line ~18979). The `[[` patterns catch any model that drops into `[[Name]]:` chat completion format.
+- [x] **iOS Safari `maximum-scale=1` viewport patch** is present (line ~2260)
+- [x] **`tryPersistBrowserStorageData()`** — `navigator.storage.persist()` called inside `_initStorage` (line ~6594) AND a second time 5s after init (line ~30557) to catch the browser-grants-after-interaction case.
+- [x] **Mobile AI preload delay** is correctly implemented:
+      `if(window.innerWidth < 500) setTimeout(..., 5000)`
+- [x] **Emergency export timer** — 10s failsafe at line ~30586 that surfaces a "download backup" button if the page hasn't progressed past step 1. Self-deletes on first click.
+- [x] **`exportRawDb` / corrupt-item replacer** — `_corruptItemReplacer()` at line ~21577 used by `exportBackup` at ~21640 so a single bad record doesn't abort the whole export.
 
 ---
 

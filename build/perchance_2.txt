@@ -3779,10 +3779,18 @@ padding: 6px 10px; font-size: 1.1rem;
         <div class="crafted-text" id="craftedText"></div>
         <textarea class="crafted-editable" id="craftedEditable" style="display:none"></textarea>
         <div class="crafted-meta" id="craftedMeta"></div>
+        <!-- Suggestion symbol — abstract visual anchor for post-hypnotic
+             recall. Hidden until generated (lazy by user click). The img
+             element stays in the DOM but display:none until populated. -->
+        <div id="craftedSymbolWrap" style="display:none;margin-top:10px;text-align:center">
+          <img id="craftedSymbolImg" alt="Suggestion symbol" style="max-width:240px;width:100%;border-radius:8px;border:1px solid var(--glass-border)">
+          <div class="sublabel" style="font-size:0.66rem;margin-top:4px;color:var(--text-faint)">A visual anchor for post-hypnotic recall.</div>
+        </div>
         <div class="crafted-actions">
           <button class="btn secondary" id="recraftBtn">re-craft</button>
           <button class="btn secondary" id="editCraftedBtn">edit manually</button>
           <button class="btn secondary" id="saveEditBtn" style="display:none">save edit</button>
+          <button class="btn secondary" id="craftedSymbolBtn" title="Generate an abstract visual anchor for post-hypnotic recall (requires remote processing opt-in)">🎨 symbol</button>
           <button class="btn secondary" id="craftedVoicePreviewBtn" title="Hear the suggestion in your selected narrator voice">▶ preview voice</button>
           <button class="btn secondary" id="craftedVoiceStopBtn" style="display:none">⏹ stop</button>
         </div>
@@ -4011,22 +4019,22 @@ I return to myself easily"></textarea>
             <option value="highway">Highway — scrolling road lines</option>
           </optgroup>
           <optgroup label="Deepening">
-            <option value="tunnel">Tunnel — concentric rings rushing inward</option>
-            <option value="starfield">Starfield — warp-speed star tunnel</option>
+            <option value="tunnel">Tunnel — concentric rings rushing inward ⚠ motion</option>
+            <option value="starfield">Starfield — warp-speed star tunnel ⚠ motion</option>
             <option value="colorwash">Colour wash — slow HSL drift</option>
             <option value="canvas-pulse">Pulse rings — expanding ripples</option>
           </optgroup>
           <optgroup label="Trance">
-            <option value="vortex">Vortex — multi-arm rotating star</option>
+            <option value="vortex">Vortex — multi-arm rotating star ⚠ motion</option>
             <option value="mandala">Mandala — rotating symmetric petals</option>
             <option value="lissajous">Lissajous — parametric figure-8</option>
             <option value="pendulum-viz">Pendulum — harmonograph traces</option>
           </optgroup>
           <optgroup label="Intense">
-            <option value="flowfield">Flow field — particle wind</option>
-            <option value="plasma">Plasma — rainbow sine waves</option>
-            <option value="kaleidoscope-flow">Kaleidoscope (flow field)</option>
-            <option value="kaleidoscope-plasma">Kaleidoscope (plasma)</option>
+            <option value="flowfield">Flow field — particle wind ⚠ motion</option>
+            <option value="plasma">Plasma — rainbow sine waves ⚠ motion</option>
+            <option value="kaleidoscope-flow">Kaleidoscope (flow field) ⚠ motion</option>
+            <option value="kaleidoscope-plasma">Kaleidoscope (plasma) ⚠ motion</option>
           </optgroup>
           <optgroup label="Atmospheric">
             <option value="aurora">Aurora — undulating light curtains</option>
@@ -4409,14 +4417,37 @@ I return to myself easily"></textarea>
         <div class="begin-session-row">
           <button class="btn-primary-action" id="beginBtn">begin session →</button>
         </div>
-        <!-- Per-session webcam opt-in (resets every session). Camera/mic-aware UI. -->
-        <label class="toggle-row toggle-row-cb" for="webcamOptInThisSession" style="margin-top:10px;align-items:flex-start;padding:8px 10px;background:rgba(120,180,240,0.04);border:0.5px solid rgba(120,180,240,0.18)">
-          <input type="checkbox" id="webcamOptInThisSession">
-          <span>
-            Use webcam this session <span style="color:var(--text-faint);font-size:0.7rem;font-weight:400">— opt-in, this session only</span>
-            <span class="hint" style="line-height:1.5">Local-only attention sensing: face presence, eye state (phase-aware — closed eyes are good during trance), and ambient room brightness for visualizer dimming. No frames saved or transmitted. Loads ~3-5MB MediaPipe on first enable.</span>
-          </span>
-        </label>
+        <!-- Live sensing — webcam + mic. Both are per-session opt-in
+             (state resets on finishSession), both run fully local, both
+             stop the underlying media stream at session end. Grouped
+             under one panel so the privacy framing is unified rather
+             than scattered across separate toggles. -->
+        <div class="live-sensing-panel" style="margin-top:10px;padding:10px 12px;background:rgba(120,180,240,0.04);border:0.5px solid rgba(120,180,240,0.18);border-radius:6px">
+          <div style="font-size:0.72rem;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">📡 Live sensing <span style="color:var(--text-faint);font-weight:400;text-transform:none;letter-spacing:0">— optional, per-session</span></div>
+          <div class="hint" style="line-height:1.5;margin-bottom:10px;font-size:0.7rem">
+            <strong style="color:var(--text)">All processing happens locally.</strong> No camera or microphone data is saved, transmitted, or sent to any server. Streams stop the moment the session ends.
+          </div>
+          <label class="toggle-row toggle-row-cb" for="webcamOptInThisSession" style="align-items:flex-start;padding:6px 0">
+            <input type="checkbox" id="webcamOptInThisSession">
+            <span>
+              📷 Webcam awareness
+              <span class="hint" style="line-height:1.5">Face presence, eye state (phase-aware — closed eyes are good during trance), and ambient room brightness for visualizer dimming. Loads ~3-5MB MediaPipe on first enable.</span>
+            </span>
+          </label>
+          <label class="toggle-row toggle-row-cb" for="micOptInThisSession" style="align-items:flex-start;padding:6px 0;margin-top:4px">
+            <input type="checkbox" id="micOptInThisSession">
+            <span>
+              🎙 Microphone (breath-aware pacing)
+              <span class="hint" style="line-height:1.5">Detects your actual exhale rhythm via amplitude envelope and adapts pause durations during breath-paced phases. No audio recorded. Falls back to fixed timer in noisy rooms or after 3 silent breaths.</span>
+            </span>
+          </label>
+          <!-- Mic status indicator — appears once mic is granted; shows
+               the latest detected exhale or "listening…" when idle. -->
+          <div id="micStatusRow" style="display:none;font-size:0.66rem;color:var(--text-faint);margin-top:6px;padding-left:24px">
+            <span id="micStatusDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;margin-right:6px;vertical-align:middle"></span>
+            <span id="micStatusText">listening…</span>
+          </div>
+        </div>
         <div class="detail-panel" id="phaseEditorPanel" style="margin-top:12px; display:none">
           <div class="detail-title">phase order</div>
           <div style="margin-bottom:8px; font-size:0.78rem; color:var(--text-dim)">Arrange, remove, or add phase sections. Similar controls are now clustered here instead of stretching across a single row.</div>
@@ -6338,6 +6369,28 @@ I return to myself easily"></textarea>
       brightnessTimerHandle: null,     // setInterval handle for brightness loop
       errorMessage:          null,
     },
+    // Microphone awareness — per-session opt-in, all local processing.
+    // Detects user's actual breath rhythm via RMS amplitude envelope and
+    // adapts breath-paced phase durations. Stream stops at session end.
+    // See backlog item #13 in ROADMAP.md.
+    _mic: {
+      enabled:               false,    // per-session opt-in (resets on finishSession)
+      status:                'idle',   // 'idle' | 'requesting' | 'active' | 'error'
+      stream:                null,     // MediaStream (held only while active)
+      audioCtx:              null,     // AudioContext for analysis (separate from drone ctx)
+      analyser:              null,     // AnalyserNode tapped over the mic source
+      sourceNode:            null,     // MediaStreamAudioSourceNode
+      _fftBuffer:            null,     // Uint8Array reused per tick
+      ema:                   0.04,     // EMA-smoothed noise floor (0..1)
+      noiseFloor:            0.04,     // adaptive noise floor — calibrated on first 2s
+      inhaling:              false,    // state machine — true between exhale-end and next exhale-start
+      lastExhaleAt:          0,        // wallclock ms of last detected falling edge
+      consecutiveSilent:     0,        // breath windows with no detection — fall back to timer at 3
+      recentBreaths:         [],       // ring buffer of last 5 exhale-to-exhale intervals (ms)
+      tickHandle:            null,     // setInterval handle for the 50Hz envelope tick
+      errorMessage:          null,
+    },
+    adaptiveBreathPacing:    false,    // gate for the pause-override logic (independent of mic enabled)
     ambientBrightness: 0.5,            // 0..1, EMA-smoothed room luminance
     ambientDimScale:   1.0,            // multiplier for visualizer intensity (0.6..1.2)
     // Safety layer — consolidated runtime guards. User-customizable via the
@@ -6717,13 +6770,25 @@ I return to myself easily"></textarea>
     // Apply ambient-brightness dim scale — when the room is dark, viz amplitude
     // drops to 0.6×; when bright, climbs to 1.2×. Default 1.0 when webcam is off.
     const dim = state.ambientDimScale ?? 1.0;
+    // Mic breath envelope — when adaptive pacing is on AND the mic is
+    // active, the user's breath modulates the pulse channel. Normalized
+    // to 0..1 by clamping at a typical max breath EMA (~0.3). Boosts
+    // pulse during inhale/exhale by up to 30%, providing visible
+    // feedback that the visualizer is responding to the user's breath.
+    // Gated on adaptiveBreathPacing so users who enabled the mic only
+    // for status display don't get unexpected visualizer behavior.
+    let breathBoost = 1.0;
+    if (state.adaptiveBreathPacing && state._mic?.status === 'active' && state._mic.ema != null) {
+      const normalized = Math.min(1, state._mic.ema / 0.3);
+      breathBoost = 1.0 + normalized * 0.3;
+    }
     const g = a.gain * dim;
     return {
       overall:  a.overall       * g,
       bass:     a.bass          * g,
       mid:      a.mid           * g,
       treble:   a.treble        * g,
-      pulse:    a.voicePulse    * g,
+      pulse:    a.voicePulse    * g * breathBoost,
       envelope: a.voiceEnvelope * g,
     };
   }
@@ -7728,6 +7793,271 @@ I return to myself easily"></textarea>
     dot.style.background = color;
     dot.style.opacity = String(opacity);
     dot.title = title;
+  }
+
+  // ====================================================================
+  // MICROPHONE AWARENESS — adaptive breath pacing
+  // ====================================================================
+  // Detects the user's actual exhale rhythm via RMS amplitude envelope
+  // and exposes a waitForExhale() promise that breath-paced phases use
+  // instead of a fixed-timer interruptibleSleep. Fully local — no audio
+  // recorded, no transmission, stream stops at session end.
+  //
+  // Architecture:
+  //   1. startMic() acquires getUserMedia, creates AudioContext +
+  //      AnalyserNode, calibrates the noise floor over 2s.
+  //   2. _tickMic() runs at 50Hz, computing windowed RMS and feeding
+  //      a falling-edge detector. Crossings > noiseFloor mark inhales;
+  //      drops back below floor for >200ms mark exhale ends.
+  //   3. onExhaleEnd() updates timestamps + recentBreaths ring + fires
+  //      a CustomEvent('hne:exhale-end') that waitForExhale promises
+  //      can resolve on.
+  //   4. waitForExhale(targetMs, maxMs) returns a Promise that resolves
+  //      on the next exhale-end OR maxMs ceiling. Falls back to plain
+  //      sleep after consecutiveSilent >= 3.
+  //
+  // Backlog item #13. ROADMAP.md.
+  // ====================================================================
+  const MIC_TICK_MS = 20;                  // 50Hz sampling
+  const MIC_FALLING_EDGE_DEBOUNCE_MS = 200; // require silence this long to fire exhale-end
+  const MIC_NOISE_HEADROOM = 0.02;          // adds to calibrated floor — defends against jitter
+  const MIC_INHALE_HEADROOM = 0.05;         // RMS must exceed floor by this to mark inhale start
+  const MIC_CALIBRATION_MS = 2000;          // collect noise floor for this long
+  const MIC_RECENT_BREATHS_MAX = 5;
+  const MIC_FALLBACK_AFTER_SILENT = 3;      // consecutive silent breaths → fallback
+
+  async function startMic() {
+    const m = state._mic;
+    if (m.status === 'active' || m.status === 'requesting') return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      m.status = 'error';
+      m.errorMessage = 'getUserMedia not supported';
+      _renderMicStatus();
+      notify.warn('Microphone API not supported in this browser.');
+      return;
+    }
+    m.status = 'requesting';
+    _renderMicStatus();
+    let stream;
+    try {
+      // echoCancellation/noiseSuppression OFF — we want the raw envelope
+      // so quiet breath shows through. autoGainControl also OFF so the
+      // noise floor calibration stays valid throughout the session.
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      });
+    } catch (e) {
+      m.status = 'error';
+      m.errorMessage = e?.message || 'permission denied';
+      _renderMicStatus();
+      // Common reasons: NotAllowedError (denied), NotFoundError (no mic)
+      if (e?.name === 'NotAllowedError') {
+        notify.warn('Microphone permission denied — adaptive pacing falls back to fixed timer.');
+      } else {
+        notify.warn('Could not access microphone — adaptive pacing falls back to fixed timer.');
+      }
+      return;
+    }
+    m.stream = stream;
+    try {
+      // Separate AudioContext from drone.ctx so we can stop it
+      // independently AND so a paused drone doesn't pause our analyser.
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      m.audioCtx = new Ctx();
+      m.sourceNode = m.audioCtx.createMediaStreamSource(stream);
+      m.analyser = m.audioCtx.createAnalyser();
+      m.analyser.fftSize = 256; // small — we only need RMS over recent samples
+      m.analyser.smoothingTimeConstant = 0.4;
+      m.sourceNode.connect(m.analyser);
+      // Don't connect to destination — we don't want to play mic back to user
+      m._fftBuffer = new Uint8Array(m.analyser.fftSize);
+      // Reset state
+      m.ema = 0.04;
+      m.noiseFloor = 0.04;
+      m.inhaling = false;
+      m.lastExhaleAt = 0;
+      m.consecutiveSilent = 0;
+      m.recentBreaths = [];
+      m._calibrationStartAt = Date.now();
+      m._calibrationMaxEma = 0;
+      m._lastBelowFloorAt = 0;
+      m.status = 'active';
+      _renderMicStatus();
+      m.tickHandle = setInterval(_tickMic, MIC_TICK_MS);
+    } catch (e) {
+      console.warn('[mic] init failed:', e);
+      m.status = 'error';
+      m.errorMessage = e?.message || 'audio context failed';
+      _renderMicStatus();
+      stopMic();
+    }
+  }
+
+  function stopMic() {
+    const m = state._mic;
+    if (m.tickHandle) { clearInterval(m.tickHandle); m.tickHandle = null; }
+    if (m.stream) {
+      try { m.stream.getTracks().forEach(t => t.stop()); } catch {}
+      m.stream = null;
+    }
+    if (m.audioCtx) {
+      try { m.audioCtx.close(); } catch {}
+      m.audioCtx = null;
+    }
+    m.sourceNode = null;
+    m.analyser = null;
+    m._fftBuffer = null;
+    m.status = 'idle';
+    m.errorMessage = null;
+    _renderMicStatus();
+  }
+
+  // 50Hz tick: read time-domain samples, compute RMS, run state machine.
+  function _tickMic() {
+    const m = state._mic;
+    if (m.status !== 'active' || !m.analyser || !m._fftBuffer) return;
+    if (state.paused || document.hidden) return; // skip while paused/hidden
+    m.analyser.getByteTimeDomainData(m._fftBuffer);
+    // RMS on centered samples (byte data is 0..255 with 128 = silence)
+    let sumSq = 0;
+    for (let i = 0; i < m._fftBuffer.length; i++) {
+      const v = (m._fftBuffer[i] - 128) / 128;
+      sumSq += v * v;
+    }
+    const rms = Math.sqrt(sumSq / m._fftBuffer.length);
+    // EMA smoothing — alpha 0.2 at 50Hz ≈ 80ms time constant, enough
+    // to smooth out tick-to-tick jitter while keeping breath shape.
+    m.ema = m.ema * 0.8 + rms * 0.2;
+
+    // Calibration phase — collect max EMA for the first 2s, then set floor
+    if (m._calibrationStartAt && Date.now() - m._calibrationStartAt < MIC_CALIBRATION_MS) {
+      if (m.ema > m._calibrationMaxEma) m._calibrationMaxEma = m.ema;
+      return;
+    }
+    if (m._calibrationStartAt) {
+      m.noiseFloor = Math.max(0.02, m._calibrationMaxEma + MIC_NOISE_HEADROOM);
+      m._calibrationStartAt = 0;
+      console.debug('[mic] calibrated noise floor:', m.noiseFloor.toFixed(4));
+    }
+
+    // State machine — rising edge above (floor + headroom) → inhale start
+    //                  falling edge below floor for >200ms → exhale end
+    const now = Date.now();
+    if (!m.inhaling && m.ema > m.noiseFloor + MIC_INHALE_HEADROOM) {
+      m.inhaling = true;
+      m._lastBelowFloorAt = 0;
+    } else if (m.inhaling) {
+      if (m.ema <= m.noiseFloor) {
+        if (m._lastBelowFloorAt === 0) m._lastBelowFloorAt = now;
+        else if (now - m._lastBelowFloorAt >= MIC_FALLING_EDGE_DEBOUNCE_MS) {
+          // Exhale ended (debounced)
+          _onExhaleEnd();
+          m.inhaling = false;
+          m._lastBelowFloorAt = 0;
+        }
+      } else {
+        m._lastBelowFloorAt = 0; // back above floor — reset debounce
+      }
+    }
+    _renderMicStatus();
+  }
+
+  function _onExhaleEnd() {
+    const m = state._mic;
+    const now = Date.now();
+    if (m.lastExhaleAt) {
+      const interval = now - m.lastExhaleAt;
+      // Only record sane intervals — 1s..30s. Outside that window
+      // it's likely a detection artifact, not a real breath.
+      if (interval >= 1000 && interval <= 30000) {
+        m.recentBreaths.push(interval);
+        if (m.recentBreaths.length > MIC_RECENT_BREATHS_MAX) {
+          m.recentBreaths.shift();
+        }
+      }
+    }
+    m.lastExhaleAt = now;
+    m.consecutiveSilent = 0;
+    // Dispatch event so waitForExhale promises can resolve
+    try { window.dispatchEvent(new CustomEvent('hne:exhale-end', { detail: { at: now } })); } catch {}
+  }
+
+  // Public API used by the speech-sleep path to wait for the next exhale.
+  // Returns a Promise that resolves on the next exhale-end event OR
+  // when maxMs has elapsed. If the mic isn't active or adaptive pacing
+  // is off, falls through to a plain interruptibleSleep(targetMs).
+  //
+  // targetMs: the script's intended pause duration
+  // maxMs:    hard ceiling (default 1.5× target) so a silent user
+  //           doesn't stall the session
+  function waitForExhale(targetMs, maxMs) {
+    const m = state._mic;
+    if (!state.adaptiveBreathPacing || m.status !== 'active' || m.consecutiveSilent >= MIC_FALLBACK_AFTER_SILENT) {
+      // Adaptive pacing off, mic not active, or fallback engaged — plain sleep
+      return interruptibleSleep(targetMs);
+    }
+    const ceiling = maxMs || Math.round(targetMs * 1.5);
+    return new Promise((resolve) => {
+      let resolved = false;
+      const cleanup = () => {
+        window.removeEventListener('hne:exhale-end', onExhale);
+        clearTimeout(timeoutHandle);
+      };
+      const onExhale = () => {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
+        // Small post-exhale buffer so the next phrase doesn't crowd
+        // the breath. 250ms feels natural — enough for the breath to
+        // settle without dragging.
+        setTimeout(resolve, 250);
+      };
+      const timeoutHandle = setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
+        // Ceiling hit — count this as a silent breath. Three in a row
+        // and we fall back to fixed timer for the rest of the session.
+        m.consecutiveSilent++;
+        if (m.consecutiveSilent >= MIC_FALLBACK_AFTER_SILENT) {
+          notify.info('Adaptive breath pacing falling back to fixed timer (no breath detected).');
+        }
+        resolve();
+      }, ceiling);
+      window.addEventListener('hne:exhale-end', onExhale, { once: true });
+    });
+  }
+
+  function _renderMicStatus() {
+    const dot = document.getElementById('micStatusDot');
+    const text = document.getElementById('micStatusText');
+    const row = document.getElementById('micStatusRow');
+    if (!dot || !text || !row) return;
+    const m = state._mic;
+    const isVisible = m.status !== 'idle';
+    row.style.display = isVisible ? '' : 'none';
+    if (!isVisible) return;
+    let color = '#888', label = 'listening…';
+    if (m.status === 'requesting') { color = 'var(--neon-amber)'; label = 'requesting permission…'; }
+    else if (m.status === 'error') { color = '#ff6b6b'; label = 'error: ' + (m.errorMessage || 'unknown'); }
+    else if (m.status === 'active') {
+      if (m._calibrationStartAt) { color = 'var(--neon-amber)'; label = 'calibrating noise floor…'; }
+      else if (m.consecutiveSilent >= MIC_FALLBACK_AFTER_SILENT) { color = '#888'; label = 'fallback: fixed timer'; }
+      else if (m.lastExhaleAt && Date.now() - m.lastExhaleAt < 3000) {
+        color = '#7dc87a';
+        const avg = m.recentBreaths.length
+          ? Math.round(m.recentBreaths.reduce((s, x) => s + x, 0) / m.recentBreaths.length / 100) / 10
+          : null;
+        label = avg ? `breath detected · avg ${avg}s` : 'breath detected';
+      } else if (m.inhaling) { color = 'var(--neon-cyan)'; label = 'inhale…'; }
+      else { color = '#7dc87a'; label = 'listening…'; }
+    }
+    dot.style.background = color;
+    text.textContent = label;
   }
 
   // ====================================================================
@@ -14683,6 +15013,112 @@ ${messages}
     return promise;
   }
 
+  // ====================================================================
+  // SUGGESTION SYMBOLS — abstract visual anchors for crafted suggestions
+  // ====================================================================
+  // Each crafted suggestion can have an optional generated symbol image,
+  // stored in IDB under `suggestion_symbol_<hash>`. Generated on demand
+  // via the same textToImagePlugin used for backgrounds + portraits.
+  //
+  // Why: visual symbols aid post-hypnotic recall — when the user
+  // encounters a similar visual cue in daily life, the suggestion
+  // resurfaces. The symbol becomes a portable anchor outside the session.
+  //
+  // Manual trigger only (button in the crafted-preview card) — no
+  // automatic generation, since image generation has remote API cost.
+  //
+  // Hash-based ID so re-crafting the same trigger+response reuses the
+  // cached symbol rather than regenerating. Hash is FNV-1a on the
+  // trigger + coreResponse fields — fast, deterministic, collision-rare
+  // for the small number of suggestions a single user creates.
+  //
+  // Resolves "Personal symbols for crafted suggestions" sub-item of
+  // backlog #7 textToImagePlugin extensions.
+  // ====================================================================
+  function _suggestionHash(suggestion) {
+    if (!suggestion) return '0';
+    // Use existing _hashSeed (FNV-1a 32-bit) defined for avatars
+    const key = `${suggestion.trigger || ''}|${suggestion.coreResponse || ''}`;
+    return String(_hashSeed(key));
+  }
+  const SYMBOL_KEY = id => 'suggestion_symbol_' + id;
+  const SYMBOL_NEGATIVE = 'text, words, letters, numbers, watermark, logo, signature, branded, photorealistic faces, multiple people, low quality, blurry, deformed';
+
+  function _buildSymbolPrompt(suggestion) {
+    if (!suggestion) return '';
+    // Translate the abstract trigger + response into a visual metaphor.
+    // We deliberately favor abstract / symbolic imagery over literal
+    // depiction — the user's mind fills in the rest, which is more
+    // hypnotically generative than a too-specific image.
+    const trigger = (suggestion.trigger || 'a moment of awareness').slice(0, 60);
+    const response = (suggestion.coreResponse || 'a felt shift').slice(0, 60);
+    return [
+      'minimal abstract symbolic illustration',
+      'representing: ' + trigger,
+      'evoking: ' + response,
+      'soft glowing focal point, ethereal mood, dreamlike atmosphere',
+      'muted palette, ink wash texture, hypnotic geometry',
+      'centered composition, no background text',
+    ].join(', ');
+  }
+
+  async function suggestionSymbolGet(hash) {
+    try {
+      const blob = await idbGet(SYMBOL_KEY(hash));
+      return blob ? URL.createObjectURL(blob) : null;
+    } catch { return null; }
+  }
+  async function suggestionSymbolSet(hash, blob) {
+    await idbSet(SYMBOL_KEY(hash), blob);
+  }
+  async function suggestionSymbolDelete(hash) {
+    await idbDel(SYMBOL_KEY(hash));
+  }
+
+  const _symbolInflight = new Map(); // hash → Promise<URL|null>
+  async function generateSuggestionSymbol(suggestion) {
+    if (!suggestion) return null;
+    const hash = _suggestionHash(suggestion);
+    if (_symbolInflight.has(hash)) return _symbolInflight.get(hash);
+    if (typeof root === 'undefined' || !root.textToImagePlugin) {
+      notify.warn('Image plugin unavailable — symbols require Perchance hosting.');
+      return null;
+    }
+    if (!state.remoteProcessingOptIn) {
+      notify.warn('Symbols require remote processing opt-in (in Options).');
+      return null;
+    }
+    const promise = (async () => {
+      try {
+        const prompt = _buildSymbolPrompt(suggestion);
+        // Same plugin contract guard as bgEngine + portraits — only
+        // documented `prompt` and `negative` fields. Undocumented aliases
+        // break the Perchance DSL evaluator on strings with `{`/`}`.
+        const result = await root.textToImagePlugin({
+          prompt,
+          negative: SYMBOL_NEGATIVE,
+        });
+        const dataUrl = result?.dataUrl || String(result || '');
+        if (!dataUrl || !dataUrl.startsWith('data:')) {
+          notify.warn('Symbol generation returned no image.');
+          return null;
+        }
+        const blob = await fetch(dataUrl).then(r => r.blob());
+        await suggestionSymbolSet(hash, blob);
+        notify.success('Symbol generated.');
+        return URL.createObjectURL(blob);
+      } catch (e) {
+        console.warn('[suggestion symbol] generation failed:', e);
+        notify.error('Symbol generation failed — see console.');
+        return null;
+      } finally {
+        _symbolInflight.delete(hash);
+      }
+    })();
+    _symbolInflight.set(hash, promise);
+    return promise;
+  }
+
   // Gallery render generation — each call increments. Concurrent thumbnail
   // loads check this counter and bail out if a newer render has started.
   // Prevents the desync race where a delete or new-image mid-render leaves
@@ -16554,7 +16990,45 @@ ${messages}
     },
   };
 
+  // Intense visuals to avoid when prefers-reduced-motion is set. Same set
+  // as the OS-toggle handler; centralized here so the dropdown's ⚠ motion
+  // badges and the runtime swap stay in sync.
+  const INTENSE_VIZ_LIST = new Set([
+    'flowfield','plasma','kaleidoscope-flow','kaleidoscope-plasma',
+    'starfield','tunnel','vortex'
+  ]);
+  // Notification debounce — fire the "switched to candle" toast at most
+  // once per minute so a user who keeps picking intense visuals isn't
+  // spammed.
+  let _lastReducedMotionToastAt = 0;
+
   function setupVisual(visualType) {
+    // ── Reduced-motion safety gate ──────────────────────────────────────
+    // Re-evaluate OS preference on every call so:
+    //   1. Init-time defaults respect the preference (was previously only
+    //      live OS-toggle that triggered the swap)
+    //   2. Mid-session manual viz changes are also gated
+    //   3. Preset / program applies that pick a viz get gated
+    // Power-user "safeties relaxed" mode (long-tenured profile) skips this
+    // — same exemption as the live toggle handler, mirrored for parity.
+    try {
+      const prm = matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+      const safetiesRelaxed = typeof _audioVizSafetiesRelaxed === 'function' && _audioVizSafetiesRelaxed();
+      if (prm && !safetiesRelaxed && INTENSE_VIZ_LIST.has(visualType)) {
+        const now = Date.now();
+        if (now - _lastReducedMotionToastAt > 60000) {
+          _lastReducedMotionToastAt = now;
+          if (typeof notify !== 'undefined') {
+            notify.info(`Reduced-motion: "${visualType}" swapped to "candle" for safety.`);
+          }
+        }
+        // Update state + dropdown so the user sees the swap reflected
+        if (state.vizOverride !== 'auto') state.vizOverride = 'candle';
+        const vs = $('vizSelect'); if (vs && vs.value !== 'candle') vs.value = 'candle';
+        visualType = 'candle';
+      }
+    } catch { /* matchMedia not available — proceed with original viz */ }
+
     const stage = $('stage');
     // Clean up previous visuals
     if (vizRAF) { cancelAnimationFrame(vizRAF); vizRAF = null; }
@@ -17743,6 +18217,36 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
     }
     $('craftedMeta').innerHTML = richBits.join('');
     $('craftedPreview').classList.add('visible');
+    // Symbol display — load cached symbol if one exists for this
+    // suggestion's hash. Hash-based key means re-crafting the same
+    // trigger+response reuses the cached image.
+    _refreshCraftedSymbol(c);
+  }
+  async function _refreshCraftedSymbol(suggestion) {
+    const wrap = $('craftedSymbolWrap');
+    const img = $('craftedSymbolImg');
+    const btn = $('craftedSymbolBtn');
+    if (!wrap || !img || !btn) return;
+    if (!suggestion) {
+      wrap.style.display = 'none';
+      btn.textContent = '🎨 symbol';
+      return;
+    }
+    const hash = _suggestionHash(suggestion);
+    const url = await suggestionSymbolGet(hash);
+    if (url) {
+      // Revoke any prior URL on this img to avoid leaks across re-shows
+      const prev = img.src;
+      if (prev && prev.startsWith('blob:')) {
+        try { URL.revokeObjectURL(prev); } catch {}
+      }
+      img.src = url;
+      wrap.style.display = '';
+      btn.textContent = '🎨 regenerate symbol';
+    } else {
+      wrap.style.display = 'none';
+      btn.textContent = '🎨 symbol';
+    }
   }
   function hideCrafted() { state.craftedSuggestion = null; $('craftedPreview').classList.remove('visible'); hideScript(); }
   function toggleEditCrafted() {
@@ -22068,6 +22572,16 @@ Start immediately:`;
       startWebcam().catch(e => console.warn('[webcam] start in startSession failed:', e));
     }
 
+    // Microphone awareness — per-session opt-in. Same pattern as webcam:
+    // box ticked in Step 5 → start the mic. Non-blocking; the module
+    // handles permission denial gracefully and falls back to fixed
+    // timer pacing if anything goes wrong.
+    if ($('micOptInThisSession')?.checked) {
+      state._mic.enabled = true;
+      state.adaptiveBreathPacing = true;
+      startMic().catch(e => console.warn('[mic] start in startSession failed:', e));
+    }
+
     // Hard-commit any pending diffs — session start is a durable anchor point.
     // Bypasses the magnitude gate but still requires hasChange, so identical
     // states won't generate noise entries.
@@ -22230,6 +22744,11 @@ Start immediately:`;
         // re-prompts the user (matches the finishSession pattern).
         stopWebcam();
         const _wcCb = $('webcamOptInThisSession'); if (_wcCb) _wcCb.checked = false;
+        // Same for mic — stop the stream + reset the opt-in.
+        stopMic();
+        const _mcCb = $('micOptInThisSession'); if (_mcCb) _mcCb.checked = false;
+        state._mic.enabled = false;
+        state.adaptiveBreathPacing = false;
         // Stop the audio-reactive RAF loop started above. Leaving it
         // running would keep polling FFT data while the user browses the
         // setup wizard.
@@ -22491,9 +23010,25 @@ Start immediately:`;
         // Short pauses: stay ducked to avoid pumping
         if (shouldDuck && isDucked && seconds >= 5) {
           drone.unduck(); isDucked = false;
-          await interruptibleSleep(scaled * 1000, bypassAbort);
+        }
+
+        // Adaptive breath pacing — if mic is on and the pause is in the
+        // "between-breath" range, wait for the user's next exhale instead
+        // of a fixed timer. Outside that range (very short or very long
+        // pauses) we use the fixed timer because:
+        //   • <3s = too short to align with a breath cycle reliably
+        //   • >10s = dramatic deepening pause; shouldn't be cut short by
+        //     an early exhale just because the user happened to breathe
+        // waitForExhale internally falls through to interruptibleSleep
+        // when adaptive pacing is off / mic is in fallback mode, so this
+        // is a single call site that handles both modes.
+        const useAdaptive = state.adaptiveBreathPacing
+                         && state._mic?.status === 'active'
+                         && state._mic.consecutiveSilent < MIC_FALLBACK_AFTER_SILENT
+                         && seconds >= 3 && seconds <= 10;
+        if (useAdaptive) {
+          await waitForExhale(scaled * 1000, Math.round(scaled * 1500));
         } else {
-          // Stay ducked through short pauses — cleaner audio
           await interruptibleSleep(scaled * 1000, bypassAbort);
         }
       }
@@ -23100,6 +23635,11 @@ Start immediately:`;
     // unticked so the next session starts off; user re-opts in if they want it.
     stopWebcam();
     const _wcCb = $('webcamOptInThisSession'); if (_wcCb) _wcCb.checked = false;
+    // Same for mic — stop stream, reset opt-in, clear adaptive pacing flag.
+    stopMic();
+    const _mcCb = $('micOptInThisSession'); if (_mcCb) _mcCb.checked = false;
+    state._mic.enabled = false;
+    state.adaptiveBreathPacing = false;
     // Playback dynamics — restore base speech rate so the next session starts at user's choice
     resetPlaybackDynamics();
     state._baseSpeechRate = null;
@@ -24011,6 +24551,27 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('recraftBtn').addEventListener('click', craftSuggestion);
   $('editCraftedBtn').addEventListener('click', toggleEditCrafted);
   $('saveEditBtn').addEventListener('click', saveEditCrafted);
+  // Suggestion symbol generator — manual trigger from the crafted preview.
+  // Gated on remoteProcessingOptIn inside generateSuggestionSymbol.
+  $('craftedSymbolBtn')?.addEventListener('click', async (ev) => {
+    if (!state.craftedSuggestion) {
+      notify.warn('Craft a suggestion first.');
+      return;
+    }
+    const btn = ev.currentTarget;
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ generating…';
+    try {
+      await generateSuggestionSymbol(state.craftedSuggestion);
+      // Refresh display — picks up the freshly-stored blob from IDB
+      await _refreshCraftedSymbol(state.craftedSuggestion);
+    } finally {
+      btn.disabled = false;
+      // _refreshCraftedSymbol will overwrite text if a symbol now exists
+      if (btn.textContent === '⏳ generating…') btn.textContent = originalText;
+    }
+  });
 
   // Step 5 — audio controls
   $('lengthSelect').addEventListener('change', () => {
@@ -25982,6 +26543,10 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     // until they navigate elsewhere. Mirrors finishSession's cleanup.
     if (typeof stopWebcam === 'function') stopWebcam();
     const _wcCb = $('webcamOptInThisSession'); if (_wcCb) _wcCb.checked = false;
+    if (typeof stopMic === 'function') stopMic();
+    const _mcCb = $('micOptInThisSession'); if (_mcCb) _mcCb.checked = false;
+    state._mic.enabled = false;
+    state.adaptiveBreathPacing = false;
     // Playback dynamics — restore base speech rate so a fresh restart isn't
     // anchored to the rate the adaptive engine drifted to mid-session.
     if (typeof resetPlaybackDynamics === 'function') resetPlaybackDynamics();
@@ -29523,6 +30088,25 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       if (state._webcam.status === 'active') stopWebcam();
     }
   });
+  // Mic opt-in handler — same per-session lifecycle as webcam. Mic
+  // doesn't start until session begin; checking this also flips
+  // adaptiveBreathPacing on so the user gets the pacing benefit by
+  // default. Untick mid-session = immediate stop.
+  $('micOptInThisSession')?.addEventListener('change', async e => {
+    if (e.target.checked) {
+      // No upfront consent modal — getUserMedia itself shows the
+      // browser's permission prompt. We do show a privacy note.
+      state._mic.enabled = true;
+      state.adaptiveBreathPacing = true;
+      notify.info('Microphone will activate when the session starts. All processing local.');
+    } else {
+      state._mic.enabled = false;
+      state.adaptiveBreathPacing = false;
+      if (state._mic.status === 'active' || state._mic.status === 'requesting') {
+        stopMic();
+      }
+    }
+  });
   // Live in-session toggle — same modal, immediate start/stop. Lets users turn
   // the camera on or off mid-session without going back to the config screen.
   $('webcamLiveToggle')?.addEventListener('click', async () => {
@@ -30349,6 +30933,37 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       const ssSelect = $('soundscapeSelect');
       if (ssSelect) ssSelect.value = state.soundscape;
     }
+    // ── Init-time reduced-motion dampening (first-run only) ─────────
+    // The OS-toggle listener catches LIVE changes mid-session; this block
+    // catches users whose OS preference is ALREADY set when they first
+    // load the app. Returning users keep their explicit settings — we
+    // only dampen when there are no saved settings to override.
+    try {
+      if (!hadSavedSettings) {
+        const prm = matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+        const safetiesRelaxed = typeof _audioVizSafetiesRelaxed === 'function' && _audioVizSafetiesRelaxed();
+        if (prm && !safetiesRelaxed) {
+          // Halve dynamics — same magnitude as the live-toggle handler
+          if (state.vizSettings) {
+            state.vizSettings.intensity = (state.vizSettings.intensity || 1.0) * 0.5;
+            state.vizSettings.speed     = (state.vizSettings.speed     || 1.0) * 0.5;
+          }
+          // Default to a gentle focal glow rather than the method's pick
+          state.vizOverride = 'candle';
+          const vs = $('vizSelect'); if (vs) vs.value = 'candle';
+          // Subtle audio-reactivity rather than dramatic
+          if (state.audioReactiveMode === 'dramatic' && typeof setAudioReactiveMode === 'function') {
+            setAudioReactiveMode('subtle');
+          }
+          // Persist so this only applies once — subsequent reloads won't
+          // re-halve already-halved settings.
+          if (typeof saveUserSettings === 'function') saveUserSettings();
+          if (typeof notify !== 'undefined') {
+            notify.info('Reduced-motion preference detected — gentler defaults applied. Adjust in Step 5 if you prefer.');
+          }
+        }
+      }
+    } catch { /* matchMedia unavailable — keep defaults */ }
     updateStepUI();
 
     // Load shared config from URL fragment if present
