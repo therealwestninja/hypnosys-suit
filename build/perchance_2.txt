@@ -2615,6 +2615,46 @@ padding: 8px 12px; font-size: 0.75rem;
   .pf-changelog-entry .cl-chip.cl-rem { color:#d98f8f; background:rgba(217,143,143,0.12); text-decoration:line-through; opacity:0.85; }
   .pf-changelog-entry em { color: var(--text-faint); font-style:italic; }
 
+  /* ── Unified activity timeline (replaces three separate panels) ─────────
+     Each entry has a category-coloured left border so users can scan by
+     type at a glance. Decay opacity is set inline per-entry (newer entries
+     are brighter, mirroring the AI's recency weighting). The .tl-cat-*
+     classes pick up cyan/purple/amber for profile/ai/session respectively. */
+  .timeline-chip {
+    padding: 3px 9px; font-size: 0.66rem;
+    border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03);
+    color: var(--text-dim); cursor: pointer; border-radius: 0;
+    letter-spacing: 0.04em; transition: all 0.15s ease;
+  }
+  .timeline-chip:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+  .timeline-chip.active {
+    background: var(--neon-cyan-soft, rgba(0,212,230,0.14));
+    border-color: var(--neon-cyan); color: var(--neon-cyan);
+  }
+  .tl-entry {
+    padding: 6px 8px; margin-bottom: 5px;
+    border-left: 3px solid var(--glass-border);
+    background: rgba(255,255,255,0.02);
+    font-size: 0.72rem; line-height: 1.4;
+  }
+  .tl-entry.tl-cat-profile { border-left-color: var(--neon-cyan); }
+  .tl-entry.tl-cat-ai      { border-left-color: var(--accent-warm, #d4a574); }
+  .tl-entry.tl-cat-session { border-left-color: var(--accent-green, #8fd98f); }
+  .tl-entry .tl-head {
+    display: flex; gap: 6px; align-items: baseline; font-size: 0.66rem;
+    color: var(--text-faint);
+  }
+  .tl-entry .tl-cat {
+    text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .tl-entry.tl-cat-profile .tl-cat { color: var(--neon-cyan); }
+  .tl-entry.tl-cat-ai      .tl-cat { color: var(--accent-warm, #d4a574); }
+  .tl-entry.tl-cat-session .tl-cat { color: var(--accent-green, #8fd98f); }
+  .tl-entry .tl-ts { color: var(--text-faint); flex-shrink: 0; }
+  .tl-entry .tl-body { margin-top: 3px; color: var(--text); }
+  .tl-entry .tl-empty { color: var(--text-faint); font-style: italic; padding: 12px 4px; text-align: center; }
+
   /* AI background controls — POS/NEG + orientation + weight sliders */
   .ai-prompt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .ai-controls-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; }
@@ -3313,29 +3353,27 @@ padding: 6px 10px; font-size: 1.1rem;
           <summary>session history</summary>
           <div id="sessionStatsPanel"></div>
           <div class="history-list" id="sessionHistoryList"></div>
-          <!-- Profile change log — moved into Session History 2026-04-25.
-               Lazy-rendered when the parent details opens (see initDiffBouncers
-               toggle handler). The pfChangeLogDetails id stays on the inner
-               wrapper so any code that looks for it still finds something. -->
-          <div id="pfChangeLogDetails" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--glass-border)">
-            <div class="pf-label" style="margin-bottom:6px;font-size:0.7rem">change log <span id="pfChangeLogCount" class="sublabel" style="font-weight:normal;opacity:0.6"></span></div>
-            <div id="pfChangeLogList" style="margin-top:4px;max-height:300px;overflow-y:auto;font-size:0.78rem"></div>
-            <div class="sublabel" style="margin-top:6px;font-size:0.58rem">Oldest 200 changes retained. Image entries use LLM tags when remote processing is on, local tags otherwise.</div>
-          </div>
-          <!-- Recent profile edits the AI sees in its "Recent changes"
-               prompt block. Relocated from Profile area 2026-04-27 so
-               related history surfaces cluster in one place. -->
-          <div id="profileDiffsDetails" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--glass-border)">
-            <div class="pf-label" style="margin-bottom:6px;font-size:0.7rem">recent edits the AI is aware of</div>
-            <div id="profileDiffsList" style="margin-top:4px;font-size:0.66rem;line-height:1.45;color:var(--text-dim);max-height:160px;overflow-y:auto"></div>
-          </div>
-          <!-- AI activity log button — relocated from Profile area
-               2026-04-27. Sits at the end of history; opens a read-only
-               modal listing recent AI calls' metadata. -->
-          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--glass-border)">
-            <div class="pf-label" style="margin-bottom:6px;font-size:0.7rem">AI activity log</div>
-            <button class="btn secondary" id="viewAIAuditBtn" type="button" style="font-size:0.66rem;padding:4px 8px;width:100%">view recent AI calls</button>
-            <div class="sublabel" style="font-size:0.58rem;margin-top:4px;color:var(--text-faint)">Records provider + source + size for each AI call. Never the content.</div>
+          <!-- Unified timeline — merges three previously-separate panels:
+               (1) profile change log [ring buffer of edits]
+               (2) "what AI is aware of" [last 12 with decay opacity]
+               (3) AI activity log [recent AI call metadata]
+               Reduces UI duplication and gives users a single chronological
+               feed of "what's been happening" across all subsystems. Filter
+               chips let them narrow the view without losing the unified
+               sort. Lazy-rendered when session-history details opens. -->
+          <div id="timelineDetails" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--glass-border)">
+            <div class="pf-label" style="margin-bottom:6px;font-size:0.7rem;display:flex;align-items:center;justify-content:space-between">
+              <span>activity timeline <span id="timelineCount" class="sublabel" style="font-weight:normal;opacity:0.6"></span></span>
+              <button class="btn-link" id="timelineExpandBtn" type="button" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.66rem;padding:0">view full →</button>
+            </div>
+            <div class="timeline-filter-row" id="timelineFilterRow" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
+              <button class="timeline-chip active" data-filter="all" type="button">All</button>
+              <button class="timeline-chip" data-filter="profile" type="button">Profile edits</button>
+              <button class="timeline-chip" data-filter="ai" type="button">AI calls</button>
+              <button class="timeline-chip" data-filter="session" type="button">Sessions</button>
+            </div>
+            <div id="timelineList" style="margin-top:4px;max-height:300px;overflow-y:auto;font-size:0.74rem"></div>
+            <div class="sublabel" style="margin-top:6px;font-size:0.58rem;color:var(--text-faint)">Newer entries are brighter. Profile edits show what the AI is currently aware of. AI calls show provider + source + size only — never content.</div>
           </div>
         </details>
         <details>
@@ -5143,7 +5181,11 @@ I return to myself easily"></textarea>
       <div class="stats-tile" data-chart="persona"><div class="stats-tile-head"><span class="stats-chart-title">guides</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartPersona"></canvas></div>
       <div class="stats-tile" data-chart="method"><div class="stats-tile-head"><span class="stats-chart-title">methods</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartMethod"></canvas></div>
       <div class="stats-tile" data-chart="intention"><div class="stats-tile-head"><span class="stats-chart-title">intentions</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartIntention"></canvas></div>
+      <div class="stats-tile" data-chart="length"><div class="stats-tile-head"><span class="stats-chart-title">session length</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartLength"></canvas></div>
       <div class="stats-tile" data-chart="soundscape"><div class="stats-tile-head"><span class="stats-chart-title">soundscapes</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartSoundscape"></canvas></div>
+      <div class="stats-tile" data-chart="visuals"><div class="stats-tile-head"><span class="stats-chart-title">visual effects</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartVisuals"></canvas></div>
+      <div class="stats-tile" data-chart="voices"><div class="stats-tile-head"><span class="stats-chart-title">narrator voices</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartVoices"></canvas></div>
+      <div class="stats-tile" data-chart="affirmMode"><div class="stats-tile-head"><span class="stats-chart-title">affirmation modes</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartAffirmMode"></canvas></div>
       <div class="stats-tile" data-chart="hourly"><div class="stats-tile-head"><span class="stats-chart-title">by hour</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartHourly"></canvas></div>
       <div class="stats-tile" data-chart="weekday"><div class="stats-tile-head"><span class="stats-chart-title">by day</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartWeekday"></canvas></div>
       <div class="stats-tile" data-chart="mood"><div class="stats-tile-head"><span class="stats-chart-title">mood shift</span><span class="stats-expand-icon">⤢</span></div><canvas id="chartMood"></canvas></div>
@@ -9562,42 +9604,14 @@ I return to myself easily"></textarea>
     renderProfileDiffs(); // refresh the visible "what AI sees" panel
   }
 
-  /** Render the recent profile-diffs panel. Mirrors what getProfileContext
-   *  serves to the AI so users see exactly what the Director has been told.
-   *  Decay weight visualized as opacity. Empty state shown when nothing
-   *  has been committed yet. */
+  /** Render the activity timeline panel.
+   *  Backward-compatible wrapper — many callsites already invoke
+   *  renderProfileDiffs() to refresh "what the AI is aware of"; we keep
+   *  the name but route through the unified renderer. The new timeline
+   *  shows profile edits + AI calls + sessions in one chronological feed
+   *  with filter chips, replacing what used to be three separate panels. */
   function renderProfileDiffs() {
-    const list = $('profileDiffsList');
-    if (!list) return;
-    const recent = (_profileChangeLog || []).slice(0, 12);
-    if (!recent.length) {
-      list.innerHTML = '<div style="opacity:0.55;font-style:italic">No recent edits logged.</div>';
-      return;
-    }
-    const srcLabel = id => ({ pfGoals:'goals', pfAbout:'about', pfAppearance:'appearance', pfName:'name', intentionInput:'intention', userAffirmations:'affirmations', bgPromptInput:'bg-prompt', bgImage:'image-gen' }[id] || id);
-    const now = Date.now();
-    const dayMs = 86400000;
-    list.innerHTML = recent.map(e => {
-      const ageDays = Math.max(0, (now - e.ts) / dayMs);
-      const w = Math.exp(-ageDays / 14);
-      const opacity = Math.max(0.35, w).toFixed(2);
-      const rel = (typeof _relTimeDB === 'function') ? _relTimeDB(e.ts) : 'recently';
-      let summary = '';
-      if (e.type === 'csv' && e.diff) {
-        const add = (e.diff.added || []).slice(0, 3).join(', ');
-        const rem = (e.diff.removed || []).slice(0, 3).join(', ');
-        const bits = [];
-        if (add) bits.push(`<span style="color:var(--accent-green)">+${escapeHtml(add)}</span>`);
-        if (rem) bits.push(`<span style="color:#d46a6a">-${escapeHtml(rem)}</span>`);
-        summary = bits.join(' ');
-      } else if (e.type === 'text' && e.diff) {
-        summary = `${Math.round((e.diff.changePct || 0) * 100)}% text change`;
-      } else if (e.type === 'image' && e.diff) {
-        const tags = (e.diff.tags || []).slice(0, 4).join(', ');
-        summary = e.diff.summary || (tags ? `[${escapeHtml(tags)}]` : '');
-      }
-      return `<div style="padding:3px 0;border-bottom:1px solid var(--glass-border);opacity:${opacity}"><span style="color:var(--text-faint);text-transform:uppercase;font-size:0.58rem;letter-spacing:0.06em">${escapeHtml(rel)}</span> · <strong>${escapeHtml(srcLabel(e.source))}</strong>${summary ? ' · ' + summary : ''}</div>`;
-    }).join('');
+    if (typeof renderTimeline === 'function') renderTimeline();
   }
 
   function getProfile() {
@@ -9740,9 +9754,9 @@ I return to myself easily"></textarea>
       onCommit: (diff, _current, meta) => commitChangeLogEntry('bgImage', 'image', diff, meta),
     });
 
-    // Timeline UI — render when the Session History section opens.
-    // Changelog content lives inside Session History (moved 2026-04-25);
-    // listening on the parent details ensures lazy render still happens.
+    // Activity timeline lazy-renders when Session History details opens.
+    // renderChangeLog is the backward-compat alias that routes to the
+    // unified renderTimeline.
     document.getElementById('sessionHistoryDetails')?.addEventListener('toggle', e => {
       if (e.target.open) renderChangeLog();
     });
@@ -9764,45 +9778,151 @@ I return to myself easily"></textarea>
     return new Date(ts).toISOString().slice(0, 10);
   }
 
-  function renderChangeLog() {
-    const list = document.getElementById('pfChangeLogList');
-    const count = document.getElementById('pfChangeLogCount');
+  // Filter state for the timeline. Persisted in-memory only — defaults
+  // to "all" on each page load. Cheap so no need to write through.
+  let _timelineFilter = 'all';
+
+  /**
+   * Unified activity timeline renderer. Replaces the three previously-separate
+   * panels (change log, "what AI sees", AI activity log) with a single
+   * chronological feed.
+   *
+   * Sources merged:
+   *   - _profileChangeLog (in-memory ring buffer of profile edits)
+   *   - _aiAuditLog       (in-memory ring buffer of AI call metadata)
+   *   - session history   (idbGet stillness_history_v1, last 30 sessions)
+   *
+   * Each entry is normalized to { ts, category, label, body } then sorted
+   * desc. Filter chips narrow the visible set without re-fetching.
+   * Decay opacity (newer = brighter) mirrors the AI's recency weighting.
+   *
+   * Lazy-loaded — runs only when Session History details opens, plus
+   * on every commitChangeLogEntry (for live-update of the list).
+   */
+  async function renderTimeline() {
+    const list = document.getElementById('timelineList');
+    const count = document.getElementById('timelineCount');
     if (!list) return;
-    const entries = _profileChangeLog || [];
-    if (count) count.textContent = entries.length ? `(${entries.length})` : '';
-    if (!entries.length) {
-      list.innerHTML = '<div class="sublabel" style="padding:8px 4px">no changes logged yet — edit a tracked field or generate an image.</div>';
+
+    const profileEntries = (_profileChangeLog || []).map(e => ({
+      ts: e.ts,
+      category: 'profile',
+      sourceId: e.source,
+      type: e.type,
+      diff: e.diff,
+    }));
+
+    // AI audit log — lazy-load if needed
+    if (typeof _loadAuditLog === 'function' && !_aiAuditLoaded) {
+      try { await _loadAuditLog(); } catch {}
+    }
+    const aiEntries = (_aiAuditLog || []).map(e => ({
+      ts: e.ts,
+      category: 'ai',
+      provider: e.provider,
+      sourceId: e.source,
+      bytes: e.bytes,
+    }));
+
+    // Session history — last 30, lightweight summary
+    let sessionEntries = [];
+    try {
+      const history = (await idbGet('stillness_history_v1')) || [];
+      sessionEntries = history.slice(0, 30).map(s => ({
+        ts: s.date || 0,
+        category: 'session',
+        guide: s.guide || '?',
+        method: s.method || '?',
+        duration: Math.round((s.durationSec || 0) / 60),
+        completed: !!s.completed,
+        preMood: s.preMood,
+        postMood: s.postMood,
+      }));
+    } catch {}
+
+    // Merge + sort newest first
+    const all = [...profileEntries, ...aiEntries, ...sessionEntries].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+
+    // Apply filter
+    const filtered = (_timelineFilter === 'all') ? all : all.filter(e => e.category === _timelineFilter);
+
+    // Update count badge
+    if (count) {
+      const parts = [
+        profileEntries.length ? `${profileEntries.length} edits` : '',
+        aiEntries.length ? `${aiEntries.length} AI` : '',
+        sessionEntries.length ? `${sessionEntries.length} sessions` : '',
+      ].filter(Boolean);
+      count.textContent = parts.length ? `(${parts.join(', ')})` : '';
+    }
+
+    if (!filtered.length) {
+      const filterMsg = _timelineFilter === 'all'
+        ? 'no activity yet — edit your profile or run a session.'
+        : `no ${_timelineFilter} entries yet.`;
+      list.innerHTML = `<div class="tl-empty">${filterMsg}</div>`;
       return;
     }
-    const srcLabel = id => ({
-      pfGoals: 'goals',
-      pfAbout: 'about',
-      intentionInput: 'intention',
-      userAffirmations: 'affirmations',
-      bgPromptInput: 'bg prompt',
-      bgImage: 'image',
-    }[id] || id);
-    const html = entries.slice(0, DIFF_BOUNCE_THRESHOLDS.logCap).map(e => {
-      const ts = _relTimeDB(e.ts);
-      const src = srcLabel(e.source);
-      let body = '';
+
+    // Decay window — entries older than 14 days fade to 0.4 opacity floor.
+    // Mirrors getProfileContext's exp(-ageDays/14) so users see what the
+    // AI's recency weighting is doing.
+    const now = Date.now();
+    const dayMs = 86400000;
+
+    list.innerHTML = filtered.slice(0, 80).map(e => _renderTimelineEntry(e, now, dayMs)).join('');
+  }
+
+  // Convert one normalized timeline entry into HTML. Split out for clarity
+  // and so the "view full →" modal can call it with the unfiltered list.
+  function _renderTimelineEntry(e, now, dayMs) {
+    const ageDays = Math.max(0, (now - (e.ts || 0)) / dayMs);
+    const w = Math.exp(-ageDays / 14);
+    const opacity = Math.max(0.4, w).toFixed(2);
+    const rel = _relTimeDB(e.ts || 0);
+    const cat = e.category;
+    let label = '', body = '';
+    if (cat === 'profile') {
+      const srcLabel = id => ({
+        pfGoals: 'goals', pfAbout: 'about', pfAppearance: 'appearance', pfName: 'name',
+        intentionInput: 'intention', userAffirmations: 'affirmations',
+        bgPromptInput: 'bg prompt', bgImage: 'image',
+      }[id] || id);
+      label = srcLabel(e.sourceId);
       if (e.type === 'csv' && e.diff) {
         const addHtml = (e.diff.added || []).map(a => `<span class="cl-chip cl-add">+${_escDB(a)}</span>`).join('');
         const remHtml = (e.diff.removed || []).map(r => `<span class="cl-chip cl-rem">−${_escDB(r)}</span>`).join('');
         body = addHtml + remHtml || '<em>no entries shifted</em>';
       } else if (e.type === 'text' && e.diff) {
         const pct = Math.round((e.diff.changePct || 0) * 100);
-        body = `<span class="sublabel">${pct}% changed</span> — <em>${_escDB(e.diff.preview || '')}…</em>`;
+        body = `<span style="opacity:0.7">${pct}% changed</span> — <em>${_escDB(e.diff.preview || '')}…</em>`;
       } else if (e.type === 'image' && e.diff) {
         const tags = (e.diff.tags || []).map(t => `<span class="cl-chip">${_escDB(t)}</span>`).join('');
         body = `<div>${_escDB(e.diff.summary || '')}</div><div style="margin-top:3px">${tags}</div>`;
       } else {
         body = '<em>(unknown entry type)</em>';
       }
-      return `<div class="pf-changelog-entry"><div class="cl-head"><span class="cl-ts">${_escDB(ts)}</span> · <span class="cl-src">${_escDB(src)}</span></div><div class="cl-body">${body}</div></div>`;
-    }).join('');
-    list.innerHTML = html;
+    } else if (cat === 'ai') {
+      label = e.sourceId || 'unknown';
+      const kb = (e.bytes || 0) >= 1024 ? `${((e.bytes || 0) / 1024).toFixed(1)} KB` : `${e.bytes || 0} B`;
+      body = `${_escDB(e.provider || '?')} · ${kb} sent <span style="color:var(--text-faint)">(content not logged)</span>`;
+    } else if (cat === 'session') {
+      label = `${_escDB(e.guide)} · ${_escDB(e.method)}`;
+      const moodBit = (e.preMood != null && e.postMood != null)
+        ? ` · mood ${e.preMood}→${e.postMood}${(e.postMood - e.preMood >= 0 ? ' +' : ' ')}${e.postMood - e.preMood}`
+        : '';
+      const compBit = e.completed ? '✓ finished' : '⏸ ended early';
+      body = `${e.duration}m · ${compBit}${moodBit}`;
+    }
+    return `<div class="tl-entry tl-cat-${cat}" style="opacity:${opacity}">
+      <div class="tl-head"><span class="tl-cat">${cat}</span> · <span class="tl-ts">${_escDB(rel)}</span> · <span style="color:var(--text);font-weight:500">${_escDB(label)}</span></div>
+      <div class="tl-body">${body}</div>
+    </div>`;
   }
+
+  // Backward-compat alias for code that still calls renderChangeLog.
+  // Many sites (toggle handlers, tour, etc.) reference this name.
+  function renderChangeLog() { renderTimeline(); }
 
   /** Build an AI context string from the user's profile for prompt injection */
   // ====================================================================
@@ -10479,7 +10599,9 @@ I return to myself easily"></textarea>
       // Settings usage (running sums for averages)
       cfg: { rateSum: 0, pitchSum: 0, volSum: 0, droneSum: 0, n: 0 },
       // Feature flags: which features the user has tried
-      feat: 0, // bitmask: 1=affirmations 2=programs 4=custom-persona 8=skip-to-script 16=timing-fixer 32=share 64=backup 128=double-induction
+      // bitmask: 1=affirmations 2=programs 4=custom-persona 8=skip-to-script
+      // 16=timing-fixer 32=share 64=backup 128=double-induction 256=pre-gen
+      feat: 0,
       // Timestamp
       ts: Date.now(),
     };
@@ -20481,10 +20603,19 @@ Start immediately:`;
     const W = canvas.offsetWidth || 360, H = canvas.offsetHeight || 200;
     canvas.width = W * dpr; canvas.height = H * dpr;
     const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+    // Keep in sync with the FEAT constant defined earlier. Order matches
+    // the bit values for grep-ability. Adding a new feature: extend FEAT
+    // and add an entry here with the matching bit value + display name.
     const features = [
-      { name: 'Affirmations', bit: 1 }, { name: 'Programs', bit: 2 }, { name: 'Custom Persona', bit: 4 },
-      { name: 'Skip-to-Script', bit: 8 }, { name: 'Timing Fix', bit: 16 }, { name: 'Share', bit: 32 },
-      { name: 'Backup', bit: 64 }, { name: 'Double Induction', bit: 128 },
+      { name: 'Affirmations',     bit: 1 },
+      { name: 'Programs',         bit: 2 },
+      { name: 'Custom Persona',   bit: 4 },
+      { name: 'Skip-to-Script',   bit: 8 },
+      { name: 'Timing Fix',       bit: 16 },
+      { name: 'Share',            bit: 32 },
+      { name: 'Backup',           bit: 64 },
+      { name: 'Double Induction', bit: 128 },
+      { name: 'Pre-Gen',          bit: 256 },
     ];
     const rowH = (H - 10) / features.length;
     features.forEach((f, i) => {
@@ -20509,7 +20640,11 @@ Start immediately:`;
       case 'persona': { const d = topItems(a.p, 8); drawBarChart('chartPersona', d.labels, d.values, CHART_COLORS.bars); break; }
       case 'method': { const d = topItems(a.m, 8); drawBarChart('chartMethod', d.labels, d.values, CHART_COLORS.bars); break; }
       case 'intention': { const d = topItems(a.i, 8); drawBarChart('chartIntention', d.labels, d.values, CHART_COLORS.bars); break; }
+      case 'length': { const d = topItems(a.ln, 8); drawBarChart('chartLength', d.labels, d.values, CHART_COLORS.bars); break; }
       case 'soundscape': { const d = topItems(a.s, 8); drawBarChart('chartSoundscape', d.labels, d.values, CHART_COLORS.bars); break; }
+      case 'visuals': { const d = topItems(a.z, 8); drawBarChart('chartVisuals', d.labels, d.values, CHART_COLORS.bars); break; }
+      case 'voices': { const d = topItems(a.vc, 8); drawBarChart('chartVoices', d.labels, d.values, CHART_COLORS.bars); break; }
+      case 'affirmMode': { const d = topItems(a.am, 6); drawBarChart('chartAffirmMode', d.labels, d.values, CHART_COLORS.bars); break; }
       case 'hourly': { drawLineChart('chartHourly', Array.from({length:24}, (_,i) => i.toString()), a.hr, CHART_COLORS.cyan); break; }
       case 'weekday': { drawBarChart('chartWeekday', ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], a.dw, CHART_COLORS.bars); break; }
       case 'mood': {
@@ -26267,7 +26402,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     { icon: '🖼', title: 'Step 5 — Background images', body: 'Step 5 includes an AI image generator for session backgrounds. Type a prompt and tap <strong>✨ enhance</strong> to have AI engineer it (short / medium / long verbosity). Pick from 19 <strong>style preset chips</strong> — atmospheric, nature, abstract, or rendering-style modifiers. Use <strong>+1 image</strong> / <strong>+5 images</strong> to queue generations; <strong>show gallery</strong> reveals your cached pool.' },
     { icon: '▶', title: 'Step 6 — Generate, save, begin', body: 'Each script phase generates individually with live status dots — click any dot to retry that phase. <strong>⏱ auto-tempo</strong> rebuilds pause timings. Above the editor, the <strong>Saved Scripts</strong> library lets you store and reload scripts you want to reuse — tap <strong>💾 save</strong> on the actions bar to keep the current script for later.' },
     { icon: '📅', title: 'Multi-day Programs', body: 'Step 1 also surfaces <strong>Structured Programs</strong> — multi-day arcs (Self-Hypnosis Foundation, Stress Reset, etc.) with pre-built day-by-day progression. After completing a program day, the post-session screen offers to <strong>pre-generate tomorrow\'s session</strong> in the background — opt in once and the next day launches instantly.' },
-    { icon: '📊', title: 'Your sidebar', body: 'The left sidebar tracks stats, streak (with grace day), activity heatmap, pattern callouts, weekly digest, and your full <strong>Session History</strong> (with profile change log + AI activity log). Every session stores its complete script — click ▶ to replay any past session. The 📦 <strong>export bundle</strong> on post-session packages script + metadata as a .zip.' },
+    { icon: '📊', title: 'Your sidebar', body: 'The left sidebar tracks stats, streak (with grace day), activity heatmap, pattern callouts, weekly digest, and your full <strong>Session History</strong> (with the unified <strong>activity timeline</strong> showing profile edits, AI calls, and sessions in one feed). Every session stores its complete script — click ▶ to replay any past session. The 📦 <strong>export bundle</strong> on post-session packages script + metadata as a .zip.' },
     { icon: '🎵', title: 'During a session', body: '<strong>Space</strong> pauses everything. <strong>Escape</strong> triggers an emergency re-alert in your guide\'s voice. <strong>← back to script</strong> returns and lets you edit mid-session. The ⚙ panel adjusts audio and visuals live. With Reactive Rules on, the engine may nudge you if you go silent for too long, or duck the soundscape during work phases.' },
     { icon: '🔒', title: 'Privacy by default', body: 'Everything stays in your browser. <strong>Remote backup &amp; processing</strong> is OFF by default — no data leaves your device, and intrusive UI (like "page may be stuck" warnings) stays silent too. Turn it on in Options if you want cross-device features. <strong>Debug mode</strong> in Options surfaces dev affordances; a red badge appears whenever it\'s on.' },
     { icon: '✨', title: 'You\'re ready', body: 'Pick a guide and method, or tap a preset. Your first session takes about 2 minutes to set up. Backup your data anytime from the sidebar — <strong>Restore</strong> your data anytime, on any device, with the same backup. Crisis resources live behind the <strong>help &amp; safety</strong> link in the footer.' },
@@ -27126,7 +27261,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       // notify gate is checked against the localStorage flag below).
       if (!sessionStorage.getItem('_extAiHighVolumeWarned')) {
         sessionStorage.setItem('_extAiHighVolumeWarned', '1');
-        notify.info('100 external AI calls this session. If unexpected, check the AI activity log under your profile.', 8000);
+        notify.info('100 external AI calls this session. If unexpected, check the activity timeline in Session History.', 8000);
       }
     }
   }
@@ -27616,23 +27751,103 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     if (typeof _refreshSoundscapeHint === 'function') _refreshSoundscapeHint();
   });
 
-  // AI activity log — read-only modal. Lists recent AI calls' metadata
-  // (provider, source, byte size, time). No content. Builds trust by
-  // showing exactly what the app sent and where, without re-exposing the
-  // user's profile/intention text.
-  $('viewAIAuditBtn')?.addEventListener('click', async () => {
-    if (!_aiAuditLoaded) await _loadAuditLog();
-    const recent = (_aiAuditLog || []).slice(0, 30);
-    if (!recent.length) {
-      alertModal('AI activity log', 'No AI calls logged yet. The log starts populating once you craft a suggestion or generate a script.');
+  // Activity timeline — filter chips + "view full →" modal launcher.
+  // Replaces the old viewAIAuditBtn handler (the AI audit log is now one
+  // of three sources merged into the unified timeline).
+  document.querySelectorAll('#timelineFilterRow .timeline-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      _timelineFilter = chip.dataset.filter || 'all';
+      document.querySelectorAll('#timelineFilterRow .timeline-chip').forEach(c => {
+        c.classList.toggle('active', c.dataset.filter === _timelineFilter);
+      });
+      renderTimeline();
+    });
+  });
+
+  // "View full →" — open a larger modal with the full unfiltered timeline
+  // for users who want to scroll through everything without the cramped
+  // sidebar viewport. Built lazily on first click.
+  let _timelineFullModalEl = null;
+  function _ensureTimelineFullModal() {
+    if (_timelineFullModalEl) return _timelineFullModalEl;
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'timelineFullModal';
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:720px;max-height:85vh;display:flex;flex-direction:column">
+        <h2 style="margin:0 0 6px 0">activity timeline</h2>
+        <div style="font-size:0.74rem;color:var(--text-dim);line-height:1.5;margin-bottom:10px">
+          Full chronological feed of profile edits, AI calls, and sessions. Newer entries are brighter (matches what the AI weights heaviest). Filter chips below narrow the view.
+        </div>
+        <div class="timeline-filter-row" id="timelineFullFilterRow" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">
+          <button class="timeline-chip active" data-filter="all" type="button">All</button>
+          <button class="timeline-chip" data-filter="profile" type="button">Profile edits</button>
+          <button class="timeline-chip" data-filter="ai" type="button">AI calls</button>
+          <button class="timeline-chip" data-filter="session" type="button">Sessions</button>
+        </div>
+        <div id="timelineFullList" style="flex:1;min-height:0;overflow-y:auto;font-size:0.78rem;line-height:1.5;padding-right:4px"></div>
+        <div class="modal-actions" style="margin-top:14px">
+          <button class="btn" id="timelineFullClose">close</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _timelineFullModalEl = wrap;
+    $('timelineFullClose').addEventListener('click', () => wrap.classList.remove('visible'));
+    wrap.addEventListener('click', e => {
+      if (e.target.id === 'timelineFullModal') wrap.classList.remove('visible');
+    });
+    // Filter chips inside modal — independent state so opening the modal
+    // doesn't disrupt the sidebar filter the user already had set.
+    let modalFilter = 'all';
+    wrap.querySelectorAll('.timeline-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        modalFilter = chip.dataset.filter || 'all';
+        wrap.querySelectorAll('.timeline-chip').forEach(c => {
+          c.classList.toggle('active', c.dataset.filter === modalFilter);
+        });
+        _renderFullTimeline(modalFilter);
+      });
+    });
+    return wrap;
+  }
+  async function _renderFullTimeline(filter = 'all') {
+    const list = $('timelineFullList');
+    if (!list) return;
+    list.innerHTML = '<div class="tl-empty">loading…</div>';
+
+    // Same merge logic as renderTimeline but no slice cap and bigger font
+    if (typeof _loadAuditLog === 'function' && !_aiAuditLoaded) {
+      try { await _loadAuditLog(); } catch {}
+    }
+    const profileEntries = (_profileChangeLog || []).map(e => ({
+      ts: e.ts, category: 'profile', sourceId: e.source, type: e.type, diff: e.diff,
+    }));
+    const aiEntries = (_aiAuditLog || []).map(e => ({
+      ts: e.ts, category: 'ai', provider: e.provider, sourceId: e.source, bytes: e.bytes,
+    }));
+    let sessionEntries = [];
+    try {
+      const history = (await idbGet('stillness_history_v1')) || [];
+      sessionEntries = history.map(s => ({
+        ts: s.date || 0, category: 'session', guide: s.guide || '?', method: s.method || '?',
+        duration: Math.round((s.durationSec || 0) / 60), completed: !!s.completed,
+        preMood: s.preMood, postMood: s.postMood,
+      }));
+    } catch {}
+    const all = [...profileEntries, ...aiEntries, ...sessionEntries].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    const filtered = (filter === 'all') ? all : all.filter(e => e.category === filter);
+    if (!filtered.length) {
+      list.innerHTML = `<div class="tl-empty">no ${filter === 'all' ? '' : filter + ' '}entries.</div>`;
       return;
     }
-    const lines = recent.map(e => {
-      const rel = (typeof _relTimeDB === 'function') ? _relTimeDB(e.ts) : new Date(e.ts).toLocaleString();
-      const kb = e.bytes >= 1024 ? `${(e.bytes / 1024).toFixed(1)} KB` : `${e.bytes} B`;
-      return `${rel}  ·  ${e.provider}  ·  ${e.source}  ·  ${kb}`;
-    });
-    alertModal('AI activity log', `Recent AI calls (${recent.length} of ${_aiAuditLog.length} on record):\n\n${lines.join('\n')}\n\n— Provider: which AI backend handled the call.\n— Source: where in the app the call originated.\n— Size: byte length of the prompt sent. Content itself is never logged.`);
+    const now = Date.now();
+    const dayMs = 86400000;
+    list.innerHTML = filtered.map(e => _renderTimelineEntry(e, now, dayMs)).join('');
+  }
+  $('timelineExpandBtn')?.addEventListener('click', () => {
+    _ensureTimelineFullModal().classList.add('visible');
+    _renderFullTimeline('all');
   });
   // Session daily cap — max 3 sessions per day to prevent compulsive use
   async function checkDailyCap() {
