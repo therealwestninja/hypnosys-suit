@@ -1895,19 +1895,142 @@ padding: 14px 16px;
   .post-trigger-title { font-size: 0.6rem; color: var(--neon-amber); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 6px; font-family: var(--f-head); }
   .post-trigger-text { font-size: 0.85rem; color: var(--text); }
   .post-trigger-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; }
-  .post-checkin {
+
+  /* Check-in: conversational interface (default) + slider alternative.
+     Used by both pre-session (Step 5) and post-session screens.
+     The pre-session variant inherits .pre-checkin sizing; the
+     post-session variant adds .post-checkin-elevated for visual
+     prominence as the focal post-session element. */
+  .post-checkin { margin-bottom: 14px; }
+  .post-checkin-elevated {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-left: 2px solid var(--neon-cyan);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .post-checkin-grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-    margin-bottom: 14px;
+    margin-top: 10px;
   }
   .post-checkin-item {
     background: var(--glass); border: 1px solid var(--glass-border);
-padding: 12px; text-align: center;
+    padding: 12px; text-align: center;
+  }
+  .post-checkin-elevated .post-checkin-item {
+    background: var(--bg-deep);
   }
   .post-checkin-label { font-size: 0.62rem; color: var(--text-muted); margin-bottom: 4px; }
   .post-checkin-val { font-size: 1.3rem; font-weight: 300; color: var(--text); margin-bottom: 2px; }
   .post-checkin-item input[type="range"] { width: 100%; margin: 4px 0; }
   .post-checkin-ends { display: flex; justify-content: space-between; font-size: 0.52rem; color: var(--text-faint); }
   .post-checkin-feedback { font-size: 0.68rem; color: var(--neon-cyan); margin-top: 4px; min-height: 1em; }
+
+  /* Chat-style check-in header — small avatar + question + mode toggle */
+  .checkin-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .checkin-header-prominent { gap: 12px; margin-bottom: 12px; }
+  .checkin-avatar {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,212,230,0.1);
+    border: 1px solid rgba(0,212,230,0.3);
+    color: var(--neon-cyan);
+    font-size: 0.78rem;
+  }
+  .checkin-avatar-lg {
+    width: 34px; height: 34px;
+    font-size: 0.95rem;
+  }
+  .checkin-question {
+    flex: 1; min-width: 0;
+    font-size: 0.84rem; color: var(--text);
+    font-weight: 500; line-height: 1.3;
+  }
+  .checkin-question-lg {
+    font-size: 1rem;
+    font-family: var(--f-head, var(--f-body));
+  }
+  .checkin-mode-toggle {
+    background: none; border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    font-size: 0.64rem; letter-spacing: 0.04em; text-transform: lowercase;
+    padding: 0; flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  .checkin-mode-toggle:hover { color: var(--neon-cyan); }
+
+  /* Conversational input wrap */
+  .checkin-text-wrap textarea {
+    width: 100%;
+    font-size: 0.84rem;
+    padding: 10px 12px;
+    background: var(--bg-deep);
+    border: 1px solid var(--glass-border);
+    color: var(--text);
+    font-family: inherit;
+    line-height: 1.5;
+    resize: vertical;
+    transition: border-color 0.15s;
+  }
+  .checkin-text-wrap textarea:focus {
+    outline: none;
+    border-color: rgba(0,212,230,0.5);
+  }
+  .checkin-text-wrap textarea::placeholder {
+    color: var(--text-faint);
+    line-height: 1.5;
+  }
+  .checkin-text-wrap-lg textarea {
+    font-size: 0.9rem;
+    padding: 12px 14px;
+  }
+  .checkin-text-actions {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 8px;
+  }
+  .checkin-hint {
+    flex: 1; min-width: 0;
+    font-size: 0.66rem; color: var(--text-faint);
+    line-height: 1.4;
+    transition: color 0.2s;
+  }
+  .checkin-send-btn {
+    flex-shrink: 0;
+    background: rgba(0,212,230,0.08);
+    border: 1px solid rgba(0,212,230,0.4);
+    color: var(--neon-cyan);
+    font-size: 0.72rem;
+    padding: 5px 14px;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 0.04em;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .checkin-send-btn:hover {
+    background: rgba(0,212,230,0.15);
+    border-color: rgba(0,212,230,0.6);
+  }
+  .checkin-send-btn:active { transform: translateY(1px); }
+
+  /* Echo line — shown after parser successfully extracts signals.
+     Mimics an agent acknowledgment in a chat thread. */
+  .checkin-feedback-echo {
+    font-size: 0.74rem; color: var(--text-dim);
+    line-height: 1.5;
+    margin-top: 10px;
+    padding: 8px 12px 8px 14px;
+    background: rgba(0,212,230,0.04);
+    border-left: 2px solid rgba(0,212,230,0.4);
+    display: none;
+  }
+  .checkin-feedback-echo.visible { display: block; }
+  .checkin-feedback-echo strong { color: var(--neon-cyan); font-weight: 500; }
+
   .post-journal { margin-bottom: 16px; }
   .journal-area {
     width: 100%; min-height: 60px; max-height: 120px; resize: vertical;
@@ -3004,6 +3127,7 @@ padding: 6px 10px; font-size: 1.1rem;
         </div>
       </div>
 
+      <div class="app-intro-paths-label">Three ways to start</div>
       <div class="app-intro-paths">
         <div class="app-intro-path">
           <div class="app-intro-path-num">1</div>
@@ -3974,22 +4098,27 @@ I return to myself easily"></textarea>
       </div>
 
       <div class="pre-checkin" id="preMoodSection">
-        <div class="mood-label" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span>how are you right now?</span>
-          <button type="button" id="preCheckinTextToggle" style="background:none;border:none;color:var(--neon-cyan);cursor:pointer;font-size:0.66rem;letter-spacing:0.04em;text-transform:lowercase;padding:0">type it instead</button>
+        <div class="checkin-header">
+          <div class="checkin-avatar">💬</div>
+          <div class="checkin-question">how are you arriving?</div>
+          <button type="button" id="preCheckinTextToggle" class="checkin-mode-toggle">use sliders instead</button>
         </div>
-        <!-- Free-text alternative input. Parses a short sentence into
-             approximate mood/tension/energy values via a keyword lexicon
-             (no AI call needed) and applies to the sliders. Hidden by
-             default — toggled via the link above. -->
-        <div id="preCheckinTextWrap" style="display:none;margin:8px 0">
-          <textarea id="preCheckinText" rows="2" maxlength="200" placeholder="e.g. tired but mind is racing, feeling tense after a long day" style="width:100%;font-size:0.84rem;padding:8px 10px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text-bright);font-family:inherit;resize:vertical"></textarea>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;gap:8px">
-            <span id="preCheckinTextHint" style="font-size:0.62rem;color:var(--text-faint);flex:1">type a few words about how you feel — we'll set the sliders for you</span>
-            <button type="button" id="preCheckinTextApply" class="preview-btn" style="font-size:0.7rem;padding:4px 10px">apply</button>
+        <!-- Conversational input — the default. Free text parsed via
+             keyword lexicon (no AI call) into mood/tension/energy. Auto-
+             applies on blur so users who skip the send button still get
+             their signal captured. -->
+        <div id="preCheckinTextWrap" class="checkin-text-wrap">
+          <textarea id="preCheckinText" rows="2" maxlength="200" placeholder="say a few words — e.g. tired but mind is racing, feeling tense after a long day, calm but a little foggy"></textarea>
+          <div class="checkin-text-actions">
+            <span id="preCheckinTextHint" class="checkin-hint">we'll read mood, tension, and energy from what you write</span>
+            <button type="button" id="preCheckinTextApply" class="checkin-send-btn">send →</button>
           </div>
         </div>
-        <div class="pre-checkin-grid">
+        <!-- Sliders — hidden by default, revealed via toggle. The
+             textarea parser pushes values here so they always reflect
+             the canonical state regardless of which input mode the
+             user is in. -->
+        <div id="preCheckinSliders" class="pre-checkin-grid" style="display:none">
           <div class="pre-checkin-item">
             <div class="pre-checkin-label">mood</div>
             <div class="pre-emoji-row" id="preMoodEmojis">
@@ -4016,7 +4145,7 @@ I return to myself easily"></textarea>
         <div id="readinessRow" style="margin-top:10px;padding:8px 12px;background:var(--glass);border:1px solid var(--glass-border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <span style="font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint)">readiness</span>
           <span id="readinessScore" style="font-size:1rem;font-weight:600;color:var(--neon-cyan);font-variant-numeric:tabular-nums">—</span>
-          <span id="readinessHint" style="font-size:0.74rem;color:var(--text-dim);flex:1;line-height:1.4">set mood, tension, and energy above for a guidance hint</span>
+          <span id="readinessHint" style="font-size:0.74rem;color:var(--text-dim);flex:1;line-height:1.4">describe how you feel above for a guidance hint</span>
         </div>
       </div>
 
@@ -4096,43 +4225,49 @@ I return to myself easily"></textarea>
         <div class="post-card" id="postPreGenOfferBox" style="display:none"></div>
       </div>
 
-      <!-- Check-in row: mood + alertness + depth -->
-      <div class="post-checkin">
-        <!-- Free-text alternative to the three sliders below. Mirrors the
-             pre-session pattern (see preCheckinTextToggle + parseCheckinText).
-             The sliders + this textarea write to the same state path; the
-             toggle just swaps which input mode the user is using. The
-             journal textarea further down is a SEPARATE concern (freeform
-             reflection) and keeps its own mic button. -->
-        <div style="grid-column:1 / -1;text-align:right;margin-bottom:-4px">
-          <button type="button" id="postCheckinTextToggle" style="background:none;border:none;color:var(--neon-cyan);cursor:pointer;font-size:0.66rem;letter-spacing:0.04em;text-transform:lowercase;padding:0">type it instead</button>
+      <!-- Post-session check-in. Conversational text is the default;
+           sliders are the alternative behind a toggle. Visually elevated
+           with cyan accent border to anchor user attention here above
+           the journal. Mirrors the Step-5 pre-session pattern. -->
+      <div class="post-checkin post-checkin-elevated">
+        <div class="checkin-header checkin-header-prominent">
+          <div class="checkin-avatar checkin-avatar-lg">💬</div>
+          <div class="checkin-question checkin-question-lg">how did that land?</div>
+          <button type="button" id="postCheckinTextToggle" class="checkin-mode-toggle">use sliders instead</button>
         </div>
-        <div id="postCheckinTextWrap" style="display:none;grid-column:1 / -1;margin:0 0 8px">
-          <textarea id="postCheckinText" rows="2" maxlength="240" placeholder="e.g. feeling much better, calmer, a bit drowsy, went pretty deep" style="width:100%;font-size:0.84rem;padding:8px 10px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text-bright);font-family:inherit;resize:vertical"></textarea>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-            <span id="postCheckinTextHint" style="font-size:0.62rem;color:var(--text-faint);flex:1">type a few words about how you feel — we'll set the sliders for you</span>
-            <button type="button" id="postCheckinTextApply" class="preview-btn" style="font-size:0.7rem;padding:4px 10px">apply</button>
+        <div id="postCheckinTextWrap" class="checkin-text-wrap checkin-text-wrap-lg">
+          <textarea id="postCheckinText" rows="3" maxlength="240" placeholder="say a few words — e.g. feeling much better and calmer, a bit drowsy but clear, went pretty deep, mind is quieter than before"></textarea>
+          <div class="checkin-text-actions">
+            <span id="postCheckinTextHint" class="checkin-hint">we'll read mood, alertness, and depth from what you write</span>
+            <button type="button" id="postCheckinTextApply" class="checkin-send-btn">send →</button>
           </div>
         </div>
-        <div class="post-checkin-item">
-          <div class="post-checkin-label">how do you feel?</div>
-          <div class="post-checkin-val" id="postStateVal">5</div>
-          <input type="range" id="postStateSlider" min="0" max="10" value="5">
-          <div class="post-checkin-ends"><span>😞 worse</span><span>much better 😊</span></div>
-          <div class="post-checkin-feedback" id="moodFeedback"></div>
+        <div id="postCheckinSliders" class="post-checkin-grid" style="display:none">
+          <div class="post-checkin-item">
+            <div class="post-checkin-label">how do you feel?</div>
+            <div class="post-checkin-val" id="postStateVal">5</div>
+            <input type="range" id="postStateSlider" min="0" max="10" value="5">
+            <div class="post-checkin-ends"><span>😞 worse</span><span>much better 😊</span></div>
+            <div class="post-checkin-feedback" id="moodFeedback"></div>
+          </div>
+          <div class="post-checkin-item">
+            <div class="post-checkin-label">how alert are you?</div>
+            <div class="post-checkin-val" id="alertnessVal">7</div>
+            <input type="range" id="alertnessSlider" min="0" max="10" value="7">
+            <div class="post-checkin-ends"><span>😴 drowsy</span><span>fully alert ⚡</span></div>
+          </div>
+          <div class="post-checkin-item">
+            <div class="post-checkin-label">how deep did it feel?</div>
+            <div class="post-checkin-val" id="depthVal">5</div>
+            <input type="range" id="depthSlider" min="0" max="10" value="5">
+            <div class="post-checkin-ends"><span>surface</span><span>very deep 🌊</span></div>
+          </div>
         </div>
-        <div class="post-checkin-item">
-          <div class="post-checkin-label">how alert are you?</div>
-          <div class="post-checkin-val" id="alertnessVal">7</div>
-          <input type="range" id="alertnessSlider" min="0" max="10" value="7">
-          <div class="post-checkin-ends"><span>😴 drowsy</span><span>fully alert ⚡</span></div>
-        </div>
-        <div class="post-checkin-item">
-          <div class="post-checkin-label">how deep did it feel?</div>
-          <div class="post-checkin-val" id="depthVal">5</div>
-          <input type="range" id="depthSlider" min="0" max="10" value="5">
-          <div class="post-checkin-ends"><span>surface</span><span>very deep 🌊</span></div>
-        </div>
+        <!-- Persistent feedback strip — shows the parsed signal as a
+             quiet "agent reply" after the user sends. Mood-feedback for
+             slider mode lives inside the first slider item; this is for
+             the text-mode acknowledgment. -->
+        <div id="postCheckinFeedbackEcho" class="checkin-feedback-echo"></div>
       </div>
 
       <!-- Journal -->
@@ -4953,7 +5088,13 @@ I return to myself easily"></textarea>
         tx.oncomplete = res;
         tx.onerror = e => rej(e.target.error);
       });
-    } catch {}
+    } catch (e) {
+      // Silent failure preserves caller contract (these are best-effort
+      // writes — most are settings mirrors). But surfacing the error in
+      // console means storage-budget or permission failures aren't
+      // invisible during dev / when users send screenshots.
+      console.warn(`[idbSet] failed for "${key}":`, e?.message || e);
+    }
   }
   async function idbDel(key) {
     try {
@@ -4964,7 +5105,9 @@ I return to myself easily"></textarea>
         tx.oncomplete = res;
         tx.onerror = e => rej(e.target.error);
       });
-    } catch {}
+    } catch (e) {
+      console.warn(`[idbDel] failed for "${key}":`, e?.message || e);
+    }
   }
 
   // ====================================================================
@@ -5652,7 +5795,7 @@ I return to myself easily"></textarea>
   const TOTAL_STEPS = 6;
   const state = {
     currentStep: 1,
-    stepsCompleted: { 1: false, 2: false, 3: false, 4: false, 5: false },
+    stepsCompleted: { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false },
     personas: [],
     selectedPersonaId: 'driver',
     // Hidden persona unlock state. Shape: { personaId: { unlockedAt: ms } }.
@@ -5872,6 +6015,23 @@ I return to myself easily"></textarea>
           source: e.source,
           bytes: e.bytes,
         })),
+        // localStorage budget snapshot — surfaces approximate usage and
+        // remaining headroom. HNE keeps most data in IDB but mirrors
+        // settings + a few flags here.
+        storage: () => (typeof checkStorageBudget === 'function' ? checkStorageBudget() : null),
+        // Destructive admin: wipe metrics-history aggregate (does NOT touch
+        // session history, profile, or memory). Requires explicit `true`
+        // arg so accidental autocomplete invocations can't fire it.
+        clearMetrics: async (confirm) => {
+          if (confirm !== true) {
+            console.warn('[HNE.clearMetrics] pass `true` to actually wipe metrics history. This does NOT touch session history or memory.');
+            return false;
+          }
+          if (typeof clearMetricsHistory !== 'function') return false;
+          await clearMetricsHistory();
+          console.log('[HNE.clearMetrics] metrics history wiped');
+          return true;
+        },
       }),
       writable: false, configurable: false,
     });
@@ -10435,10 +10595,6 @@ I return to myself easily"></textarea>
     apply(w.m, record.methodId);
     apply(w.s, record.soundscape);
     apply(w.ln, record.length);
-  }
-
-  function getPreferred(weightMap, n = 3) {
-    return Object.entries(weightMap).sort((a, b) => b[1] - a[1]).slice(0, n).map(e => e[0]);
   }
 
   // ── Phase 6: Difficulty ramp ──
@@ -18178,11 +18334,6 @@ ${gs.phaseResults[p]}
     return ordered.map(phaseId => ({ phaseId, text: state.parsedScript?.[phaseId] || '' })).filter(s => s.text && s.text.trim());
   }
 
-  function getSpokenScriptPreviewText() {
-    const sections = getScriptSectionsFromState();
-    return sections.map(s => stripLeadingPhaseHeader(s.text, s.phaseId).trim()).filter(Boolean).join('\n\n');
-  }
-
   // ====================================================================
   // UNDO / REDO — phase-editor snapshot stack
   // ====================================================================
@@ -20337,7 +20488,7 @@ Start immediately:`;
       if (state._debug?.skipCooldown) {
         sdLog('cooldown bypassed — debug mode on');
       } else {
-        const remaining = Math.ceil((state._cooldownUntil - Date.now()) / 1000);
+        const remaining = getEmergencyCooldownRemaining();
         notify.warn(`Please wait ${remaining}s before starting another session.`);
         return;
       }
@@ -20549,15 +20700,19 @@ Start immediately:`;
     const depthSl = $('depthSlider'); if (depthSl) { depthSl.value = 5; }
     const depthV = $('depthVal'); if (depthV) depthV.textContent = '5';
     const journal = $('journalText'); if (journal) journal.value = '';
-    // Conversational check-in state — clear textarea + collapse, reset hint
+    // Conversational check-in state — restore text-first default. Sliders
+    // hidden, textarea visible, hint reset, echo dismissed.
     const pcText = $('postCheckinText'); if (pcText) pcText.value = '';
-    const pcWrap = $('postCheckinTextWrap'); if (pcWrap) pcWrap.style.display = 'none';
-    const pcTog  = $('postCheckinTextToggle'); if (pcTog) pcTog.textContent = 'type it instead';
+    const pcWrap = $('postCheckinTextWrap'); if (pcWrap) pcWrap.style.display = '';
+    const pcSliders = $('postCheckinSliders'); if (pcSliders) pcSliders.style.display = 'none';
+    const pcTog  = $('postCheckinTextToggle'); if (pcTog) pcTog.textContent = 'use sliders instead';
     const pcHint = $('postCheckinTextHint');
     if (pcHint) {
-      pcHint.textContent = 'type a few words about how you feel — we\'ll set the sliders for you';
+      pcHint.textContent = 'we\'ll read mood, alertness, and depth from what you write';
       pcHint.style.color = 'var(--text-faint)';
     }
+    const pcEcho = $('postCheckinFeedbackEcho');
+    if (pcEcho) { pcEcho.classList.remove('visible'); pcEcho.innerHTML = ''; }
 
     // Wake Lock — prevent screen timeout during session
     try {
@@ -21378,7 +21533,6 @@ Start immediately:`;
     resetStateEngine();      // clear engagement EMA, phase tracking, external signals
     clearRuntimeRuleState(); // clear per-rule runtime state (heldSec, lastFiredSec)
     clearTriggerWindowState(); // clear trigger window state (status, openedAt, lastFiredAt)
-    state._rulesPreDuckVolume = null;
     // Webcam: stop the stream + clear signals. Per-session opt-in resets — checkbox
     // unticked so the next session starts off; user re-opts in if they want it.
     stopWebcam();
@@ -21464,6 +21618,11 @@ Start immediately:`;
       // Why-this-session tag chips picked on Step 3. Sorted for stable
       // diffs across replays. Empty array if user didn't tap any chips.
       sessionTags: state._sessionTags ? [...state._sessionTags].sort() : [],
+      // Captured when user bypassed the pre-session safety validator (missing
+      // Lightener/Wake or unbalanced phases). Surfaces post-session so the
+      // user can see they ran an unbalanced shape — supports learning when
+      // the validator's complaints actually reflect their experience.
+      startedUnsafe: state._startedUnsafe === true,
       workflowVersion: 11,
       stepsTotal: 6,
     };
@@ -21616,10 +21775,18 @@ Start immediately:`;
     if (reflectionBox) {
       if (!wasEmergency) {
         const reflection = POST_SESSION_REFLECTIONS[state.intentionType] || POST_SESSION_REFLECTION_FALLBACK;
+        // Quiet flag: this session ran with the pre-session safety validator
+        // bypassed (e.g., missing Lightener/Wake, unbalanced phases). Surfaces
+        // post-session so the user can compare their experience against the
+        // validator's concerns; not nagging, just visible.
+        const unsafeNote = state._startedUnsafe
+          ? `<div style="margin-top:10px;padding:6px 10px;background:rgba(255,171,0,0.06);border-left:2px solid var(--neon-amber);font-size:0.72rem;color:var(--text-dim);line-height:1.5">Note: this session ran with the pre-session safety check bypassed. Your post-session check-in below is especially worth noting — it grounds whether the unbalanced shape served you or didn't.</div>`
+          : '';
         reflectionBox.style.display = '';
         reflectionBox.innerHTML = `
           <div class="post-card-title">a moment to notice</div>
-          <div class="post-trigger-text" style="font-size:0.86rem;line-height:1.55;color:var(--text-dim)">${escapeHtml(reflection)}</div>`;
+          <div class="post-trigger-text" style="font-size:0.86rem;line-height:1.55;color:var(--text-dim)">${escapeHtml(reflection)}</div>
+          ${unsafeNote}`;
       } else {
         reflectionBox.style.display = 'none';
         reflectionBox.innerHTML = '';
@@ -23301,17 +23468,28 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   }
 
   $('preCheckinTextToggle')?.addEventListener('click', () => {
-    const wrap = $('preCheckinTextWrap');
+    const sliders = $('preCheckinSliders');
+    const textWrap = $('preCheckinTextWrap');
     const tog  = $('preCheckinTextToggle');
-    if (!wrap || !tog) return;
-    const showing = wrap.style.display !== 'none';
-    wrap.style.display = showing ? 'none' : '';
-    tog.textContent = showing ? 'type it instead' : 'use sliders instead';
-    if (!showing) $('preCheckinText')?.focus();
+    if (!sliders || !tog) return;
+    const slidersShowing = sliders.style.display !== 'none';
+    if (slidersShowing) {
+      // Switch back to text mode
+      sliders.style.display = 'none';
+      if (textWrap) textWrap.style.display = '';
+      tog.textContent = 'use sliders instead';
+      $('preCheckinText')?.focus();
+    } else {
+      // Switch to sliders mode
+      sliders.style.display = '';
+      if (textWrap) textWrap.style.display = 'none';
+      tog.textContent = 'use text instead';
+    }
   });
 
-  $('preCheckinTextApply')?.addEventListener('click', () => {
+  function _applyPreCheckinText(opts = {}) {
     const text = $('preCheckinText')?.value || '';
+    if (!text.trim()) return false;
     const parsed = parseCheckinText(text);
     const applied = [];
     if (parsed.mood != null) {
@@ -23338,15 +23516,20 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     const hint = $('preCheckinTextHint');
     if (hint) {
       if (applied.length) {
-        hint.textContent = `parsed → ${applied.join(' · ')}. Adjust the sliders below if anything feels off.`;
-        hint.style.color = 'var(--text-dim)';
-      } else {
-        hint.textContent = 'no clear mood/tension/energy signals found — try mentioning how you feel, how relaxed/tense you are, and your energy level.';
+        hint.textContent = 'we heard you — readiness score below reflects what you said';
+        hint.style.color = 'var(--text-faint)';
+      } else if (!opts.silent) {
+        hint.textContent = 'no clear signal — mention mood, tension/relaxation, and energy';
         hint.style.color = 'var(--neon-amber)';
       }
     }
     _updateReadinessScore();
-  });
+    return applied.length > 0;
+  }
+  $('preCheckinTextApply')?.addEventListener('click', () => _applyPreCheckinText());
+  // Auto-apply on blur — users who type then click "next →" shouldn't lose
+  // their signal because they forgot to send.
+  $('preCheckinText')?.addEventListener('blur', () => _applyPreCheckinText({ silent: true }));
 
   /** Compute & render the pre-session readiness score from the three pre-checkin
    *  signals. Mood + energy contribute positively; tension inverts (high tension
@@ -23362,7 +23545,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     // If mood hasn't been set yet (no emoji clicked), surface placeholder
     if (mood == null && tension == null && energy == null) {
       scoreEl.textContent = '—';
-      hintEl.textContent = 'set mood, tension, and energy above for a guidance hint';
+      hintEl.textContent = 'describe how you feel above for a guidance hint';
       return;
     }
     const m = Number.isFinite(mood)    ? mood    : 5;
@@ -23490,17 +23673,26 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   // the journalText textarea is unrelated — that's freeform reflection
   // saved verbatim, not check-in input.
   $('postCheckinTextToggle')?.addEventListener('click', () => {
-    const wrap = $('postCheckinTextWrap');
+    const sliders = $('postCheckinSliders');
+    const textWrap = $('postCheckinTextWrap');
     const tog  = $('postCheckinTextToggle');
-    if (!wrap || !tog) return;
-    const showing = wrap.style.display !== 'none';
-    wrap.style.display = showing ? 'none' : '';
-    tog.textContent = showing ? 'type it instead' : 'use sliders instead';
-    if (!showing) $('postCheckinText')?.focus();
+    if (!sliders || !tog) return;
+    const slidersShowing = sliders.style.display !== 'none';
+    if (slidersShowing) {
+      sliders.style.display = 'none';
+      if (textWrap) textWrap.style.display = '';
+      tog.textContent = 'use sliders instead';
+      $('postCheckinText')?.focus();
+    } else {
+      sliders.style.display = '';
+      if (textWrap) textWrap.style.display = 'none';
+      tog.textContent = 'use text instead';
+    }
   });
 
-  $('postCheckinTextApply')?.addEventListener('click', () => {
+  function _applyPostCheckinText(opts = {}) {
     const text = $('postCheckinText')?.value || '';
+    if (!text.trim()) return false;
     const parsed = parsePostCheckinText(text);
     const applied = [];
     if (parsed.mood != null) {
@@ -23519,14 +23711,45 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       applied.push(`depth ${parsed.depth}/10`);
     }
     const hint = $('postCheckinTextHint');
-    if (hint) {
-      if (applied.length) {
-        hint.textContent = `parsed → ${applied.join(' · ')}. Adjust the sliders if anything feels off.`;
-        hint.style.color = 'var(--text-dim)';
-      } else {
-        hint.textContent = 'no clear mood/alertness/depth signals found — try mentioning how you feel, how alert you are, and how deep it went.';
+    const echo = $('postCheckinFeedbackEcho');
+    if (applied.length) {
+      if (hint) {
+        hint.textContent = 'we heard you — adjust below if anything feels off';
+        hint.style.color = 'var(--text-faint)';
+      }
+      if (echo) {
+        // Friendly acknowledgment in the same surface area as the input.
+        // Surfaces the parsed signals as natural language rather than
+        // raw numbers — keeps the conversational frame.
+        const moodPhrase = parsed.mood == null ? null
+          : parsed.mood >= 8 ? 'really good'
+          : parsed.mood >= 6 ? 'better than before'
+          : parsed.mood >= 4 ? 'about the same'
+          : parsed.mood >= 2 ? 'still rough'
+          : 'pretty hard';
+        const alertPhrase = parsed.alertness == null ? null
+          : parsed.alertness >= 8 ? 'fully alert'
+          : parsed.alertness >= 6 ? 'reasonably alert'
+          : parsed.alertness >= 4 ? 'a little drowsy'
+          : 'pretty drowsy';
+        const depthPhrase = parsed.depth == null ? null
+          : parsed.depth >= 8 ? 'went very deep'
+          : parsed.depth >= 6 ? 'went meaningfully deep'
+          : parsed.depth >= 4 ? 'somewhere in the middle'
+          : parsed.depth >= 2 ? 'stayed near the surface'
+          : 'felt mostly surface-level';
+        const phrases = [moodPhrase, alertPhrase, depthPhrase].filter(Boolean);
+        echo.innerHTML = `So: ${phrases.map(p => `<strong>${escapeHtml(p)}</strong>`).join(' · ')}. Got it.`;
+        echo.classList.add('visible');
+      }
+    } else if (!opts.silent) {
+      // Only show the "no signal" warning when user explicitly clicked send.
+      // Silent (auto-blur) calls just skip — they shouldn't nag.
+      if (hint) {
+        hint.textContent = 'no clear signal — mention how you feel, how alert you are, and how deep it went';
         hint.style.color = 'var(--neon-amber)';
       }
+      if (echo) echo.classList.remove('visible');
     }
     // Trigger the existing slider input handlers so feedback text +
     // grounding box + persistPostCheckin all run through the canonical
@@ -23534,7 +23757,12 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     if (parsed.mood != null) $('postStateSlider')?.dispatchEvent(new Event('input', { bubbles: true }));
     if (parsed.alertness != null) $('alertnessSlider')?.dispatchEvent(new Event('input', { bubbles: true }));
     if (parsed.depth != null) $('depthSlider')?.dispatchEvent(new Event('input', { bubbles: true }));
-  });
+    return applied.length > 0;
+  }
+  $('postCheckinTextApply')?.addEventListener('click', () => _applyPostCheckinText());
+  // Auto-apply on blur — users who type then click another button (back to
+  // setup, restart) shouldn't lose their signal because they forgot to send.
+  $('postCheckinText')?.addEventListener('blur', () => _applyPostCheckinText({ silent: true }));
 
   // Journal save + tier-aware sentiment classification. The basic save runs
   // on every blur. Sentiment is a paid-tier-only enhancement: when user is
@@ -23910,16 +24138,24 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     clearTimeout(state._safetyTimeout); // prevent ghost post-screen switch
     state._sessionStartTime = null;
     // Mirror the cleanup finishSession does for cross-session state — without
-    // these resets a duck rule that was mid-cycle at click-time leaks its
-    // pre-duck snapshot and engagement EMA into the next session.
-    state._rulesPreDuckVolume = null;
+    // these resets a rule that was mid-cycle at click-time leaks engagement
+    // EMA and trigger-window state into the next session.
     if (typeof resetStateEngine === 'function') resetStateEngine();
     if (typeof clearRuntimeRuleState === 'function') clearRuntimeRuleState();
     if (typeof clearTriggerWindowState === 'function') clearTriggerWindowState();
     if (typeof stopAudioReactiveLoop === 'function') stopAudioReactiveLoop();
+    // Webcam: per-session opt-in. If it was on for this session and the user
+    // is aborting, the stream should stop too — without this it keeps running
+    // until they navigate elsewhere. Mirrors finishSession's cleanup.
+    if (typeof stopWebcam === 'function') stopWebcam();
+    const _wcCb = $('webcamOptInThisSession'); if (_wcCb) _wcCb.checked = false;
+    // Playback dynamics — restore base speech rate so a fresh restart isn't
+    // anchored to the rate the adaptive engine drifted to mid-session.
+    if (typeof resetPlaybackDynamics === 'function') resetPlaybackDynamics();
+    state._baseSpeechRate = null;
     speechSynthesis.cancel();
     if (state.useLocalTTS && _localTTS.ready) _localTTS.cancel();
-    drone.stop(); stopVisuals();
+    await drone.stop(); stopVisuals();
     setSleepOverlay(false);
     bgEngine.clear();
     stopRecording();
