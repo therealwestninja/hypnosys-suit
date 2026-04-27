@@ -1710,6 +1710,19 @@ padding: 5px 15px; cursor: pointer;
   .mood-emoji.selected { opacity: 1; border-color: var(--accent); background: var(--accent-soft); transform: scale(1.15); }
   @media (max-width: 480px) { .pre-checkin-grid { grid-template-columns: 1fr; max-width: 260px; } }
 
+  /* ============ SESSION TAG CHIPS ============ */
+  .session-tag-chip {
+    background: var(--glass); border: 1px solid var(--glass-border);
+    color: var(--text-dim); font-size: 0.74rem;
+    padding: 5px 10px; cursor: pointer; transition: all 0.18s;
+    letter-spacing: 0.02em; min-height: 0;
+  }
+  .session-tag-chip:hover { color: var(--text); border-color: var(--text-faint); }
+  .session-tag-chip.selected {
+    color: var(--neon-cyan); border-color: var(--neon-cyan);
+    background: var(--neon-cyan-soft);
+  }
+
   /* ============ SESSION STATS ============ */
   .history-list { margin-top: 10px; }
   .history-item {
@@ -2561,6 +2574,21 @@ padding: 6px 10px; font-size: 1.1rem;
             <label for="pfShareGoals" class="pf-label" style="margin:0;cursor:pointer;font-size:0.7rem;color:var(--text-faint)">Share goals with AI</label>
           </div>
           <div class="sublabel" style="font-size:0.58rem;margin-top:4px">Profile stays on your device. Local recommendations always use these fields; the AI only sees fields with their share-toggle on.</div>
+          <!-- Recent profile diffs — exposes what the AI sees in its
+               "Recent changes" prompt block. Helps users understand the
+               feedback loop: edits to goals/about etc. become time-aware
+               context the Director uses for one or two weeks. -->
+          <details id="profileDiffsDetails" style="margin-top:8px">
+            <summary style="font-size:0.66rem;color:var(--text-faint);cursor:pointer">recent edits the AI is aware of</summary>
+            <div id="profileDiffsList" style="margin-top:6px;font-size:0.66rem;line-height:1.45;color:var(--text-dim);max-height:160px;overflow-y:auto"></div>
+          </details>
+          <details style="margin-top:4px">
+            <summary style="font-size:0.66rem;color:var(--text-faint);cursor:pointer">AI activity log</summary>
+            <div style="margin-top:6px">
+              <button class="btn secondary" id="viewAIAuditBtn" type="button" style="font-size:0.66rem;padding:4px 8px;width:100%">view recent AI calls</button>
+              <div class="sublabel" style="font-size:0.58rem;margin-top:4px;color:var(--text-faint)">Records provider + source + size for each AI call. Never the content.</div>
+            </div>
+          </details>
         </div>
         <details>
           <summary>stats</summary>
@@ -2734,6 +2762,25 @@ padding: 6px 10px; font-size: 1.1rem;
       <div class="field-group">
         <label class="field-label">describe what you want <span class="required-mark">required</span></label>
         <textarea id="intentionInput" placeholder="Plain language. Be specific. e.g. 'feel a warm happy smile when I think about kittens'"></textarea>
+      </div>
+
+      <!-- Why-this-session tag chips. Optional. Multi-select. Aggregates
+           over time into a personal taxonomy of triggers/contexts that the
+           Smart Director can pattern-match against ("3 sleep sessions
+           tagged 'can't sleep' ended early — try gentler"). -->
+      <div class="field-group" id="sessionTagsField">
+        <label class="field-label">why now? <span class="optional-mark">optional · multi-select</span></label>
+        <div id="sessionTagChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+          <button type="button" class="session-tag-chip" data-tag="anxious">anxious</button>
+          <button type="button" class="session-tag-chip" data-tag="cant-sleep">can't sleep</button>
+          <button type="button" class="session-tag-chip" data-tag="overwhelmed">overwhelmed</button>
+          <button type="button" class="session-tag-chip" data-tag="before-event">before event</button>
+          <button type="button" class="session-tag-chip" data-tag="after-stressor">after stressor</button>
+          <button type="button" class="session-tag-chip" data-tag="focus-needed">focus needed</button>
+          <button type="button" class="session-tag-chip" data-tag="emotional">processing emotion</button>
+          <button type="button" class="session-tag-chip" data-tag="curious">just exploring</button>
+        </div>
+        <div class="sublabel" style="font-size:0.66rem;margin-top:4px">Helps the Director learn what you reach for this app for. Stays on your device.</div>
       </div>
 
       <button class="btn warm full" id="craftBtn">craft hypnotic suggestion →</button>
@@ -3346,6 +3393,13 @@ I return to myself easily"></textarea>
             <div class="post-checkin-ends"><span>exhausted</span><span>energized</span></div>
           </div>
         </div>
+        <!-- Readiness score — derived from the three signals above. Live-updated.
+             Inverts tension so high tension subtracts; mood + energy add. -->
+        <div id="readinessRow" style="margin-top:10px;padding:8px 12px;background:var(--glass);border:1px solid var(--glass-border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint)">readiness</span>
+          <span id="readinessScore" style="font-size:1rem;font-weight:600;color:var(--neon-cyan);font-variant-numeric:tabular-nums">—</span>
+          <span id="readinessHint" style="font-size:0.74rem;color:var(--text-dim);flex:1;line-height:1.4">set mood, tension, and energy above for a guidance hint</span>
+        </div>
       </div>
 
       <div class="disclaimer">
@@ -3431,8 +3485,11 @@ I return to myself easily"></textarea>
       </div>
 
       <!-- Journal -->
-      <div class="post-journal">
+      <div class="post-journal" style="position:relative">
         <textarea class="journal-area" id="journalText" placeholder="What did you notice? Any sensations, images, thoughts, or shifts?"></textarea>
+        <!-- Voice journaling. Hidden until init confirms webkitSpeechRecognition
+             is available — graceful degrade for Firefox / iOS Safari. -->
+        <button type="button" id="journalMicBtn" title="Speak instead of typing" style="display:none;position:absolute;bottom:8px;right:8px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text-dim);padding:4px 10px;font-size:0.74rem;cursor:pointer;min-height:0">🎤 speak</button>
       </div>
 
       <div class="script-actions" style="margin-top:8px">
@@ -5033,6 +5090,14 @@ I return to myself easily"></textarea>
         history: async (n = 5) => { try { return ((await idbGet('stillness_history_v1')) || []).slice(0, n).map(r => ({ id: r.id, date: new Date(r.date).toISOString(), persona: r.guide, method: r.method, mood: `${r.preMood ?? '?'}→${r.postMood ?? '?'}`, completed: r.completed })); } catch { return []; } },
         smartDirector: () => !!state.smartDirectorEnabled,
         bias: () => state.directorBias ?? 0,
+        // AI audit log — read-only summary of recent calls. Provider, source,
+        // byte size, timestamp. Never the prompt content (privacy by design).
+        audit: (n = 20) => (_aiAuditLog || []).slice(0, n).map(e => ({
+          when: new Date(e.ts).toISOString(),
+          provider: e.provider,
+          source: e.source,
+          bytes: e.bytes,
+        })),
       }),
       writable: false, configurable: false,
     });
@@ -6709,12 +6774,18 @@ I return to myself easily"></textarea>
     _playbackDynamicsState.lastApplyMs = nowMs;
 
     const baseRate = state._baseSpeechRate ?? state.speechRate ?? 1.0;
-    const rawNew = baseRate * _playbackDynamicsState.smoothedScale;
+    // Phase-aware multiplier — set by the session phase loop. Layers on top
+    // of the audio-reactive smoothedScale, so the effective rate is
+    // userBase × phaseMult × audioReactiveScale, gated by the safety layer.
+    const phaseMult = state._phaseRateMult ?? 1.0;
+    const rawNew = baseRate * phaseMult * _playbackDynamicsState.smoothedScale;
     state.speechRate = gateSpeechRate(rawNew); // safety layer enforces hard caps
   }
 
   function resetPlaybackDynamics() {
     _playbackDynamicsState = { smoothedScale: 1.0, lastTickMs: 0, lastApplyMs: 0 };
+    // Reset phase-aware multiplier so the next session starts at neutral
+    state._phaseRateMult = 1.0;
     // Restore base speech rate so a new session starts clean
     if (state._baseSpeechRate != null) {
       state.speechRate = state._baseSpeechRate;
@@ -7351,8 +7422,16 @@ I return to myself easily"></textarea>
    * Find the top-K most semantically similar past digests for a given query
    * (typically the user's new intention text). Returns [{ digest, distance }].
    * Returns [] if embeddings aren't available or no matches exist.
+   *
+   * Optional opts:
+   *   domain     — filter digests by intentionType (sleep memories don't
+   *                pollute focus retrieval, etc.). Pre-update digests lack
+   *                this tag and pass through the filter unfiltered.
+   *   preMood    — when low (≤4), prefer digests with positive postMood
+   *                deltas (recovery patterns rise to the top). Otherwise
+   *                no re-rank; pure semantic distance.
    */
-  async function findRelevantDigests(queryText, k = 3) {
+  async function findRelevantDigests(queryText, k = 3, opts = {}) {
     if (!window.textEmbedderFunction || !queryText || queryText.length < 4) return [];
     try {
       const modelName = window.thread?.textEmbeddingModelName;
@@ -7362,11 +7441,27 @@ I return to myself easily"></textarea>
       const store = await _getEmbedStore();
       const memory = await getMemory();
       const digestsById = Object.fromEntries((memory.sessionDigests || []).map(d => [String(d.sessionId), d]));
+      const domain = opts.domain;
+      const preMood = Number.isFinite(opts.preMood) ? opts.preMood : null;
+      const lowMood = preMood != null && preMood <= 4;
       const scored = [];
       for (const [id, vec] of Object.entries(store.vectors)) {
         const d = digestsById[id];
         if (!d) continue; // digest was pruned, orphan vector
-        scored.push({ digest: d, distance: cosineDistance(qArr, vec) });
+        // Domain filter — keep digests with no tag (legacy) OR matching tag.
+        if (domain && d.intention && d.intention !== domain) continue;
+        let dist = cosineDistance(qArr, vec);
+        // Mood weighting — when user is low, a positive past delta moves
+        // that digest closer (smaller distance). Effect is gentle: 15%
+        // distance reduction per +5 mood improvement, max 30%.
+        if (lowMood && Number.isFinite(d.preMood) && Number.isFinite(d.postMood)) {
+          const delta = d.postMood - d.preMood;
+          if (delta > 0) {
+            const factor = Math.max(0.7, 1 - 0.03 * Math.min(delta, 10));
+            dist *= factor;
+          }
+        }
+        scored.push({ digest: d, distance: dist });
       }
       scored.sort((a, b) => a.distance - b.distance);
       return scored.slice(0, k);
@@ -8280,6 +8375,7 @@ I return to myself easily"></textarea>
     ].filter(Boolean).join('\n');
 
     try {
+      try { logAICall('perchance', 'image-tag', instruction); } catch {}
       const data = await root.aiTextPlugin({
         instruction,
         startWith: '{',
@@ -8325,6 +8421,45 @@ I return to myself easily"></textarea>
       _profileChangeLog.length = DIFF_BOUNCE_THRESHOLDS.logCap;
     }
     saveProfile();
+    renderProfileDiffs(); // refresh the visible "what AI sees" panel
+  }
+
+  /** Render the recent profile-diffs panel. Mirrors what getProfileContext
+   *  serves to the AI so users see exactly what the Director has been told.
+   *  Decay weight visualized as opacity. Empty state shown when nothing
+   *  has been committed yet. */
+  function renderProfileDiffs() {
+    const list = $('profileDiffsList');
+    if (!list) return;
+    const recent = (_profileChangeLog || []).slice(0, 12);
+    if (!recent.length) {
+      list.innerHTML = '<div style="opacity:0.55;font-style:italic">No recent edits logged.</div>';
+      return;
+    }
+    const srcLabel = id => ({ pfGoals:'goals', pfAbout:'about', pfAppearance:'appearance', pfName:'name', intentionInput:'intention', userAffirmations:'affirmations', bgPromptInput:'bg-prompt', bgImage:'image-gen' }[id] || id);
+    const now = Date.now();
+    const dayMs = 86400000;
+    list.innerHTML = recent.map(e => {
+      const ageDays = Math.max(0, (now - e.ts) / dayMs);
+      const w = Math.exp(-ageDays / 14);
+      const opacity = Math.max(0.35, w).toFixed(2);
+      const rel = (typeof _relTimeDB === 'function') ? _relTimeDB(e.ts) : 'recently';
+      let summary = '';
+      if (e.type === 'csv' && e.diff) {
+        const add = (e.diff.added || []).slice(0, 3).join(', ');
+        const rem = (e.diff.removed || []).slice(0, 3).join(', ');
+        const bits = [];
+        if (add) bits.push(`<span style="color:var(--accent-green)">+${escapeHtml(add)}</span>`);
+        if (rem) bits.push(`<span style="color:#d46a6a">-${escapeHtml(rem)}</span>`);
+        summary = bits.join(' ');
+      } else if (e.type === 'text' && e.diff) {
+        summary = `${Math.round((e.diff.changePct || 0) * 100)}% text change`;
+      } else if (e.type === 'image' && e.diff) {
+        const tags = (e.diff.tags || []).slice(0, 4).join(', ');
+        summary = e.diff.summary || (tags ? `[${escapeHtml(tags)}]` : '');
+      }
+      return `<div style="padding:3px 0;border-bottom:1px solid var(--glass-border);opacity:${opacity}"><span style="color:var(--text-faint);text-transform:uppercase;font-size:0.58rem;letter-spacing:0.06em">${escapeHtml(rel)}</span> · <strong>${escapeHtml(srcLabel(e.source))}</strong>${summary ? ' · ' + summary : ''}</div>`;
+    }).join('');
   }
 
   function getProfile() {
@@ -8397,6 +8532,9 @@ I return to myself easily"></textarea>
       // Additive migration — seed changeLog for old profiles missing the field
       _profileChangeLog = Array.isArray(p.changeLog) ? p.changeLog : [];
       applyProfileToForm(p, { save: false });
+      // Populate the visible diff panel with whatever's in the log so the
+      // user sees the same time-aware context the AI does.
+      if (typeof renderProfileDiffs === 'function') renderProfileDiffs();
     } catch {}
   }
 
@@ -8637,12 +8775,22 @@ I return to myself easily"></textarea>
     }
 
     // Recent change signals from the diff-bounce log — gives the director
-    // a time-aware view of what the user's been exploring lately.
+    // a time-aware view of what the user's been exploring lately. Decay-
+    // weighted by age (exp(-days/14)); entries below 0.1 weight drop out.
+    // Recent (≤7 days) changes also get a "first session since" callout so
+    // the AI explicitly knows this generation reflects a new direction.
     const srcLabel = id => ({ pfGoals:'goals', pfAbout:'about', intentionInput:'intention', userAffirmations:'affirmations', bgPromptInput:'bg-prompt', bgImage:'image-gen' }[id] || id);
     try {
       const recent = (_profileChangeLog || []).slice(0, 10);
       if (recent.length) {
-        const lines = recent.map(e => {
+        const now = Date.now();
+        const dayMs = 86400000;
+        const weighted = recent.map(e => {
+          const ageDays = Math.max(0, (now - e.ts) / dayMs);
+          const w = Math.exp(-ageDays / 14);
+          return { e, ageDays, w };
+        }).filter(x => x.w >= 0.1);
+        const lines = weighted.map(({ e }) => {
           const rel = _relTimeDB(e.ts);
           if (e.type === 'csv' && e.diff) {
             const add = (e.diff.added || []).slice(0, 3).join(',');
@@ -8661,6 +8809,13 @@ I return to myself easily"></textarea>
           return `${rel} · ${srcLabel(e.source)}`;
         }).filter(Boolean);
         if (lines.length) parts.push('Recent changes: ' + lines.join(' | '));
+        // First-session-since callout for very recent meaningful edits.
+        // Helps the AI understand this generation reflects a NEW direction.
+        const veryRecent = weighted.filter(x => x.ageDays <= 7 && (x.e.type === 'text' || x.e.type === 'csv'));
+        if (veryRecent.length) {
+          const fields = [...new Set(veryRecent.map(x => srcLabel(x.e.source)))];
+          parts.push(`This is the first session since the user updated their ${fields.join(' and ')}; lean into the change rather than echoing prior sessions.`);
+        }
       }
     } catch (e) { /* never break context assembly */ }
 
@@ -8981,6 +9136,20 @@ I return to myself easily"></textarea>
     if (r.skipIntensification && !brief.recoveryMode) directives.push('skip intensification language');
     if (directives.length) parts.push('Adjustments: ' + directives.join('; ') + '.');
 
+    // Trigger-fire feedback. When the current trigger has real-world fires,
+    // tell the AI to use confident reinforcement language. When the trigger
+    // has been around for a while but never fired, suggest refinement.
+    if (brief._triggerInfo) {
+      const ti = brief._triggerInfo;
+      if (ti.fires >= 3) {
+        parts.push(`Trigger "${ti.trigger}" has fired ${ti.fires} times in real life. Reinforce confidently — language like "now stronger than ever", "deeper each time".`);
+      } else if (ti.fires >= 1) {
+        parts.push(`Trigger "${ti.trigger}" has fired ${ti.fires} time${ti.fires === 1 ? '' : 's'}. Reinforce with quiet confidence.`);
+      } else if (ti.daysSinceCraft >= 7) {
+        parts.push(`Trigger "${ti.trigger}" hasn't fired in real life yet. Consider phrasing it more vividly or tying it to a more reliable everyday cue.`);
+      }
+    }
+
     const toneNote = _toneDirectiveFromBias(bias);
     if (toneNote) parts.push(toneNote);
 
@@ -9285,6 +9454,11 @@ I return to myself easily"></textarea>
   // Observe → Infer → Adapt → Reinforce → Evolve
   // ====================================================================
   const ADAPTIVE_KEY = 'stillness_adaptive_v1';
+  // Trigger-fire tracking — when a craftedSuggestion.trigger fires in real
+  // life, the user taps a button on the post-session screen to log the
+  // event. Counts feed into the Director Brief so confidently-firing
+  // triggers get reinforcement language and wobbly ones get refinement.
+  const TRIGGER_FIRES_KEY = 'stillness_trigger_fires_v1';
 
   /** Default adaptive profile (~300 bytes in IDB) */
   function defaultAdaptive() {
@@ -9544,8 +9718,53 @@ I return to myself easily"></textarea>
     return 'perchance';
   }
 
+  // ====================================================================
+  // AI DATA AUDIT LOG — privacy-first record of what was sent where
+  // ====================================================================
+  // Records metadata about each AI call (provider, source label, byte
+  // size, timestamp). Never stores the prompt content itself — that would
+  // re-expose the very profile data the audit log exists to give users
+  // visibility into. Capped at 100 entries, in-memory + persisted to IDB
+  // for cross-session continuity. Surface: a read-only modal opened from
+  // the profile panel, plus window.HNE.audit() for power users.
+  const AI_AUDIT_KEY = 'stillness_ai_audit_v1';
+  const AI_AUDIT_CAP = 100;
+  let _aiAuditLog = [];
+  let _aiAuditLoaded = false;
+  async function _loadAuditLog() {
+    if (_aiAuditLoaded) return;
+    try { _aiAuditLog = (await idbGet(AI_AUDIT_KEY)) || []; }
+    catch { _aiAuditLog = []; }
+    _aiAuditLoaded = true;
+  }
+  let _auditSaveTimer = null;
+  function _scheduleAuditSave() {
+    clearTimeout(_auditSaveTimer);
+    _auditSaveTimer = setTimeout(async () => {
+      try { await idbSet(AI_AUDIT_KEY, _aiAuditLog); } catch {}
+    }, 1500);
+  }
+  function logAICall(provider, source, instruction) {
+    if (!_aiAuditLoaded) _loadAuditLog(); // fire-and-forget; OK if first call lacks history
+    const bytes = (typeof instruction === 'string') ? instruction.length : 0;
+    _aiAuditLog.unshift({
+      ts: Date.now(),
+      provider: provider || 'unknown',
+      source: source || 'unknown',
+      bytes,
+    });
+    if (_aiAuditLog.length > AI_AUDIT_CAP) _aiAuditLog.length = AI_AUDIT_CAP;
+    _scheduleAuditSave();
+  }
+  // Eager load at module init so first AI call has a primed log.
+  _loadAuditLog().catch(() => {});
+
   async function aiGenerate(instruction, opts = {}) {
     const provider = state.extAiProvider || 'perchance';
+    // Audit log — record metadata about this call. Skips content for
+    // privacy. opts.source identifies the caller (e.g. 'phase-gen',
+    // 'craft-suggestion', 'memory-digest', 'image-tag', 'affirm-gen').
+    try { logAICall(provider, opts.source || 'unknown', instruction); } catch {}
     // Helper — ensure a returned object always has a usable shape and
     // surfaces empty/failed generations as errors rather than silent empty
     // strings that propagate into scripts.
@@ -9921,7 +10140,18 @@ Practitioner profile (full, natural sentences):`;
       const memory = await getMemory();
       const digest = await digestSessionScript(script, record);
       if (digest) {
-        const entry = { sessionId: record.date, date: record.date, digest, depth: record.depth, moodDelta: (record.postMood ?? 5) - (record.preMood ?? 5) };
+        const entry = {
+          sessionId: record.date,
+          date: record.date,
+          digest,
+          depth: record.depth,
+          moodDelta: (record.postMood ?? 5) - (record.preMood ?? 5),
+          // Tags for tier-2 retrieval filtering. domain → per-intention
+          // memory channel; pre/post moods → mood-weighted re-rank.
+          intention: record.intention || null,
+          preMood:   Number.isFinite(record.preMood)  ? record.preMood  : null,
+          postMood:  Number.isFinite(record.postMood) ? record.postMood : null,
+        };
         memory.sessionDigests.unshift(entry);
         while (memory.sessionDigests.length > 30) memory.sessionDigests.pop();
         // also persist an embedding vector so future sessions can
@@ -9952,6 +10182,11 @@ Practitioner profile (full, natural sentences):`;
     const tVal = $('preTensionVal'); if (tVal) tVal.textContent = '5';
     const eEl = $('preEnergySlider'); if (eEl) eEl.value = 5;
     const eVal = $('preEnergyVal'); if (eVal) eVal.textContent = '5';
+    // Reset session tags too — they're per-session by design.
+    if (state._sessionTags) state._sessionTags.clear(); else state._sessionTags = new Set();
+    document.querySelectorAll('#sessionTagChips .session-tag-chip.selected').forEach(c => c.classList.remove('selected'));
+    // Reset readiness display
+    if (typeof _updateReadinessScore === 'function') _updateReadinessScore();
     if (!preserveSelections) {
       state.selectedPersonaId = 'driver';
       state.selectedMethodId = 'highway';
@@ -14780,6 +15015,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     ], 600);
 
     try {
+      try { logAICall('perchance', 'craft-suggestion', instruction); } catch {}
       const data = await root.aiTextPlugin({ instruction, startWith: '{', stopSequences: ['\n\n\n', '\n\n[[', '\n[['], hideStartWith: true });
       // guard against error status AND empty output
       if (!data || data.stopReason === 'error') throw new Error('AI generation encountered an error.');
@@ -15323,8 +15559,8 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
     const totalDepth = deepenerPhases.length;
 
     const phaseInstructions = {
-      settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user. Open naturally — don't say "hello". Use \x5BPAUSE n\x5D markers. Output ONLY the script text.`,
-      induction: `Write the INDUCTION phase (~${targetWords.induction} words). Move from awareness toward trance using ${method.name}. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
+      settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user with three or four undeniable present-moment observations (e.g. "you're sitting / lying here", "you can hear my voice", "your breath is moving"). Don't say "hello". Use \x5BPAUSE n\x5D markers between observations to let each one land. Output ONLY the script text.`,
+      induction: `Write the INDUCTION phase (~${targetWords.induction} words) using ${method.name}. Apply YES-SET / PACE-AND-LEAD: open with TWO or THREE pace statements (observable truths the user cannot deny — body position, breath, sounds, sensations), then transition with "and" or "as" into ONE lead suggestion that rides the agreement. Repeat this 2–3 times across the phase, deepening with each cycle. Embed depth language ("going deeper", "settling further", "drifting down") inside longer sentences rather than as direct commands. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
       wake: `Write the WAKE phase (~${targetWords.wake} words). Bring the user fully awake and alert. Use a distinct upward count or direct waking sequence. Re-alert clearly. Eyes open. Fully awake. This is the actual wake-up phase and must not be replaced by reintroduction. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
       reintroduction: `Write the REINTRODUCTION phase (~${targetWords.reintroduction} words). This phase happens AFTER wake. The user is already awake. Include a warm welcome-back, a suggestion to slowly get up only when ready, stretch, shake it off, and continue the day. If this is a demonstration method, the test can be mentioned after wake and before the final welcome-back, but the ending must fully reintroduce the user. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
     };
@@ -15614,6 +15850,24 @@ End with a brief acknowledgment that you're now continuing — bridging back to 
           intention: rough,
           length: state.length,
         });
+        // Hydrate trigger-fire context if a craftedSuggestion is in scope.
+        // Lets the Director tell the AI to either reinforce a working
+        // trigger or refine a never-fired one.
+        if (state.craftedSuggestion?.trigger && state.craftedSuggestion.trigger !== 'ongoing state') {
+          try {
+            const fires = (await idbGet(TRIGGER_FIRES_KEY)) || {};
+            const slot = fires[state.craftedSuggestion.trigger];
+            const fireCount = slot?.firedDates?.length || 0;
+            // Days since craft — if no slot exists yet, treat as "just crafted".
+            const lastUpdate = slot?.lastUpdate || Date.now();
+            const daysSinceCraft = Math.floor((Date.now() - lastUpdate) / 86400000);
+            brief._triggerInfo = {
+              trigger: state.craftedSuggestion.trigger,
+              fires: fireCount,
+              daysSinceCraft,
+            };
+          } catch {}
+        }
         directorBriefCtx = formatDirectorBriefForPrompt(brief);
         // Stash the brief on state so the session record can capture which
         // brief was active (useful for retrospective debugging in future).
@@ -15628,8 +15882,14 @@ End with a brief acknowledgment that you're now continuing — bridging back to 
     if (sdOn) {
       try {
         const mem = await getMemory();
-        // Top-K most semantically similar past digests (embedding-based)
-        const relevant = await findRelevantDigests(rough || (persona.name + ' ' + method.name), 3);
+        // Top-K most semantically similar past digests (embedding-based).
+        // Pass domain + preMood for tier-2 filtering: sleep sessions don't
+        // pollute focus retrieval, and a depleted user pulls more from
+        // past recovery patterns.
+        const relevant = await findRelevantDigests(rough || (persona.name + ' ' + method.name), 3, {
+          domain: state.intentionType,
+          preMood: state._preMood,
+        });
         const relevantBlock = relevant.length
           ? '\nMOST RELEVANT PAST SESSIONS (by semantic similarity to this intention):\n' +
             relevant.map(r => `- [similarity ${((1 - r.distance) * 100).toFixed(0)}%] ${r.digest.digest}`).join('\n')
@@ -15638,6 +15898,33 @@ End with a brief acknowledgment that you're now continuing — bridging back to 
           ? `\nPRACTITIONER MEMORY:${mem.longTermProfile ? '\nProfile: ' + mem.longTermProfile : ''}${mem.rollingWindow ? '\nRecent patterns: ' + mem.rollingWindow : ''}`
           : '';
         memoryCtx = baseBlock + relevantBlock;
+        // Token-budget-aware trimming. Perchance plugin exposes
+        // `getMetaObject` with idealMaxContextTokens + countTokens. Per
+        // perchance-api §6.3, leave an 800-token buffer to protect the
+        // prefix cache from invalidation. Cap memoryCtx at 25% of the
+        // remaining budget so it doesn't crowd out the persona/method/
+        // method-specific phase prompts. Silent no-op when the meta API
+        // isn't available (graceful fallback to existing behavior).
+        try {
+          if (typeof root !== 'undefined' && root.aiTextPlugin) {
+            const meta = root.aiTextPlugin({ getMetaObject: true });
+            if (meta?.countTokens && meta?.idealMaxContextTokens) {
+              const memoryTokens = meta.countTokens(memoryCtx);
+              const memoryBudget = Math.floor((meta.idealMaxContextTokens - 800) * 0.25);
+              if (memoryTokens > memoryBudget && memoryBudget > 0) {
+                // Trim by progressively dropping older relevant digests, then
+                // shortening the rolling window. Long-term profile is most
+                // compact and stays last.
+                const trimmedRelevant = relevant.slice(0, Math.max(1, Math.floor(relevant.length * memoryBudget / Math.max(memoryTokens, 1))));
+                const trimmedRelBlock = trimmedRelevant.length
+                  ? '\nMOST RELEVANT PAST SESSIONS:\n' + trimmedRelevant.map(r => `- ${r.digest.digest}`).join('\n')
+                  : '';
+                memoryCtx = baseBlock + trimmedRelBlock;
+                sdLog('memoryCtx token-trimmed', { fromTokens: memoryTokens, toBudget: memoryBudget, keptRelevant: trimmedRelevant.length });
+              }
+            }
+          }
+        } catch { /* meta unavailable; keep full memoryCtx */ }
         sdLog('memoryCtx built', { relevantCount: relevant.length, hasRolling: !!mem.rollingWindow, hasLongTerm: !!mem.longTermProfile });
       } catch (e) { console.warn('Memory context build failed:', e); }
     } else { sdLog('memoryCtx skipped — Smart Director off'); }
@@ -15683,6 +15970,10 @@ End with a brief acknowledgment that you're now continuing — bridging back to 
     const reminderBlock = persona.reminderMessage
       ? `\nREMINDER for writing as ${persona.name}: "${persona.reminderMessage}"`
       : '';
+    // Markup primer — exposes the embedded-command convention to the AI so
+    // it can mark key command words for the TTS to drop voice on. Optional
+    // (low priority); the TTS layer falls back to flat delivery if absent.
+    const markupBlock = `\nMARKUP: You may wrap KEY COMMAND WORDS in double brackets so the narrator drops voice on them, e.g. "and you might find yourself [[going deeper]] now". Use this 1-3 times per phase, on transition or trance-deepening commands. Do not overuse.`;
     const freshBlock = buildFreshnessBlock();
     const sharedContext = trimToTokenBudget([
       { name: 'header',     text: headerBlock,       priority: 5 }, // persona + method + theme — never drop
@@ -15693,6 +15984,7 @@ End with a brief acknowledgment that you're now continuing — bridging back to 
       { name: 'director',   text: directorBriefCtx,  priority: 3 }, // short, actionable, high-value
       { name: 'profile',    text: profileCtx,        priority: 3 },
       { name: 'metrics',    text: metricsTrendCtx,   priority: 3 }, // recent-day trend signals
+      { name: 'markup',     text: markupBlock,       priority: 2 }, // embedded-command markup primer
       { name: 'freshSeeds', text: freshBlock,        priority: 2 }, // optional anchors — drops before adaptive
       { name: 'adaptive',   text: adaptiveCtx,       priority: 2 },
       { name: 'memory',     text: memoryCtx,         priority: 1 }, // first to drop
@@ -17185,6 +17477,58 @@ Start immediately:`;
     return { persona, method };
   }
 
+  /** Rule-based pattern callouts over recent history. Each rule is gated
+   *  on enough data to avoid false alarms on fresh users. Returns up to 3
+   *  human-readable strings, ranked by importance. Surfaces shapes the
+   *  Director can't easily say (it speaks to the AI, not the user). */
+  function derivePatternCallouts(history) {
+    const out = [];
+    const h = history || [];
+    if (h.length < 3) return out;
+    // 1) Repeated emergency exits. High-priority signal.
+    const recent5 = h.slice(0, 5);
+    const recentEmergencies = recent5.filter(r => !r.completed).length;
+    if (recentEmergencies >= 3) {
+      out.push({ rank: 10, msg: `${recentEmergencies} of your last ${recent5.length} sessions ended early — try a shorter or gentler session next.` });
+    }
+    // 2) Sleep struggles. If sleep-intention sessions consistently end early
+    //    or with low alertness, flag it.
+    const sleepRecent = h.filter(r => r.intention === 'sleep').slice(0, 5);
+    if (sleepRecent.length >= 3) {
+      const earlySleep = sleepRecent.filter(r => !r.completed).length;
+      if (earlySleep >= 2) {
+        out.push({ rank: 9, msg: `${earlySleep} of your last ${sleepRecent.length} sleep sessions ended early — a softer guide or shorter length might help.` });
+      }
+    }
+    // 3) Mood declining over the most recent runs. Both pre and post must
+    //    be present; need 3 consecutive negative deltas.
+    const withMood = h.filter(r => r.preMood != null && r.postMood != null).slice(0, 3);
+    if (withMood.length === 3 && withMood.every(r => (r.postMood - r.preMood) < 0)) {
+      out.push({ rank: 8, msg: 'Your last 3 sessions trended mood-negative. Consider a shorter, lighter session or a different guide.' });
+    }
+    // 4) Method monotony — same method 5+ in a row. Variety reveals new
+    //    response patterns and feeds the adaptive system.
+    if (h.length >= 5 && h.slice(0, 5).every(r => r.methodId === h[0].methodId)) {
+      out.push({ rank: 4, msg: `Last 5 sessions all used the same method — try something different to broaden your response patterns.` });
+    }
+    // 5) Welcome-back. Fires only if there's been a meaningful gap.
+    if (h[0]) {
+      const daysSince = Math.floor((Date.now() - h[0].date) / 86400000);
+      if (daysSince >= 14 && daysSince < 60) {
+        out.push({ rank: 3, msg: `Welcome back — it's been ${daysSince} days. Your previous calibration is preserved.` });
+      } else if (daysSince >= 60) {
+        out.push({ rank: 5, msg: `It's been ${daysSince}+ days since your last session — start with a short, gentle one to re-orient.` });
+      }
+    }
+    // 6) Strong improvement streak — positive feedback to keep momentum.
+    const lastDeltas = withMood.map(r => r.postMood - r.preMood);
+    if (lastDeltas.length === 3 && lastDeltas.every(d => d >= 2)) {
+      out.push({ rank: 6, msg: `Last 3 sessions all produced strong mood improvement (+2 or more). Whatever you're doing — keep going.` });
+    }
+    out.sort((a, b) => b.rank - a.rank);
+    return out.slice(0, 2).map(x => x.msg);
+  }
+
   async function renderSidebarStats() {
     const statsEl = $('sidebarStats');
     const streakEl = $('sidebarStreak');
@@ -17227,7 +17571,12 @@ Start immediately:`;
     if (streakEl) streakEl.textContent = streak > 0 ? `${streak}-day streak` : `${totalSessions} sessions`;
 
     if (statsEl) {
-      let html = `
+      // Pattern callouts — quiet rule-based nudges. Empty when nothing fires.
+      const callouts = derivePatternCallouts(history);
+      const calloutHtml = callouts.length
+        ? `<div style="margin-bottom:8px;padding:6px 8px;background:var(--bg-deep);border-left:2px solid var(--neon-cyan);font-size:0.66rem;line-height:1.45;color:var(--text-dim)">${callouts.map(c => `<div style="margin:2px 0">${escapeHtml(c)}</div>`).join('')}</div>`
+        : '';
+      let html = calloutHtml + `
         <div class="sidebar-stat-row"><span>Sessions</span><span class="sidebar-stat-val">${totalSessions}</span></div>
         <div class="sidebar-stat-row"><span>Minutes</span><span class="sidebar-stat-val">${totalMinutes}</span></div>
         <div class="sidebar-stat-row"><span>Streak</span><span class="sidebar-stat-val">${streak} days</span></div>
@@ -18312,6 +18661,23 @@ Start immediately:`;
       // Update phase state — dot, label, and drone frequency updated up
       // front so the HUD reflects the phase you're about to hear.
       state._currentPhase = phase;
+      // Phase-aware speech rate. Settling stays at base, induction starts
+      // slowing, deepener is slowest, work is moderate, lightener accelerates
+      // back, wake briskest, reintroduction normal. Strip dynamic suffix
+      // (work-1, deepener-2 etc.) so all sub-phases inherit the base curve.
+      const PHASE_RATE_MULT = {
+        settling:       1.00,
+        induction:      0.92,
+        deepener:       0.85,
+        level:          0.85,
+        work:           0.95,
+        affirm:         0.93,
+        lightener:      1.00,
+        wake:           1.05,
+        reintroduction: 1.00,
+      };
+      const baseKey = phase.replace(/-\d+$/, '');
+      state._phaseRateMult = PHASE_RATE_MULT[baseKey] ?? 1.0;
       $('phaseIndicator').textContent = phaseLabels[phase];
       updatePhaseDots(pi);
       // Refresh transcript active marker so an open transcript advances
@@ -18359,6 +18725,33 @@ Start immediately:`;
     }
   }
 
+  /** Split an embedded-command-tagged sentence into ordered segments.
+   *  Sentinels: \u0001 opens an embedded chunk, \u0002 closes it. The
+   *  TTS path applies volume/pitch dip on segments where embedded:true.
+   *  Mismatched / orphan sentinels degrade gracefully — they're stripped
+   *  and the surrounding text plays normally. */
+  function _parseEmbeddedSegments(text) {
+    const segments = [];
+    let i = 0;
+    while (i < text.length) {
+      const openIdx = text.indexOf('\u0001', i);
+      if (openIdx < 0) {
+        segments.push({ text: text.slice(i), embedded: false });
+        break;
+      }
+      if (openIdx > i) segments.push({ text: text.slice(i, openIdx), embedded: false });
+      const closeIdx = text.indexOf('\u0002', openIdx + 1);
+      if (closeIdx < 0) {
+        // Orphan opener — strip it and treat rest as normal.
+        segments.push({ text: text.slice(openIdx + 1), embedded: false });
+        break;
+      }
+      segments.push({ text: text.slice(openIdx + 1, closeIdx), embedded: true });
+      i = closeIdx + 1;
+    }
+    return segments.filter(s => s.text);
+  }
+
   async function speakScript(text, bypassAbort = false) {
     // Resolve \{\{user\}\}, \{\{nar\}\}, \{\{intention\}\}, \{\{affirmation\}\} tokens before
     // speech. Runs BEFORE sanitization so any expanded content (e.g. a
@@ -18370,6 +18763,11 @@ Start immediately:`;
       const num = m.match(/\d+/);
       return num ? `\x5BPAUSE ${num[0]}\x5D` : '';
     });
+    // Embedded-command markup [[text]] — Ericksonian technique where the
+    // hypnotist drops voice on the command word inside a sentence. Convert
+    // to sentinel-wrapped form (\u0001…\u0002) so the generic bracket-strip
+    // below doesn't eat them. Per-segment speech opts applied later.
+    canonical = canonical.replace(/\[\[([^\[\]]+?)\]\]/g, '\u0001$1\u0002');
     canonical = canonical.replace(/\[[^\]]+\]/g, m =>
       /^\x5BPAUSE\s+\d+\x5D$/i.test(m) ? m : ''
     );
@@ -18404,10 +18802,24 @@ Start immediately:`;
             display.style.opacity = 0;
             await interruptibleSleep(200, bypassAbort);
             if (!bypassAbort && state.abortFlag) break;
-            display.textContent = sentence;
+            // Strip embedded-command sentinels from the on-screen text;
+            // they're audio cues, not visual.
+            display.textContent = sentence.replace(/[\u0001\u0002]/g, '');
             display.style.opacity = 0.5;
           }
-          await speak(sentence);
+          // Segment-aware speak: if the sentence contains embedded-command
+          // sentinels, split into normal/embedded/normal chunks and speak
+          // each with its own volume/pitch. Otherwise just speak the whole.
+          if (sentence.includes('\u0001') && sentence.includes('\u0002')) {
+            const segments = _parseEmbeddedSegments(sentence);
+            for (const seg of segments) {
+              if (!bypassAbort && state.abortFlag) break;
+              if (!seg.text.trim()) continue;
+              await speak(seg.text, seg.embedded ? { volMult: 0.7, pitchMult: 0.92 } : {});
+            }
+          } else {
+            await speak(sentence);
+          }
           // Post-speak buffer — let last audio samples drain. Interruptible
           // so emergencyEnd / pause / abort responds immediately rather than
           // having to wait out the dead-air at every sentence boundary.
@@ -18582,7 +18994,7 @@ Start immediately:`;
         throw e;
       }
     },
-    async _playBuffer(audioData, sampleRate, myGen) {
+    async _playBuffer(audioData, sampleRate, myGen, opts = {}) {
       // Prefer the soundscape's audio context if it's running — that way the
       // ambience recorder (which taps drone.master) captures local TTS audio
       // as part of the recording. Fall back to a dedicated context if drone
@@ -18628,26 +19040,69 @@ Start immediately:`;
       }, pulseInterval);
       const buffer = this.audioCtx.createBuffer(1, audioData.length, sampleRate);
       buffer.copyToChannel(audioData, 0);
-      const source = this.audioCtx.createBufferSource();
-      source.buffer = buffer;
-      // Apply user volume. Stash the gain node on the instance so the live
-      // voice-volume slider can poke it mid-utterance — the local-TTS path
-      // uses live AudioParams so we can do this even though the system TTS
-      // path can't (SpeechSynthesisUtterance.volume is read-once).
-      const gainNode = this.audioCtx.createGain();
-      gainNode.gain.value = state.voiceVolume ?? 1.0;
-      this.currentGainNode = gainNode;
-      // When sharing the soundscape's context, route through drone.master so
-      // ambience recorder picks us up. Otherwise route directly to destination.
-      if (this._sharedCtx && drone && drone.master) {
-        source.connect(gainNode).connect(drone.master);
-      } else {
-        source.connect(gainNode).connect(this.audioCtx.destination);
+      // Build a single playback chain — extracted because double-induction
+      // mode plays the same buffer through two independent panner chains.
+      const buildSource = (panValue) => {
+        const source = this.audioCtx.createBufferSource();
+        source.buffer = buffer;
+        const gainNode = this.audioCtx.createGain();
+        gainNode.gain.value = state.voiceVolume ?? 1.0;
+        // Apply stereo pan when requested. Older browsers without
+        // createStereoPanner just skip the pan (still plays mono center).
+        let lastNode = gainNode;
+        if (Number.isFinite(panValue) && panValue !== 0 && this.audioCtx.createStereoPanner) {
+          const panner = this.audioCtx.createStereoPanner();
+          panner.pan.value = Math.max(-1, Math.min(1, panValue));
+          gainNode.connect(panner);
+          lastNode = panner;
+        }
+        // When sharing the soundscape's context, route through drone.master so
+        // ambience recorder picks us up. Otherwise route directly to destination.
+        if (this._sharedCtx && drone && drone.master) {
+          source.connect(gainNode);
+          lastNode.connect(drone.master);
+        } else {
+          source.connect(gainNode);
+          lastNode.connect(this.audioCtx.destination);
+        }
+        source.playbackRate.value = Math.max(0.5, Math.min(2, state.speechRate || 1));
+        return { source, gainNode };
+      };
+
+      // Double-induction mode on local TTS: render the same buffer through
+      // two stereo-positioned chains simultaneously. Pan ±0.4 keeps each
+      // voice clearly lateralized but not so extreme it loses center
+      // stability. System TTS path can't do this — its audio is OS-routed,
+      // not Web-Audio-routed. opts.allowStereoPan === false bypasses for
+      // re-entry from the second call (recursion guard).
+      if (state._doubleInduction && opts.allowStereoPan !== false) {
+        const left  = buildSource(-0.4);
+        const right = buildSource(+0.4);
+        // Slight playback rate offset on the second voice (1.5%) creates a
+        // subtle phase drift so the two voices don't lock together. This
+        // matches the system-TTS double-induction path's u2.rate * 0.92.
+        right.source.playbackRate.value = Math.max(0.5, Math.min(2, (state.speechRate || 1) * 0.985));
+        this.currentGainNode = left.gainNode;
+        this.currentSource = left.source;
+        return new Promise((resolve) => {
+          let pendingEnds = 2;
+          const finalize = () => {
+            if (--pendingEnds > 0) return;
+            clearInterval(pulseTimer);
+            if (this.currentSource === left.source) this.currentSource = null;
+            if (this.currentGainNode === left.gainNode) this.currentGainNode = null;
+            resolve();
+          };
+          left.source.onended  = finalize;
+          right.source.onended = finalize;
+          left.source.start(0);
+          right.source.start(0);
+        });
       }
-      // Apply rate as playbackRate (rough analog of state.speechRate). Live
-      // rate updates work the same way — the slider listener writes to
-      // currentSource.playbackRate.value.
-      source.playbackRate.value = Math.max(0.5, Math.min(2, state.speechRate || 1));
+
+      // Single-voice path — unchanged behavior.
+      const { source, gainNode } = buildSource(opts.pan);
+      this.currentGainNode = gainNode;
       this.currentSource = source;
       return new Promise((resolve) => {
         source.onended = () => {
@@ -18690,33 +19145,41 @@ Start immediately:`;
     },
   };
 
-  function speak(text) {
+  function speak(text, opts = {}) {
     return new Promise(resolve => {
       // Local TTS path — opt-in, must be loaded. On synth-timeout / failure,
       // _localTTS.speak rejects and we fall back to the system TTS path for
       // this sentence so a flaky local model can't deadlock the session.
+      // Embedded-command opts (volMult / pitchMult) are honored only on the
+      // system path for now; local path uses defaults.
       if (state.useLocalTTS && _localTTS.ready) {
         _localTTS.speak(text)
           .then(resolve)
           .catch((e) => {
             console.warn('[speak] local TTS failed, falling back to system:', e?.message || e);
-            _speakSystemPath(text, resolve);
+            _speakSystemPath(text, resolve, opts);
           });
         return;
       }
-      _speakSystemPath(text, resolve);
+      _speakSystemPath(text, resolve, opts);
     });
   }
-  function _speakSystemPath(text, resolve) {
+  function _speakSystemPath(text, resolve, opts = {}) {
     if (!('speechSynthesis' in window)) { setTimeout(resolve, text.length * 80); return; }
     // Only cancel if something is unexpectedly still speaking
     if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
-    setTimeout(() => _doSpeak(text, resolve), speechSynthesis.speaking ? 80 : 20);
+    setTimeout(() => _doSpeak(text, resolve, opts), speechSynthesis.speaking ? 80 : 20);
   }
-  function _doSpeak(text, resolve) {
+  function _doSpeak(text, resolve, opts = {}) {
     const u = new SpeechSynthesisUtterance(text);
     u.voice = state.voice || getSelectedVoice();
-    u.rate = state.speechRate; u.pitch = state.voicePitch || 0.85; u.volume = state.voiceVolume ?? 1.0;
+    // Apply embedded-command modifiers when present. Multipliers on top of
+    // the user's baseline so the relative dip stays consistent across users.
+    const volMult   = Number.isFinite(opts.volMult)   ? opts.volMult   : 1.0;
+    const pitchMult = Number.isFinite(opts.pitchMult) ? opts.pitchMult : 1.0;
+    u.rate = state.speechRate;
+    u.pitch = (state.voicePitch || 0.85) * pitchMult;
+    u.volume = (state.voiceVolume ?? 1.0) * volMult;
     let settled = false;
     let lastBoundaryAt = Date.now();
     let boundaryEverFired = false;
@@ -18974,6 +19437,9 @@ Start immediately:`;
       profileSnapshot: currentProfile,
       workBlockCount: scriptMetrics.workBlocks,
       metrics: scriptMetrics,
+      // Why-this-session tag chips picked on Step 3. Sorted for stable
+      // diffs across replays. Empty array if user didn't tap any chips.
+      sessionTags: state._sessionTags ? [...state._sessionTags].sort() : [],
       workflowVersion: 11,
       stepsTotal: 6,
     };
@@ -19060,10 +19526,18 @@ Start immediately:`;
     const triggerBox = $('postTriggerBox');
     if (state.craftedSuggestion && state.craftedSuggestion.trigger && state.craftedSuggestion.trigger !== 'ongoing state') {
       triggerBox.style.display = '';
+      // Pre-load fire count for this trigger so the button reflects history.
+      let fireCount = 0;
+      try {
+        const fires = (await idbGet(TRIGGER_FIRES_KEY)) || {};
+        fireCount = (fires[state.craftedSuggestion.trigger]?.firedDates?.length) || 0;
+      } catch {}
       triggerBox.innerHTML = `
         <div class="post-trigger-title">your trigger</div>
         <div class="post-trigger-text">${escapeHtml(state.craftedSuggestion.trigger)}</div>
-        <div class="post-trigger-sub">→ ${escapeHtml(state.craftedSuggestion.coreResponse || '')}</div>`;
+        <div class="post-trigger-sub">→ ${escapeHtml(state.craftedSuggestion.coreResponse || '')}</div>
+        <button class="btn secondary" id="triggerFiredBtn" style="margin-top:8px;font-size:0.74rem;padding:6px 12px" data-trigger="${escapeHtml(state.craftedSuggestion.trigger)}">${fireCount > 0 ? `✓ fired today (${fireCount} total)` : '✓ trigger fired today'}</button>
+        <div class="sublabel" style="font-size:0.62rem;margin-top:4px;color:var(--text-faint)">Tap when you notice the trigger working in real life — feedback shapes future sessions.</div>`;
     } else if (state.craftedSuggestion && state.craftedSuggestion.coreResponse) {
       triggerBox.style.display = '';
       triggerBox.innerHTML = `
@@ -19548,6 +20022,22 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   // Step 3
   $('intentionType').addEventListener('change', () => { updateIntentionHint(); saveUserSettings(); });
   $('intentionInput').addEventListener('input', () => { hideCrafted(); updateStepUI(); saveUserSettings(); });
+  // Why-this-session tag chips. Toggle on click. Stored on state._sessionTags
+  // as a Set, persisted into history[0].sessionTags at finishSession time.
+  // Cleared by resetWizardForNewSession so each session is freshly tagged.
+  if (!state._sessionTags) state._sessionTags = new Set();
+  document.querySelectorAll('#sessionTagChips .session-tag-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const tag = chip.dataset.tag;
+      if (state._sessionTags.has(tag)) {
+        state._sessionTags.delete(tag);
+        chip.classList.remove('selected');
+      } else {
+        state._sessionTags.add(tag);
+        chip.classList.add('selected');
+      }
+    });
+  });
   $('userAffirmations')?.addEventListener('input', () => { saveUserSettings(); updateStepUI(); markFeatureUsed(FEAT.AFFIRMATIONS); });
   $('affirmationMode')?.addEventListener('change', () => { state.affirmationMode = $('affirmationMode').value; saveUserSettings(); });
   $('craftBtn').addEventListener('click', craftSuggestion);
@@ -20088,17 +20578,54 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       document.querySelectorAll('.mood-emoji').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       state._preMood = parseInt(btn.dataset.val, 10);
+      _updateReadinessScore();
     });
   });
   // Pre-session tension and energy sliders
   $('preTensionSlider')?.addEventListener('input', e => {
     state._preTension = parseInt(e.target.value, 10);
     const el = $('preTensionVal'); if (el) el.textContent = e.target.value;
+    _updateReadinessScore();
   });
   $('preEnergySlider')?.addEventListener('input', e => {
     state._preEnergy = parseInt(e.target.value, 10);
     const el = $('preEnergyVal'); if (el) el.textContent = e.target.value;
+    _updateReadinessScore();
   });
+
+  /** Compute & render the pre-session readiness score from the three pre-checkin
+   *  signals. Mood + energy contribute positively; tension inverts (high tension
+   *  is depleting). Output is clamped 0-10. Hint text shifts by score band so
+   *  the user sees a soft guideline for what session shape will likely fit. */
+  function _updateReadinessScore() {
+    const scoreEl = $('readinessScore');
+    const hintEl  = $('readinessHint');
+    if (!scoreEl || !hintEl) return;
+    const mood    = state._preMood;
+    const tension = state._preTension;
+    const energy  = state._preEnergy;
+    // If mood hasn't been set yet (no emoji clicked), surface placeholder
+    if (mood == null && tension == null && energy == null) {
+      scoreEl.textContent = '—';
+      hintEl.textContent = 'set mood, tension, and energy above for a guidance hint';
+      return;
+    }
+    const m = Number.isFinite(mood)    ? mood    : 5;
+    const t = Number.isFinite(tension) ? tension : 5;
+    const e = Number.isFinite(energy)  ? energy  : 5;
+    // Weighted blend. Mood/energy add to a baseline; tension subtracts.
+    // Centered so a neutral 5/5/5 reads ~5.0; weights tuned so a clearly
+    // depleted user (mood 2, tension 8, energy 2) lands around 1-2.
+    const raw = 5 + 0.4 * (m - 5) + 0.4 * (e - 5) - 0.4 * (t - 5);
+    const score = Math.max(0, Math.min(10, raw));
+    scoreEl.textContent = score.toFixed(1) + '/10';
+    let hint;
+    if (score < 3.5)  hint = 'depleted — consider a short, grounding session. Sleep, breath, or settling will land better than work.';
+    else if (score < 5) hint = 'low resources — light depth + short length recommended.';
+    else if (score < 7) hint = 'balanced — most session shapes will work well today.';
+    else                hint = 'resourced — a deeper or longer session is likely to integrate well.';
+    hintEl.textContent = hint;
+  }
 
   // Post-session mood slider (0-10)
 
@@ -20210,6 +20737,66 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const history = (await idbGet('stillness_history_v1')) || [];
     if (history.length > 0) { history[0].journal = text; await idbSet('stillness_history_v1', history); }
   });
+
+  // Voice journaling — webkitSpeechRecognition (Chrome/Edge). Reveal the
+  // mic button only if the API exists; Firefox + iOS Safari don't and
+  // showing a button that doesn't work is worse than no button.
+  (function _setupVoiceJournal() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const btn = $('journalMicBtn');
+    if (!SR || !btn) return;
+    btn.style.display = '';
+    let recognizer = null;
+    let recording = false;
+    btn.addEventListener('click', () => {
+      const ta = $('journalText');
+      if (!ta) return;
+      if (recording) {
+        try { recognizer?.stop(); } catch {}
+        return;
+      }
+      try {
+        recognizer = new SR();
+        recognizer.lang = (navigator.language || 'en-US');
+        recognizer.continuous = true;
+        recognizer.interimResults = false;
+        recognizer.onresult = (ev) => {
+          // Append each finalized result to the textarea, separated by a
+          // single space so consecutive recognitions read as continuous prose.
+          for (let i = ev.resultIndex; i < ev.results.length; i++) {
+            const res = ev.results[i];
+            if (res.isFinal && res[0]?.transcript) {
+              const sep = ta.value && !ta.value.endsWith(' ') ? ' ' : '';
+              ta.value = ta.value + sep + res[0].transcript.trim();
+            }
+          }
+        };
+        recognizer.onerror = (ev) => {
+          if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+            notify.warn('Microphone permission denied — voice journaling unavailable.');
+          } else if (ev.error !== 'no-speech' && ev.error !== 'aborted') {
+            console.warn('[voice-journal] recognition error:', ev.error);
+          }
+        };
+        recognizer.onend = () => {
+          recording = false;
+          btn.textContent = '🎤 speak';
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        };
+        recognizer.start();
+        recording = true;
+        btn.textContent = '⏹ stop';
+        btn.style.color = 'var(--neon-amber)';
+        btn.style.borderColor = 'var(--neon-amber)';
+      } catch (e) {
+        console.warn('[voice-journal] start failed:', e);
+        notify.warn('Could not start voice input — try typing instead.');
+        recording = false;
+        btn.textContent = '🎤 speak';
+      }
+    });
+  })();
 
   // Backup/restore
   $('backupBtn')?.addEventListener('click', exportBackup);
@@ -20331,6 +20918,41 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     await flushJournalSave();
     switchScreen('setup-wizard');
     goToStep(6); // Step 6 is Generate (holds scriptText); Step 5 is Configure
+  });
+
+  // Trigger-fired button — delegated on the post-screen container since the
+  // button is rendered dynamically. Records the fire to IDB and updates the
+  // button label in place. Idempotent within an hour so accidental double-
+  // clicks don't inflate the fire count.
+  document.getElementById('post-screen')?.addEventListener('click', async e => {
+    const btn = e.target.closest?.('#triggerFiredBtn');
+    if (!btn) return;
+    const trigger = btn.dataset.trigger;
+    if (!trigger) return;
+    try {
+      const all = (await idbGet(TRIGGER_FIRES_KEY)) || {};
+      const slot = all[trigger] || { firedDates: [], totalFires: 0, lastUpdate: 0 };
+      const nowIso = new Date().toISOString();
+      const lastFireMs = slot.firedDates.length ? new Date(slot.firedDates[0]).getTime() : 0;
+      // Debounce: ignore if last fire was within the last hour.
+      if (Date.now() - lastFireMs < 3600 * 1000) {
+        notify.info('Already logged in the last hour.');
+        return;
+      }
+      slot.firedDates.unshift(nowIso);
+      if (slot.firedDates.length > 100) slot.firedDates.length = 100;
+      slot.totalFires = (slot.totalFires || 0) + 1;
+      slot.lastUpdate = Date.now();
+      all[trigger] = slot;
+      await idbSet(TRIGGER_FIRES_KEY, all);
+      btn.textContent = `✓ fired today (${slot.totalFires} total)`;
+      btn.disabled = true;
+      setTimeout(() => { btn.disabled = false; }, 3600 * 1000);
+      notify.success('Trigger fire logged. The Director will reinforce this in future sessions.');
+    } catch (err) {
+      console.warn('[trigger-fire] log failed:', err);
+      notify.warn('Could not save trigger fire — try again.');
+    }
   });
   $('transcriptToggle')?.addEventListener('click', toggleTranscript);
   $('recordBtn')?.addEventListener('click', toggleRecording);
@@ -21763,6 +22385,25 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   ['pfPronouns', 'pfAge', 'pfExperience', 'pfUseFirstName', 'pfShareAge', 'pfShareAppearance', 'pfShareGoals'].forEach(id => {
     $(id)?.addEventListener('change', saveProfile);
   });
+
+  // AI activity log — read-only modal. Lists recent AI calls' metadata
+  // (provider, source, byte size, time). No content. Builds trust by
+  // showing exactly what the app sent and where, without re-exposing the
+  // user's profile/intention text.
+  $('viewAIAuditBtn')?.addEventListener('click', async () => {
+    if (!_aiAuditLoaded) await _loadAuditLog();
+    const recent = (_aiAuditLog || []).slice(0, 30);
+    if (!recent.length) {
+      alertModal('AI activity log', 'No AI calls logged yet. The log starts populating once you craft a suggestion or generate a script.');
+      return;
+    }
+    const lines = recent.map(e => {
+      const rel = (typeof _relTimeDB === 'function') ? _relTimeDB(e.ts) : new Date(e.ts).toLocaleString();
+      const kb = e.bytes >= 1024 ? `${(e.bytes / 1024).toFixed(1)} KB` : `${e.bytes} B`;
+      return `${rel}  ·  ${e.provider}  ·  ${e.source}  ·  ${kb}`;
+    });
+    alertModal('AI activity log', `Recent AI calls (${recent.length} of ${_aiAuditLog.length} on record):\n\n${lines.join('\n')}\n\n— Provider: which AI backend handled the call.\n— Source: where in the app the call originated.\n— Size: byte length of the prompt sent. Content itself is never logged.`);
+  });
   // Session daily cap — max 3 sessions per day to prevent compulsive use
   async function checkDailyCap() {
     const history = (await idbGet('stillness_history_v1')) || [];
@@ -22114,6 +22755,45 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     // is jarring during page load if it appears before the grid paints.
     setTimeout(() => { checkPersonaUnlocks().catch(() => {}); }, 1200);
 
+    // Weekly digest — surfaces a once-per-week summary banner of the user's
+    // recent activity. Skipped if there aren't enough sessions to be useful
+    // (≥ 2 sessions in the last 7 days). Last-shown timestamp persists in
+    // localStorage to enforce one-per-ISO-week display.
+    setTimeout(async () => {
+      try {
+        const WEEKLY_KEY = 'stillness_weekly_digest_last';
+        const lastShown = parseInt(localStorage.getItem(WEEKLY_KEY) || '0', 10);
+        const now = Date.now();
+        const SEVEN_DAYS = 7 * 86400000;
+        if (lastShown && (now - lastShown) < SEVEN_DAYS) return;
+        const history = (await idbGet('stillness_history_v1')) || [];
+        if (history.length < 2) return;
+        const cutoff = now - SEVEN_DAYS;
+        const recent = history.filter(r => r.date >= cutoff);
+        if (recent.length < 2) return;
+        const completed = recent.filter(r => r.completed).length;
+        const completionPct = Math.round((completed / recent.length) * 100);
+        const withMood = recent.filter(r => r.preMood != null && r.postMood != null);
+        const avgDelta = withMood.length
+          ? (withMood.reduce((s, r) => s + (r.postMood - r.preMood), 0) / withMood.length)
+          : null;
+        // Top guide + method by count
+        const personaCount = {}, methodCount = {};
+        for (const r of recent) {
+          if (r.guide) personaCount[r.guide] = (personaCount[r.guide] || 0) + 1;
+          if (r.method) methodCount[r.method] = (methodCount[r.method] || 0) + 1;
+        }
+        const topPersona = Object.entries(personaCount).sort((a, b) => b[1] - a[1])[0]?.[0];
+        const topMethod  = Object.entries(methodCount).sort((a, b) => b[1] - a[1])[0]?.[0];
+        const moodPart = avgDelta != null
+          ? `, avg mood ${avgDelta >= 0 ? '+' : ''}${avgDelta.toFixed(1)}`
+          : '';
+        const summary = `Past 7 days: ${recent.length} session${recent.length === 1 ? '' : 's'}, ${completionPct}% completed${moodPart}${topPersona ? ` · top guide: ${topPersona}` : ''}${topMethod ? ` · top method: ${topMethod}` : ''}`;
+        notify.info(summary, 9000);
+        localStorage.setItem(WEEKLY_KEY, String(now));
+      } catch (e) { console.warn('[weekly-digest] failed:', e); }
+    }, 2500);
+
     // Sync debug state from DOM (checkboxes default unchecked, but this guarantees
     // state._debug matches the visible UI in all cases). Banner re-renders from here.
     _syncDebugState();
@@ -22205,8 +22885,6 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       document.body.appendChild(btn);
     }
     setTimeout(() => {
-      // Gate: opt-in only. Users without remote processing get a clean UI.
-      if (!state.remoteProcessingOptIn) return;
       // Only show if user hasn't progressed past step 1 — implies a stuck boot.
       // Operator-precedence note: explicit parens around the OR-chain make the
       // condition "still on step 1 OR (no session AND no script)". Without these,
@@ -22217,7 +22895,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       const hasScript   = !!document.querySelector('#scriptPreview.visible');
       const stillStuck  = onStep1 && !inSession && !hasScript;
       if (stillStuck && !_emergencyExportShown) _showEmergencyExportButton();
-    }, 30000);
+    }, 10000);
     // Cancel the failsafe on first user click anywhere — they're clearly not stuck.
     document.addEventListener('click', () => {
       const btn = document.getElementById('emergencyExportFailsafe');

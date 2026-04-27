@@ -29,6 +29,22 @@ This file tracks improvements not yet shipped, ordered roughly by least to most 
 | Director-brief reasoning shown post-session | New `#postDirectorBriefBox` card; renders `brief.reasoning[]`, `brief.warnings[]`, `brief.recommendations`, and bias note. Hidden on emergency exit, cold-start, or when SD was off |
 | Per-persona/method completion-rate badges | New `computePickerStats(history)` populates `state._pickerStats`; persona + method cards get a bottom-right `N× · %compl · Δavg` badge with full-detail tooltip. Threshold 2+ uses |
 | Privacy checkboxes per-field on profile | `pfShareAge` / `pfShareAppearance` / `pfShareGoals` — default-true so older profiles keep parity. `getProfileContext` gates AI exposure. Local Director still uses fields regardless |
+| Pre-session readiness score | Derived 0-10 number from mood/tension(inv)/energy via `_updateReadinessScore()`. Live banner `#readinessRow` with band-shifted hint (depleted/low/balanced/resourced) |
+| Why-this-session tag chips on Step 3 | 8 chips (anxious / can't sleep / overwhelmed / before event / after stressor / focus needed / processing emotion / just exploring); `state._sessionTags` Set persisted to `history[0].sessionTags`. Cleared on `resetWizardForNewSession` |
+| Phase-aware base speech rate | `state._phaseRateMult` layered into `tickPlaybackDynamics`: `userBase × phaseMult × audioReactiveScale`. Map: settling 1.0, induction 0.92, deepener 0.85, work 0.95, lightener 1.0, wake 1.05, affirm 0.93 |
+| Yes-set / pace-and-lead enforcement | Settling + induction prompts rewritten with explicit "three undeniable observations" + "TWO/THREE pace statements transition with 'and' or 'as' into ONE lead suggestion" |
+| Embedded-command markup `[[…]]` + TTS dip | Pre-sanitization swap to `\u0001…\u0002` sentinels; per-sentence `_parseEmbeddedSegments()` splits into segments; `speak()` accepts `{volMult, pitchMult}`; embedded plays at vol×0.7 pitch×0.92. Markup primer added to AI prompt context (priority 2) |
+| Pattern callouts on sidebar | `derivePatternCallouts(history)` with 6 ranked rules: repeat emergencies, sleep struggles, declining mood, improvement streak, gap return, method monotony. Top-2 surfaced in cyan-bordered banner above sidebar stats |
+| Emergency-export 10s failsafe | Tightened from 30s, removed `remoteProcessingOptIn` gate so all stuck-boot users see it |
+| Trigger-fired tap → adaptive reinforcement | New `TRIGGER_FIRES_KEY` IDB store; post-session button (debounced 1h, idempotent); `formatDirectorBriefForPrompt` reads `brief._triggerInfo` to emit "reinforce confidently" (3+ fires) / "consider refining" (0 fires + 7+ days) |
+| Diff-aware AI prompting | `getProfileContext` now decay-weights recent changes by `exp(-days/14)`, drops below 0.1 weight, adds explicit "first session since user updated X and Y" callout for ≤7-day text/csv changes |
+| Per-domain memory channels + mood-weighted retrieval | `findRelevantDigests(query, k, {domain, preMood})` — domain filters by `intentionType`; `preMood ≤ 4` reduces distance up to 30% for positive-delta digests. New digests tagged with intention/preMood/postMood |
+| Token-budget-aware memory injection | Uses `aiTextPlugin({getMetaObject:true})` to size memoryCtx to 25% of `(idealMaxContextTokens − 800)` per perchance-skill §6.3. Falls back to current behavior if meta API absent |
+| Weekly digest banner | Once-per-7-days `notify.info` on first load showing 7-day session count, completion %, mood Δ, top guide, top method. `localStorage.stillness_weekly_digest_last`; min 2 sessions in window |
+| Voice journaling | `webkitSpeechRecognition` mic button next to journal textarea. Hidden when API absent. Continuous mode appends final transcripts; toggle-stop on second click |
+| Diff visualization in profile panel | `#profileDiffsList` populated by `renderProfileDiffs()` from `_profileChangeLog`. Same source-label as AI sees; decay-weighted opacity; +/- color coding for csv diffs. Refreshed on `commitChangeLogEntry` and after profile load |
+| AI-data audit log | `AI_AUDIT_KEY` IDB ring buffer, cap 100. `logAICall(provider, source, instruction)` records ts/provider/source/bytes (never content). Hooked at `aiGenerate` dispatch + the two direct `aiTextPlugin` sites. Read-only modal via `#viewAIAuditBtn`; also `window.HNE.audit(n)` |
+| Stereo-pan plumbing for double-induction (local TTS) | `_playBuffer(audioData, sampleRate, myGen, opts)` accepts `opts.pan`. When `state._doubleInduction` active on local-TTS path, builds two parallel `StereoPannerNode` chains at ±0.4 with 1.5% rate offset on the second voice. Graceful skip on browsers lacking `createStereoPanner`. System-TTS path can't pan (Web Speech is OS-routed) — that's a known limitation |
 
 ---
 
@@ -303,27 +319,29 @@ Effort scale: 1 (trivial, < 30min), 2 (small, < 2h), 3 (medium, half-day), 4 (la
 
 ### Effort 2
 
-| Item | Notes |
+(All Effort 2 items shipped this round. See §0 above. Stereo-pan only applies on the local-TTS path; system TTS audio is OS-routed and can't be panned through Web Audio.)
+
+| Originally listed | Status |
 |---|---|
-| Pre-session readiness score | Combine the 3 sliders into one displayed number with interpretation. |
-| Why-this-session tag chips on Step 3 | Stored alongside intentionType, aggregates over time. |
-| Pattern callouts on sidebar | Rule-based: "3 sleep sessions in a row ended early — try gentler?" |
-| Embedded-command markup `[[…]]` + TTS pitch/volume dip | Adds depth via standard hypnotist technique. |
-| Phase-aware base speech rate (slowdown into deepener, brisk wake) | Modulates `_baseSpeechRate` per phase before audio-reactive layer. |
-| Yes-set / pace-and-lead enforcement in induction prompt | Prompt-only change. |
-| Stereo-pan double-induction | `StereoPannerNode` per voice. Big depth multiplier for that method. |
-| Trigger-fired tap on heatmap → adaptive reinforcement | One IDB field, one click handler. |
-| Mood-weighted memory retrieval | Cheap re-rank over existing cosine. |
-| Per-domain memory channels (tag by intentionType) | Tag column + filter on retrieval. |
-| Diff-aware AI prompting (explicit "user just added X to goals") | Already have `_profileChangeLog`. |
-| Diff visualization in profile panel | Surface what AI sees back to user. |
-| Weekly digest banner on first-load-of-week | Pure JS aggregate over recent history. |
-| Voice journaling via `webkitSpeechRecognition` | Pair with existing journal field. |
-| Token-budget-aware memory injection | Use `aiTextPlugin({getMetaObject:true})` per skill §6.3. |
-| `tryPersistBrowserStorageData` second-pass at end of init | Skill checklist item. |
-| `exportRawDb` corrupt-record fallback | Skill checklist item. |
-| Emergency-export 10s failsafe timer | Skill checklist item. |
-| AI-data audit log (read-only modal) | Records what fields/text were sent to which provider, when. |
+| Pre-session readiness score | ✅ shipped |
+| Why-this-session tag chips on Step 3 | ✅ shipped |
+| Pattern callouts on sidebar | ✅ shipped |
+| Embedded-command markup `[[…]]` + TTS pitch/volume dip | ✅ shipped |
+| Phase-aware base speech rate | ✅ shipped |
+| Yes-set / pace-and-lead enforcement | ✅ shipped |
+| Stereo-pan double-induction | ✅ shipped (local-TTS path; system TTS not pannable) |
+| Trigger-fired tap → adaptive reinforcement | ✅ shipped |
+| Mood-weighted memory retrieval | ✅ shipped |
+| Per-domain memory channels | ✅ shipped |
+| Diff-aware AI prompting | ✅ shipped |
+| Diff visualization in profile panel | ✅ shipped |
+| Weekly digest banner | ✅ shipped |
+| Voice journaling via `webkitSpeechRecognition` | ✅ shipped |
+| Token-budget-aware memory injection | ✅ shipped |
+| `tryPersistBrowserStorageData` second-pass | Already implemented in earlier round |
+| `exportRawDb` corrupt-record fallback | Already implemented (`_corruptItemReplacer` + per-slice `safe()`) |
+| Emergency-export 10s failsafe timer | ✅ shipped (tightened from 30s, removed opt-in gate) |
+| AI-data audit log | ✅ shipped |
 
 ### Effort 3
 
