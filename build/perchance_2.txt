@@ -3380,7 +3380,17 @@ I return to myself easily"></textarea>
         <div id="bgAiOptions" class="bg-options" style="display:none;margin-top:8px">
           <div class="ai-prompt-grid">
             <div class="ai-prompt-col">
-              <label class="ai-sublabel">prompt <span style="color:var(--neon-cyan)">+</span></label>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px">
+                <label class="ai-sublabel" style="margin:0">prompt <span style="color:var(--neon-cyan)">+</span></label>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <select id="bgEnhanceLength" class="pf-select" style="font-size:0.66rem;padding:2px 6px;width:auto" title="Verbosity of the enhanced prompt">
+                    <option value="short">short</option>
+                    <option value="medium" selected>medium</option>
+                    <option value="long">long</option>
+                  </select>
+                  <button type="button" id="bgEnhanceBtn" class="preview-btn" style="font-size:0.66rem;padding:3px 8px" title="Rewrite your prompt as an optimized AI image prompt">✨ enhance</button>
+                </div>
+              </div>
               <textarea id="bgPromptInput" class="pf-textarea" rows="4" placeholder="dark ethereal misty landscape, dreamlike, soft focus..."></textarea>
             </div>
             <div class="ai-prompt-col">
@@ -3781,6 +3791,22 @@ I return to myself easily"></textarea>
 
       <!-- Check-in row: mood + alertness + depth -->
       <div class="post-checkin">
+        <!-- Free-text alternative to the three sliders below. Mirrors the
+             pre-session pattern (see preCheckinTextToggle + parseCheckinText).
+             The sliders + this textarea write to the same state path; the
+             toggle just swaps which input mode the user is using. The
+             journal textarea further down is a SEPARATE concern (freeform
+             reflection) and keeps its own mic button. -->
+        <div style="grid-column:1 / -1;text-align:right;margin-bottom:-4px">
+          <button type="button" id="postCheckinTextToggle" style="background:none;border:none;color:var(--neon-cyan);cursor:pointer;font-size:0.66rem;letter-spacing:0.04em;text-transform:lowercase;padding:0">type it instead</button>
+        </div>
+        <div id="postCheckinTextWrap" style="display:none;grid-column:1 / -1;margin:0 0 8px">
+          <textarea id="postCheckinText" rows="2" maxlength="240" placeholder="e.g. feeling much better, calmer, a bit drowsy, went pretty deep" style="width:100%;font-size:0.84rem;padding:8px 10px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text-bright);font-family:inherit;resize:vertical"></textarea>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <span id="postCheckinTextHint" style="font-size:0.62rem;color:var(--text-faint);flex:1">type a few words about how you feel — we'll set the sliders for you</span>
+            <button type="button" id="postCheckinTextApply" class="preview-btn" style="font-size:0.7rem;padding:4px 10px">apply</button>
+          </div>
+        </div>
         <div class="post-checkin-item">
           <div class="post-checkin-label">how do you feel?</div>
           <div class="post-checkin-val" id="postStateVal">5</div>
@@ -19508,6 +19534,15 @@ Start immediately:`;
     const depthSl = $('depthSlider'); if (depthSl) { depthSl.value = 5; }
     const depthV = $('depthVal'); if (depthV) depthV.textContent = '5';
     const journal = $('journalText'); if (journal) journal.value = '';
+    // Conversational check-in state — clear textarea + collapse, reset hint
+    const pcText = $('postCheckinText'); if (pcText) pcText.value = '';
+    const pcWrap = $('postCheckinTextWrap'); if (pcWrap) pcWrap.style.display = 'none';
+    const pcTog  = $('postCheckinTextToggle'); if (pcTog) pcTog.textContent = 'type it instead';
+    const pcHint = $('postCheckinTextHint');
+    if (pcHint) {
+      pcHint.textContent = 'type a few words about how you feel — we\'ll set the sliders for you';
+      pcHint.style.color = 'var(--text-faint)';
+    }
 
     // Wake Lock — prevent screen timeout during session
     try {
@@ -21544,6 +21579,109 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     }
   }
 
+  // ── Prompt enhancer ───────────────────────────────────────────────
+  // Adapted from promptyx PROMPT_INSTRUCTIONS. Transforms a casual user
+  // input into an optimized AI image generation prompt at the requested
+  // verbosity. Streams back into the textarea so the user sees it
+  // appear; clicking the button again while running cancels via the
+  // generation token.
+  const BG_ENHANCE_INSTRUCTIONS = {
+    short: `ROLE: Expert AI image prompt engineer.
+ACTION: Transform the input into a concise, optimized AI image generation prompt (300-600 chars).
+FORMAT: Comma-separated precise visual descriptors only.
+ENHANCE WITH: specific lighting type, camera angle/lens, primary color palette, key material/texture detail, mood/atmosphere word, one compositional technique.
+FORBIDDEN: 8K, UHD, hyperrealism, "extreme detail", explanatory sentences, question marks, quotes around the result.
+OUTPUT: ONLY the final raw prompt string. No preamble. No quotes. No "Here's your prompt:" or similar.`,
+    medium: `ROLE: Expert AI image prompt engineer.
+ACTION: Transform the input into a richly-detailed AI image generation prompt (600-1100 chars).
+FORMAT: Comma-separated visual descriptors with moderate depth.
+ENHANCE WITH: specific lighting setup, focal length/camera type, 2-3 color palette descriptors, multiple surface textures, spatial composition (foreground/midground/background), atmosphere/weather, time of day, style anchor (one artist or aesthetic reference).
+FORBIDDEN: 8K, UHD, hyperrealism, "extreme detail", narration, instructional language, quotes around the result.
+OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
+    long: `ROLE: Expert AI image prompt engineer.
+ACTION: Transform the input into a comprehensive, cinematic-quality AI image generation prompt (1100-1600 chars).
+FORMAT: Flowing comma-separated visual descriptors at maximum fidelity.
+ENHANCE WITH: complex multi-source lighting rig, specific lens + aperture + film stock, exhaustive color grading descriptor, layered texture details (micro and macro), full environmental world-building (weather + time + season + location), subject details, composition framing technique, emotional/psychological undertone, 1-2 specific artist/film/art-movement references.
+FORBIDDEN: 8K, UHD, hyperrealism, "extreme detail", storytelling prose, instructional text, quotes around the result.
+OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
+  };
+
+  let _bgEnhanceToken = 0;
+  let _bgEnhanceRunning = false;
+
+  $('bgEnhanceBtn')?.addEventListener('click', async () => {
+    const btn = $('bgEnhanceBtn');
+    const input = $('bgPromptInput');
+    if (!btn || !input) return;
+    // Toggle-cancel if already running
+    if (_bgEnhanceRunning) {
+      _bgEnhanceToken++;
+      _bgEnhanceRunning = false;
+      btn.disabled = false;
+      btn.textContent = '✨ enhance';
+      return;
+    }
+    const userInput = (input.value || '').trim();
+    if (!userInput) {
+      notify.info('Type a casual idea in the prompt box first — I\'ll engineer it into an optimized image prompt.');
+      return;
+    }
+    const length = $('bgEnhanceLength')?.value || 'medium';
+    const instr = BG_ENHANCE_INSTRUCTIONS[length] || BG_ENHANCE_INSTRUCTIONS.medium;
+    const myToken = ++_bgEnhanceToken;
+    _bgEnhanceRunning = true;
+    btn.textContent = '⏹ stop';
+    const original = userInput;
+    input.value = '';
+    let acc = '';
+    try {
+      const result = await aiGenerate(`${instr}\n\nUser Input: ${original}`, {
+        source: 'bg-prompt-enhance',
+        onChunk: (data) => {
+          if (myToken !== _bgEnhanceToken) {
+            // cancelled
+            throw new Error('cancelled');
+          }
+          acc += data.textChunk || '';
+          input.value = acc;
+        },
+      });
+      if (myToken !== _bgEnhanceToken) return;
+      // Non-streaming providers (Anthropic / OpenAI) return the whole
+      // text in result.generatedText; streaming Perchance accumulates
+      // via onChunk above. Pick whichever's non-empty.
+      const finalText = (acc || result?.generatedText || '').trim();
+      if (!finalText) {
+        input.value = original;
+        notify.warn('Prompt enhance returned nothing — your original text was kept.');
+        return;
+      }
+      // Tidy: strip stray surrounding quotes that some models add despite instructions
+      const cleaned = finalText.replace(/^["']|["']$/g, '');
+      input.value = cleaned;
+      notify.success(`Prompt enhanced (${length}).`);
+    } catch (e) {
+      if (e?.message === 'cancelled') {
+        // Restore original on cancel so user doesn't lose their starting text
+        input.value = original;
+        notify.info('Enhance cancelled — original prompt restored.');
+      } else {
+        // Restore original on failure too
+        input.value = original;
+        console.warn('[bg-enhance] failed:', e);
+        notify.warn('Prompt enhance failed — your original text was kept.');
+      }
+    } finally {
+      if (myToken === _bgEnhanceToken) {
+        _bgEnhanceRunning = false;
+        btn.disabled = false;
+        btn.textContent = '✨ enhance';
+        // Trigger save so the enhanced prompt persists
+        saveUserSettings();
+      }
+    }
+  });
+
   $('bgPreviewBtn')?.addEventListener('click', () => _bgQueueAdd(1));
   $('bgPreviewBatchBtn')?.addEventListener('click', () => _bgQueueAdd(5));
   $('bgRemoveQueuedBtn')?.addEventListener('click', _bgQueueRemove);
@@ -21855,6 +21993,74 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     return out;
   }
 
+  // ── Post-session conversational check-in ───────────────────────────
+  // Mirrors the pre-session lexicon for the three post-session
+  // dimensions (mood / alertness / depth). Includes comparative phrasings
+  // ("better", "worse", "same as before") because post-session reflection
+  // is naturally relative to where the user started. Output range is
+  // 1..9 mapped to the 0..10 sliders, leaving 0 and 10 for explicit user
+  // override — same convention as the pre-session parser.
+  const POST_CHECKIN_LEXICON = {
+    mood: [
+      // Comparative-negative
+      { re: /\b(much worse|terrible|awful|miserable|wretched|hopeless)\b/i, w: -4 },
+      { re: /\b(worse|sad|down|low|depressed|defeated|distressed|drained)\b/i, w: -3 },
+      { re: /\b(slightly worse|a bit worse|kind of off|a little off)\b/i, w: -2 },
+      { re: /\b(anxious|worried|frustrated|irritated|tense after|unsettled)\b/i, w: -1 },
+      { re: /\b(neutral|same|fine|okay|ok|alright|unchanged|no change)\b/i, w: 0 },
+      // Comparative-positive
+      { re: /\b(slightly better|a little better|a bit better|softer|easier)\b/i, w: 1 },
+      { re: /\b(better|content|peaceful|grounded|settled|calm|relaxed|relieved|good)\b/i, w: 2 },
+      { re: /\b(much better|happy|great|positive|optimistic|hopeful|cheerful|clearer|lighter)\b/i, w: 3 },
+      { re: /\b(amazing|wonderful|fantastic|elated|joyful|deeply peaceful|profoundly better|transformed)\b/i, w: 4 },
+    ],
+    alertness: [
+      // Drowsy end
+      { re: /\b(barely awake|so tired|exhausted|completely drained|wiped out|fried)\b/i, w: -4 },
+      { re: /\b(very drowsy|very sleepy|very tired|drained|nodding off|half-asleep)\b/i, w: -3 },
+      { re: /\b(drowsy|sleepy|sluggish|groggy|fuzzy|heavy)\b/i, w: -2 },
+      { re: /\b(a bit tired|kind of drowsy|a bit sleepy|a bit sluggish|a little fuzzy)\b/i, w: -1 },
+      { re: /\b(neutral|fine|normal|okay)\b/i, w: 0 },
+      // Alert end
+      { re: /\b(awake|aware|present)\b/i, w: 1 },
+      { re: /\b(alert|clear|sharp|focused|crisp)\b/i, w: 2 },
+      { re: /\b(very alert|wide awake|fully alert|fully awake|sharp focus)\b/i, w: 3 },
+      { re: /\b(extremely alert|hyper-alert|amped up|wired)\b/i, w: 4 },
+    ],
+    depth: [
+      // Surface end
+      { re: /\b(didn'?t go (anywhere|deep|under)|stayed (on the )?surface|surface only|barely (went|got) under|just (lying|sitting) there)\b/i, w: -4 },
+      { re: /\b(very surface|barely under|distracted the whole time|couldn'?t focus)\b/i, w: -3 },
+      { re: /\b(surface|light|shallow|kind of distracted|in my head)\b/i, w: -2 },
+      { re: /\b(a bit (light|shallow)|somewhat shallow|partly there)\b/i, w: -1 },
+      { re: /\b(neutral|moderate|medium|some(what)?)\b/i, w: 0 },
+      // Deep end
+      { re: /\b(a little deep|a bit deep|noticeable shift)\b/i, w: 1 },
+      { re: /\b(deep|present|absorbed|in it|sunk in|in the zone)\b/i, w: 2 },
+      { re: /\b(very deep|deeply absorbed|lost track of time|deeply focused|trance-like)\b/i, w: 3 },
+      { re: /\b(profoundly deep|completely under|profoundly absorbed|extremely deep|forgot myself|lost (in|to) it|deep trance)\b/i, w: 4 },
+    ],
+  };
+
+  function parsePostCheckinText(text) {
+    const out = { mood: null, alertness: null, depth: null };
+    if (!text || !text.trim()) return out;
+    for (const [field, rules] of Object.entries(POST_CHECKIN_LEXICON)) {
+      let bestWeight = 0;
+      let bestAbs = 0;
+      let matched = false;
+      for (const { re, w } of rules) {
+        if (re.test(text)) {
+          matched = true;
+          if (Math.abs(w) > bestAbs) { bestAbs = Math.abs(w); bestWeight = w; }
+        }
+      }
+      if (!matched) continue;
+      out[field] = Math.max(1, Math.min(9, 5 + bestWeight));
+    }
+    return out;
+  }
+
   $('preCheckinTextToggle')?.addEventListener('click', () => {
     const wrap = $('preCheckinTextWrap');
     const tog  = $('preCheckinTextToggle');
@@ -22038,6 +22244,57 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       }
     }
     persistPostCheckin();
+  });
+
+  // ── Post-session conversational check-in handlers ──────────────────
+  // Mirrors the pre-session toggle/apply pair above. The journal mic on
+  // the journalText textarea is unrelated — that's freeform reflection
+  // saved verbatim, not check-in input.
+  $('postCheckinTextToggle')?.addEventListener('click', () => {
+    const wrap = $('postCheckinTextWrap');
+    const tog  = $('postCheckinTextToggle');
+    if (!wrap || !tog) return;
+    const showing = wrap.style.display !== 'none';
+    wrap.style.display = showing ? 'none' : '';
+    tog.textContent = showing ? 'type it instead' : 'use sliders instead';
+    if (!showing) $('postCheckinText')?.focus();
+  });
+
+  $('postCheckinTextApply')?.addEventListener('click', () => {
+    const text = $('postCheckinText')?.value || '';
+    const parsed = parsePostCheckinText(text);
+    const applied = [];
+    if (parsed.mood != null) {
+      const el = $('postStateSlider'); if (el) el.value = String(parsed.mood);
+      const ev = $('postStateVal'); if (ev) ev.textContent = String(parsed.mood);
+      applied.push(`mood ${parsed.mood}/10`);
+    }
+    if (parsed.alertness != null) {
+      const el = $('alertnessSlider'); if (el) el.value = String(parsed.alertness);
+      const ev = $('alertnessVal'); if (ev) ev.textContent = String(parsed.alertness);
+      applied.push(`alertness ${parsed.alertness}/10`);
+    }
+    if (parsed.depth != null) {
+      const el = $('depthSlider'); if (el) el.value = String(parsed.depth);
+      const ev = $('depthVal'); if (ev) ev.textContent = String(parsed.depth);
+      applied.push(`depth ${parsed.depth}/10`);
+    }
+    const hint = $('postCheckinTextHint');
+    if (hint) {
+      if (applied.length) {
+        hint.textContent = `parsed → ${applied.join(' · ')}. Adjust the sliders if anything feels off.`;
+        hint.style.color = 'var(--text-dim)';
+      } else {
+        hint.textContent = 'no clear mood/alertness/depth signals found — try mentioning how you feel, how alert you are, and how deep it went.';
+        hint.style.color = 'var(--neon-amber)';
+      }
+    }
+    // Trigger the existing slider input handlers so feedback text +
+    // grounding box + persistPostCheckin all run through the canonical
+    // path (no duplication of the mood-delta or drowsy logic here).
+    if (parsed.mood != null) $('postStateSlider')?.dispatchEvent(new Event('input', { bubbles: true }));
+    if (parsed.alertness != null) $('alertnessSlider')?.dispatchEvent(new Event('input', { bubbles: true }));
+    if (parsed.depth != null) $('depthSlider')?.dispatchEvent(new Event('input', { bubbles: true }));
   });
 
   // Journal save + tier-aware sentiment classification. The basic save runs
