@@ -508,6 +508,115 @@ padding: 16px; margin-top: 16px; display: none;
   .phase-editor-row.pair-depth[data-depth="4"] { border-left-color: var(--neon-purple); }
   .phase-editor-row:hover { background: rgba(255,255,255,0.02); }
   .phase-editor-row.highlight-pair { background: rgba(184,154,74,0.04); }
+  /* Drag-drop reorder visuals. The handle is a small graspable affordance
+     on the leading edge; while a row is being dragged, it dims and the
+     drop-target line shows where it will land. */
+  .phase-editor-row[draggable="true"] { cursor: default; }
+  .phase-editor-row .phase-drag-handle {
+    cursor: grab;
+    user-select: none;
+    color: var(--text-faint);
+    padding: 0 6px 0 0;
+    font-size: 0.95rem;
+    line-height: 1;
+    align-self: center;
+  }
+  .phase-editor-row .phase-drag-handle:active { cursor: grabbing; }
+  .phase-editor-row.dragging { opacity: 0.4; }
+  .phase-editor-row.drop-above { box-shadow: 0 -2px 0 0 var(--neon-cyan) inset; }
+  .phase-editor-row.drop-below { box-shadow: 0 2px 0 0 var(--neon-cyan) inset; }
+  /* Timeline visualization — proportional blocks colored by phase category.
+     Sits above the phase list and stays in sync with it. */
+  .phase-timeline {
+    display: flex; height: 24px; gap: 1px;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    overflow: hidden; user-select: none;
+  }
+  .phase-timeline-block {
+    height: 100%; cursor: pointer; transition: opacity 0.15s ease;
+    position: relative; min-width: 4px; opacity: 0.65;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .phase-timeline-block:hover { opacity: 1; }
+  .phase-timeline-block.timeline-current { opacity: 1; outline: 1px solid var(--neon-cyan); outline-offset: -1px; }
+  .phase-timeline-label {
+    font-size: 0.55rem; letter-spacing: 0.04em; color: rgba(255,255,255,0.85);
+    text-transform: lowercase; pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5); white-space: nowrap; overflow: hidden;
+  }
+  .phase-timeline-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 4px; font-size: 0.62rem; color: var(--text-faint);
+    font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
+  }
+  /* Phase block colors per category (mirrors method/persona category palette) */
+  .phase-timeline-block.tl-settling      { background: rgba(140,180,200,0.55); }
+  .phase-timeline-block.tl-induction     { background: rgba(90,171,191,0.65); }
+  .phase-timeline-block.tl-deepener      { background: rgba(180,77,255,0.55); }
+  .phase-timeline-block.tl-level         { background: rgba(180,77,255,0.40); }
+  .phase-timeline-block.tl-work          { background: rgba(184,154,74,0.65); }
+  .phase-timeline-block.tl-affirm        { background: rgba(90,184,122,0.55); }
+  .phase-timeline-block.tl-lightener     { background: rgba(180,77,255,0.30); }
+  .phase-timeline-block.tl-wake          { background: rgba(212,167,114,0.65); }
+  .phase-timeline-block.tl-reintroduction { background: rgba(212,167,114,0.50); }
+  .phase-timeline-block.tl-emergence     { background: rgba(212,167,114,0.50); }
+  .phase-timeline-block.tl-sounding      { background: rgba(201,168,85,0.45); }
+  .phase-timeline-block.tl-custom        { background: rgba(0,212,230,0.45); }
+  .phase-editor-row.row-flash { animation: rowFlash 0.7s ease; }
+  @keyframes rowFlash {
+    0%   { background: rgba(90,171,191,0.18); }
+    100% { background: transparent; }
+  }
+
+  /* ============ DIRECTOR 2D CALIBRATION PAD ============ */
+  .director-pad {
+    position: relative;
+    width: 100%; max-width: 200px; aspect-ratio: 1 / 1;
+    margin: 8px auto 14px;
+    background: var(--bg-deep);
+    border: 1px solid var(--glass-border);
+    cursor: crosshair; user-select: none;
+    touch-action: none;
+  }
+  .director-pad-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: calc(100% / 6) calc(100% / 6);
+    pointer-events: none;
+  }
+  .director-pad::before, .director-pad::after {
+    content: ''; position: absolute; pointer-events: none;
+    background: rgba(90,171,191,0.18);
+  }
+  /* center cross — marks the balanced (0,0) origin */
+  .director-pad::before { left: 0; right: 0; top: 50%; height: 1px; }
+  .director-pad::after  { top: 0; bottom: 0; left: 50%; width: 1px; }
+  .director-pad-dot {
+    position: absolute; width: 16px; height: 16px;
+    background: var(--neon-cyan);
+    border: 2px solid var(--bg-deep);
+    box-shadow: 0 0 8px rgba(90,171,191,0.55);
+    transform: translate(-50%, -50%);
+    left: 50%; top: 50%;
+    pointer-events: none;
+    transition: left 0.12s ease-out, top 0.12s ease-out;
+  }
+  .director-pad.dragging .director-pad-dot { transition: none; }
+  .director-pad-axis-y, .director-pad-axis-x {
+    position: absolute; display: flex; pointer-events: none;
+    color: var(--text-faint); font-size: 0.55rem; letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .director-pad-axis-y {
+    flex-direction: column; justify-content: space-between;
+    top: 4px; bottom: 4px; left: 4px;
+  }
+  .director-pad-axis-x {
+    justify-content: space-between;
+    left: 4px; right: 4px; bottom: 4px;
+  }
   .phase-pair-tag {
     display: inline-block; font-size: 0.58rem;
     text-transform: uppercase; letter-spacing: 0.08em;
@@ -1589,6 +1698,62 @@ padding: 16px; margin-bottom: 16px; text-align: left;
 
   /* ============ QUICK-START PRESETS ============ */
   .preset-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 5px 0; max-width: 580px; }
+
+  /* Quick-Start Presets / Structured Programs — boxed collapsible
+     containers. Visual affordance for "this is interactive, click me". */
+  details.presets-collapsible {
+    border: 1px solid var(--glass-border);
+    background: var(--glass);
+    padding: 0;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  details.presets-collapsible[open] {
+    background: var(--bg-soft);
+    border-color: rgba(90,171,191,0.25);
+  }
+  details.presets-collapsible > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  details.presets-collapsible > summary::-webkit-details-marker { display: none; }
+  details.presets-collapsible > summary::marker { content: ''; }
+  details.presets-collapsible:hover > summary {
+    background: rgba(255,255,255,0.02);
+  }
+  details.presets-collapsible .presets-chevron {
+    color: var(--neon-cyan);
+    font-size: 0.85rem;
+    width: 14px; flex-shrink: 0;
+    transition: transform 0.15s ease;
+    display: inline-block;
+  }
+  details.presets-collapsible[open] .presets-chevron { transform: rotate(90deg); }
+  details.presets-collapsible .presets-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-bright);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    flex: 1;
+  }
+  details.presets-collapsible .presets-hint {
+    font-size: 0.66rem;
+    color: var(--text-faint);
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
+  }
+  details.presets-collapsible[open] .presets-hint { display: none; }
+  details.presets-collapsible[open] > *:not(summary) {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  details.presets-collapsible[open] > *:last-child {
+    padding-bottom: 14px;
+  }
   @media (min-width: 900px) { .preset-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .preset-card {
     min-width: 0; max-width: none;
@@ -2547,48 +2712,39 @@ padding: 6px 10px; font-size: 1.1rem;
           <div class="pf-row"><label class="pf-label">First Name</label><input type="text" id="pfName" class="pf-input" maxlength="30" placeholder="(What do you call yourself?)"></div>
           <div class="pf-row" style="flex-direction:row;align-items:center;gap:8px">
             <input type="checkbox" id="pfUseFirstName" style="width:auto;margin:0">
-            <label for="pfUseFirstName" class="pf-label" style="margin:0;cursor:pointer">Use first name in scripts?</label><br>
+            <label for="pfUseFirstName" class="pf-label" style="margin:0;cursor:pointer">Use first name in scripts?</label>
           </div>
+          <!-- Universal "use profile details" toggle. Replaces the three
+               separate share-{age,appearance,goals} checkboxes. When
+               unchecked, none of the optional profile fields are sent
+               to the AI — pronouns, age, appearance, goals all stay
+               local-only. The hidden mirror checkboxes below preserve
+               the existing per-field read path (getProfile reads from
+               their .checked) without scattering branches across the
+               codebase. -->
+          <div class="pf-row" style="flex-direction:row;align-items:center;gap:8px">
+            <input type="checkbox" id="pfShareAll" style="width:auto;margin:0" checked>
+            <label for="pfShareAll" class="pf-label" style="margin:0;cursor:pointer">Use profile details in script</label>
+          </div>
+          <div class="sublabel" style="font-size:0.58rem;margin-top:-4px;margin-bottom:4px">When off, age / appearance / goals stay on your device only — local recommendations still use them.</div>
+          <!-- Hidden mirrors — kept .checked in lockstep with pfShareAll
+               so getProfile()/applyProfileToForm() keep working unchanged. -->
+          <input type="checkbox" id="pfShareAge" style="display:none" checked>
+          <input type="checkbox" id="pfShareAppearance" style="display:none" checked>
+          <input type="checkbox" id="pfShareGoals" style="display:none" checked>
           <div class="pf-row"><label class="pf-label">Pronouns</label>
             <select id="pfPronouns" class="pf-select"><option value="">prefer not to say</option><option value="he/him">he / him</option><option value="she/her">she / her</option><option value="they/them">they / them</option><option value="other">other</option></select>
           </div>
           <div class="pf-row"><label class="pf-label">Age Range</label>
             <select id="pfAge" class="pf-select"><option value="">prefer not to say</option><option value="18-24">18–24</option><option value="25-34">25–34</option><option value="35-44">35–44</option><option value="45-54">45–54</option><option value="55-64">55–64</option><option value="65+">65+</option></select>
           </div>
-          <div class="pf-row" style="flex-direction:row;align-items:center;gap:8px;margin-top:-2px">
-            <input type="checkbox" id="pfShareAge" style="width:auto;margin:0" checked>
-            <label for="pfShareAge" class="pf-label" style="margin:0;cursor:pointer;font-size:0.7rem;color:var(--text-faint)">Share age with AI</label>
-          </div>
           <div class="pf-row"><label class="pf-label">Experience</label>
             <select id="pfExperience" class="pf-select"><option value="beginner">Beginner — first time</option><option value="some">Some experience</option><option value="experienced">Experienced practitioner</option><option value="professional">Professional / trained</option></select>
           </div>
           <div class="pf-row"><label class="pf-label">About You</label><textarea id="pfAbout" class="pf-textarea" rows="2" maxlength="300" placeholder="Anything you'd like to share..."></textarea></div>
           <div class="pf-row"><label class="pf-label">Your Appearance</label><textarea id="pfAppearance" class="pf-textarea" rows="2" maxlength="300" placeholder="Hair, eyes, build... for AI personalization"></textarea></div>
-          <div class="pf-row" style="flex-direction:row;align-items:center;gap:8px;margin-top:-2px">
-            <input type="checkbox" id="pfShareAppearance" style="width:auto;margin:0" checked>
-            <label for="pfShareAppearance" class="pf-label" style="margin:0;cursor:pointer;font-size:0.7rem;color:var(--text-faint)">Share appearance with AI</label>
-          </div>
           <div class="pf-row"><label class="pf-label">Goals</label><textarea id="pfGoals" class="pf-textarea" rows="2" maxlength="300" placeholder="What do you want from hypnosis?"></textarea></div>
-          <div class="pf-row" style="flex-direction:row;align-items:center;gap:8px;margin-top:-2px">
-            <input type="checkbox" id="pfShareGoals" style="width:auto;margin:0" checked>
-            <label for="pfShareGoals" class="pf-label" style="margin:0;cursor:pointer;font-size:0.7rem;color:var(--text-faint)">Share goals with AI</label>
-          </div>
-          <div class="sublabel" style="font-size:0.58rem;margin-top:4px">Profile stays on your device. Local recommendations always use these fields; the AI only sees fields with their share-toggle on.</div>
-          <!-- Recent profile diffs — exposes what the AI sees in its
-               "Recent changes" prompt block. Helps users understand the
-               feedback loop: edits to goals/about etc. become time-aware
-               context the Director uses for one or two weeks. -->
-          <details id="profileDiffsDetails" style="margin-top:8px">
-            <summary style="font-size:0.66rem;color:var(--text-faint);cursor:pointer">recent edits the AI is aware of</summary>
-            <div id="profileDiffsList" style="margin-top:6px;font-size:0.66rem;line-height:1.45;color:var(--text-dim);max-height:160px;overflow-y:auto"></div>
-          </details>
-          <details style="margin-top:4px">
-            <summary style="font-size:0.66rem;color:var(--text-faint);cursor:pointer">AI activity log</summary>
-            <div style="margin-top:6px">
-              <button class="btn secondary" id="viewAIAuditBtn" type="button" style="font-size:0.66rem;padding:4px 8px;width:100%">view recent AI calls</button>
-              <div class="sublabel" style="font-size:0.58rem;margin-top:4px;color:var(--text-faint)">Records provider + source + size for each AI call. Never the content.</div>
-            </div>
-          </details>
+          <div class="sublabel" style="font-size:0.58rem;margin-top:4px">Profile stays on your device. Local recommendations always use these fields; the AI only sees them when "Use profile details in script" is on.</div>
         </div>
         <details>
           <summary>stats</summary>
@@ -2609,6 +2765,21 @@ padding: 6px 10px; font-size: 1.1rem;
             <div class="pf-label" style="margin-bottom:6px;font-size:0.7rem">change log <span id="pfChangeLogCount" class="sublabel" style="font-weight:normal;opacity:0.6"></span></div>
             <div id="pfChangeLogList" style="margin-top:4px;max-height:300px;overflow-y:auto;font-size:0.78rem"></div>
             <div class="sublabel" style="margin-top:6px;font-size:0.58rem">Oldest 200 changes retained. Image entries use LLM tags when remote processing is on, local tags otherwise.</div>
+          </div>
+          <!-- Recent profile edits the AI sees in its "Recent changes"
+               prompt block. Relocated from Profile area 2026-04-27 so
+               related history surfaces cluster in one place. -->
+          <div id="profileDiffsDetails" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--glass-border)">
+            <div class="pf-label" style="margin-bottom:6px;font-size:0.7rem">recent edits the AI is aware of</div>
+            <div id="profileDiffsList" style="margin-top:4px;font-size:0.66rem;line-height:1.45;color:var(--text-dim);max-height:160px;overflow-y:auto"></div>
+          </div>
+          <!-- AI activity log button — relocated from Profile area
+               2026-04-27. Sits at the end of history; opens a read-only
+               modal listing recent AI calls' metadata. -->
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--glass-border)">
+            <div class="pf-label" style="margin-bottom:6px;font-size:0.7rem">AI activity log</div>
+            <button class="btn secondary" id="viewAIAuditBtn" type="button" style="font-size:0.66rem;padding:4px 8px;width:100%">view recent AI calls</button>
+            <div class="sublabel" style="font-size:0.58rem;margin-top:4px;color:var(--text-faint)">Records provider + source + size for each AI call. Never the content.</div>
           </div>
         </details>
         <details>
@@ -2673,15 +2844,25 @@ padding: 6px 10px; font-size: 1.1rem;
         <p class="step-subtitle">The voice that will lead you through this session. Different guides suit different temperaments. The presets and programs below are <em>optional shortcuts</em> — they pre-fill multiple steps for you.</p>
       </div>
 
-      <!-- Presets & Programs — above the guide grid -->
-      <details style="margin-bottom:16px" open>
-        <summary style="font-size:0.78rem;font-weight:600;color:var(--text-dim);letter-spacing:0.06em">Quick-Start Presets</summary>
-        <div class="sublabel" style="margin-bottom:6px">One click — sets guide, method, intention, soundscape, and length.</div>
+      <!-- Presets & Programs — above the guide grid. Collapsed by default
+           for new users so the page doesn't open with a wall of cards;
+           collapse state persists per-section via localStorage. -->
+      <details class="presets-collapsible" id="quickStartPresetsDetails" style="margin-bottom:12px">
+        <summary>
+          <span class="presets-chevron">▸</span>
+          <span class="presets-title">Quick-Start Presets</span>
+          <span class="presets-hint">tap to expand · 1-click setup</span>
+        </summary>
+        <div class="sublabel" style="margin-top:8px;margin-bottom:6px">One click — sets guide, method, intention, soundscape, and length.</div>
         <div class="preset-grid" id="presetGrid"></div>
       </details>
-      <details style="margin-bottom:16px">
-        <summary style="font-size:0.78rem;font-weight:600;color:var(--text-dim);letter-spacing:0.06em">Structured Programs (multi-day)</summary>
-        <div class="sublabel" style="margin-bottom:6px">Follow a daily program. Each session builds on the last.</div>
+      <details class="presets-collapsible" id="structuredProgramsDetails" style="margin-bottom:16px">
+        <summary>
+          <span class="presets-chevron">▸</span>
+          <span class="presets-title">Structured Programs <span style="font-weight:normal;color:var(--text-faint);font-size:0.7rem;text-transform:none;letter-spacing:0">(multi-day)</span></span>
+          <span class="presets-hint">tap to expand · daily progression</span>
+        </summary>
+        <div class="sublabel" style="margin-top:8px;margin-bottom:6px">Follow a daily program. Each session builds on the last.</div>
         <div id="programActivePanel"></div>
         <div class="preset-grid" id="programGrid"></div>
       </details>
@@ -2871,6 +3052,22 @@ I return to myself easily"></textarea>
         <button class="btn secondary" id="presetLoadBtn" type="button" title="Apply the selected preset to this configuration">load</button>
         <button class="btn secondary" id="presetSaveBtn" type="button" title="Save the current configuration as a named preset">save current</button>
         <button class="btn secondary" id="presetDeleteBtn" type="button" title="Delete the selected preset">delete</button>
+      </div>
+      <!-- A/B comparison — pick two presets, run a blinded session
+           with one of them randomly chosen. After the session a 1-5
+           rating captures preference. Results accumulate per preset
+           and surface as a small win/loss tally. -->
+      <div class="field-group" id="abBar" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding:10px 12px;background:var(--glass);border:1px solid var(--glass-border)">
+        <span class="field-label" style="margin:0;color:var(--neon-cyan)">A/B</span>
+        <select id="abPresetA" style="flex:1;min-width:120px"><option value="">— preset A —</option></select>
+        <span style="color:var(--text-faint);font-size:0.7rem">vs</span>
+        <select id="abPresetB" style="flex:1;min-width:120px"><option value="">— preset B —</option></select>
+        <button class="btn secondary" id="abRunBtn" type="button" title="Apply one of the two presets at random — you won't be told which until you rate the session">run blinded</button>
+        <button class="btn secondary" id="abStatsBtn" type="button" title="See per-preset ratings from past A/B runs">stats</button>
+        <div id="abLastResult" style="flex-basis:100%;font-size:0.66rem;color:var(--text-dim);margin-top:4px"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin:-10px 0 14px">
+        <button type="button" id="abModeToggle" style="background:none;border:none;color:var(--neon-cyan);cursor:pointer;font-size:0.66rem;letter-spacing:0.06em;text-transform:uppercase;padding:0">+ A/B compare mode</button>
       </div>
 
       <div class="detail-panel" id="configSummary" style="margin-bottom: 20px"></div>
@@ -3342,6 +3539,11 @@ I return to myself easily"></textarea>
         <div class="detail-panel" id="phaseEditorPanel" style="margin-top:12px; display:none">
           <div class="detail-title">phase order</div>
           <div style="margin-bottom:8px; font-size:0.78rem; color:var(--text-dim)">Arrange, remove, or add phase sections. Similar controls are now clustered here instead of stretching across a single row.</div>
+          <!-- Timeline visualization. Each phase rendered as a proportional
+               block; widths reflect estimated duration. Click a block to
+               jump to the matching row below. Updated in lockstep with
+               renderPhaseEditor so reorders/removes refresh both. -->
+          <div id="phaseTimelineWrap" style="margin-bottom:10px"></div>
           <div id="phaseEditorList"></div>
           <div class="preview-row" style="margin-top:10px">
             <button class="preview-btn" id="addInductionPhaseBtn" title="Adds an Induction — auto-adds Wake + Reintroduction if missing">+ add induction</button>
@@ -3468,6 +3670,19 @@ I return to myself easily"></textarea>
       <div class="post-cards">
         <!-- Session summary -->
         <div class="post-card" id="postSummary"></div>
+        <!-- A/B rating prompt — shown only when a blinded run just finished -->
+        <div class="post-card" id="postAbRatingBox" style="display:none">
+          <h3 style="margin:0 0 8px;font-size:1rem;font-weight:500;color:var(--neon-cyan)">🎲 Rate this blinded session</h3>
+          <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:10px">You ran one of two presets at random. Rate the experience first; we'll reveal which side it was.</div>
+          <div id="postAbRatingButtons" style="display:flex;gap:6px;justify-content:center;margin-bottom:8px">
+            <button class="preview-btn" data-rating="1" style="flex:1;font-size:0.8rem">1<br><span style="font-size:0.6rem;color:var(--text-faint)">poor</span></button>
+            <button class="preview-btn" data-rating="2" style="flex:1;font-size:0.8rem">2<br><span style="font-size:0.6rem;color:var(--text-faint)">below</span></button>
+            <button class="preview-btn" data-rating="3" style="flex:1;font-size:0.8rem">3<br><span style="font-size:0.6rem;color:var(--text-faint)">ok</span></button>
+            <button class="preview-btn" data-rating="4" style="flex:1;font-size:0.8rem">4<br><span style="font-size:0.6rem;color:var(--text-faint)">good</span></button>
+            <button class="preview-btn" data-rating="5" style="flex:1;font-size:0.8rem">5<br><span style="font-size:0.6rem;color:var(--text-faint)">great</span></button>
+          </div>
+          <div id="postAbReveal" style="font-size:0.78rem;color:var(--text-dim);text-align:center;margin-top:6px"></div>
+        </div>
         <!-- Trigger/suggestion -->
         <div class="post-card" id="postTriggerBox" style="display:none"></div>
         <!-- Intention-aware reflection prompt (shown for non-emergency completion) -->
@@ -3988,6 +4203,22 @@ I return to myself easily"></textarea>
           <span class="panel-section-title">Director calibration</span>
           <span id="directorBiasLabel" class="ai-slider-val" style="font-size:0.7rem">balanced</span>
         </div>
+        <!-- 2D calibration pad — combined intensity × pace control. The
+             sliders below remain the canonical inputs (accessible, exact
+             integer steps); the pad is a visual shortcut that snaps to
+             the same -3..+3 integer grid on both axes. Drag or click. -->
+        <div id="directorBiasPad" class="director-pad" aria-label="Director calibration pad — drag to set">
+          <div class="director-pad-axis-y" aria-hidden="true">
+            <span>forward</span>
+            <span>cautious</span>
+          </div>
+          <div class="director-pad-axis-x" aria-hidden="true">
+            <span>slower</span>
+            <span>faster</span>
+          </div>
+          <div class="director-pad-grid" aria-hidden="true"></div>
+          <div class="director-pad-dot" id="directorBiasPadDot"></div>
+        </div>
         <input type="range" id="directorBiasSlider" min="-3" max="3" step="1" value="0" style="width:100%">
         <div style="display:flex;justify-content:space-between;font-size:0.58rem;color:var(--text-faint);margin-top:2px;letter-spacing:0.04em;text-transform:uppercase">
           <span>lean cautious</span>
@@ -4136,7 +4367,11 @@ I return to myself easily"></textarea>
       </select>
       <div id="extAiKeyRow" style="display:none;margin-top:6px">
         <input type="password" id="extAiKey" class="pf-input" placeholder="API key (sk-...)" autocomplete="off" autocapitalize="off" spellcheck="false">
-        <div class="sublabel" style="line-height:1.5">Session-only — cleared on reload, never persisted to disk. Use a low-spend / scoped key, never your primary account key. A risk warning will appear on first key entry.</div>
+        <div style="display:flex;gap:6px;margin-top:4px;align-items:center;justify-content:space-between">
+          <span id="extAiCallCount" style="font-size:0.66rem;color:var(--text-faint);font-variant-numeric:tabular-nums">0 calls this session</span>
+          <button type="button" id="extAiClearBtn" class="preview-btn" style="font-size:0.66rem;padding:3px 8px">clear &amp; revert to Perchance</button>
+        </div>
+        <div class="sublabel" style="line-height:1.5;margin-top:6px">Session-only — cleared on reload, never persisted to disk. Use a low-spend / scoped key, never your primary account key. The call counter helps you spot unexpected activity. A risk warning will appear on first key entry.</div>
       </div>
     </div>
     <div class="modal-actions" style="margin-top:16px">
@@ -5043,6 +5278,13 @@ I return to myself easily"></textarea>
     directorBiasByDomain: {},
     runtimeRulesEnabled: false, // opt-in; when true, tickRulesEngine fires default rules during playback
     activeSessionMode: 'standard', // session mode preset id — see SESSION_MODES below
+    // A/B comparison mode — opt-in; users can compare two saved presets
+    // with blinded session runs. abModeRevealed flips the bar's visibility;
+    // _abActivePreset / _abPair hold the currently-running blinded
+    // experiment until the user submits a post-session rating.
+    abModeRevealed: false,
+    _abActivePreset: null,  // string preset name; cleared after rating
+    _abPair: null,          // { a, b } — the two preset names for current run
     playbackDynamics: { ...{ enabled: false, mode: 'engagement', startScale: 0.90, endScale: 1.10, curve: 'sine', engagementMin: 0.85, engagementMax: 1.15, smoothingSec: 8 } }, // adaptive speech-rate modulation
     // Webcam awareness — per-session opt-in, all local processing.
     // See /mnt/user-data/outputs/2026-04-24-webcam-awareness-design.md
@@ -7803,6 +8045,8 @@ I return to myself easily"></textarea>
       directorPace: Number($('directorPaceSlider')?.value ?? state.directorPace ?? 0),
       directorBiasByDomain: { ...(state.directorBiasByDomain || {}) },
       runtimeRulesEnabled: !!$('runtimeRulesEnabled')?.checked,
+      // A/B compare mode visibility — once revealed, persists across sessions
+      abModeRevealed: !!state.abModeRevealed,
       // Session mode preset id — bundles rules+triggers+safety overrides
       activeSessionMode: state.activeSessionMode || 'standard',
       // Playback dynamics — adaptive speech-rate modulation config
@@ -8129,6 +8373,8 @@ I return to myself easily"></textarea>
       if (typeof renderDirectorDomainOffsets === 'function') renderDirectorDomainOffsets();
       state.runtimeRulesEnabled = !!s.runtimeRulesEnabled;
       const rrcb = $('runtimeRulesEnabled'); if (rrcb) rrcb.checked = state.runtimeRulesEnabled;
+      // A/B compare mode visibility — restore from saved
+      state.abModeRevealed = !!s.abModeRevealed;
       // Safety config — merge defaults with persisted overrides. Sanitizes via
       // explicit field-by-field clamping so a corrupted persisted value can't
       // override a hard limit (e.g. negative cooldown, NaN cap).
@@ -8612,6 +8858,11 @@ I return to myself easily"></textarea>
     const shareAge = $('pfShareAge'); if (shareAge) shareAge.checked = (p.shareAge !== false);
     const shareApp = $('pfShareAppearance'); if (shareApp) shareApp.checked = (p.shareAppearance !== false);
     const shareGoals = $('pfShareGoals'); if (shareGoals) shareGoals.checked = (p.shareGoals !== false);
+    // Sync universal toggle to reflect the mirrors. ON only when every
+    // mirror is true; older profiles that explicitly set any field to
+    // false roll into "off" so the user has to opt back in deliberately.
+    const shareAll = $('pfShareAll');
+    if (shareAll) shareAll.checked = (p.shareAge !== false) && (p.shareAppearance !== false) && (p.shareGoals !== false);
     const nameEl = $('sidebarDisplayName');
     if (nameEl) nameEl.textContent = p.name || 'Practitioner';
     if (opts.save !== false) saveProfile();
@@ -10570,6 +10821,23 @@ Practitioner profile (full, natural sentences):`;
         renderPersonaGrid(); renderPersonaDetail(); hideScript(); updateStepUI();
       });
       grid.appendChild(card);
+      // Hydrate cached portrait as a soft thumbnail behind the card text.
+      // Skip the self persona (dynamic, no portrait) and isCustom personas
+      // that haven't generated one yet (the lookup will simply no-op).
+      if (!p.isSelf && typeof personaPortraitGet === 'function') {
+        personaPortraitGet(p.id).then(url => {
+          if (!url) return;
+          // Bail if the card is no longer in the DOM (re-render happened).
+          if (!card.isConnected) { URL.revokeObjectURL(url); return; }
+          const layer = document.createElement('div');
+          layer.className = 'card-portrait-bg';
+          layer.style.cssText = 'position:absolute;inset:0;background-image:url(' + url + ');background-size:cover;background-position:center top;opacity:0.18;pointer-events:none;z-index:0';
+          card.insertBefore(layer, card.firstChild);
+          // Lift card text above the portrait
+          card.querySelectorAll('.card-category-label, .card-name, .card-tagline, .card-actions, .card-usage-badge, .card-unlock-ribbon')
+            .forEach(el => { el.style.position = el.style.position || 'relative'; el.style.zIndex = '1'; });
+        }).catch(() => {});
+      }
     });
     const addCard = document.createElement('div');
     addCard.className = 'card add-new';
@@ -17029,15 +17297,33 @@ ${s.text.trim()}`).join('\n\n').trim();
               ? '<span class="phase-pair-tag" style="background:rgba(201,168,85,0.1);color:var(--accent-warm)" title="Meta-awareness pause — depth check / witness moment">◉ sounding</span>'
               : '';
       const preview = escapeHtml((s.text || '').replace(/\x5BPAUSE\s+\d+\x5D/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 100) || 'empty');
+      // Per-phase duration estimate. Same formula as getScriptMetrics:
+      // words / 50 wpm + pauseSecs. Surfaced as a small inline tag next
+      // to the preview so users see the time impact of each block when
+      // they're rearranging or removing.
+      const phaseSpoken = (s.text || '').replace(/\x5BPAUSE\s+\d+\x5D/gi, ' ');
+      const phaseWords = phaseSpoken.split(/\s+/).filter(w => w.length > 0).length;
+      const phasePauseSecs = (s.text.match(/\x5BPAUSE\s+(\d+)\]/gi) || []).reduce((sum, mm) => sum + parseInt(mm.match(/\d+/)[0], 10), 0);
+      const phaseDurSec = Math.round(phaseWords / 50 * 60 + phasePauseSecs);
+      const durLabel = phaseDurSec >= 60
+        ? `${Math.floor(phaseDurSec/60)}m ${phaseDurSec%60}s`
+        : `${phaseDurSec}s`;
+      const durTag = `<span class="phase-pair-tag" style="background:transparent;color:var(--text-faint);border-color:var(--glass-border);font-variant-numeric:tabular-nums" title="Estimated phase duration: ~${phaseWords} words at 50 wpm + ${phasePauseSecs}s pauses">⏱ ${durLabel}</span>`;
       // Custom rows get an extra Reimagine action; the column count adjusts to fit
       const reimagineBtn = isCustom
         ? `<button class="preview-btn phase-reimagine" data-idx="${i}" title="Rewrite this block in your guide's voice">✨ reimagine</button>`
         : '';
       const colCount = isCustom ? 4 : 3;
+      // The grab handle sits to the left and is the actual drag-trigger
+      // surface — making the whole row draggable would conflict with
+      // text-selection in the preview line. draggable=true on the row
+      // is needed for the events to fire; mousedown on non-handle
+      // elements cancels the drag.
       return `
-      <div class="${rowClass}" data-phase-idx="${i}"${depthAttr} style="align-items:flex-start">
+      <div class="${rowClass}" data-phase-idx="${i}"${depthAttr} draggable="true" style="align-items:flex-start">
+        <span class="phase-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">≡</span>
         <div style="flex:1; min-width:0">
-          <label>${escapeHtml(getPhaseLabel(s.phaseId))}${tag}<span class="hint">${preview}</span></label>
+          <label>${escapeHtml(getPhaseLabel(s.phaseId))}${tag}${durTag}<span class="hint">${preview}</span></label>
         </div>
         <div style="display:grid; grid-template-columns:repeat(${colCount}, minmax(72px, auto)); gap:6px; margin-left:8px">
           <button class="preview-btn phase-up" data-idx="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
@@ -17047,10 +17333,123 @@ ${s.text.trim()}`).join('\n\n').trim();
         </div>
       </div>`;
     }).join('');
+    // Render timeline visualization above the list. Walks sections to
+    // compute per-phase durations (same formula as the per-row tag),
+    // then renders each as a proportional flex block. Total width
+    // distributes across all phases. Click → scroll/highlight matching
+    // row in the list below for navigation.
+    const timelineWrap = $('phaseTimelineWrap');
+    if (timelineWrap) {
+      const phaseDurs = sections.map(s => {
+        const spoken = (s.text || '').replace(/\x5BPAUSE\s+\d+\x5D/gi, ' ');
+        const words = spoken.split(/\s+/).filter(w => w.length > 0).length;
+        const pauseSecs = (s.text.match(/\x5BPAUSE\s+(\d+)\]/gi) || []).reduce((sum, mm) => sum + parseInt(mm.match(/\d+/)[0], 10), 0);
+        return Math.max(1, Math.round(words / 50 * 60 + pauseSecs));
+      });
+      const totalDurSec = phaseDurs.reduce((a, b) => a + b, 0);
+      const totalLabel = totalDurSec >= 60
+        ? `${Math.floor(totalDurSec/60)}m ${totalDurSec % 60}s`
+        : `${totalDurSec}s`;
+      const blocks = sections.map((s, i) => {
+        const baseKey = phaseBase(s.phaseId);
+        const widthPct = (phaseDurs[i] / totalDurSec * 100).toFixed(2);
+        const dur = phaseDurs[i];
+        const durLbl = dur >= 60 ? `${Math.floor(dur/60)}m${dur % 60 ? ' '+(dur%60)+'s' : ''}` : `${dur}s`;
+        const labelText = getPhaseLabel(s.phaseId).replace(/^[^a-z]*/i, '').toLowerCase();
+        // Show label only on blocks ≥ ~7% of width — narrower clips badly.
+        const showLabel = parseFloat(widthPct) >= 7;
+        return `<div class="phase-timeline-block tl-${baseKey}" data-phase-idx="${i}" style="flex:${phaseDurs[i]} 1 0%" title="${escapeHtml(getPhaseLabel(s.phaseId))} — ${durLbl}">${showLabel ? `<span class="phase-timeline-label">${escapeHtml(labelText.split(/\s+/)[0])}</span>` : ''}</div>`;
+      }).join('');
+      timelineWrap.innerHTML = `
+        <div class="phase-timeline">${blocks}</div>
+        <div class="phase-timeline-meta">
+          <span>${sections.length} phase${sections.length === 1 ? '' : 's'}</span>
+          <span>~ ${totalLabel} total</span>
+        </div>`;
+      // Click → scroll to + flash the matching row
+      timelineWrap.querySelectorAll('.phase-timeline-block').forEach(block => {
+        block.addEventListener('click', () => {
+          const idx = parseInt(block.dataset.phaseIdx, 10);
+          const row = list.querySelector(`.phase-editor-row[data-phase-idx="${idx}"]`);
+          if (!row) return;
+          row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          row.classList.remove('row-flash');
+          // force reflow so animation re-fires on repeat clicks
+          void row.offsetWidth;
+          row.classList.add('row-flash');
+        });
+      });
+    }
     list.querySelectorAll('.phase-up').forEach(btn => btn.addEventListener('click', () => movePhaseSection(parseInt(btn.dataset.idx, 10), -1)));
     list.querySelectorAll('.phase-down').forEach(btn => btn.addEventListener('click', () => movePhaseSection(parseInt(btn.dataset.idx, 10), 1)));
     list.querySelectorAll('.phase-remove').forEach(btn => btn.addEventListener('click', () => removePhaseSection(parseInt(btn.dataset.idx, 10))));
     list.querySelectorAll('.phase-reimagine').forEach(btn => btn.addEventListener('click', () => reimagineCustomPhase(parseInt(btn.dataset.idx, 10))));
+    // Drag-drop reorder. Uses HTML5 native drag events. Drag is cancelled
+    // if the mousedown didn't originate on the grab handle — keeps text-
+    // selection in the preview lines working. Drop indicator is a colored
+    // line on the top or bottom of the target row to make the insertion
+    // point unambiguous.
+    let dragSrcIdx = -1;
+    list.querySelectorAll('.phase-editor-row').forEach(row => {
+      // Cancel drag at mousedown when the handle wasn't the source.
+      row.addEventListener('mousedown', e => {
+        if (!e.target.closest('.phase-drag-handle')) {
+          row.draggable = false;
+          // Restore on next tick so subsequent drags from the handle work.
+          requestAnimationFrame(() => { row.draggable = true; });
+        }
+      });
+      row.addEventListener('dragstart', e => {
+        dragSrcIdx = parseInt(row.dataset.phaseIdx, 10);
+        row.classList.add('dragging');
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          // Firefox needs setData for drag to actually fire.
+          try { e.dataTransfer.setData('text/plain', String(dragSrcIdx)); } catch {}
+        }
+      });
+      row.addEventListener('dragend', () => {
+        row.classList.remove('dragging');
+        list.querySelectorAll('.drop-above, .drop-below').forEach(r => {
+          r.classList.remove('drop-above', 'drop-below');
+        });
+        dragSrcIdx = -1;
+      });
+      row.addEventListener('dragover', e => {
+        if (dragSrcIdx < 0) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        const rect = row.getBoundingClientRect();
+        const above = (e.clientY - rect.top) < rect.height / 2;
+        // Clear other indicators
+        list.querySelectorAll('.drop-above, .drop-below').forEach(r => {
+          r.classList.remove('drop-above', 'drop-below');
+        });
+        // Don't paint indicator on the source row itself
+        if (parseInt(row.dataset.phaseIdx, 10) !== dragSrcIdx) {
+          row.classList.toggle('drop-above', above);
+          row.classList.toggle('drop-below', !above);
+        }
+      });
+      row.addEventListener('dragleave', () => {
+        row.classList.remove('drop-above', 'drop-below');
+      });
+      row.addEventListener('drop', e => {
+        e.preventDefault();
+        const dstIdx = parseInt(row.dataset.phaseIdx, 10);
+        if (dragSrcIdx < 0 || dstIdx < 0 || dragSrcIdx === dstIdx) return;
+        const rect = row.getBoundingClientRect();
+        const above = (e.clientY - rect.top) < rect.height / 2;
+        // Compute final insertion index. When moving DOWN past target,
+        // dropping above the target means insert at dstIdx; dropping
+        // below means insert at dstIdx + 1. When moving UP, the source
+        // gets pulled out before the dst index resolves so we don't
+        // double-shift.
+        let finalIdx = above ? dstIdx : dstIdx + 1;
+        if (dragSrcIdx < dstIdx) finalIdx -= 1; // source removal shifts later indexes left
+        movePhaseSectionTo(dragSrcIdx, finalIdx);
+      });
+    });
     // Refresh the global Reimagine mode toggle visibility (only shown when ≥1 custom block exists)
     if (typeof _refreshReimagineModeUI === 'function') _refreshReimagineModeUI();
     // Pair-highlighting: hovering a paired phase highlights its partner(s).
@@ -17079,6 +17478,24 @@ ${s.text.trim()}`).join('\n\n').trim();
     if (j < 0 || j >= sections.length) return;
     const commit = history.beginChange();
     [sections[idx], sections[j]] = [sections[j], sections[idx]];
+    setScriptFromSections(sections);
+    commit();
+  }
+
+  /** Absolute-index move. Used by drag-drop. dstIdx is the *final*
+   *  position the moved item should occupy after the move (i.e. the
+   *  caller has already accounted for the source-removal shift if
+   *  moving downward). No-op if the source and destination resolve
+   *  to the same slot. */
+  function movePhaseSectionTo(srcIdx, dstIdx) {
+    const sections = getScriptSectionsFromState();
+    if (srcIdx < 0 || srcIdx >= sections.length) return;
+    if (dstIdx < 0) dstIdx = 0;
+    if (dstIdx > sections.length - 1) dstIdx = sections.length - 1;
+    if (srcIdx === dstIdx) return;
+    const commit = history.beginChange();
+    const [moved] = sections.splice(srcIdx, 1);
+    sections.splice(dstIdx, 0, moved);
     setScriptFromSections(sections);
     commit();
   }
@@ -19915,6 +20332,24 @@ Start immediately:`;
       ${sessionMarker}
     `;
 
+    // A/B rating prompt — only when a blinded run just finished and the
+    // session completed normally. Emergency exits skip rating since the
+    // user wasn't in a state to evaluate the experience.
+    const abBox = $('postAbRatingBox');
+    if (abBox) {
+      if (!wasEmergency && state._abActivePreset) {
+        // Reset buttons + reveal from any previous run on this screen.
+        document.querySelectorAll('#postAbRatingButtons button').forEach(b => {
+          b.disabled = false; b.style.outline = '';
+        });
+        const reveal = $('postAbReveal');
+        if (reveal) reveal.textContent = '';
+        abBox.style.display = '';
+      } else {
+        abBox.style.display = 'none';
+      }
+    }
+
     // Show trigger/suggestion reminder if relevant
     const triggerBox = $('postTriggerBox');
     if (state.craftedSuggestion && state.craftedSuggestion.trigger && state.craftedSuggestion.trigger !== 'ongoing state') {
@@ -20405,6 +20840,22 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     document.querySelectorAll('#personaFilterTabs .filter-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === state.personaFilter));
     renderPersonaGrid();
   });
+
+  // Quick-Start Presets / Structured Programs — restore collapse state
+  // from localStorage on init. New users start collapsed (no key set);
+  // returning users get whichever state they last left it in.
+  function _wirePresetCollapse(detailsId, storageKey) {
+    const el = $(detailsId);
+    if (!el) return;
+    try {
+      if (localStorage.getItem(storageKey) === '1') el.open = true;
+    } catch {}
+    el.addEventListener('toggle', () => {
+      try { localStorage.setItem(storageKey, el.open ? '1' : '0'); } catch {}
+    });
+  }
+  _wirePresetCollapse('quickStartPresetsDetails', 'stillness_presets_open_v1');
+  _wirePresetCollapse('structuredProgramsDetails', 'stillness_programs_open_v1');
   $('methodFilterTabs').addEventListener('click', async e => {
     if (!e.target.dataset.filter) return;
     const cat = e.target.dataset.filter;
@@ -21478,6 +21929,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     }
     await saveConfigPreset(name, getCurrentConfigSnapshot());
     await renderPresetDropdown();
+    await _onPresetsChanged();
     const sel = $('presetSelect'); if (sel) sel.value = name;
     notify.success(`Preset "${name}" saved.`);
   });
@@ -21497,7 +21949,115 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     if (!ok) return;
     await deleteConfigPreset(name);
     await renderPresetDropdown();
+    await _onPresetsChanged();
     notify.success(`Preset "${name}" deleted.`);
+  });
+
+  // ── A/B comparison mode ─────────────────────────────────────────────
+  // Reveal toggle for the A/B bar. Hidden by default to keep the preset
+  // section uncluttered. Once revealed, the bar persists across sessions
+  // (state.abModeRevealed) so users who use it don't have to re-open.
+  function _refreshAbBarVisibility() {
+    const bar = $('abBar');
+    const toggle = $('abModeToggle');
+    if (!bar || !toggle) return;
+    const on = !!state.abModeRevealed;
+    bar.style.display = on ? 'flex' : 'none';
+    toggle.textContent = on ? '× hide A/B compare' : '+ A/B compare mode';
+  }
+  $('abModeToggle')?.addEventListener('click', () => {
+    state.abModeRevealed = !state.abModeRevealed;
+    saveUserSettings();
+    _refreshAbBarVisibility();
+    if (state.abModeRevealed) _refreshAbPresetDropdowns();
+  });
+
+  /** Mirror the preset list into both A and B dropdowns. */
+  async function _refreshAbPresetDropdowns() {
+    const list = await listConfigPresets();
+    const opts = '<option value="">— pick —</option>'
+      + list.map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('');
+    const a = $('abPresetA');
+    const b = $('abPresetB');
+    if (a) { const prev = a.value; a.innerHTML = opts; if (list.some(p => p.name === prev)) a.value = prev; }
+    if (b) { const prev = b.value; b.innerHTML = opts; if (list.some(p => p.name === prev)) b.value = prev; }
+  }
+
+  // Refresh dropdowns when presets change. Called from preset save/delete
+  // handlers below — replaces a fragile function-rebinding wrapper.
+  async function _onPresetsChanged() {
+    if (state.abModeRevealed) await _refreshAbPresetDropdowns();
+  }
+
+  $('abRunBtn')?.addEventListener('click', async () => {
+    const aName = $('abPresetA')?.value;
+    const bName = $('abPresetB')?.value;
+    if (!aName || !bName) { notify.info('Pick a preset for both A and B first.'); return; }
+    if (aName === bName) { notify.warn('A and B are the same preset — pick two different ones.'); return; }
+    const list = await listConfigPresets();
+    const preset = list.find(p => p.name === (Math.random() < 0.5 ? aName : bName));
+    if (!preset) { notify.warn('One of the presets is missing — refresh and try again.'); return; }
+    // Stash the chosen side WITHOUT revealing in the UI. The post-session
+    // rating widget will read this and unblind on rating submission.
+    state._abActivePreset = preset.name;
+    state._abPair = { a: aName, b: bName };
+    applyConfigSnapshot(preset.snapshot);
+    const last = $('abLastResult');
+    if (last) last.textContent = `🎲 Blinded run loaded. The chosen side will be revealed after you rate the session.`;
+    notify.success('Random preset applied. Generate and run as usual.');
+  });
+
+  $('abStatsBtn')?.addEventListener('click', async () => {
+    const results = (await idbGet('stillness_ab_results_v1')) || {};
+    const list = await listConfigPresets();
+    const lines = list
+      .map(p => {
+        const r = results[p.name];
+        if (!r || !r.ratings?.length) return null;
+        const avg = (r.ratings.reduce((s,v) => s+v, 0) / r.ratings.length).toFixed(2);
+        return `${p.name} — avg ${avg} / 5  · n=${r.ratings.length}`;
+      })
+      .filter(Boolean);
+    if (!lines.length) {
+      alertModal('A/B results', 'No ratings yet. Run a blinded session and submit a rating to start tracking.');
+      return;
+    }
+    alertModal('A/B results', lines.join('\n'));
+  });
+
+  _refreshAbBarVisibility();
+  if (state.abModeRevealed) _refreshAbPresetDropdowns();
+
+  // Post-session rating buttons for A/B blinded runs.
+  document.querySelectorAll('#postAbRatingButtons button').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const rating = parseInt(btn.dataset.rating, 10);
+      if (!Number.isFinite(rating) || rating < 1 || rating > 5) return;
+      const presetName = state._abActivePreset;
+      const pair = state._abPair || {};
+      if (!presetName) return; // shouldn't fire without an active preset
+      try {
+        const all = (await idbGet('stillness_ab_results_v1')) || {};
+        const slot = all[presetName] || { ratings: [], firstAt: Date.now() };
+        slot.ratings.push(rating);
+        slot.lastAt = Date.now();
+        // Cap at 100 ratings per preset to keep storage bounded.
+        if (slot.ratings.length > 100) slot.ratings = slot.ratings.slice(-100);
+        all[presetName] = slot;
+        await idbSet('stillness_ab_results_v1', all);
+      } catch (e) { console.warn('[ab] save failed:', e); }
+      // Disable buttons + show reveal
+      document.querySelectorAll('#postAbRatingButtons button').forEach(b => b.disabled = true);
+      btn.style.outline = '2px solid var(--neon-cyan)';
+      const reveal = $('postAbReveal');
+      if (reveal) {
+        const isA = pair.a === presetName;
+        const otherSide = isA ? pair.b : pair.a;
+        reveal.innerHTML = `Rated <strong>${rating}/5</strong>. You ran preset <strong>${escapeHtml(presetName)}</strong> ${isA ? '(side A)' : '(side B)'}. ${otherSide ? `The other side was <em>${escapeHtml(otherSide)}</em>. Try the same A/B comparison again to build up the sample.` : ''}`;
+      }
+      state._abActivePreset = null;
+      state._abPair = null;
+    });
   });
 
   // Session
@@ -22729,6 +23289,55 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     try { _applyAdvancedBgControlGating(); } catch {}
   });
 
+  // ── API key mitigations: per-session call counter + quick clear ─────────
+  // The audit log tracks every AI call's provider + source + byte size. This
+  // counter is a UI surface over that data: a one-glance signal so the user
+  // catches unexpected activity early (a malicious persona hammering the key,
+  // or a runaway loop). Updated each time the AI key UI is opened.
+  function _refreshExtAiCallCount() {
+    const el = $('extAiCallCount');
+    if (!el || !_aiAuditLog) return;
+    const externalCalls = _aiAuditLog.filter(e => e.provider === 'anthropic' || e.provider === 'openai').length;
+    el.textContent = `${externalCalls} call${externalCalls === 1 ? '' : 's'} this session`;
+    el.style.color = externalCalls >= 100 ? 'var(--neon-amber)'
+                  : externalCalls >= 50  ? 'var(--text-dim)'
+                  : 'var(--text-faint)';
+    if (externalCalls === 100) {
+      // Soft notify on the threshold-crossing call. One-time per session;
+      // resets when the page reloads (audit log keeps history but the
+      // notify gate is checked against the localStorage flag below).
+      if (!sessionStorage.getItem('_extAiHighVolumeWarned')) {
+        sessionStorage.setItem('_extAiHighVolumeWarned', '1');
+        notify.info('100 external AI calls this session. If unexpected, check the AI activity log under your profile.', 8000);
+      }
+    }
+  }
+  // Refresh whenever the options modal opens (covers both manual checks
+  // and the on-input handler when the user pastes a fresh key).
+  $('openOptionsBtn')?.addEventListener('click', () => setTimeout(_refreshExtAiCallCount, 0));
+  // Periodic refresh while the modal is open so the count stays live during
+  // background generations. Bound to the visibility of the row.
+  setInterval(() => {
+    const row = $('extAiKeyRow');
+    if (row && row.style.display !== 'none') _refreshExtAiCallCount();
+  }, 4000);
+
+  $('extAiClearBtn')?.addEventListener('click', () => {
+    // Wipe both the active key, the per-provider cache, and the input.
+    // Revert provider to Perchance so the next AI call goes to the free
+    // tier. Doesn't clear the audit log — that's read-only history the
+    // user might want to inspect.
+    state._extAiKey = null;
+    state._extAiKeysByProvider = { anthropic: null, openai: null };
+    state.extAiProvider = 'perchance';
+    const sel = $('extAiProvider'); if (sel) sel.value = 'perchance';
+    const inp = $('extAiKey'); if (inp) inp.value = '';
+    const row = $('extAiKeyRow'); if (row) row.style.display = 'none';
+    try { _applyAdvancedBgControlGating(); } catch {}
+    _refreshExtAiCallCount();
+    notify.success('API key cleared. Reverted to Perchance AI.');
+  });
+
   // Debug mode — all flags session-only, never persisted. Any change triggers a
   // re-sync of state._debug and re-renders the floating "DEBUG" banner.
   // Debug toggle — single checkbox enables every developer affordance. Mirrors to
@@ -23013,6 +23622,18 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     slider.disabled = !enabled;
     if (paceSlider) paceSlider.disabled = !enabled;
     $('directorBiasResetBtn') && ($('directorBiasResetBtn').disabled = !enabled);
+    // 2D pad sync — dot position reflects current bias/pace. X = pace,
+    // Y = bias inverted (positive bias = "forward" = top of pad).
+    const pad = $('directorBiasPad');
+    const dot = $('directorBiasPadDot');
+    if (pad && dot) {
+      const xPct = ((pace + 3) / 6) * 100;       // -3 → 0%,  +3 → 100%
+      const yPct = ((3 - bias) / 6) * 100;       // +3 → 0%,  -3 → 100%
+      dot.style.left = xPct.toFixed(2) + '%';
+      dot.style.top  = yPct.toFixed(2) + '%';
+      pad.style.opacity = enabled ? '' : '0.4';
+      pad.style.pointerEvents = enabled ? '' : 'none';
+    }
   }
   $('directorBiasSlider')?.addEventListener('input', e => {
     state.directorBias = Number(e.target.value);
@@ -23041,6 +23662,56 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     _updateDirectorBiasUI();
     saveUserSettings();
   });
+
+  // 2D Director calibration pad — alternative input to the two sliders.
+  // Same -3..+3 integer grid on both axes; pointerdown / pointermove
+  // map cursor position to (pace, bias) and update both the sliders and
+  // state. Persists once on pointerup so a drag isn't 36 separate saves.
+  (function initDirectorPad() {
+    const pad = $('directorBiasPad');
+    if (!pad) return;
+    let dragging = false;
+    function applyFromPointer(ev) {
+      const rect = pad.getBoundingClientRect();
+      // Clamp client coords inside the pad
+      const cx = Math.max(rect.left, Math.min(rect.right, ev.clientX));
+      const cy = Math.max(rect.top,  Math.min(rect.bottom, ev.clientY));
+      const xRatio = (cx - rect.left) / rect.width;   // 0..1
+      const yRatio = (cy - rect.top)  / rect.height;  // 0..1
+      // Snap to integer steps. -3..+3 = 7 steps; quantize and clamp.
+      const pace = Math.round(xRatio * 6) - 3;
+      const bias = 3 - Math.round(yRatio * 6);
+      const dbSlider = $('directorBiasSlider');
+      const dpSlider = $('directorPaceSlider');
+      if (dbSlider) dbSlider.value = String(bias);
+      if (dpSlider) dpSlider.value = String(pace);
+      state.directorBias = bias;
+      state.directorPace = pace;
+      _updateDirectorBiasUI();
+    }
+    pad.addEventListener('pointerdown', ev => {
+      if (state.smartDirectorEnabled === false) return;
+      dragging = true;
+      pad.classList.add('dragging');
+      pad.setPointerCapture?.(ev.pointerId);
+      applyFromPointer(ev);
+      ev.preventDefault();
+    });
+    pad.addEventListener('pointermove', ev => {
+      if (!dragging) return;
+      applyFromPointer(ev);
+    });
+    const finishDrag = ev => {
+      if (!dragging) return;
+      dragging = false;
+      pad.classList.remove('dragging');
+      try { pad.releasePointerCapture?.(ev.pointerId); } catch {}
+      saveUserSettings();
+      sdLog('directorBias / directorPace saved via pad', { bias: state.directorBias, pace: state.directorPace });
+    };
+    pad.addEventListener('pointerup', finishDrag);
+    pad.addEventListener('pointercancel', finishDrag);
+  })();
 
   /** Render the per-domain offset rows. Domains read from the intentionType
    *  <select> so they stay in sync with available types. Each row stores
@@ -23104,8 +23775,18 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   ['pfName', 'pfAbout', 'pfAppearance', 'pfGoals'].forEach(id => {
     $(id)?.addEventListener('input', saveProfile);
   });
-  ['pfPronouns', 'pfAge', 'pfExperience', 'pfUseFirstName', 'pfShareAge', 'pfShareAppearance', 'pfShareGoals'].forEach(id => {
+  ['pfPronouns', 'pfAge', 'pfExperience', 'pfUseFirstName'].forEach(id => {
     $(id)?.addEventListener('change', saveProfile);
+  });
+  // Universal "use profile details" toggle — fans out to the three
+  // hidden mirrors (pfShareAge / pfShareAppearance / pfShareGoals) so
+  // the existing per-field read code in getProfile() stays unchanged.
+  $('pfShareAll')?.addEventListener('change', e => {
+    const on = !!e.target.checked;
+    ['pfShareAge', 'pfShareAppearance', 'pfShareGoals'].forEach(id => {
+      const el = $(id); if (el) el.checked = on;
+    });
+    saveProfile();
   });
   // When the age field changes, surfaces sensitive to the relaxation
   // gate refresh in place so the user sees the effect immediately —

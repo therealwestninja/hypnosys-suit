@@ -366,18 +366,29 @@ Effort scale: 1 (trivial, < 30min), 2 (small, < 2h), 3 (medium, half-day), 4 (la
 
 ### Effort 4
 
+| Originally listed | Status |
+|---|---|
+| Drag-and-drop phase reordering with constraints | ✅ shipped (HTML5 native drag with grab handle, drop indicators, falls back to existing ↑/↓ buttons) |
+| Per-phase duration estimate (live) | ✅ shipped (⏱ tag on every phase row, words/50 wpm + pauseSecs formula) |
+| `textToImagePlugin` persona portraits | ✅ shipped — already core. Extended this round: cached portraits hydrate as soft thumbnails on persona grid cards |
+| Browser API key exposure mitigations | ✅ shipped (per-session call counter visible in Options, "clear & revert to Perchance" one-click button, soft notify at 100 calls per session) |
+
+### Deferred — back of roadmap
+
+(Per direction, prioritization is around audio, viz, drag-drop reorder, per-phase duration, persona portraits, and API key mitigations. Items below are deferred until those land or new direction comes.)
+
 | Item | Notes |
 |---|---|
-| Mic-driven exhale detection (existing #13) | Critical for breath-paced methods. |
+| Two-axis Director calibration UI revamp | Already partially shipped (intensity + pace sliders); 2D pad UI still pending |
+| Conversational free-text check-in | Replaces structured pre-checkin with text. |
+| Eye-state modality switching | Webcam-driven, switches script content. Large. |
+| Pre-generate tomorrow program session | Full state-clone harness needed. |
+| Mic-driven exhale detection | Critical for breath-paced methods. |
 | HRV via webcam rPPG | Real-time biofeedback signal. |
-| Drag-and-drop phase reordering with constraints | From existing Round 2 deferred list. |
-| Timeline view alongside phase list | Round 2 deferred. |
-| Per-phase duration estimate (live) | Round 2 deferred. |
-| `textToImagePlugin` persona portraits + suggestion symbols + program badges (existing #7) | Caching strategy from skill §3. |
-| Browser API key exposure mitigations (existing #8) | Modal warning + sanitization audit + per-provider keys. |
+| Timeline view alongside phase list | Phase list already has duration estimates; timeline is the visual counterpart. |
 | Multi-language narration | Locale detection + voice match + AI prompt translation. |
 | Voice cloning via ElevenLabs/OpenAI TTS user-key | Same architecture as text-AI provider; different endpoint. |
-| Offline session package (existing #11) | TTS pre-synth + zip + minimal player. |
+| Offline session package | TTS pre-synth + zip + minimal player. |
 
 ### Effort 5
 
@@ -385,7 +396,7 @@ Effort scale: 1 (trivial, < 30min), 2 (small, < 2h), 3 (medium, half-day), 4 (la
 |---|---|
 | Fractionation (multi-induction cycles) | Round 2 deferred — needs first-class trance-cycle modeling. |
 | A/B experiment mode | Random within shortlist + outcome reporting. |
-| Community pack registry (existing) | Discovery UI for packs. |
+| Community pack registry | Discovery UI for packs. |
 | Live adaptive pacing across all methods | Generalization of mic-driven exhale. |
 
 ---
