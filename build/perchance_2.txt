@@ -488,12 +488,128 @@ overflow: hidden; margin-bottom: 6px;
   }
 
   /* ============ PHASE GENERATION PROGRESS ============ */
+  /* OLD compact dot-row style — still used by the headless pre-gen mode
+     for log output but the user-facing UI now uses .gen-step-row below
+     which mirrors the Guide Builder's per-row pattern. Kept here as
+     defensive fallback in case any cached state references it. */
   .gen-progress {
     background: var(--glass); border: 1px solid var(--glass-border);
-padding: 16px; margin-bottom: 12px;
+    padding: 0; margin-bottom: 12px;
   }
+  /* NEW rich-row style — mirrors .gb-step from Guide Builder so script
+     generation, persona generation, and any future chain-prompt
+     generators present the same way. Each row is one phase: icon +
+     label + regen button + inline content/streaming text. Status
+     drives icon color + a pulse animation while running. */
+  .gen-step-row {
+    border-bottom: 1px solid var(--glass-border);
+    padding: 12px 14px;
+  }
+  .gen-step-row:last-child { border-bottom: none; }
+  .gen-step-row-head {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 6px;
+  }
+  .gen-step-row-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; flex-shrink: 0;
+    font-size: 0.86rem; line-height: 1;
+  }
+  .gen-step-row-label {
+    font-size: 0.74rem; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    font-weight: 500; flex: 1; min-width: 0;
+  }
+  .gen-step-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .gen-step-row-regen {
+    background: none; border: 1px solid var(--glass-border);
+    color: var(--text-faint); font-size: 0.66rem;
+    padding: 2px 8px; cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    font-family: inherit;
+  }
+  .gen-step-row-regen:hover {
+    color: var(--neon-cyan); border-color: rgba(0,212,230,0.5);
+  }
+  .gen-step-row-regen:disabled { opacity: 0.4; cursor: default; }
+  .gen-step-row-content {
+    font-size: 0.78rem; color: var(--text); line-height: 1.55;
+    padding-left: 26px; min-height: 0;
+    white-space: pre-wrap; word-break: break-word;
+    /* Constrain in-flight streaming preview height — still scrollable */
+    max-height: 220px; overflow-y: auto;
+  }
+  .gen-step-row-content:empty::before {
+    content: 'waiting…'; color: var(--text-faint); font-style: italic; font-size: 0.74rem;
+  }
+  /* Status variants — reuse the same gbPulse keyframes defined for the
+     guide-builder rows since the visual language is shared. */
+  .gen-step-row.is-pending  .gen-step-row-icon { color: var(--text-faint); }
+  .gen-step-row.is-running  .gen-step-row-icon { color: var(--neon-cyan); animation: gbPulse 1.4s ease-in-out infinite; }
+  .gen-step-row.is-done     .gen-step-row-icon { color: var(--accent-green, #5cb874); }
+  .gen-step-row.is-failed   .gen-step-row-icon { color: var(--neon-amber); }
+  .gen-step-row.is-warn     .gen-step-row-icon { color: var(--neon-amber); }
+  .gen-step-row.is-failed   .gen-step-row-content,
+  .gen-step-row.is-warn     .gen-step-row-content {
+    color: var(--neon-amber); font-style: italic;
+  }
+  .gen-step-row.is-running  .gen-step-row-content { color: var(--text-dim); }
+  /* Cursor on streaming row content — blinking caret on the row's
+     content area so users see the live "typing" feedback inline. */
+  .gen-step-row.is-running .gen-step-row-content:not(:empty)::after {
+    content: '▋'; color: var(--neon-cyan); animation: streamBlink 0.9s ease-in-out infinite;
+    margin-left: 2px;
+  }
+  /* When .gen-step-row is combined with .phase-editor-row (Round 23 —
+     unified phase panel), keep both styles working: the bottom border
+     comes from .gen-step-row (row separator), the pair-coloring left
+     border comes from .phase-editor-row, and the drag handle aligns
+     with the status icon. */
+  .gen-step-row.phase-editor-row {
+    /* Preserve the pair-color left border AND the row's normal padding.
+       The negative margin trick from the old .phase-editor-row would
+       knock things out of alignment inside the panel container. */
+    margin-left: 0;
+  }
+  .gen-step-row.phase-editor-row .phase-drag-handle {
+    /* Drag handle inherits its base styles from the original
+       .phase-editor-row .phase-drag-handle rule above. Just ensure
+       it sits flush with the head row's centerline. */
+    align-self: center;
+    padding-right: 4px;
+  }
+  /* Inside the unified row, the content area's padding-left: 26px
+     already aligns with the icon position (18px icon + 8px gap).
+     The drag handle adds ~16px more to the left of the icon, so
+     bump content padding to keep visual alignment. */
+  .gen-step-row.phase-editor-row .gen-step-row-content {
+    padding-left: 42px;
+  }
+  /* Action buttons in the unified row — small icon-style. The original
+     .preview-btn styling kicks in but we tighten spacing for the
+     denser action set (↑↓ audition regen × etc.). */
+  .gen-step-row.phase-editor-row .gen-step-row-actions {
+    gap: 3px;
+  }
+  .gen-step-row.phase-editor-row .gen-step-row-actions .preview-btn {
+    padding: 2px 7px;
+    font-size: 0.66rem;
+    min-width: 0;
+  }
+  /* The phase-generate-pending modifier (set on rows whose content is
+     still scaffold-only) makes the regen/generate button visually
+     pop so users see "this needs generation" at a glance. */
+  .gen-step-row.phase-editor-row .gen-step-row-regen.phase-generate-pending {
+    color: var(--neon-cyan);
+    border-color: rgba(0,212,230,0.5);
+    background: rgba(0,212,230,0.06);
+  }
+
+  /* OLD compact dot row style — kept as fallback in case any caller
+     paths still emit them. Not used by renderGenProgress anymore. */
   .gen-phases {
     display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px;
+    padding: 12px;
   }
   .gen-phase {
     display: flex; align-items: center; gap: 5px;
@@ -528,9 +644,6 @@ padding: 16px; margin-bottom: 12px;
   }
   .gen-phase.warn { color: var(--neon-amber); cursor: pointer; }
   .gen-phase.warn:hover { text-decoration: underline; }
-  /* Pending = not yet generated. Only shows as clickable after initial
-     generation (when the row is already visible). Click-handler is bound
-     unconditionally in renderGenProgress to keep behavior consistent. */
   .gen-phase.pending { cursor: pointer; }
   .gen-phase.pending:hover { text-decoration: underline; color: var(--text-dim); }
   .gen-phase.pending:hover .gen-dot { border-color: var(--text-dim); }
@@ -538,6 +651,7 @@ padding: 16px; margin-bottom: 12px;
   .gen-eta {
     text-align: center; font-size: 0.72rem; color: var(--text-dim);
     font-family: var(--font-body);
+    padding: 8px 12px 12px;
   }
 
   /* ============ CRAFTED PREVIEW ============ */
@@ -789,24 +903,10 @@ font-size: 0.82rem; color: var(--text-dim);
     background: rgba(184,154,74,0.06);
     box-shadow: var(--glow-amber);
   }
-  .gen-stream-box {
-    margin-top: 10px; padding: 10px 12px;
-    background: rgba(184,154,74,0.03); border: 1px solid rgba(184,154,74,0.12);
-min-height: 48px;
-    font-size: 0.78rem; line-height: 1.55; color: var(--text-dim);
-    white-space: pre-wrap; max-height: 180px; overflow-y: auto;
-    font-family: var(--font-body); display: none;
-  }
-  .gen-stream-box.active { display: block; }
-  .gen-stream-label {
-    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--accent-warm); margin-bottom: 4px; font-weight: 600;
-  }
-  .gen-stream-text::after {
-    content: '▋'; color: var(--accent-warm); animation: streamBlink 0.9s ease-in-out infinite;
-    margin-left: 2px;
-  }
-  .gen-stream-box.done .gen-stream-text::after { display: none; }
+  /* streamBlink keyframe — referenced by .gen-step-row.is-running's
+     blinking caret. The old .gen-stream-box / .gen-stream-label /
+     .gen-stream-text classes that previously used it were removed
+     in Round 22 when streaming moved into the row content area. */
   @keyframes streamBlink { 0%,100% { opacity: 0.2; } 50% { opacity: 1; } }
 
   /* ============ PHASE DIFF MODAL ============ */
@@ -2915,11 +3015,15 @@ padding: 6px 10px; font-size: 1.1rem;
     overflow-wrap: anywhere;
   }
   #phaseEditorList {
-    display: grid;
-    gap: 8px;
-  }
-  #phaseEditorList .toggle-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    /* Round 23 — rows are .gen-step-row + .phase-editor-row with their
+       own border-bottom separator. No grid/gap needed; rows stack
+       naturally and the row's internal head/content layout handles
+       all alignment. Background framing matches the Guide Builder's
+       step list for visual consistency. */
+    background: var(--bg-deep);
+    border: 1px solid var(--glass-border);
+    max-height: 60vh;
+    overflow-y: auto;
   }
   #phaseEditorPanel .preview-row {
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -4501,9 +4605,13 @@ I return to myself easily"></textarea>
         </div>
       </div>
 
-      <!-- Phase-by-phase generation progress -->
+      <!-- Phase-by-phase generation progress (Round 22 unified UI).
+           Each phase renders as a .gen-step-row matching the Guide
+           Builder's per-row pattern: status icon + label + per-row
+           regen button + inline content area. See renderGenProgress
+           and setStreamingPreview. -->
       <div class="gen-progress" id="genProgress" style="display:none">
-        <div class="gen-phases" id="genPhases"></div>
+        <div class="gen-step-list" id="genPhases"></div>
         <div class="gen-eta" id="genEta"></div>
       </div>
       <div class="craft-progress" id="scriptBuildProgress" style="display:none">
@@ -4589,7 +4697,10 @@ I return to myself easily"></textarea>
           </div>
         </div>
         <div class="detail-panel" id="phaseEditorPanel" style="margin-top:12px; display:none">
-          <div class="detail-title">phase order</div>
+          <div class="detail-title" style="display:flex;align-items:center;gap:10px">
+            <span>phase order</span>
+            <span id="genEtaInline" style="display:none;font-size:0.66rem;color:var(--neon-amber);text-transform:none;letter-spacing:0.02em;font-weight:400"></span>
+          </div>
           <div style="margin-bottom:8px; font-size:0.78rem; color:var(--text-dim)">Arrange, remove, or add phase sections. Similar controls are now clustered here instead of stretching across a single row.</div>
           <!-- Timeline visualization. Each phase rendered as a proportional
                block; widths reflect estimated duration. Click a block to
@@ -18976,54 +19087,173 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
   }
 
   /** Render phase progress with state: pending, streaming, done, error, warn */
+  // Status string → class suffix + icon glyph mapping for the new
+  // .gen-step-row UI. Mirrors the Guide Builder's status taxonomy
+  // so the visual language is consistent across both generators.
+  const _GEN_STATUS_CLASS = {
+    pending:   'is-pending',
+    streaming: 'is-running',
+    done:      'is-done',
+    error:     'is-failed',
+    warn:      'is-warn',
+  };
+  const _GEN_STATUS_ICON = {
+    pending:   '○',
+    streaming: '◐',
+    done:      '●',
+    error:     '⚠',
+    warn:      '⚠',
+  };
+
+  // Helper — set a phase row's status class without re-rendering the
+  // whole editor. Used during generation to flip rows between is-pending
+  // / is-running / is-done / is-failed without losing handlers.
+  function setPhaseRowStatus(idx, status) {
+    if (state._preGenMode) return;
+    const list = $('phaseEditorList');
+    if (!list) return;
+    const row = list.querySelector(`.gen-step-row[data-phase-idx="${idx}"]`);
+    if (!row) return;
+    row.classList.remove('is-pending', 'is-running', 'is-done', 'is-failed', 'is-warn');
+    const cls = _GEN_STATUS_CLASS[status] || 'is-pending';
+    row.classList.add(cls);
+    const iconEl = row.querySelector('.gen-step-row-icon');
+    if (iconEl) iconEl.textContent = _GEN_STATUS_ICON[status] || '○';
+  }
+
   function renderGenProgress(phases, stateMask, eta, retryCallback) {
     if (state._preGenMode) return;  // headless: skip all DOM writes
+    // Round 23 — unified panel. The phase editor is the single source
+    // of truth: ensure it's rendered (so rows exist for status updates
+    // and streaming text writes), then flip each row's status class.
+    // The legacy #genProgress wrapper is hidden since the editor panel
+    // now carries all the visual feedback.
     const wrap = $('genProgress');
-    const container = $('genPhases');
-    const etaEl = $('genEta');
-    if (!wrap || !container) return;
-    wrap.style.display = 'block';
-    container.innerHTML = phases.map((p, i) => {
-      const label = getPhaseLabel(p);
-      const st = stateMask[i] || 'pending';
-      return `<div class="gen-phase ${st}" data-phase-idx="${i}"><div class="gen-dot"></div><span>${label}</span></div>`;
-    }).join('');
-    if (etaEl) etaEl.textContent = eta || '';
-    // Streaming preview box — ensure it exists under the phase list.
-    if (!$('genStreamBox')) {
-      const box = document.createElement('div');
-      box.id = 'genStreamBox';
-      box.className = 'gen-stream-box';
-      box.innerHTML = `<div class="gen-stream-label" id="genStreamLabel">generating…</div><div class="gen-stream-text" id="genStreamText"></div>`;
-      container.parentNode.insertBefore(box, container.nextSibling);
+    if (wrap) wrap.style.display = 'none';
+    // Ensure the editor panel is rendered. Skip if state.scriptSections
+    // doesn't yet match the generation's phases — the editor reads from
+    // getScriptSectionsFromState() which derives from state.fullScript /
+    // state.phaseResults; the renderPhaseEditor() call assumes scaffold
+    // text exists for any phase not yet generated, which is the case
+    // during normal generation flow.
+    if (typeof renderPhaseEditor === 'function') {
+      try { renderPhaseEditor(); } catch (e) { console.warn('[gen] editor render failed:', e); }
     }
+    // Apply per-phase status classes
+    phases.forEach((p, i) => {
+      const st = stateMask[i] || 'pending';
+      setPhaseRowStatus(i, st);
+    });
+    // ETA — surface inline next to the editor panel's title so users
+    // see "estimated remaining" right where the generation is happening.
+    // The legacy #genEta inside the (now-hidden) #genProgress wrapper
+    // is also updated for any defensive callers.
+    const etaInline = $('genEtaInline');
+    if (etaInline) {
+      etaInline.textContent = eta || '';
+      etaInline.style.display = eta ? 'inline' : 'none';
+    }
+    const etaEl = $('genEta');
+    if (etaEl) {
+      etaEl.textContent = eta || '';
+      etaEl.style.display = eta ? 'block' : 'none';
+    }
+    // Wire regen buttons to the retry callback during active generation.
+    // The phase editor binds .phase-generate to generatePhaseInline by
+    // default; while generation is active we want clicks to call the
+    // retry handler (which knows the in-flight gen state) instead. Use
+    // capture-phase delegation so we run before the editor's handlers.
     if (retryCallback) {
-      // error/warn phases are clickable to retry; pending phases become clickable too
-      // (for phases added to the list after initial generation — user can trigger them on demand)
-      container.querySelectorAll('.gen-phase.error, .gen-phase.warn, .gen-phase.pending').forEach(el => {
-        el.addEventListener('click', () => retryCallback(parseInt(el.dataset.phaseIdx)));
-      });
+      const list = $('phaseEditorList');
+      if (list) {
+        // Remove any prior delegation handler so we don't stack
+        if (list._genRetryDelegated) {
+          list.removeEventListener('click', list._genRetryDelegated, true);
+        }
+        list._genRetryDelegated = (e) => {
+          // Self-gate: only intercept when generation is active.
+          // Once generation completes, clicks fall through to the
+          // editor's normal handlers (generatePhaseInline etc.).
+          if (!_aiInProgress) return;
+          const btn = e.target.closest('.phase-generate, .gen-step-row-regen');
+          if (!btn) return;
+          if (btn.disabled) return;
+          const idx = parseInt(btn.getAttribute('data-idx') || btn.getAttribute('data-regen-idx') || '-1', 10);
+          if (Number.isNaN(idx) || idx < 0) return;
+          e.stopPropagation();
+          e.preventDefault();
+          retryCallback(idx);
+        };
+        list.addEventListener('click', list._genRetryDelegated, true);
+      }
     }
   }
 
-  /** Show/update the streaming preview for the phase currently generating. */
-  function setStreamingPreview(phaseLabel, text, opts = {}) {
+  /** Show/update the streaming preview for a phase currently generating.
+   *
+   * NEW signature (Round 22 unification): (phaseIdx, text, opts) — writes
+   * into the row's .gen-step-row-content area matching data-content-idx.
+   *
+   * BACKWARD COMPAT: when first arg is a string, treats it as the legacy
+   * phaseLabel form and resolves the row by label-match against the
+   * current _genState.phases. Returns gracefully when no row resolves.
+   *
+   * opts.done — phase finished cleanly; row flips to is-done with final text
+   * opts.hide — legacy: was used to hide the standalone stream box. Now a
+   *             no-op since rows stay populated post-generation (which is
+   *             a UX improvement — users can see what was generated).
+   */
+  function setStreamingPreview(phaseIdxOrLabel, text, opts = {}) {
     if (state._preGenMode) return;  // headless: skip streaming UI
-    const box = $('genStreamBox'); if (!box) return;
-    if (opts.hide) { box.classList.remove('active', 'done'); return; }
-    box.classList.add('active');
-    if (opts.done) box.classList.add('done'); else box.classList.remove('done');
-    const label = $('genStreamLabel');
-    const textEl = $('genStreamText');
-    if (label) label.textContent = phaseLabel ? `generating · ${phaseLabel.toLowerCase()}` : 'generating…';
-    if (textEl) {
-      // Truncate displayed text to keep the DOM light on very long phases —
-      // tail-biased so user sees fresh content.
-      const display = text.length > 1400 ? '…' + text.slice(text.length - 1400) : text;
-      textEl.textContent = display;
-      // Auto-scroll to bottom so streaming feels like a running transcript.
-      box.scrollTop = box.scrollHeight;
+    if (opts.hide) return;  // rows stay populated; nothing to hide
+    // Resolve which row to target. New callers pass numeric index;
+    // legacy callers pass the phase label string.
+    let idx = phaseIdxOrLabel;
+    if (typeof phaseIdxOrLabel === 'string') {
+      // Legacy path — find the row whose phase matches this label.
+      // Empty label (used in the now-no-op hide call) returns -1.
+      if (!phaseIdxOrLabel || !_genState || !Array.isArray(_genState.phases)) return;
+      idx = _genState.phases.findIndex(p => getPhaseLabel(p) === phaseIdxOrLabel);
+      if (idx < 0) return;
     }
+    if (typeof idx !== 'number' || idx < 0) return;
+    // Persist the in-flight text into a streaming buffer keyed by
+    // phaseId so getScriptSectionsFromState can preserve it across
+    // editor re-renders (which happen if the user adds/removes/
+    // reorders phases mid-generation). On opts.done the buffer is
+    // cleared since either phaseResults gets the final value or the
+    // row is in an error state and the scaffold placeholder is right.
+    if (_genState && Array.isArray(_genState.phases) && idx < _genState.phases.length) {
+      const phaseId = _genState.phases[idx];
+      if (!_genState._streamingBuffers) _genState._streamingBuffers = {};
+      if (opts.done) {
+        delete _genState._streamingBuffers[phaseId];
+      } else {
+        _genState._streamingBuffers[phaseId] = text || '';
+      }
+    }
+    // Round 23 — target the unified phase editor row instead of the
+    // legacy #genPhases container. Both share the .gen-step-row +
+    // [data-content-idx] structure so the same selector pattern works.
+    const row = document.querySelector(`#phaseEditorList .gen-step-row[data-phase-idx="${idx}"]`);
+    if (!row) return;
+    const contentEl = row.querySelector(`[data-content-idx="${idx}"]`);
+    if (!contentEl) return;
+    // Update row status — running while streaming, done on completion.
+    // Don't downgrade an already-failed row.
+    if (!row.classList.contains('is-failed')) {
+      row.classList.remove('is-pending', 'is-running', 'is-done');
+      row.classList.add(opts.done ? 'is-done' : 'is-running');
+      // Sync the icon glyph to match the new status
+      const iconEl = row.querySelector('.gen-step-row-icon');
+      if (iconEl) iconEl.textContent = opts.done ? '●' : '◐';
+    }
+    // Truncate displayed text — tail-biased so user sees fresh content.
+    // Same 1400-char ceiling as the old implementation.
+    const display = (text || '').length > 1400 ? '…' + text.slice(text.length - 1400) : (text || '');
+    contentEl.textContent = display;
+    // Auto-scroll to bottom so streaming feels like a running transcript.
+    contentEl.scrollTop = contentEl.scrollHeight;
   }
 
   // Generation state held outside so retry can access it
@@ -19298,8 +19528,10 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
     gs.phaseInstructions = buildPhaseInstructions(newPhases, targetWords, gs.persona, gs.method, affirmLines);
 
     // Re-render the progress indicators; retry handler closure from the initial
-    // render is re-bound here so clicks on newly-appeared phases work.
-    if ($('genProgress') && $('genProgress').style.display !== 'none') {
+    // render is re-bound here so clicks on newly-appeared phases work. Round 23:
+    // we now check _aiInProgress directly instead of the legacy #genProgress
+    // visibility hack — the unified phase panel always shows the editor.
+    if (_aiInProgress) {
       renderGenProgress(gs.phases, gs.stateMask, null, _genStateRetryHandler);
     }
   }
@@ -19760,7 +19992,9 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
       setLoading('generateScriptBtn', false, 'generate full script');
       setLoading('regenScriptBtn', false);
       if (scriptBuildProgress) scriptBuildProgress.style.display = 'none';
-      // Hide streaming preview once generation completes
+      // Round 22: rows stay populated post-generation so users can
+      // review what was generated per phase. This call is now a
+      // no-op (kept for any future need to clean up streaming state).
       setStreamingPreview('', '', { hide: true });
     }
   }
@@ -19768,13 +20002,12 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
   /** Generate a single phase via aiTextPlugin */
   async function generateSinglePhase(gs, idx, opts = {}) {
     const phase = gs.phases[idx];
-    const phaseLabel = getPhaseLabel(phase);
     // Custom blocks are user-authored and pass through verbatim. If the user
     // wants AI output for a custom block, they use the Reimagine button in
     // the phase editor (reimagineCustomPhase), which is a separate flow.
     if (phaseBase(phase) === 'custom') {
       const existing = (gs.phaseResults && gs.phaseResults[phase]) || scaffoldForPhase(phase);
-      setStreamingPreview(phaseLabel, existing, { done: true });
+      setStreamingPreview(idx, existing, { done: true });
       return existing;
     }
     const summaryBlock = gs.priorSummary ? `\n\nSO FAR (summary — continue seamlessly, DO NOT repeat):\n${gs.priorSummary}` : '';
@@ -19806,7 +20039,7 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
       const chunk = data.textChunk || '';
       if (!chunk) return;
       accumulated += chunk;
-      setStreamingPreview(phaseLabel, accumulated);
+      setStreamingPreview(idx, accumulated);
     };
 
     let data;
@@ -19825,13 +20058,13 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
       });
       data = await streamObj;
     } catch (e) {
-      setStreamingPreview(phaseLabel, accumulated, { done: true });
+      setStreamingPreview(idx, accumulated, { done: true });
       throw new Error('AI call threw: ' + (e?.message || e));
     }
 
     // explicit error-before-text check
     if (!data || data.stopReason === 'error') {
-      setStreamingPreview(phaseLabel, accumulated, { done: true });
+      setStreamingPreview(idx, accumulated, { done: true });
       throw new Error('AI returned an error');
     }
 
@@ -19843,7 +20076,7 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
         .replace(/^(?:[#>*-]+\s*)?(?:phase\s*[:\-]\s*)?[a-z][a-z0-9\s\-]{1,40}:?\s*/i, '')
         .trim();
     }
-    setStreamingPreview(phaseLabel, text, { done: true });
+    setStreamingPreview(idx, text, { done: true });
     if (!text || text.length < 15) throw new Error('Phase returned too little text');
     return text;
   }
@@ -20161,6 +20394,26 @@ ${gs.phaseResults[p]}
   }
 
   function getScriptSectionsFromState() {
+    // Round 23 fix — during active generation, _genState.phases is the
+    // authoritative source. This must come BEFORE the parsedScript path
+    // because parsedScript might still hold the prior generation's
+    // phases (it's only cleared on script-acceptance, not on regen
+    // start). Without this priority, the editor would render stale
+    // rows from the old generation while the new one streams.
+    if (_aiInProgress && _genState && Array.isArray(_genState.phases)) {
+      const buf = _genState._streamingBuffers || {};
+      return _genState.phases.map(phaseId => ({
+        phaseId,
+        // Priority: completed result > in-flight streaming text > scaffold.
+        // The streaming buffer fallback prevents content from being
+        // wiped if the editor re-renders mid-stream (e.g., when the
+        // user adds/removes a phase while another is generating).
+        text: (_genState.phaseResults && _genState.phaseResults[phaseId])
+          || buf[phaseId]
+          || scaffoldForPhase(phaseId)
+          || '',
+      }));
+    }
     const ordered = state.parsedScript?.ordered?.length ? state.parsedScript.ordered : getPlaybackPhaseOrder();
     return ordered.map(phaseId => ({ phaseId, text: state.parsedScript?.[phaseId] || '' })).filter(s => s.text && s.text.trim());
   }
@@ -20382,7 +20635,19 @@ ${s.text.trim()}`).join('\n\n').trim();
       const isTraining = base === 'training';
       const isMission  = base === 'mission';
       const isGoal     = base === 'goal';
-      const rowClass = 'toggle-row phase-editor-row'
+      // Combined classes: .gen-step-row gives the unified visual style
+      // (icon + label + content area, matches generator + Guide Builder),
+      // .phase-editor-row keeps existing pair-* coloring, drag-drop
+      // visuals, row-flash animation, and is-custom/sounding/etc.
+      // category backgrounds. Both stylesheets apply non-conflictingly.
+      // Status defaults to is-pending when only scaffold text is present
+      // (freshly added or never generated) and is-done otherwise; the
+      // streaming code overlays is-running / is-failed live during gen.
+      const scaffoldText = scaffoldForPhase(s.phaseId);
+      const isScaffoldOnly = scaffoldText && (s.text || '').trim() === scaffoldText.trim();
+      const initialStatus = isCustom ? 'is-done' : (isScaffoldOnly ? 'is-pending' : 'is-done');
+      const statusIcon = initialStatus === 'is-pending' ? '○' : '●';
+      const rowClass = 'gen-step-row phase-editor-row ' + initialStatus
         + (m.pairGroup ? ' pair-' + m.pairGroup : '')
         + (isCustom ? ' is-custom' : '')
         + (isSounding ? ' is-sounding' : '')
@@ -20408,11 +20673,8 @@ ${s.text.trim()}`).join('\n\n').trim();
                     : isMission
                       ? '<span class="phase-pair-tag" style="background:rgba(255,140,80,0.1);color:#ff9758;border-color:rgba(255,140,80,0.4)" title="Posthypnotic homework — concrete waking-life task">➤ mission</span>'
                       : '';
-      const preview = escapeHtml((s.text || '').replace(/\x5BPAUSE\s+\d+\x5D/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 100) || 'empty');
       // Per-phase duration estimate. Same formula as getScriptMetrics:
-      // words / 50 wpm + pauseSecs. Surfaced as a small inline tag next
-      // to the preview so users see the time impact of each block when
-      // they're rearranging or removing.
+      // words / 50 wpm + pauseSecs.
       const phaseSpoken = (s.text || '').replace(/\x5BPAUSE\s+\d+\x5D/gi, ' ');
       const phaseWords = phaseSpoken.split(/\s+/).filter(w => w.length > 0).length;
       const phasePauseSecs = (s.text.match(/\x5BPAUSE\s+(\d+)\]/gi) || []).reduce((sum, mm) => sum + parseInt(mm.match(/\d+/)[0], 10), 0);
@@ -20421,46 +20683,43 @@ ${s.text.trim()}`).join('\n\n').trim();
         ? `${Math.floor(phaseDurSec/60)}m ${phaseDurSec%60}s`
         : `${phaseDurSec}s`;
       const durTag = `<span class="phase-pair-tag" style="background:transparent;color:var(--text-faint);border-color:var(--glass-border);font-variant-numeric:tabular-nums" title="Estimated phase duration: ~${phaseWords} words at 50 wpm + ${phasePauseSecs}s pauses">⏱ ${durLabel}</span>`;
-      // Custom rows get an extra Reimagine action; the column count adjusts to fit
+      // Content preview — full text shown in the row's content area
+      // (capped to ~280 chars to keep rows compact). PAUSE markers and
+      // collapsed whitespace removed for readability.
+      const previewFull = (s.text || '').replace(/\x5BPAUSE\s+\d+\x5D/gi, ' ').replace(/\s+/g, ' ').trim();
+      const preview = isScaffoldOnly
+        ? '' // empty content shows the "waiting…" pseudo-element placeholder
+        : escapeHtml(previewFull.length > 280 ? previewFull.slice(0, 280) + '…' : previewFull);
+      // Action set — same handlers, more compact glyph-style buttons.
+      // Custom rows get a reimagine action; non-custom get a regen
+      // button that maps to phase-generate (the same in-row generation
+      // flow). Reimagine and generate kept distinct because reimagine
+      // treats existing text as a draft, while generate replaces it.
       const reimagineBtn = isCustom
         ? `<button class="preview-btn phase-reimagine" data-idx="${i}" title="Rewrite this block in your guide's voice">✨ reimagine</button>`
         : '';
-      // Audition button — speaks the phase aloud using the current voice
-      // settings. Single global slot; clicking another phase's button
-      // cancels the previous and starts the new one. The icon flips to
-      // a stop square when this row is the active speaker.
-      const auditionBtn = `<button class="preview-btn phase-audition" data-idx="${i}" title="Hear this phase aloud — uses current voice settings">🔊 audition</button>`;
-      // ✨ generate button on non-custom rows. Custom blocks have their own
-      // reimagine flow (treats existing text as a draft). Non-custom blocks
-      // need this so users adding a new Work / Deepener / etc. via the
-      // editor can fill it with AI content directly from the row, rather
-      // than hunting for the small status dot up in #genPhases.
-      // The button looks more prominent when the phase has only scaffold
-      // text (state.scriptSections[i].text === scaffoldForPhase(...)) so
-      // freshly-added phases visually invite generation.
-      const scaffoldText = scaffoldForPhase(s.phaseId);
-      const isScaffoldOnly = scaffoldText && (s.text || '').trim() === scaffoldText.trim();
-      const genBtn = isCustom ? '' : `<button class="preview-btn phase-generate${isScaffoldOnly ? ' phase-generate-pending' : ''}" data-idx="${i}" title="Generate AI content for this phase. Replaces the current text.">✨ generate</button>`;
-      const colCount = isCustom ? 5 : 5;
-      // The grab handle sits to the left and is the actual drag-trigger
-      // surface — making the whole row draggable would conflict with
-      // text-selection in the preview line. draggable=true on the row
-      // is needed for the events to fire; mousedown on non-handle
-      // elements cancels the drag.
+      const auditionBtn = `<button class="preview-btn phase-audition" data-idx="${i}" title="Hear this phase aloud — uses current voice settings">🔊</button>`;
+      // Regen / generate button — same handler as before. Custom blocks
+      // skip this since they have reimagine instead.
+      const genBtn = isCustom
+        ? ''
+        : `<button class="gen-step-row-regen phase-generate${isScaffoldOnly ? ' phase-generate-pending' : ''}" data-idx="${i}" title="${isScaffoldOnly ? 'Generate AI content for this phase' : 'Regenerate this phase'}">↻</button>`;
       return `
-      <div class="${rowClass}" data-phase-idx="${i}"${depthAttr} draggable="true" style="align-items:flex-start">
-        <span class="phase-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">≡</span>
-        <div style="flex:1; min-width:0">
-          <label>${escapeHtml(getPhaseLabel(s.phaseId))}${tag}${durTag}<span class="hint">${preview}</span></label>
+      <div class="${rowClass}" data-phase-idx="${i}"${depthAttr} draggable="true">
+        <div class="gen-step-row-head">
+          <span class="phase-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">≡</span>
+          <span class="gen-step-row-icon">${statusIcon}</span>
+          <span class="gen-step-row-label">${escapeHtml(getPhaseLabel(s.phaseId))}${tag}${durTag}</span>
+          <div class="gen-step-row-actions">
+            <button class="preview-btn phase-up" data-idx="${i}" ${i === 0 ? 'disabled' : ''} title="Move up">↑</button>
+            <button class="preview-btn phase-down" data-idx="${i}" ${i === sections.length - 1 ? 'disabled' : ''} title="Move down">↓</button>
+            ${auditionBtn}
+            ${reimagineBtn}
+            ${genBtn}
+            <button class="preview-btn phase-remove" data-idx="${i}" title="Remove this phase">×</button>
+          </div>
         </div>
-        <div class="phase-action-row">
-          <button class="preview-btn phase-up" data-idx="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
-          <button class="preview-btn phase-down" data-idx="${i}" ${i === sections.length - 1 ? 'disabled' : ''}>↓</button>
-          ${auditionBtn}
-          ${genBtn}
-          <button class="preview-btn phase-remove" data-idx="${i}">remove</button>
-          ${reimagineBtn}
-        </div>
+        <div class="gen-step-row-content" data-content-idx="${i}">${preview}</div>
       </div>`;
     }).join('');
     // Render timeline visualization above the list. Walks sections to
@@ -21296,19 +21555,12 @@ Start immediately:`;
   // gated on whether the affected slice actually shifted.
   sessionBus.on(({ reason, signature, prevSignature }) => {
     // Phase order changed (length, preset, paste, manual edit) →
-    // genProgress dots become meaningless. Hide them; the next generation
-    // will re-show with the correct phase list.
+    // refresh the unified phase panel. Round 23: the legacy
+    // #genProgress wrapper is always hidden now that the editor panel
+    // is the single visual surface. Just re-render the editor.
     const prevPhaseOrder = prevSignature.split('::')[4] || '';
     const newPhaseOrder = signature.split('::')[4] || '';
     if (prevPhaseOrder !== newPhaseOrder) {
-      const gp = $('genProgress');
-      if (gp && gp.style.display !== 'none') {
-        // Only auto-hide if there's no live generation in flight.
-        // _genState is set during generation and cleared after.
-        if (!state._genState?.inProgress) {
-          gp.style.display = 'none';
-        }
-      }
       // Phase editor reflects the current sections — always refresh
       try { if (typeof renderPhaseEditor === 'function') renderPhaseEditor(); } catch {}
     }
@@ -28082,6 +28334,31 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       console.log(`[pre-gen] cache hit for ${prog.id} day ${ps.currentDay}; skipping`);
       return;
     }
+
+    // ── Mobile / battery gating (ROADMAP item #14) ──────────────────
+    // Skip pregen entirely on slow connections (data cost outweighs
+    // latency win) or low battery (preserve runtime). Both APIs are
+    // optional — Connection API missing on iOS/Safari, Battery API
+    // being deprecated. Falls open (allows pregen) when APIs missing.
+    try {
+      const slowNet = ['slow-2g', '2g'].includes(navigator.connection?.effectiveType);
+      if (slowNet) {
+        state._preGenScheduled = false;
+        console.log('[pre-gen] skipped: slow network');
+        return;
+      }
+    } catch { /* effectiveType unavailable — proceed */ }
+    try {
+      // getBattery() returns a Promise; await it
+      if (typeof navigator.getBattery === 'function') {
+        const battery = await navigator.getBattery();
+        if (battery && typeof battery.level === 'number' && battery.level < 0.2 && !battery.charging) {
+          state._preGenScheduled = false;
+          console.log(`[pre-gen] skipped: low battery (${Math.round(battery.level * 100)}%, not charging)`);
+          return;
+        }
+      }
+    } catch { /* getBattery unavailable — proceed */ }
 
     setTimeout(() => {
       state._preGenScheduled = false;
