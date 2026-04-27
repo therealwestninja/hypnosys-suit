@@ -63,6 +63,56 @@ Session structure editor rework. **Shipped:**
 - **Sidebar display name fallback** — `profile.name` → `cloudUser.displayName` → `'Practitioner'`. Refreshed on cloud sign-in/out via `_refreshSidebarDisplayName`. Cloud handle is community identity, NOT used in AI prompts.
 - **Tour expanded** to 16 steps adding Cloud + Free Voice Options coverage.
 
+#### Round 17 — App↔Chat firewall
+- **Privacy invariant declaration** added at the top of the cloud module + over `getProfileContext`: *"App-domain user data NEVER bleeds into chat-domain infrastructure (PerDB, comments, presence). Chat-domain identity NEVER bleeds into AI prompt assembly."*
+- **Real leak fixed** — cloud upload was including profile data in the payload. Stripped to community-relevant fields only. Sidebar display-name fallback that read `cloudUser.displayName` into AI prompts was reverted (the previous Round 16 change incorrectly conflated the two identity sources).
+- **`getProfileContext` firewall comment** documents that it MUST read only from `getProfile()` and never reference `state.cloudUser`, comments, presence, or any chat-domain source.
+
+#### Round 18 — Community gallery for shared content
+- **Allowlist filter** — `COMMUNITY_KINDS_ALLOWED` Set restricts gallery to `script` and `persona` kinds; settings/backup uploads stay private to the user even when shared via PerDB.
+- **`renderCommunityBrowser`** modal — paginated browse with author SVG avatar, preview / import / report buttons. Reports stored in `hne_reports` collection.
+- **Per-item delete** for own content with confirmation modal.
+- **Sign-in gating** — `body.cloud-signed-out .cloud-upload-affordance{display:none!important}` CSS hides upload buttons when not signed in. `_refreshCommunityNavVisibility` called from `_setCloudUser` / `_clearCloudUser` / boot.
+
+#### Round 19 — 11-bug megabatch
+- **Bug 1 — Cramped action-row buttons** (round 3): switched `.phase-action-row` to `flex-wrap` with `flex:0 0 auto` per button.
+- **Bug 2 — Local folder slideshow**: `bgEngine.startFolderSlideshow` + `_nextFolderIdx` + `_displayFolderFrame` with three order modes (sequential, random no-repeat, random with repeats). File System Access API on Chromium with `<input type=file webkitdirectory>` fallback. 11 unit tests pass.
+- **Bug 3 — Auto-tempo PAUSE artifacts** (`[PAUSE 6].[PAUSE 2]` → narrator says "Dot"): three new regex passes anchored to PAUSE markers catch orphan punct between markers (existing pattern needed whitespace). Adjacent-marker collapse with summed durations capped at 12s. Playback noop-segment guard at segment + per-sentence loop levels. 15 unit tests pass.
+- **Bug 4 — Steps 3+4 generation depth**: Step 3 craftedSuggestion 3-5 → 6-9 sentences, reinforcementPhrases 3-4 → 6-8, NEW `somaticAnchors[4-6]`, NEW `counterIntuitive[2-3 optional]`, token budget 600→900. craftedBlock in script generation now ships ALL fields with explicit weaving instructions. showCrafted preview renders new fields. Step 4 affirmations 3-5 → 8-12, `.slice(5)` → `.slice(12)`, token budget 600→900, textarea rows 5→9.
+- **Bug 5 — Begin Session distinct + Share to Community**: `.btn-primary-action` CSS (240px min-width, 12px×28px padding, gradient + glow). `.begin-session-row` (centered, dashed top border). `🌐 share to community` button calls `saveCurrentScript` → `_uploadSavedScriptToCloud`.
+- **Bug 6 — Sign-in gating** for community uploads — see Round 18 (this bug originally described the gap, fix shipped under R18 banner).
+- **Bug 7 — Gallery downloads**: `_bgDownloadExtFromMime` detects jpg/png/webp from blob.type. `_bgDownloadInflight` Set per-id 1.5s debounce. Tooltip "all as zip" → "Download all images individually". `bgDownloadAllBtn` disables while running with progress text.
+- **Bug 8 — Methods unlock toast + preset nesting**: `applyMethodGating` compares prevLockedCats to newLockedCats; newly-unlocked → 8s `notify.success`. Sleep `long → extended`, Temple Sit `long → extended`, **Deep Dive `long → marathon`** (triggers proper multi-deepener nesting that the preset name promised).
+- **Bug 9 — `sessionBus`** universal generator backend: pub/sub at `~20420`. `signature()` = length::persona::method::intention::phaseOrder::scriptHash::phaseExtras. `notifyChange(reason)` only fires on signature change. Built-in subscribers handle `genProgress` hide + `renderPhaseEditor` + `renderTimeline`. Wired `hideScript`, `lengthSelect.change`, `scriptText.input`, `applyPreset`, `autoTempoBtn`. 10 unit tests pass.
+- **Bug 10 — Step-3 "why now?" pre-selects**: `.session-tag-chip.selected` made dramatically more obvious (rgba 0.22 bg, 1.5px border, glow shadow, font-weight:600, ✓ checkmark prefix). Defensive `state._sessionTags ||= new Set()` in handler.
+- **Bug 11 — Comments postMessage error**: `_deferUntilCommentsIframeReady` polls iframe + `load` event with 5s deadline. Global `unhandledrejection` swallow for postMessage races.
+
+#### Round 20 — Skill-checklist + reduced-motion + suggestion symbols
+- **Perchance skill-checklist verified all complete**: `stopSequences ['\n\n\n\n', '\n\n[[', '\n[[']` at line ~18979, iOS viewport patch, two `navigator.storage.persist()` calls (init + 5s post-init), mobile preload delay, 10s emergency export failsafe (~30586), `_corruptItemReplacer()` in exportBackup (~21577).
+- **Backlog #15 — `prefers-reduced-motion` audit**: ⚠ motion badges added to 7 intense viz options (tunnel, starfield, vortex, flowfield, plasma, kaleidoscope-flow, kaleidoscope-plasma). `INTENSE_VIZ_LIST` Set centralized. `setupVisual` runtime gate re-evaluates on every call (init + manual + preset apply paths). 60s toast debounce. Init-time dampening for first-run users (halves intensity/speed, defaults to candle, drops audio-reactive dramatic→subtle, persists once).
+- **Backlog #7 — suggestion symbols** (textToImagePlugin extension): `_suggestionHash` via FNV-1a on `trigger|coreResponse`. `SYMBOL_KEY(hash)` IDB lookup. `_buildSymbolPrompt` favors abstract metaphor. `generateSuggestionSymbol(suggestion)` — manual trigger, dedup map, opt-in gated, plugin-availability gated. UI: `🎨 symbol` button in crafted-preview action row, image displays inline above actions when generated. Hash-based caching across re-crafts. 9 unit tests pass.
+
+#### Round 21a — Mic + webcam unified live sensing
+- **Backlog #13 — Live adaptive pacing via mic**: Full mic module at `~7787` — `startMic()` / `stopMic()` / `_tickMic()` (50Hz) / `_onExhaleEnd()` / `waitForExhale(targetMs, maxMs)` / `_renderMicStatus()`. Constants: `MIC_TICK_MS=20`, `MIC_FALLING_EDGE_DEBOUNCE_MS=200`, `MIC_NOISE_HEADROOM=0.02`, `MIC_INHALE_HEADROOM=0.05`, `MIC_CALIBRATION_MS=2000`, `MIC_RECENT_BREATHS_MAX=5`, `MIC_FALLBACK_AFTER_SILENT=3`. State machine: rising edge above floor + 0.05 → inhale; EMA below floor for >200ms → exhale-end. Calibration: max EMA over first 2s + 0.02 headroom = noise floor. echoCancellation/noiseSuppression/autoGainControl all OFF. Separate AudioContext from drone. `CustomEvent('hne:exhale-end')` dispatched. 8 unit tests pass.
+- **Unified Live Sensing panel in Step 5** — replaced standalone webcam opt-in with `.live-sensing-panel` containing both webcam + mic toggles, shared "All processing local" privacy framing, mic status row with dot+text indicator.
+- **state._mic shape** added at `~6376`: enabled, status, stream, audioCtx, analyser, sourceNode, _fftBuffer, ema, noiseFloor, inhaling, lastExhaleAt, consecutiveSilent, recentBreaths[5], tickHandle, errorMessage. Plus `state.adaptiveBreathPacing` boolean.
+- **Adaptive PAUSE handler** — `speakScript` PAUSE marker code uses `waitForExhale` when: adaptiveBreathPacing on AND mic active AND consecutiveSilent < 3 AND seconds in [3,10] (between-breath range; <3s too short, >10s dramatic deepening). 1.5x ceiling. Falls through to `interruptibleSleep` otherwise.
+- **Session lifecycle** — startSession kicks off startMic non-blocking when checkbox checked. finishSession + early-return finish path + emergency-end all call stopMic + reset opt-in checkbox.
+- **Breath-driven viz pulse** — `getAudioReactivityForViz()` mixes `breathBoost = 1.0 + (state._mic.ema/0.3 clamped) * 0.3` into pulse channel. Gated on adaptiveBreathPacing.
+
+#### Round 21b — Profile expansion (15 new tracked fields)
+- **15 new profile fields** organized into 4 collapsible sections:
+  - 📅 Practice Context — `pfTypicalTime`, `pfPracticeSpace`, `pfPosture`, `pfCoPresence`
+  - 🌱 Current Life Context — `pfCurrentThemes`, `pfCurrentStressors`, `pfCurrentWins`, `pfHealthNotes`
+  - 🎨 Style Preferences — `pfMetaphorDensity`, `pfAuthorityStyle`, `pfTouchComfort`, `pfSpiritualFrame`
+  - ⚓ Personal Anchors — `pfSafePlace`, `pfPowerObject`, `pfResourceMemory`
+- **Pervasive use wired through** 10 sites: `getProfile()`, `applyProfileToForm()`, `TRACKED_FIELDS` for diff bouncer, both `srcLabel` mappings (timeline + getProfileContext), input/change listeners (also fixed previously-missed Round 16 fields), `getProfileContext` with field-specific AI instructions, **walking-posture safety gate** in `setupVisual` (force-swap intense viz to 'none'), **practice-space soundscape nudge** in `_refreshSoundscapeHint` ("for bedroom sessions, try rain or ocean"), live refresh on practice-space change, one-time discovery toast for established users.
+- **Privacy preserved** — all goal-adjacent personal fields ride under existing `shareGoals` toggle; style/safety fields (posture, authority style) always pass through since they're not personal.
+#### Round 21c — Backlog closeout: pregen gating + security audit
+- **#14 mobile/battery gating shipped** — `schedulePreGenForProgramDay` now skips when `navigator.connection?.effectiveType` is 'slow-2g'/'2g' OR `navigator.getBattery()?.level < 0.2` (and not charging). Both checks gracefully fall open when the API is missing (iOS/Safari for Connection API; Battery API being deprecated everywhere).
+- **#8 security audit completed** — found that 4/5 sub-items were already satisfied: warning modal on key entry, escapeHtml everywhere persona/cloud-user data crosses into DOM, per-provider key cache, quick-clear button, per-session call counter with soft notification at 100 calls. The "scrub after 30 days" sub-item is N/A — keys are session-only by design (`_extAiKey` underscore prefix means never persisted via `_buildSettingsObj`). Only remaining item: server-side proxy template documentation.
+- **ROADMAP §0 documented** — Rounds 17 / 18 / 19 / 20 / 21a / 21b / 21c now have full entries matching the existing format. Backlog items #7 (partially), #13, #14, #15 marked complete; #8 marked mostly-complete with audit findings.
+
 ---
 
 ### §1 Earlier shipped features
@@ -84,27 +134,23 @@ Session structure editor rework. **Shipped:**
 
 ### High impact
 
-#### 7 · `textToImagePlugin` beyond backgrounds
-The plugin is already imported for background generation. It's currently
-under-leveraged. Candidate uses:
+#### 7 · `textToImagePlugin` beyond backgrounds — ✅ partially shipped
+The plugin is already imported for background generation. Two of three
+candidate uses now shipped:
 
-- **Personal symbols for crafted suggestions.** When `craftSuggestion()` finishes,
-  generate a small (512×512) image representing the `trigger` and `coreResponse`
-  keywords. Show it in the `#craftedPreview` card and in the post-session trigger
-  reminder. Symbols aid post-hypnotic recall — a visual anchor the user can revisit.
-- **Persona portraits.** The guide picker cards in step 1 are currently all
-  identical. Generating a stylised portrait per persona (on first view, cached
-  to IDB via the existing `bgCacheStore` pattern) dramatically improves scannability.
-  Builtin personas can be pre-generated server-side and shipped as static URLs;
-  custom personas generate on demand.
-- **Program-day achievement badges.** When a user completes day N of a
-  multi-day program, generate a unique badge. Display in the heatmap sidebar.
+- ✅ **Personal symbols for crafted suggestions.** Shipped Round 20.
+  `generateSuggestionSymbol` with FNV-1a hash-based caching by
+  `trigger|coreResponse`. UI button in crafted-preview card.
+- ✅ **Persona portraits.** Shipped earlier — `generatePersonaPortrait`
+  with `PORTRAIT_KEY(id)` IDB cache + per-persona dedup map.
+- ⏳ **Program-day achievement badges.** When a user completes day N
+  of a multi-day program, generate a unique badge. Display in the
+  heatmap sidebar. NOT YET SHIPPED — this is the cleanest remaining
+  textToImagePlugin extension to pick up next.
 
-Implementation notes: cache aggressively — these are one-shot generations that
-shouldn't regenerate on every view. Reuse `bgCacheGetUrl` / `bgCacheStore`
-infrastructure. Gate behind `state.remoteProcessingOptIn` since image gen hits
-a remote endpoint. Add a `personaImageUrl`, `suggestionSymbolUrl`,
-`programBadgeUrl` field to the respective IDB records.
+Implementation notes for badges: reuse `bgCacheGetUrl` / `bgCacheStore`
+infrastructure. Gate behind `state.remoteProcessingOptIn`. Add a
+`programBadgeUrl` field on the program-day records.
 
 #### 10 · Cross-device sync via `root.kv`
 Settings already mirror to `_kv.settings`. History, adaptive profile, the 3-tier
@@ -154,77 +200,75 @@ With `getUserMedia({audio: true})` + a simple amplitude envelope, the session
 can detect the user's actual exhale timing and adjust `interruptibleSleep`
 durations to match.
 
-Approach:
+#### 13 · Live adaptive pacing via mic — ✅ shipped Round 21a
+Full mic module shipped per the spec — `AnalyserNode` over the mic
+stream at 50Hz, falling-edge detector with 200ms debounce, exhale-end
+events resolve `waitForExhale` Promises in the speakScript PAUSE handler.
+Hard ceiling of 1.5× target prevents silent-user stalls. Falls back to
+fixed timer after 3 silent breaths. Never transmits audio off-device.
+8 unit tests pass.
 
-- On session start, if method is breath-paced and the user opts in, request
-  mic permission.
-- Create an `AnalyserNode` over the mic stream; track windowed RMS at 50 Hz.
-- A falling edge below a noise-floor threshold for >200ms marks an exhale end.
-- During breath phases, instead of `interruptibleSleep(targetMs)`, wait for
-  the next exhale + a small buffer, with a hard ceiling of 1.5× target so a
-  silent user doesn't stall.
-- Never send audio off-device. State the no-upload promise clearly in the
-  opt-in modal.
-
-Edge cases: noisy environments (fall back to timer after 3 failed
-detections); user breathing through nose inaudibly (same fallback).
+Bonus: surfaced as part of a unified "Live sensing" panel in Step 5
+that bundles mic + webcam under a single privacy disclosure. Breath
+envelope also feeds the visualizer pulse channel for visible feedback.
 
 ### Medium impact
 
-#### 14 · Pre-generate tomorrow's program session
-Programs build day-over-day, so latency at the start of each day's session is
-especially annoying. While the current session plays (long idle window for
-AI), generate tomorrow's script in the background.
+#### 14 · Pre-generate tomorrow's program session — ✅ shipped (Round 21c completed)
+Most of the pre-gen system pre-existed (offer flow on session end →
+`schedulePreGenForProgramDay` → `runPreGenForProgramDay` with state
+snapshot/restore + 26h cache at `stillness_program_pregen_v1`).
 
-Implementation:
+Round 21c completed the missing sub-deliverable: **mobile/battery
+gating**. `schedulePreGenForProgramDay` now skips with debug log when:
+- `navigator.connection?.effectiveType` is 'slow-2g' or '2g'
+- `navigator.getBattery()?.level < 0.2` AND not charging
 
-- At session start, if `!_aiInProgress` and a program is active and tomorrow's
-  script isn't cached, kick off an async generation using tomorrow's program
-  parameters.
-- Cache by `(programId, dayIndex)` in IDB under `stillness_pregen_v1`.
-- Gate on mobile: skip if `navigator.connection?.effectiveType === 'slow-2g'`
-  or `navigator.getBattery?().level < 0.2`.
-- Expire cached pre-gens after 48 hours so stale scripts don't leak.
+Both checks fail open (allow pregen) when the API isn't available.
+Connection API is missing on iOS/Safari; Battery API is being deprecated.
 
-#### 15 · `prefers-reduced-motion` audit
-The canvas renderers (tunnel, spiral, vortex, kaleidoscope, plasma, flow-field)
-are genuinely seizure-risk-adjacent for some users and motion-sickness-inducing
-for others.
-
-Deliverable:
-
-- Check `matchMedia('(prefers-reduced-motion: reduce)').matches` once at init.
-- If true, default `state.vizOverride` to `'candle'` or `'colorwash'` (slow,
-  gentle) and halve `vizSettings.intensity` and `vizSettings.speed`.
-- Hide or warn on the aggressive visuals (mark with a "⚠ motion" badge in
-  `state.vizOverride` dropdown).
-- Honor the preference on every `setupVisual()` call, not just first paint,
-  since the user may toggle it mid-session in OS settings.
+#### 15 · `prefers-reduced-motion` audit — ✅ shipped Round 20
+All four deliverable items shipped:
+- ⚠ motion badges added to 7 intense viz options in the dropdown
+- Init-time dampening for first-run users with reduced-motion already on
+  (halves intensity/speed, defaults to candle, drops audio-reactive
+  dramatic→subtle, persists once)
+- `setupVisual()` runtime gate re-evaluates OS preference on every call
+- 60s toast debounce so users fighting the swap aren't spammed
+- Round 21b extended this with a walking-posture safety gate that
+  force-swaps intense viz to 'none' when profile.posture === 'walking'
 
 ### Security / technical debt
 
-#### 8 · Browser API key exposure
+#### 8 · Browser API key exposure — ✅ mostly shipped (audit Round 21c)
 Lines in `aiGenerate` put `x-api-key` (Anthropic) and `Authorization: Bearer`
 (OpenAI) directly in a browser `fetch`, relying on
-`anthropic-dangerous-direct-browser-access: true` to bypass CORS. Any XSS or
-injected script in a shared persona's `systemPrompt` could exfiltrate the key.
+`anthropic-dangerous-direct-browser-access: true` to bypass CORS.
 
-Mitigations to add:
+Mitigations status (audited Round 21c):
 
-- **Explicit warning on key entry.** Current UI lets users paste a key silently.
-  Add a modal that lists the risks ("anyone who can run JS in this tab can read
-  this key — never use your primary account key here").
-- **Sanitise shared content strictly.** Shared personas' `systemPrompt` /
-  `tagline` / `name` should be rendered via `textContent` only, never `innerHTML`.
-  Audit every place these cross into the DOM.
-- **Scrub keys after inactivity.** If the page has been idle > 30 days, clear
-  `_extAiKey` from storage and require re-entry.
-- **Separate keys per provider.** Currently `_extAiKey` is a single field. Store
-  anthropic/openai keys separately so users aren't tempted to paste the wrong one.
-- **Consider a server-side proxy option.** For users who care, document how to
-  run a tiny proxy (Cloudflare Worker, Vercel function) that holds their key and
-  gates it behind an origin check. Perchance can't host this but can link to a
-  template.
+- ✅ **Explicit warning on key entry.** `_showApiKeyWarning()` modal fires
+  on first non-empty key entry per session. Clears the field if the user
+  cancels.
+- ✅ **Sanitise shared content strictly.** Audited all sites where
+  persona / cloud-user data crosses into DOM — every one uses
+  `escapeHtml()` (renderPersonaGrid, renderPersonaDetail, persona chat,
+  preset cards). Persona import (`saveImportedLore`) length-bounds all
+  fields and routes through `normalizePersona()`. No innerHTML XSS surface.
+- ✅ **N/A: Scrub keys after inactivity.** Keys are session-only by
+  design — `_extAiKey` underscore prefix means never persisted via
+  `_buildSettingsObj`. User has to re-paste on every reload, which is
+  stricter than the 30-day scrub the original spec suggested.
+- ✅ **Separate keys per provider.** `state._extAiKeysByProvider`
+  (anthropic / openai) preserves both during provider switches.
+- ✅ **Quick-clear button.** `extAiClearBtn` in the options modal wipes
+  active key + per-provider cache, reverts provider to Perchance.
+- ✅ **Per-session call counter** (`_refreshExtAiCallCount`) surfaces
+  unexpected activity on the AI key UI; soft notification at 100 calls.
+- ⏳ **Server-side proxy template documentation.** Still TODO — would
+  benefit users who want to use external providers without exposing
+  the key in the browser. Cloudflare Worker template + origin-check
+  pattern is the cleanest delivery.
 
 ### Perchance skill-checklist items ✅
 
