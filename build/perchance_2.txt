@@ -416,6 +416,51 @@ padding: 5px 15px; cursor: pointer;
   .btn.warm:hover { background: rgba(201,168,85,0.08); border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: var(--glow-cyan); }
   .btn.green { background: transparent; color: var(--accent-green); border: 1.5px solid var(--accent-green); }
   .btn.green:hover { background: rgba(92,184,122,0.08); box-shadow: 0 0 10px rgba(92,184,122,0.25); filter: brightness(1.08); }
+  /* Primary action button — visually distinct, used for the most-important
+     action on a screen (Begin Session, etc.). Larger, brighter, with
+     a soft glow that draws the eye. Styling separate from .btn.green
+     so we can distinguish "the one button that matters most on this
+     screen" from "any green-ish secondary button". */
+  .btn-primary-action {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(92,184,122,0.18), rgba(92,184,122,0.08));
+    color: var(--accent-green);
+    border: 1.5px solid var(--accent-green);
+    padding: 12px 28px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-family: inherit;
+    box-shadow: 0 0 18px rgba(92,184,122,0.18);
+    min-width: 240px;
+    text-align: center;
+  }
+  .btn-primary-action:hover {
+    background: linear-gradient(135deg, rgba(92,184,122,0.28), rgba(92,184,122,0.12));
+    box-shadow: 0 0 26px rgba(92,184,122,0.42);
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+  }
+  .btn-primary-action:active { transform: translateY(0); }
+  .btn-primary-action:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+  /* Container row for the primary action button — centered with breathing
+     room, separates the hero action from the secondary action wrap above. */
+  .begin-session-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--glass-border);
+  }
   .btn:disabled { opacity: 0.3; cursor: wait; filter: none; box-shadow: none; }
   .btn.loading { position: relative; color: transparent !important; }
   .btn.loading::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.15); border-top-color: rgba(255,255,255,0.7);animation: btn-spin 0.8s linear infinite; }
@@ -2139,6 +2184,27 @@ padding: 16px; margin-bottom: 16px; text-align: left;
   .preview-btn.stop:hover { color: #e07068; border-color: #7a3a38; }
   .preview-hint { font-size: 0.68rem; color: var(--text-faint); }
 
+  /* Phase row action group — used in #phaseList row markup. flex-wrap
+     lets each button size to its own content (no equal-width grid),
+     so long-text buttons like "🔊 audition" + "✨ generate" + "remove"
+     don't squeeze each other. Wraps cleanly to a second row when the
+     parent shrinks (mobile, sidebar-open). justify-content:flex-end
+     keeps the group right-anchored so the dragHandle + label still
+     sit at the left of the row. Replaces an earlier grid-template
+     approach that gave equal-width cells and clipped longer labels. */
+  .phase-action-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+    flex-shrink: 0; /* don't let the parent flex squash this group */
+  }
+  .phase-action-row .preview-btn {
+    flex: 0 0 auto; /* size to content, never grow or shrink */
+  }
+
   /* ============ VIZ MINI PREVIEWER ============ */
   .viz-preview-wrap {
     margin-top: 8px;overflow: hidden;
@@ -2353,11 +2419,31 @@ padding: 5px 15px; cursor: pointer;
     color: var(--text-dim); font-size: 0.74rem;
     padding: 5px 10px; cursor: pointer; transition: all 0.18s;
     letter-spacing: 0.02em; min-height: 0;
+    position: relative;
   }
   .session-tag-chip:hover { color: var(--text); border-color: var(--text-faint); }
+  .session-tag-chip:active { transform: scale(0.96); }
+  /* Selected state — significantly more obvious than before. User report:
+     "pre-selects don't seem to work or it's not obviously visible". The
+     cyan glow + bold border + checkmark prefix make activation
+     unmistakable. The chip also bumps font weight so it reads as
+     "asserted" vs. the lighter unselected siblings. */
   .session-tag-chip.selected {
-    color: var(--neon-cyan); border-color: var(--neon-cyan);
-    background: var(--neon-cyan-soft);
+    color: var(--neon-cyan);
+    border: 1.5px solid var(--neon-cyan);
+    background: rgba(0,212,230,0.22);
+    font-weight: 600;
+    box-shadow: 0 0 8px rgba(0,212,230,0.35), inset 0 0 0 1px rgba(0,212,230,0.18);
+    padding-left: 22px; /* room for the checkmark */
+  }
+  .session-tag-chip.selected::before {
+    content: '✓';
+    position: absolute;
+    left: 7px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1;
   }
 
   /* ============ SESSION STATS ============ */
@@ -2574,6 +2660,12 @@ padding: 14px 12px;
   .cloud-presence-count {
     font-feature-settings: "tnum"; /* tabular numerals so the count doesn't jiggle */
   }
+  /* Cloud upload affordances (per-script ☁ button, persona ☁ button)
+     are hidden when not signed in. Sign-in is required to upload, so
+     showing the button to anonymous users is just clutter — they'd
+     click it and immediately be redirected to sign-in.
+     The body class is toggled by _refreshCommunityNavVisibility. */
+  body.cloud-signed-out .cloud-upload-affordance { display: none !important; }
   /* Sidebar separator — a divider that visually segments the cloud-user
      subsystem from the practitioner profile + stats below. Echoes the
      glass-border treatment used elsewhere but with a touch more breathing
@@ -3351,8 +3443,12 @@ padding: 6px 10px; font-size: 1.1rem;
              Lives at the top with a separator below so it reads as
              a distinct subsystem from the profile + stats below. -->
         <div class="cloud-user-slug" id="cloudUserSlug"></div>
-        <button class="btn secondary" id="openCommentsBtn" style="width:100%;font-size:0.74rem;padding:7px;margin-top:6px">💬 community comments</button>
-        <button class="btn secondary" id="openCommunityBrowserBtn" style="width:100%;font-size:0.74rem;padding:7px;margin-top:6px">🌐 community gallery</button>
+        <!-- Community features visible only when signed in. JS toggles
+             this container's display based on state.cloudUser. -->
+        <div id="communityNav" style="display:none">
+          <button class="btn secondary" id="openCommentsBtn" style="width:100%;font-size:0.74rem;padding:7px;margin-top:6px">💬 community comments</button>
+          <button class="btn secondary" id="openCommunityBrowserBtn" style="width:100%;font-size:0.74rem;padding:7px;margin-top:6px">🌐 community gallery</button>
+        </div>
         <div class="sidebar-separator" aria-hidden="true"></div>
         <div class="sidebar-profile" id="sidebarProfileHeader">
           <div class="sidebar-avatar">🧠</div>
@@ -3467,14 +3563,13 @@ padding: 6px 10px; font-size: 1.1rem;
             <button class="btn secondary" id="backupBtn" style="flex:1;font-size:0.72rem;padding:6px">export .gz</button>
             <label class="btn secondary" style="flex:1;font-size:0.72rem;padding:6px;text-align:center;cursor:pointer">import .gz<input type="file" id="restoreInput" accept=".gz,.json" style="display:none"></label>
           </div>
-          <!-- Cloud backup row — visible always, but the upload button auto-disables
-               when signed out (with a tooltip explaining why). The "my cloud" button
-               opens the content list modal so the user can pull anything back down. -->
-          <div style="display:flex;gap:6px;margin-top:6px">
+          <!-- Cloud backup row — only visible when signed in. The whole
+               row hides via CSS when body has cloud-signed-out class. -->
+          <div class="cloud-upload-affordance" style="display:flex;gap:6px;margin-top:6px">
             <button class="btn secondary" id="cloudBackupUploadBtn" style="flex:1;font-size:0.72rem;padding:6px" title="Upload current settings to cloud">☁ upload settings</button>
             <button class="btn secondary" id="cloudBackupListBtn" style="flex:1;font-size:0.72rem;padding:6px" title="See and download your cloud content">☁ my cloud</button>
           </div>
-          <div class="sublabel" style="font-size:0.58rem;margin-top:4px;color:var(--text-faint)">Cloud sync requires sign-in (sidebar top). Treat uploaded content as semi-public.</div>
+          <div class="cloud-upload-affordance sublabel" style="font-size:0.58rem;margin-top:4px;color:var(--text-faint)">Treat uploaded content as semi-public.</div>
         </details>
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
           <button class="sidebar-settings-btn" id="openOptionsBtn">⚙ options</button>
@@ -4132,7 +4227,7 @@ I return to myself easily"></textarea>
                 </select>
                 <button type="button" class="bg-fav-filter" id="bgGalleryFavFilterBtn" aria-pressed="false" title="show only favorites">★ favorites only</button>
                 <span class="bg-sort-spacer"></span>
-                <button type="button" class="bg-gallery-action" id="bgDownloadAllBtn" title="download all as zip">⬇ all</button>
+                <button type="button" class="bg-gallery-action" id="bgDownloadAllBtn" title="Download all images individually (one file per image)">⬇ all</button>
                 <button type="button" class="bg-gallery-action" id="bgClearAllBtn" title="clear cache">🗑 clear</button>
               </div>
               <div id="bgGalleryGrid" class="bg-gallery-grid"></div>
@@ -4264,7 +4359,14 @@ I return to myself easily"></textarea>
           <button class="btn secondary" id="saveScriptBtn" title="Save this script to your library for reuse">💾 save</button>
           <button class="btn secondary" id="exportScriptBtn">↓ download .txt</button>
           <button class="btn secondary" id="shareConfigBtn" title="Create a shareable link for this session config">🔗 share link</button>
-          <button class="btn green" id="beginBtn">begin session →</button>
+          <button class="btn secondary cloud-upload-affordance" id="shareToCommunityBtn" title="Save and upload this script to the community gallery">🌐 share to community</button>
+        </div>
+        <!-- Begin session in its own row, visually distinct from the
+             secondary action buttons above. User report: when this lives
+             in the same wrap row as siblings, it gets lost. Now it's
+             full-width, larger, and uses btn-primary-action styling. -->
+        <div class="begin-session-row">
+          <button class="btn-primary-action" id="beginBtn">begin session →</button>
         </div>
         <!-- Per-session webcam opt-in (resets every session). Camera/mic-aware UI. -->
         <label class="toggle-row toggle-row-cb" for="webcamOptInThisSession" style="margin-top:10px;align-items:flex-start;padding:8px 10px;background:rgba(120,180,240,0.04);border:0.5px solid rgba(120,180,240,0.18)">
@@ -4792,7 +4894,7 @@ I return to myself easily"></textarea>
       </div>
     </details>
 
-    <div class="modal-actions"><button class="btn secondary" id="personaCancelBtn">cancel</button><button class="btn secondary" id="personaShareBtn" title="Create a shareable link for this persona">🔗 share</button><button class="btn secondary" id="personaCloudBtn" title="Upload to your cloud account">☁ cloud</button><button class="btn" id="personaSaveBtn">save</button></div>
+    <div class="modal-actions"><button class="btn secondary" id="personaCancelBtn">cancel</button><button class="btn secondary" id="personaShareBtn" title="Create a shareable link for this persona">🔗 share</button><button class="btn secondary cloud-upload-affordance" id="personaCloudBtn" title="Upload to your cloud account">☁ cloud</button><button class="btn" id="personaSaveBtn">save</button></div>
   </div>
 </div>
 
@@ -14249,12 +14351,30 @@ ${messages}
     const countEl = $('bgCacheCount'); if (countEl) countEl.textContent = '0';
     _maybeRefreshGallery();
   }
+  // Per-id click debounce — prevents rapid-fire clicks from queuing
+  // multiple downloads of the same image. Cleared 1.5s after the click.
+  const _bgDownloadInflight = new Set();
+  function _bgDownloadExtFromMime(mime) {
+    // Perchance's text-to-image plugin defaults to JPEG. Older blobs may
+    // be PNG. Detect from the blob's type rather than guessing.
+    if (!mime || typeof mime !== 'string') return 'jpg';
+    const m = mime.toLowerCase();
+    if (m.includes('jpeg') || m.includes('jpg')) return 'jpg';
+    if (m.includes('png')) return 'png';
+    if (m.includes('webp')) return 'webp';
+    if (m.includes('gif')) return 'gif';
+    return 'jpg'; // safer fallback than 'png' — most AI-generated bgs are jpg
+  }
   async function bgCacheDownload(id) {
+    if (_bgDownloadInflight.has(id)) return; // debounce
+    _bgDownloadInflight.add(id);
+    setTimeout(() => _bgDownloadInflight.delete(id), 1500);
     const blob = await idbGet('bg_img_' + id);
     if (!blob) return;
+    const ext = _bgDownloadExtFromMime(blob.type);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = id + '.png';
+    a.download = id + '.' + ext;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
@@ -14838,7 +14958,10 @@ ${messages}
       $('bgLightboxDelete')?.addEventListener('click', async () => {
         const entry = self.view[self.index];
         if (!entry) return;
-        if (!await confirmAsync('Delete this image from the cache? This can\'t be undone.')) return;
+        // No confirmation — matches the regular gallery manager's delete
+        // behavior. Confirmation modal renders below the lightbox shadowbox
+        // (z-index conflict) so it was a silent fail anyway. Image can be
+        // re-generated from the prompt.
         await bgCacheDelete(entry.id);
         self.view.splice(self.index, 1);
         if (self.view.length === 0) { renderBgGallery(); self.close(); return; }
@@ -19312,7 +19435,7 @@ ${s.text.trim()}`).join('\n\n').trim();
         <div style="flex:1; min-width:0">
           <label>${escapeHtml(getPhaseLabel(s.phaseId))}${tag}${durTag}<span class="hint">${preview}</span></label>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(${colCount}, minmax(72px, auto)); gap:6px; margin-left:8px">
+        <div class="phase-action-row">
           <button class="preview-btn phase-up" data-idx="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
           <button class="preview-btn phase-down" data-idx="${i}" ${i === sections.length - 1 ? 'disabled' : ''}>↓</button>
           ${auditionBtn}
@@ -20318,11 +20441,41 @@ Start immediately:`;
       // After stripping, single-space cleanup again (orphan removal can leave "  ")
       fixed = fixed.replace(/  +/g, ' ');
     }
-    // 3) Final defensive collapse — handles any stragglers from the chain.
-    //    Only ASCII space runs; newlines are left alone (they separate phases).
-    if (opts.collapseSpaces !== false) {
-      fixed = fixed.replace(/[ \t]{2,}/g, ' ');
-    }
+    // 4) Inter-marker orphan cleanup. The previous _stripOrphanPunctuation
+    //    pass requires whitespace around the punct, so it misses tight
+    //    artifacts like "[PAUSE 6].[PAUSE 2]" or "[PAUSE 5]. word"
+    //    (no leading space before the period). At playback the bare "."
+    //    becomes a text segment the TTS reads aloud as "Dot". This
+    //    targeted pass catches those by anchoring on the PAUSE markers.
+    //
+    //    Pattern A: ]<optional ws><orphan punct chars><optional ws>[
+    //      e.g.  "[PAUSE 6].[PAUSE 2]" → "[PAUSE 6] [PAUSE 2]"
+    //      e.g.  "[PAUSE 6] . [PAUSE 2]" → "[PAUSE 6] [PAUSE 2]"
+    //    Pattern B: ]<optional ws><orphan punct chars><ws><word>
+    //      e.g.  "[PAUSE 5]. word" → "[PAUSE 5] word"
+    //    Pattern C: <word><ws><orphan punct chars><optional ws>[
+    //      e.g.  "word . [PAUSE 5]" → "word [PAUSE 5]" (caught above too,
+    //      kept for symmetry / chained-orphan stability)
+    fixed = fixed.replace(/(\x5BPAUSE\s+\d+\])\s*[.,;:!?]+(?=\s*\x5BPAUSE\s+\d+\])/g, '$1');
+    fixed = fixed.replace(/(\x5BPAUSE\s+\d+\])\s*[.,;:!?]+(?=\s+\S)/g, '$1');
+    fixed = fixed.replace(/(?<=\S)\s+[.,;:!?]+\s*(?=\x5BPAUSE\s+\d+\])/g, ' ');
+
+    // 5) Collapse adjacent PAUSE markers (no text between) by summing
+    //    their durations. Author intent for "[PAUSE 6][PAUSE 2]" is a
+    //    longer wait, not silently dropping one of them. Capped at 12s
+    //    per merged pause to prevent runaway silence from a chain of
+    //    accidentally-stacked markers.
+    let collapsed;
+    do {
+      collapsed = false;
+      fixed = fixed.replace(/\x5BPAUSE\s+(\d+)\]\s*\x5BPAUSE\s+(\d+)\]/g, (_, a, b) => {
+        collapsed = true;
+        return `\x5BPAUSE ${Math.min(12, parseInt(a, 10) + parseInt(b, 10))}\x5D`;
+      });
+    } while (collapsed);
+
+    // Final whitespace tidy after marker shuffles.
+    if (opts.collapseSpaces !== false) fixed = fixed.replace(/[ \t]{2,}/g, ' ');
 
     return fixed;
   }
@@ -21981,6 +22134,13 @@ Start immediately:`;
         // ── TEXT SEGMENT — split into sentences for per-sentence TTS ──
         const segment = parts[i].trim();
         if (!segment) continue;
+        // Skip noop punctuation-only segments. After splits between PAUSE
+        // markers, an orphan "." or ",." can become its own segment that
+        // the TTS would read aloud as "Dot" / "Comma". The auto-tempo
+        // fixer catches most of these but not all (pasted scripts, scripts
+        // generated outside our pipeline). Test: strip punct + sentinels
+        // + whitespace; if empty, skip.
+        if (!segment.replace(/[\u0001\u0002\s.,;:!?…—–\-]/g, '').length) continue;
         const sentences = segment.split(/(?<=[.!?])\s+/).filter(s => s.trim());
 
         // Duck FIRST — let it ramp down during display fade
@@ -21990,6 +22150,8 @@ Start immediately:`;
           if (!bypassAbort && state.abortFlag) break;
           while (state.paused && !state.abortFlag) await sleep(200);
           if (!bypassAbort && state.abortFlag) break;
+          // Skip noop sentences (just punctuation/whitespace/sentinels)
+          if (!sentence.replace(/[\u0001\u0002\s.,;:!?…—–\-]/g, '').length) continue;
 
           if (display) {
             display.style.opacity = 0;
@@ -23503,6 +23665,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const chipEl = e.target.closest('.session-tag-chip');
     if (!chipEl) return;
     const tag = chipEl.dataset.tag;
+    if (!state._sessionTags) state._sessionTags = new Set();
     if (state._sessionTags.has(tag)) {
       state._sessionTags.delete(tag);
       chipEl.classList.remove('selected');
@@ -24108,13 +24271,23 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     if (!await confirmAsync('Clear all cached background images?')) return;
     await bgCacheClear(); renderBgGallery(); notify.info('Background cache cleared.');
   });
-  $('bgDownloadAllBtn')?.addEventListener('click', async () => {
+  $('bgDownloadAllBtn')?.addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    if (btn.disabled) return; // guard against double-click queueing
     const manifest = await bgCacheGetManifest();
     if (!manifest.length) { notify.info('No images to download.'); return; }
-    notify.info(`Downloading ${manifest.length} image${manifest.length === 1 ? '' : 's'}...`);
-    for (const entry of manifest) {
-      await bgCacheDownload(entry.id);
-      await new Promise(r => setTimeout(r, 300)); // stagger to avoid browser blocking
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    try {
+      notify.info(`Downloading ${manifest.length} image${manifest.length === 1 ? '' : 's'}...`);
+      for (let i = 0; i < manifest.length; i++) {
+        btn.textContent = `⬇ ${i + 1}/${manifest.length}`;
+        await bgCacheDownload(manifest[i].id);
+        await new Promise(r => setTimeout(r, 300)); // stagger to avoid browser blocking
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
     }
   });
   // Build the style preset chips once on page setup. Reads
@@ -24303,7 +24476,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
           <div class="ssr-actions">
             <button type="button" class="ssr-btn" data-act="load"   title="Load this script into the editor">load</button>
             <button type="button" class="ssr-btn" data-act="rename" title="Rename">✎</button>
-            <button type="button" class="ssr-btn" data-act="upload" title="${state.cloudUser ? 'Upload to your cloud account' : 'Sign in to upload to cloud'}" ${state.cloudUser ? '' : 'disabled style="opacity:0.4;cursor:not-allowed"'}>☁</button>
+            <button type="button" class="ssr-btn cloud-upload-affordance" data-act="upload" title="Upload to your cloud account">☁</button>
             <button type="button" class="ssr-btn ssr-btn-danger" data-act="delete" title="Delete">×</button>
           </div>
         </div>`;
@@ -24354,7 +24527,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     const script = ($('scriptText')?.value || '').trim();
     if (!script || script.length < 80) {
       notify.warn('Nothing meaningful to save — generate or paste a script first.');
-      return;
+      return null;
     }
     const persona = getPersona();
     const method = getMethod();
@@ -24363,7 +24536,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       ? `${persona.name} · ${intentionText}`
       : `${persona.name} · ${method.name}`;
     const name = await promptAsync('Name this script', { defaultValue: defaultName, placeholder: 'My session script' });
-    if (name == null) return; // cancelled
+    if (name == null) return null; // cancelled
     const trimmed = name.trim().slice(0, 80) || defaultName;
     const all = await loadSavedScripts();
     const entry = {
@@ -24386,12 +24559,13 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     }
     if (!await persistSavedScripts(all)) {
       notify.error('Could not save: browser storage may be full.');
-      return;
+      return null;
     }
     notify.success(`Saved "${trimmed}".`);
     // Open the details panel so the user sees their new save land
     const det = $('savedScriptsDetails'); if (det) det.open = true;
     renderSavedScripts();
+    return entry.id;
   }
 
   async function loadSavedScript(id) {
@@ -24452,6 +24626,41 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   $('exportScriptBtn').addEventListener('click', exportScript);
   $('exportBundleBtn')?.addEventListener('click', exportSessionBundle);
   $('shareConfigBtn')?.addEventListener('click', shareCurrentConfig);
+  // Share-to-community: save the current script (if not already saved)
+  // then upload it to PerDB so it appears in the community gallery.
+  // Defensive sign-in check even though the button is hidden when
+  // signed out — this preserves the firewall: only signed-in users
+  // can push content to chat-domain infrastructure.
+  $('shareToCommunityBtn')?.addEventListener('click', async (ev) => {
+    if (!state.cloudUser) {
+      notify.warn('Sign in to share to the community.');
+      if (typeof openCloudSignInModal === 'function') openCloudSignInModal();
+      return;
+    }
+    const text = ($('scriptText')?.value || '').trim();
+    if (!text) { notify.warn('Nothing to share — generate or paste a script first.'); return; }
+    const btn = ev.currentTarget;
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ uploading…';
+    try {
+      // Save first so the upload has a stable name + provenance.
+      // saveCurrentScript prompts for a name; cancelling returns null.
+      const savedId = await saveCurrentScript();
+      if (!savedId) {
+        // Either cancelled or save failed — both surfaced to the user
+        // already by saveCurrentScript. No further notify needed.
+        return;
+      }
+      await _uploadSavedScriptToCloud(savedId);
+    } catch (e) {
+      console.error('[shareToCommunity]', e);
+      notify.error('Share failed: ' + (e.message || 'unknown'));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  });
 
   $('beginBtn')?.addEventListener('click', startSession);
   $('addInductionPhaseBtn')?.addEventListener('click', () => addPhaseSection('induction'));
@@ -27243,6 +27452,9 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     // updates immediately. NOTE: this is UI affordance refresh only —
     // no cloud DATA flows into saved-scripts content.
     if (typeof renderSavedScripts === 'function') renderSavedScripts();
+    // Show/hide community nav (comments, browser) and other community
+    // affordances based on sign-in.
+    _refreshCommunityNavVisibility();
   }
   function _clearCloudUser() {
     state.cloudUser = null;
@@ -27250,6 +27462,21 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     renderCloudUserSlug();
     _stopPresenceBeacon();
     if (typeof renderSavedScripts === 'function') renderSavedScripts();
+    _refreshCommunityNavVisibility();
+  }
+  // Community features (browse, comments, upload buttons) only appear
+  // when a cloud account is signed in. Anonymous users see only the
+  // sign-in slug. Reduces noise + clarifies that all of those features
+  // require an account.
+  function _refreshCommunityNavVisibility() {
+    const signedIn = !!state.cloudUser;
+    const nav = $('communityNav');
+    if (nav) nav.style.display = signedIn ? '' : 'none';
+    // Per-row upload buttons in the saved-scripts list and persona
+    // editor are also gated — toggle them via a class on body so all
+    // such buttons hide together via CSS, including ones rendered later.
+    document.body.classList.toggle('cloud-signed-in', signedIn);
+    document.body.classList.toggle('cloud-signed-out', !signedIn);
   }
 
   // Validate a username — matches the community-gallery convention so
@@ -27836,24 +28063,70 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       const result = root.commentsPlugin(opts);
       host.innerHTML = String(result);
       _commentsInstance = result;
-      // Pre-fill nickname from cloud user. setNicknameForNextComment
-      // posts a message to the iframe; if the iframe hasn't loaded yet,
-      // the plugin will queue the call internally. Safe to invoke now.
-      if (state.cloudUser && typeof result.setNicknameForNextComment === 'function') {
-        try { result.setNicknameForNextComment(state.cloudUser.displayName || state.cloudUser.username); } catch {}
-      }
-      // Same for avatar — deterministic data URI keyed off username so
-      // the community can recognize regular contributors visually.
-      if (state.cloudUser && typeof result.setAvatarUrlForNextComment === 'function') {
-        try {
-          const avatarUri = generateAvatarDataUri(state.cloudUser.username || state.cloudUser.id);
-          result.setAvatarUrlForNextComment(avatarUri);
-        } catch {}
+      // Pre-fill nickname/avatar from cloud user — but DEFERRED.
+      // The plugin's setNicknameForNextComment / setAvatarUrlForNextComment
+      // synchronously call iframe.contentWindow.postMessage, and the
+      // iframe's contentWindow doesn't exist until the MutationObserver
+      // has swapped in the iframe AND the iframe has loaded. Calling
+      // these methods immediately throws "Cannot read properties of
+      // undefined (reading 'postMessage')" — caught at the window level
+      // as an unhandled promise rejection rather than by our try/catch.
+      // Solution: poll for the iframe load with a deadline, then call.
+      if (state.cloudUser) {
+        _deferUntilCommentsIframeReady(host, () => {
+          if (typeof result.setNicknameForNextComment === 'function') {
+            try { result.setNicknameForNextComment(state.cloudUser.displayName || state.cloudUser.username); } catch {}
+          }
+          if (typeof result.setAvatarUrlForNextComment === 'function') {
+            try {
+              const avatarUri = generateAvatarDataUri(state.cloudUser.username || state.cloudUser.id);
+              result.setAvatarUrlForNextComment(avatarUri);
+            } catch {}
+          }
+        });
       }
     } catch (e) {
       console.error('[comments embed]', e);
       host.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-faint)">Comments plugin failed: ${escapeHtml(e.message || 'unknown')}</div>`;
     }
+  }
+  // Poll the host element for an iframe whose contentWindow is reachable.
+  // The plugin appends an iframe via MutationObserver after we innerHTML
+  // the marker; then the iframe needs to load before postMessage works.
+  // We wait up to ~5s, calling fn() once ready. If it never loads, we
+  // give up silently — the user can still post comments, just without
+  // the pre-filled nickname/avatar.
+  function _deferUntilCommentsIframeReady(host, fn) {
+    const deadline = Date.now() + 5000;
+    let attached = false;
+    const tryNow = () => {
+      const iframe = host.querySelector('iframe');
+      if (iframe) {
+        // Try contentWindow access — same-origin iframes expose it
+        // immediately, cross-origin iframes also expose it but might
+        // not have loaded yet. The 'load' event is the safest signal.
+        if (!attached) {
+          attached = true;
+          iframe.addEventListener('load', () => {
+            // One more microtask so the plugin's internal init runs
+            setTimeout(fn, 50);
+          }, { once: true });
+          // Edge case: iframe already loaded by the time we attach
+          // (race between MutationObserver tick and our poll). Check.
+          try {
+            if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+              setTimeout(fn, 50);
+            }
+          } catch { /* cross-origin — wait for load event */ }
+        }
+        return;
+      }
+      if (Date.now() < deadline) {
+        setTimeout(tryNow, 100);
+      }
+      // else: give up silently — comments still work, just no avatar
+    };
+    tryNow();
   }
   function openCommentsModal() {
     _ensureCommentsModal().classList.add('visible');
@@ -29588,6 +29861,27 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     // signed in last session, render the sidebar slug, kick off presence
     // beacon if applicable. Best-effort — never blocks init.
     try { bootCloudUser(); } catch (e) { console.warn('[bootCloudUser]', e); }
+    // Apply community nav visibility based on the rehydrated cloud user.
+    // Anonymous users see no community affordances; signed-in users see them.
+    try { _refreshCommunityNavVisibility(); } catch {}
+    // Suppress noisy comments-plugin race errors. The plugin internally
+    // calls iframe.contentWindow.postMessage on a queued microtask before
+    // the iframe has loaded; even with our deferUntilReady helper, if
+    // the plugin re-fires its own internal init it can still surface as
+    // an UnhandledPromiseRejection. We swallow ONLY postMessage races
+    // from the plugin — real errors still propagate.
+    window.addEventListener('unhandledrejection', (e) => {
+      const msg = String(e.reason?.message || e.reason || '');
+      if (msg.includes("postMessage") && (
+        msg.includes('setNicknameForNextComment') ||
+        msg.includes('setAvatarUrlForNextComment') ||
+        msg.includes('stringObj') ||
+        msg.includes("Cannot read properties of undefined")
+      )) {
+        e.preventDefault(); // suppress
+        console.debug('[comments-plugin race, suppressed]', msg);
+      }
+    });
     // Wire the comments-launcher button now that the sidebar markup exists.
     $('openCommentsBtn')?.addEventListener('click', openCommentsModal);
     // Wire the community gallery button — browses public uploads (Guides
