@@ -3521,6 +3521,146 @@ padding: 6px 10px; font-size: 1.1rem;
             <textarea id="pfSensorySensitivities" class="pf-textarea" rows="2" maxlength="300" placeholder="e.g. avoid water imagery, no countdowns, dislikes feeling enclosed..."></textarea>
             <div class="sublabel" style="font-size:0.58rem">The AI is told to avoid these themes. Local-only when "Use profile details" is off.</div>
           </div>
+
+          <!-- ── Practice Context ─────────────────────────────────────
+               Where, when, and how the user typically practices. Used
+               for soundscape auto-suggestions, safety gating (walking +
+               intense viz = warn), and pacing decisions (late-night +
+               sleep intention = silence-into-sleep, no count-up). -->
+          <details class="pf-extended" style="margin-top:10px">
+            <summary style="font-size:0.7rem;font-weight:600;color:var(--text);cursor:pointer;padding:6px 0">📅 Practice Context</summary>
+            <div class="pf-row"><label class="pf-label">Typical Time</label>
+              <select id="pfTypicalTime" class="pf-select">
+                <option value="">no preference</option>
+                <option value="morning">morning (before 11)</option>
+                <option value="midday">midday (11–2)</option>
+                <option value="afternoon">afternoon (2–6)</option>
+                <option value="evening">evening (6–10)</option>
+                <option value="late-night">late night (after 10)</option>
+                <option value="varies">varies</option>
+              </select>
+            </div>
+            <div class="pf-row"><label class="pf-label">Practice Space</label>
+              <select id="pfPracticeSpace" class="pf-select">
+                <option value="">no preference</option>
+                <option value="bedroom">bedroom</option>
+                <option value="quiet-room">quiet room (office, study)</option>
+                <option value="shared-space">shared space (living room, kitchen)</option>
+                <option value="outdoors">outdoors</option>
+                <option value="public-headphones">in public, headphones</option>
+                <option value="varies">varies</option>
+              </select>
+            </div>
+            <div class="pf-row"><label class="pf-label">Typical Posture</label>
+              <select id="pfPosture" class="pf-select">
+                <option value="">no preference</option>
+                <option value="lying-supine">lying down (face up)</option>
+                <option value="lying-side">lying down (on side)</option>
+                <option value="seated-upright">seated upright</option>
+                <option value="seated-reclined">seated reclined</option>
+                <option value="walking">walking</option>
+                <option value="varies">varies</option>
+              </select>
+              <div class="sublabel" style="font-size:0.58rem">Affects safety gates — walking + intense visualizers won't be combined automatically.</div>
+            </div>
+            <div class="pf-row"><label class="pf-label">Co-Presence</label>
+              <select id="pfCoPresence" class="pf-select">
+                <option value="">no preference</option>
+                <option value="alone">alone</option>
+                <option value="partner">with partner / close one</option>
+                <option value="shared">shared space (others nearby)</option>
+                <option value="public">in public</option>
+              </select>
+              <div class="sublabel" style="font-size:0.58rem">Used for soundscape suggestions and tone (e.g. softer voice in shared spaces).</div>
+            </div>
+          </details>
+
+          <!-- ── Current Life Context ─────────────────────────────────
+               Time-windowed snapshot of what's going on. Less identity-
+               level than About; more "what should the Director know
+               about right now?" Updated as life moves. -->
+          <details class="pf-extended" style="margin-top:6px">
+            <summary style="font-size:0.7rem;font-weight:600;color:var(--text);cursor:pointer;padding:6px 0">🌱 Current Life Context</summary>
+            <div class="sublabel" style="font-size:0.58rem;margin-bottom:6px;color:var(--text-faint)">Time-windowed snapshot — what's going on this season. Update when life shifts. The AI uses these as session-shaping context.</div>
+            <div class="pf-row"><label class="pf-label">Current Themes</label>
+              <textarea id="pfCurrentThemes" class="pf-textarea" rows="2" maxlength="300" placeholder="e.g. career transition, new parent, recovering from injury, finishing dissertation..."></textarea>
+            </div>
+            <div class="pf-row"><label class="pf-label">Current Stressors</label>
+              <textarea id="pfCurrentStressors" class="pf-textarea" rows="2" maxlength="200" placeholder="e.g. work deadline next month, sleep disrupted by neighbor noise..."></textarea>
+            </div>
+            <div class="pf-row"><label class="pf-label">Current Wins</label>
+              <textarea id="pfCurrentWins" class="pf-textarea" rows="2" maxlength="200" placeholder="e.g. running 3x/week now, reconnected with sister, learned a new skill..."></textarea>
+              <div class="sublabel" style="font-size:0.58rem">The AI references these as forward momentum to build on, rather than starting from zero.</div>
+            </div>
+            <div class="pf-row"><label class="pf-label">Health Notes</label>
+              <textarea id="pfHealthNotes" class="pf-textarea" rows="2" maxlength="300" placeholder="e.g. chronic lower-back pain, recent migraine pattern, pregnancy second trimester..."></textarea>
+              <div class="sublabel" style="font-size:0.58rem">Physical considerations the script should respect. Not medical advice — the app is not a substitute for clinical care.</div>
+            </div>
+          </details>
+
+          <!-- ── Style Preferences ────────────────────────────────────
+               More granular than vocalPace. Each field maps to specific
+               AI prompt instructions to shape voice/style. Defaults
+               blank → no instruction added → AI uses persona defaults. -->
+          <details class="pf-extended" style="margin-top:6px">
+            <summary style="font-size:0.7rem;font-weight:600;color:var(--text);cursor:pointer;padding:6px 0">🎨 Style Preferences</summary>
+            <div class="pf-row"><label class="pf-label">Metaphor Density</label>
+              <select id="pfMetaphorDensity" class="pf-select">
+                <option value="">no preference</option>
+                <option value="minimal">minimal — direct, instructional</option>
+                <option value="balanced">balanced — some imagery</option>
+                <option value="rich">rich — poetic, metaphor-heavy</option>
+              </select>
+            </div>
+            <div class="pf-row"><label class="pf-label">Authority Style</label>
+              <select id="pfAuthorityStyle" class="pf-select">
+                <option value="">no preference</option>
+                <option value="directive">directive — clear instructions</option>
+                <option value="balanced">balanced</option>
+                <option value="permissive">permissive — invitations, "you might"</option>
+                <option value="conversational">conversational — warm, peer-like</option>
+              </select>
+            </div>
+            <div class="pf-row"><label class="pf-label">Body-Touch Comfort</label>
+              <select id="pfTouchComfort" class="pf-select">
+                <option value="">no preference</option>
+                <option value="full">full — hand on chest, etc.</option>
+                <option value="light">light — fingertips only</option>
+                <option value="none">none — no instruction to touch</option>
+              </select>
+              <div class="sublabel" style="font-size:0.58rem">Whether the script can instruct you to physically touch your body (anchor, somatic cue).</div>
+            </div>
+            <div class="pf-row"><label class="pf-label">Spiritual Frame</label>
+              <select id="pfSpiritualFrame" class="pf-select">
+                <option value="">no preference (secular default)</option>
+                <option value="secular">secular only</option>
+                <option value="nondenominational">nondenominational spiritual</option>
+                <option value="buddhist">Buddhist-flavored</option>
+                <option value="christian">Christian-flavored</option>
+                <option value="earth-based">earth-based / pagan</option>
+                <option value="other">other (describe in About)</option>
+              </select>
+            </div>
+          </details>
+
+          <!-- ── Personal Anchors ─────────────────────────────────────
+               Pre-existing positive resources the user already has. The
+               AI weaves these in instead of inventing generic safe
+               places / objects, which feels far more grounded. -->
+          <details class="pf-extended" style="margin-top:6px">
+            <summary style="font-size:0.7rem;font-weight:600;color:var(--text);cursor:pointer;padding:6px 0">⚓ Personal Anchors</summary>
+            <div class="sublabel" style="font-size:0.58rem;margin-bottom:6px;color:var(--text-faint)">Pre-existing resources from your life. The AI weaves these in instead of inventing generic safe places / objects.</div>
+            <div class="pf-row"><label class="pf-label">Safe Place</label>
+              <textarea id="pfSafePlace" class="pf-textarea" rows="2" maxlength="300" placeholder="A real or imagined place you feel completely at ease. e.g. grandmother's kitchen, a forest clearing at dusk, the porch of the lake cabin..."></textarea>
+            </div>
+            <div class="pf-row"><label class="pf-label">Power Object</label>
+              <textarea id="pfPowerObject" class="pf-textarea" rows="2" maxlength="200" placeholder="An object you hold, wear, or touch when you need to settle. e.g. smooth stone in pocket, my mother's ring, the worn leather journal..."></textarea>
+            </div>
+            <div class="pf-row"><label class="pf-label">Resource Memory</label>
+              <textarea id="pfResourceMemory" class="pf-textarea" rows="2" maxlength="300" placeholder="A specific positive memory you can vividly recall. e.g. swimming at sunrise on the Greek island, the quiet after my son was born..."></textarea>
+              <div class="sublabel" style="font-size:0.58rem">A scene the script can return you to during work-phase peaks.</div>
+            </div>
+          </details>
           <div class="sublabel" style="font-size:0.58rem;margin-top:4px">Profile stays on your device. Local recommendations always use these fields; the AI only sees them when "Use profile details in script" is on.</div>
         </div>
         <details>
@@ -10206,6 +10346,25 @@ I return to myself easily"></textarea>
       vocalPace:              $('pfVocalPace')?.value || '',
       energyPattern:          $('pfEnergyPattern')?.value || '',
       sensorySensitivities:   $('pfSensorySensitivities')?.value?.trim() || '',
+      // Round 21 — Practice Context
+      typicalTime:            $('pfTypicalTime')?.value || '',
+      practiceSpace:          $('pfPracticeSpace')?.value || '',
+      posture:                $('pfPosture')?.value || '',
+      coPresence:             $('pfCoPresence')?.value || '',
+      // Round 21 — Current Life Context (time-windowed; refresh as life shifts)
+      currentThemes:          $('pfCurrentThemes')?.value?.trim() || '',
+      currentStressors:       $('pfCurrentStressors')?.value?.trim() || '',
+      currentWins:            $('pfCurrentWins')?.value?.trim() || '',
+      healthNotes:            $('pfHealthNotes')?.value?.trim() || '',
+      // Round 21 — Style Preferences (more granular than vocalPace)
+      metaphorDensity:        $('pfMetaphorDensity')?.value || '',
+      authorityStyle:         $('pfAuthorityStyle')?.value || '',
+      touchComfort:           $('pfTouchComfort')?.value || '',
+      spiritualFrame:         $('pfSpiritualFrame')?.value || '',
+      // Round 21 — Personal Anchors (pre-existing positive resources)
+      safePlace:              $('pfSafePlace')?.value?.trim() || '',
+      powerObject:            $('pfPowerObject')?.value?.trim() || '',
+      resourceMemory:         $('pfResourceMemory')?.value?.trim() || '',
       // Per-field "share with AI" toggles. Default true so older profiles
       // (saved before these existed) keep their previous behavior of
       // sharing everything. The local Director never reads these — they
@@ -10259,6 +10418,25 @@ I return to myself easily"></textarea>
     setVal('pfVocalPace', p.vocalPace, '');
     setVal('pfEnergyPattern', p.energyPattern, '');
     setVal('pfSensorySensitivities', p.sensorySensitivities, '');
+    // Round 21 — Practice Context
+    setVal('pfTypicalTime', p.typicalTime, '');
+    setVal('pfPracticeSpace', p.practiceSpace, '');
+    setVal('pfPosture', p.posture, '');
+    setVal('pfCoPresence', p.coPresence, '');
+    // Round 21 — Current Life Context
+    setVal('pfCurrentThemes', p.currentThemes, '');
+    setVal('pfCurrentStressors', p.currentStressors, '');
+    setVal('pfCurrentWins', p.currentWins, '');
+    setVal('pfHealthNotes', p.healthNotes, '');
+    // Round 21 — Style Preferences
+    setVal('pfMetaphorDensity', p.metaphorDensity, '');
+    setVal('pfAuthorityStyle', p.authorityStyle, '');
+    setVal('pfTouchComfort', p.touchComfort, '');
+    setVal('pfSpiritualFrame', p.spiritualFrame, '');
+    // Round 21 — Personal Anchors
+    setVal('pfSafePlace', p.safePlace, '');
+    setVal('pfPowerObject', p.powerObject, '');
+    setVal('pfResourceMemory', p.resourceMemory, '');
     // Share toggles — default true when missing so old profiles keep parity.
     const shareAge = $('pfShareAge'); if (shareAge) shareAge.checked = (p.shareAge !== false);
     const shareApp = $('pfShareAppearance'); if (shareApp) shareApp.checked = (p.shareAppearance !== false);
@@ -10321,6 +10499,17 @@ I return to myself easily"></textarea>
     { id: 'bgPromptInput',            type: 'csv'  }, // image-gen prompt tags
     { id: 'pfPreferredEnvironments',  type: 'csv'  }, // Round 16 — env keywords
     { id: 'pfSensorySensitivities',   type: 'text' }, // Round 16 — freeform prose
+    // Round 21 — Current Life Context (the most time-windowed fields,
+    // where edits matter most to the AI's "what's new" awareness).
+    { id: 'pfCurrentThemes',          type: 'text' },
+    { id: 'pfCurrentStressors',       type: 'text' },
+    { id: 'pfCurrentWins',            type: 'text' },
+    { id: 'pfHealthNotes',            type: 'text' },
+    // Round 21 — Personal Anchors (rarely edited but high-impact when
+    // they change — a new safe place reshapes deepening imagery).
+    { id: 'pfSafePlace',              type: 'text' },
+    { id: 'pfPowerObject',            type: 'text' },
+    { id: 'pfResourceMemory',         type: 'text' },
   ];
 
   function initDiffBouncers() {
@@ -10484,6 +10673,11 @@ I return to myself easily"></textarea>
         intentionInput: 'intention', userAffirmations: 'affirmations',
         bgPromptInput: 'bg prompt', bgImage: 'image',
         pfPreferredEnvironments: 'environments', pfSensorySensitivities: 'sensitivities',
+        // Round 21 additions — keep the labels short for compact timeline rows
+        pfCurrentThemes: 'themes', pfCurrentStressors: 'stressors',
+        pfCurrentWins: 'wins', pfHealthNotes: 'health notes',
+        pfSafePlace: 'safe place', pfPowerObject: 'power object',
+        pfResourceMemory: 'resource memory',
       }[id] || id);
       label = srcLabel(e.sourceId);
       if (e.type === 'csv' && e.diff) {
@@ -10677,6 +10871,118 @@ I return to myself easily"></textarea>
       if (energyHint) parts.push(`Energy pattern: ${p.energyPattern}. ${energyHint}`);
     }
 
+    // ── Round 21 — Practice Context ───────────────────────────────────
+    // When/where/how the user practices. These shape micro-decisions:
+    // closeout style, environmental framing, body-metaphor alignment,
+    // tone for shared spaces. Defaults blank → no instruction added.
+    if (p.typicalTime) {
+      const timeHint = {
+        morning:    'Morning practice — closeout can be alerting/energizing; reintroduction primes the day ahead.',
+        midday:     'Midday practice — closeout returns them to active engagement; brief and clear reintro.',
+        afternoon:  'Afternoon practice — moderate alerting closeout; ok to leave slightly settled.',
+        evening:    'Evening practice — gentle closeout; can leave them in a softer state for the rest of the night.',
+        'late-night': 'Late-night practice — for sleep intentions, drift into silence with NO count-up. For other intentions, softest possible reintro.',
+        varies:     'Practice time varies — closeout should be moderate / context-neutral.',
+      }[p.typicalTime];
+      if (timeHint) parts.push(`Typical time: ${p.typicalTime}. ${timeHint}`);
+    }
+    if (p.practiceSpace) {
+      const spaceHint = {
+        bedroom:           'Practices in bedroom — bedroom imagery is safe; can reference bed/blankets/pillow naturally.',
+        'quiet-room':      'Practices in a quiet room — good for full immersion; standard environmental framing.',
+        'shared-space':    'Practices in a shared space — keep volume modest in script (no shouts, no sudden loud cues), softer "wake" instructions.',
+        outdoors:          'Practices outdoors — script can reference real environmental sounds (wind, birds, distant traffic) as integration cues, not distractions.',
+        'public-headphones':'Practices in public with headphones — NO instructions to vocalize, sigh, hum, or move arms/body visibly. Internal-only somatic cues.',
+        varies:            'Practice space varies — keep environmental references generic.',
+      }[p.practiceSpace];
+      if (spaceHint) parts.push(`Practice space: ${p.practiceSpace}. ${spaceHint}`);
+    }
+    if (p.posture) {
+      const postureHint = {
+        'lying-supine':    'Posture: lying on back. Body metaphors work best from feet-upward or center-outward. Avoid "feet on floor" type anchors.',
+        'lying-side':      'Posture: lying on side. Avoid symmetrical body metaphors (both arms equally) — favor "the upper hand", "the resting cheek".',
+        'seated-upright':  'Posture: seated upright. Spine + crown imagery works well; "sit tall" cues fit naturally.',
+        'seated-reclined': 'Posture: seated reclined. Hybrid — works for both spine awareness and lying-style sinking metaphors.',
+        walking:           'Posture: WALKING. CRITICAL: NEVER instruct deep eye-closure, dissociation, balance-altering imagery, or anything that compromises physical safety. Eyes-open meditation only. No "let your knees buckle" or "sink into the chair" — those are dangerous while walking.',
+        varies:            'Posture varies — keep body metaphors flexible.',
+      }[p.posture];
+      if (postureHint) parts.push(`Posture: ${p.posture}. ${postureHint}`);
+    }
+    if (p.coPresence) {
+      const coHint = {
+        alone:    'Practicing alone — full freedom for vocal/somatic instructions.',
+        partner:  'Practicing with a close partner present — script can reference shared presence subtly; avoid framing solitude as required.',
+        shared:   'Others nearby in shared space — keep voice softer, no instructions to vocalize, normalize external sounds rather than treating them as distractions.',
+        public:   'In public — internal experience only. NO instructions to vocalize, gesture, or dramatically shift posture.',
+      }[p.coPresence];
+      if (coHint) parts.push(`Co-presence: ${p.coPresence}. ${coHint}`);
+    }
+
+    // ── Round 21 — Current Life Context (time-windowed, high-leverage)
+    // The most important new fields for AI session shaping. Ride under
+    // shareGoals because they're personal-life-adjacent.
+    if (p.currentThemes && p.shareGoals !== false) {
+      parts.push(`Current life themes: ${p.currentThemes}. Hold these as the larger arc the user is moving through; the session can reference them as the backdrop without making them the explicit topic unless intention asks.`);
+    }
+    if (p.currentStressors && p.shareGoals !== false) {
+      parts.push(`Active stressors right now: ${p.currentStressors}. Acknowledge these gently if relevant; never force engagement with them — the user may want a session that gives them space FROM these, not into them.`);
+    }
+    if (p.currentWins && p.shareGoals !== false) {
+      parts.push(`Recent wins / forward momentum: ${p.currentWins}. Reference these as evidence of capacity already demonstrated — "the same part of you that [X] is the part that's here now…". Do NOT congratulate or dwell; integrate as quiet groundedness.`);
+    }
+    if (p.healthNotes && p.shareGoals !== false) {
+      parts.push(`Physical considerations: ${p.healthNotes}. The script MUST respect these — no instructions that would aggravate the listed conditions. Avoid prolonged holds, sudden movements, or imagery that could trigger discomfort. The app is not a substitute for clinical care; never offer medical advice.`);
+    }
+
+    // ── Round 21 — Style Preferences (granular voice tuning) ──────────
+    if (p.metaphorDensity) {
+      const mdHint = {
+        minimal:  'Metaphor density: MINIMAL. Direct instructional language. Few or no metaphors. "Notice your breath" rather than "feel the breath like a tide".',
+        balanced: 'Metaphor density: BALANCED. Mix concrete instruction with occasional sensory metaphor.',
+        rich:     'Metaphor density: RICH. Layered poetic imagery, sustained metaphor, sensory abundance. The user enjoys the texture of language as part of the trance experience.',
+      }[p.metaphorDensity];
+      if (mdHint) parts.push(mdHint);
+    }
+    if (p.authorityStyle) {
+      const asHint = {
+        directive:      'Authority style: DIRECTIVE. Clear instructions. "Close your eyes. Take a breath. Notice." Confident leading.',
+        balanced:       'Authority style: BALANCED. Mix of clear directives and permissive invitations as appropriate.',
+        permissive:     'Authority style: PERMISSIVE. Invitations rather than commands: "you might notice", "perhaps you can feel", "in your own time". Ericksonian phrasing.',
+        conversational: 'Authority style: CONVERSATIONAL. Warm, peer-like. As if speaking to a friend who has chosen this practice with you. Less formal hypnotist register.',
+      }[p.authorityStyle];
+      if (asHint) parts.push(asHint);
+    }
+    if (p.touchComfort) {
+      const tcHint = {
+        full:  'Body-touch comfort: FULL. Instructions like "place your hand on your chest" or "fingertips on the inside of your wrist" are welcome as somatic anchors.',
+        light: 'Body-touch comfort: LIGHT. Fingertip-only or symbolic touch ok ("touch your thumb to your forefinger"); avoid "place your whole hand on…" type instructions.',
+        none:  'Body-touch comfort: NONE. NO instructions to physically touch the body. Use breath, attention, or imagined sensation as anchors instead.',
+      }[p.touchComfort];
+      if (tcHint) parts.push(tcHint);
+    }
+    if (p.spiritualFrame && p.shareGoals !== false) {
+      const sfHint = {
+        secular:           'Spiritual frame: SECULAR ONLY. Avoid spirit/soul/divine/sacred/blessed/prayer language. Keep framing psychological and physiological.',
+        nondenominational: 'Spiritual frame: NONDENOMINATIONAL. Spirit/soul/sacred language is welcome but NOT specific to any tradition. No deity names, no theology.',
+        buddhist:          'Spiritual frame: BUDDHIST-flavored. Vocabulary like awareness, presence, impermanence, equanimity, the witnessing mind, dharma is welcome.',
+        christian:         'Spiritual frame: CHRISTIAN-flavored. Grace, peace, prayer, divine presence language welcome. No specific denomination unless About specifies.',
+        'earth-based':     'Spiritual frame: EARTH-BASED / pagan. Nature-as-sacred, elemental imagery, cycles, ancestor presence are welcome.',
+        other:             'Spiritual frame: OTHER (see About for details). Default to nondenominational unless About clarifies.',
+      }[p.spiritualFrame];
+      if (sfHint) parts.push(sfHint);
+    }
+
+    // ── Round 21 — Personal Anchors (pre-existing resources to weave) ─
+    if (p.safePlace && p.shareGoals !== false) {
+      parts.push(`SAFE PLACE (use this — do NOT invent a generic one): "${p.safePlace}". Reference it during deepening or when constructing sanctuary imagery. It belongs to the listener, not the script.`);
+    }
+    if (p.powerObject && p.shareGoals !== false) {
+      parts.push(`POWER OBJECT: "${p.powerObject}". Anchor it: when the listener encounters or thinks of this object in daily life, the trance state recalls itself. Reference once during work-phase peak.`);
+    }
+    if (p.resourceMemory && p.shareGoals !== false) {
+      parts.push(`RESOURCE MEMORY (a real positive moment they can re-enter): "${p.resourceMemory}". Use during work-phase peak — invoke the felt sense of that moment as the present-tense state. NOT "remember when X happened" but "the same warmth that was in your chest then is here now".`);
+    }
+
     // Phase 4: inferred sensory modality. Only surfaced when inference is
     // confident (see inferModality). Wrong guidance is worse than silence.
     if (state._inferredModality) {
@@ -10693,7 +10999,16 @@ I return to myself easily"></textarea>
     // weighted by age (exp(-days/14)); entries below 0.1 weight drop out.
     // Recent (≤7 days) changes also get a "first session since" callout so
     // the AI explicitly knows this generation reflects a new direction.
-    const srcLabel = id => ({ pfGoals:'goals', pfAbout:'about', intentionInput:'intention', userAffirmations:'affirmations', bgPromptInput:'bg-prompt', bgImage:'image-gen', pfPreferredEnvironments:'environments', pfSensorySensitivities:'sensitivities' }[id] || id);
+    const srcLabel = id => ({
+      pfGoals:'goals', pfAbout:'about',
+      intentionInput:'intention', userAffirmations:'affirmations',
+      bgPromptInput:'bg-prompt', bgImage:'image-gen',
+      pfPreferredEnvironments:'environments', pfSensorySensitivities:'sensitivities',
+      pfCurrentThemes:'themes', pfCurrentStressors:'stressors',
+      pfCurrentWins:'wins', pfHealthNotes:'health-notes',
+      pfSafePlace:'safe-place', pfPowerObject:'power-object',
+      pfResourceMemory:'resource-memory',
+    }[id] || id);
     try {
       const recent = (_profileChangeLog || []).slice(0, 10);
       if (recent.length) {
@@ -17028,6 +17343,30 @@ ${messages}
         visualType = 'candle';
       }
     } catch { /* matchMedia not available — proceed with original viz */ }
+
+    // ── Walking-posture safety gate ──────────────────────────────────────
+    // If the user's profile says they typically practice while walking,
+    // motion-heavy visualizers are dangerous (visual flow plus physical
+    // motion can disorient). Force-swap to 'none' for the warp-class
+    // visualizers; a user walking with their phone in hand shouldn't
+    // be looking at a starfield. Profile read inline so a posture
+    // change mid-session takes effect on next viz init.
+    try {
+      const profile = typeof getProfile === 'function' ? getProfile() : null;
+      const safetiesRelaxed = typeof _audioVizSafetiesRelaxed === 'function' && _audioVizSafetiesRelaxed();
+      if (!safetiesRelaxed && profile?.posture === 'walking' && INTENSE_VIZ_LIST.has(visualType)) {
+        const now = Date.now();
+        if (now - _lastReducedMotionToastAt > 60000) {
+          _lastReducedMotionToastAt = now;
+          if (typeof notify !== 'undefined') {
+            notify.info(`Walking posture: "${visualType}" disabled for safety. Use candle or none.`);
+          }
+        }
+        if (state.vizOverride !== 'auto') state.vizOverride = 'none';
+        const vs = $('vizSelect'); if (vs) vs.value = 'none';
+        visualType = 'none';
+      }
+    } catch { /* profile not available — proceed */ }
 
     const stage = $('stage');
     // Clean up previous visuals
@@ -24674,17 +25013,48 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const ss = $('soundscapeSelect');
     const value = ss?.value || state.soundscape;
     const relaxed = (typeof _audioVizSafetiesRelaxed === 'function') && _audioVizSafetiesRelaxed();
+    let baseText;
     if (value === 'binaural') {
-      hint.textContent = relaxed
+      baseText = relaxed
         ? 'Binaural beats — best with stereo headphones. Phase-locked frequency map ramps per session phase.'
         : '⚠ Binaural beats require stereo headphones. Efficacy is contested in peer-reviewed literature.';
     } else if (value === 'isochronic') {
-      hint.textContent = relaxed
+      baseText = relaxed
         ? 'Isochronic tones — amplitude-modulated, works on any speaker. Phase-locked frequency map ramps per session phase.'
         : 'Isochronic tones — amplitude-modulated entrainment that works on any speaker (no headphones needed). Efficacy is contested in peer-reviewed literature.';
     } else {
-      hint.textContent = 'Procedurally generated — never loops. Use headphones for best experience.';
+      baseText = 'Procedurally generated — never loops. Use headphones for best experience.';
     }
+    // Practice-space-aware nudge — appended only when the chosen
+    // soundscape doesn't match the user's space context. Read profile
+    // inline (live read, no caching).
+    let nudge = '';
+    try {
+      const profile = typeof getProfile === 'function' ? getProfile() : null;
+      const space = profile?.practiceSpace;
+      if (space) {
+        // Mappings — soundscape that pairs naturally with each space.
+        // Multiple options listed; if the current value is in the
+        // matching set we suppress the nudge.
+        const match = {
+          bedroom:           ['rain', 'ocean', 'underwater'],
+          outdoors:          ['wind', 'fire', 'rain'],
+          'shared-space':    ['drone', 'binaural', 'isochronic'],
+          'public-headphones': ['drone', 'binaural', 'isochronic', 'brown'],
+        }[space];
+        if (match && !match.includes(value) && value !== 'none') {
+          // Pretty label for the suggestion
+          const label = {
+            bedroom:           'rain or ocean',
+            outdoors:          'wind or fire',
+            'shared-space':    'drone (low attention demand)',
+            'public-headphones': 'drone or binaural (immersive)',
+          }[space];
+          nudge = ` · For ${space.replace('-', ' ')} sessions, try ${label}.`;
+        }
+      }
+    } catch { /* profile not available — no nudge */ }
+    hint.textContent = baseText + nudge;
   }
   $('droneVolume').addEventListener('input', e => {
     state.droneVolume = parseInt(e.target.value,10)/100; drone.setVolume(state.droneVolume);
@@ -30399,11 +30769,31 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     if (e.target?.id === 'remoteConsentModal') closeRemoteConsentModal();
   });
 
-  // Profile form — save on any input change
-  ['pfName', 'pfAbout', 'pfAppearance', 'pfGoals'].forEach(id => {
+  // Profile form — save on any input change. Covers core fields plus
+  // Round 16 extended (preferredEnvironments, sensitivities) plus
+  // Round 21 (practice context, current life, style preferences,
+  // personal anchors). Split by control type because textareas fire
+  // 'input' on every keystroke while selects fire 'change' on commit.
+  [
+    'pfName', 'pfAbout', 'pfAppearance', 'pfGoals',
+    // Round 16 freeform
+    'pfPreferredEnvironments', 'pfSensorySensitivities',
+    // Round 21 — Current Life Context
+    'pfCurrentThemes', 'pfCurrentStressors', 'pfCurrentWins', 'pfHealthNotes',
+    // Round 21 — Personal Anchors
+    'pfSafePlace', 'pfPowerObject', 'pfResourceMemory',
+  ].forEach(id => {
     $(id)?.addEventListener('input', saveProfile);
   });
-  ['pfPronouns', 'pfAge', 'pfExperience', 'pfUseFirstName'].forEach(id => {
+  [
+    'pfPronouns', 'pfAge', 'pfExperience', 'pfUseFirstName',
+    // Round 16 selects
+    'pfVocalPace', 'pfEnergyPattern',
+    // Round 21 — Practice Context
+    'pfTypicalTime', 'pfPracticeSpace', 'pfPosture', 'pfCoPresence',
+    // Round 21 — Style Preferences
+    'pfMetaphorDensity', 'pfAuthorityStyle', 'pfTouchComfort', 'pfSpiritualFrame',
+  ].forEach(id => {
     $(id)?.addEventListener('change', saveProfile);
   });
   // Universal "use profile details" toggle — fans out to the three
@@ -30423,6 +30813,11 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   // there require a reload, but that's fine since the order isn't
   // user-actionable.
   $('pfAge')?.addEventListener('change', () => {
+    if (typeof _refreshSoundscapeHint === 'function') _refreshSoundscapeHint();
+  });
+  // Practice space change → refresh the soundscape hint so the
+  // space-aware nudge appears/disappears live.
+  $('pfPracticeSpace')?.addEventListener('change', () => {
     if (typeof _refreshSoundscapeHint === 'function') _refreshSoundscapeHint();
   });
 
@@ -30977,6 +31372,29 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
 
     // Onboarding tour for first-time visitors
     if (shouldShowTour()) setTimeout(startTour, 800);
+
+    // Round 21 — one-time discovery nudge for the expanded profile.
+    // Fires once for established users (have at least 1 completed session)
+    // who haven't seen the nudge yet. Skips first-run / brand-new users
+    // because they get the onboarding tour instead, which would stack.
+    try {
+      const PROFILE_EXPANSION_NUDGE_KEY = 'stillness_profile_expansion_nudge_v1';
+      const seen = localStorage.getItem(PROFILE_EXPANSION_NUDGE_KEY);
+      if (!seen && hadSavedSettings) {
+        const history = (await idbGet('stillness_history_v1')) || [];
+        const completedCount = history.filter(s => s?.completed).length;
+        if (completedCount >= 1) {
+          setTimeout(() => {
+            try {
+              if (typeof notify !== 'undefined') {
+                notify.info('New profile fields available — practice context, current life themes, personal anchors. The AI uses these to shape sessions more specifically. Open Your Details in the sidebar to set them.', 12000);
+              }
+              localStorage.setItem(PROFILE_EXPANSION_NUDGE_KEY, '1');
+            } catch {}
+          }, 3000);
+        }
+      }
+    } catch { /* never break boot */ }
 
     // App-intro panel — first-run users see it open; once any sessions have
     // been completed, default to collapsed so it doesn't burn screen real
