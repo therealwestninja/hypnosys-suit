@@ -623,7 +623,6 @@ padding: 24px;
   .soft-pause-overlay {
     position: fixed; inset: 0; z-index: 50;
     background: rgba(8,8,10,0.85);
--webkit-
     display: none; align-items: center; justify-content: center;
     padding: 24px;
   }
@@ -1132,7 +1131,6 @@ padding: 8px 10px;
     font-size: 0.78rem; cursor: pointer; min-height: 0;
     text-align: center;
     opacity: 0; transition: opacity 0.15s, color 0.15s, border-color 0.15s;
--webkit-
   }
   .bg-preview-stage:hover .bg-preview-fullscreen,
   .bg-preview-fullscreen:focus { opacity: 1; }
@@ -1172,7 +1170,6 @@ padding: 8px 10px;
     color: var(--text-faint); font-size: 0.7rem; font-family: var(--font-mono, monospace);
     background: rgba(0,0,0,0.5); padding: 6px 10px;
     pointer-events: none;
--webkit-
   }
   .bg-fs-prev, .bg-fs-next, .bg-fs-close {
     position: absolute; top: 50%; transform: translateY(-50%);
@@ -1181,7 +1178,6 @@ padding: 8px 10px;
     width: 44px; height: 44px; font-size: 1.4rem; line-height: 42px;
     cursor: pointer; padding: 0; text-align: center;
     transition: background 0.15s, color 0.15s, border-color 0.15s;
--webkit-
     min-height: 0;
   }
   .bg-fs-prev { left: 16px; }
@@ -1200,7 +1196,6 @@ padding: 8px 10px;
     display: flex; align-items: center; gap: 4px;
     background: rgba(0,0,0,0.7); border: 1px solid var(--glass-border);
 padding: 4px 6px;
--webkit-
   }
   .bg-fs-zoom-bar button {
     background: none; border: none; color: var(--text-dim);
