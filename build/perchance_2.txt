@@ -1197,6 +1197,40 @@ transition: color 0.15s, background 0.15s;
     background: rgba(0,212,230,0.25);
   }
 
+  /* ============ SAVED SCRIPTS LIBRARY ============ */
+  .saved-script-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; margin-bottom: 6px;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .saved-script-row:hover {
+    border-color: rgba(0,212,230,0.3);
+    background: rgba(0,212,230,0.04);
+  }
+  .saved-script-row .ssr-main { flex: 1; min-width: 0; }
+  .saved-script-row .ssr-name {
+    font-size: 0.84rem; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .saved-script-row .ssr-meta {
+    font-size: 0.66rem; color: var(--text-faint);
+    margin-top: 2px; line-height: 1.4;
+  }
+  .saved-script-row .ssr-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .saved-script-row .ssr-btn {
+    background: none; border: 1px solid var(--glass-border);
+    color: var(--text-dim); font-size: 0.7rem;
+    padding: 3px 9px; cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .saved-script-row .ssr-btn:hover {
+    color: var(--neon-cyan); border-color: rgba(0,212,230,0.5);
+  }
+  .saved-script-row .ssr-btn-danger:hover {
+    color: var(--neon-amber); border-color: rgba(255,171,0,0.5);
+  }
+
   /* ============ GUIDE BUILDER STEPS ============ */
   /* Each .gb-step is one focused AI call mirroring character-sfx +
      script-generator pipeline pattern. Status flips drive the icon
@@ -3657,6 +3691,24 @@ I return to myself easily"></textarea>
       <div class="sublabel" style="text-align: center; margin-top: 6px">Generates each phase individually for higher quality. ~6–7 minutes total.</div>
 
       <div class="script-preview" id="scriptPreview">
+        <!-- Saved Scripts library — persistence layer above the session
+             script editor. Stored in IDB under stillness_saved_scripts_v1.
+             Both the auto-generated script and any user-pasted/edited
+             text can be saved here for reuse. Default-collapsed because
+             new users don't have any saves; collapse state isn't
+             persisted (lightweight section, opens fast). -->
+        <details class="presets-collapsible" id="savedScriptsDetails" style="margin-bottom:14px">
+          <summary>
+            <span class="presets-chevron">▸</span>
+            <span class="presets-title">Saved Scripts <span id="savedScriptsCount" style="font-weight:normal;color:var(--text-faint);font-size:0.7rem;text-transform:none;letter-spacing:0">(0)</span></span>
+            <span class="presets-hint">tap to expand · load or manage</span>
+          </summary>
+          <div class="sublabel" style="margin-top:8px;margin-bottom:6px">Save scripts you want to reuse. Loading replaces the current script — your in-progress text will be lost.</div>
+          <div id="savedScriptsList" style="margin-top:8px">
+            <!-- populated by renderSavedScripts() — empty-state when no saves -->
+          </div>
+        </details>
+
         <h3>session script</h3>
         <div class="script-stats" id="scriptStats"></div>
         <!-- Director-shows-its-work card. Populated by renderDirectorWorkCard()
@@ -3670,6 +3722,7 @@ I return to myself easily"></textarea>
           <button class="btn secondary" id="regenFreshBtn" title="Generate a brand new script from your current intention. Useful if you've pasted or edited the script and want a fresh AI-generated version.">↻ regenerate fresh</button>
           <button class="btn secondary" id="autoTempoBtn">⏱ auto-tempo</button>
           <button class="btn secondary" id="autoTempoOptsBtn" title="Auto-tempo cleanup options" style="padding:4px 8px">⚙</button>
+          <button class="btn secondary" id="saveScriptBtn" title="Save this script to your library for reuse">💾 save</button>
           <button class="btn secondary" id="exportScriptBtn">↓ download .txt</button>
           <button class="btn secondary" id="shareConfigBtn" title="Create a shareable link for this session config">🔗 share link</button>
           <button class="btn green" id="beginBtn">begin session →</button>
@@ -3851,6 +3904,10 @@ I return to myself easily"></textarea>
         <div class="post-card" id="postProgramBox" style="display:none"></div>
         <!-- Director Brief reasoning (shown only when Smart Director ran and a brief was captured) -->
         <div class="post-card" id="postDirectorBriefBox" style="display:none"></div>
+        <!-- Pre-gen offer (shown when a program advanced to next day and
+             cache is empty). Asks the user before firing AI calls in the
+             background — respects user control over quota/cost. -->
+        <div class="post-card" id="postPreGenOfferBox" style="display:none"></div>
       </div>
 
       <!-- Check-in row: mood + alertness + depth -->
@@ -4758,12 +4815,14 @@ I return to myself easily"></textarea>
     catch { return false; }
   }
   const notify = {
-    info:    (msg, ms) => { if (_isInSessionPlayback()) return null; return toast('info', msg, ms); },
-    success: (msg, ms) => { if (_isInSessionPlayback()) return null; return toast('success', msg, ms); },
-    warn:    (msg, ms) => { if (_isInSessionPlayback()) return null; return toast('warn', msg, ms); },
+    info:    (msg, ms) => { if (state._preGenMode || _isInSessionPlayback()) return null; return toast('info', msg, ms); },
+    success: (msg, ms) => { if (state._preGenMode || _isInSessionPlayback()) return null; return toast('success', msg, ms); },
+    warn:    (msg, ms) => { if (state._preGenMode || _isInSessionPlayback()) return null; return toast('warn', msg, ms); },
     // Error/critical toasts ALWAYS surface — they're the only severity worth
     // interrupting a session for (audio failure, AI fetch failure, etc.).
-    error:   (msg, ms) => toast('error', msg, ms),
+    // EXCEPT during pre-gen, where the user didn't initiate the call and
+    // shouldn't see invisible-failure toasts. We log to console instead.
+    error:   (msg, ms) => { if (state._preGenMode) { console.warn('[pre-gen suppressed error]', msg); return null; } return toast('error', msg, ms); },
   };
 
   function confirmAsync(message, opts = {}) {
@@ -7819,6 +7878,7 @@ I return to myself easily"></textarea>
 
   /** Set button to loading state or restore it */
   function setLoading(btnOrId, loading, originalText) {
+    if (state._preGenMode) return;  // headless: don't flicker visible buttons
     const btn = typeof btnOrId === 'string' ? $(btnOrId) : btnOrId;
     if (!btn) return;
     btn.disabled = loading;
@@ -10006,7 +10066,7 @@ I return to myself easily"></textarea>
   }
 
   // Feature bit constants
-  const FEAT = { AFFIRMATIONS: 1, PROGRAMS: 2, CUSTOM_PERSONA: 4, SKIP_SCRIPT: 8, TIMING_FIX: 16, SHARE: 32, BACKUP: 64, DOUBLE_INDUCT: 128 };
+  const FEAT = { AFFIRMATIONS: 1, PROGRAMS: 2, CUSTOM_PERSONA: 4, SKIP_SCRIPT: 8, TIMING_FIX: 16, SHARE: 32, BACKUP: 64, DOUBLE_INDUCT: 128, PRE_GEN: 256 };
 
   /** Rebuild analytics from remaining history — called after deletes to keep data consistent */
   async function rebuildAnalytics(historyArr) {
@@ -16898,6 +16958,7 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
 
   /** Render phase progress with state: pending, streaming, done, error, warn */
   function renderGenProgress(phases, stateMask, eta, retryCallback) {
+    if (state._preGenMode) return;  // headless: skip all DOM writes
     const wrap = $('genProgress');
     const container = $('genPhases');
     const etaEl = $('genEta');
@@ -16928,6 +16989,7 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
 
   /** Show/update the streaming preview for the phase currently generating. */
   function setStreamingPreview(phaseLabel, text, opts = {}) {
+    if (state._preGenMode) return;  // headless: skip streaming UI
     const box = $('genStreamBox'); if (!box) return;
     if (opts.hide) { box.classList.remove('active', 'done'); return; }
     box.classList.add('active');
@@ -17203,6 +17265,17 @@ End with a brief acknowledgment that you're now continuing — bridging back to 
   }
 
   async function generateFullScript() {
+    // If pre-gen is running, the user just superseded it. Cancel and
+    // wait briefly for the lock to clear before checking _aiInProgress.
+    // Skip this dance during pre-gen itself (state._preGenMode is set).
+    if (!state._preGenMode && (state._preGenInProgress || state._preGenScheduled)) {
+      cancelActivePreGen('user requested fresh generation');
+      let waited = 0;
+      while (_aiInProgress && waited < 4000) {
+        await new Promise(r => setTimeout(r, 200));
+        waited += 200;
+      }
+    }
     if (_aiInProgress) { notify.info('An AI call is already in progress.'); return; }
     const editedText = $('scriptText').value.trim();
     if (state.fullScript && editedText && editedText !== state.fullScript.trim()) {
@@ -17609,6 +17682,13 @@ ${gs.phaseResults[p]}
 `;
     });
     if (fullScript.trim().length > 50) {
+      // Headless mode (program pre-gen) — capture script to a side
+      // buffer instead of mutating user-visible state. The pre-gen
+      // runner snapshots/restores state.fullScript around this call.
+      if (state._preGenMode) {
+        state._preGenScript = fullScript.trim();
+        return;
+      }
       state.fullScript = fullScript.trim();
       state.generatedPhaseOrder = [...gs.phases];
       state.parsedScript = parseScript(state.fullScript);
@@ -20039,6 +20119,19 @@ Start immediately:`;
   }
 
   async function startSession() {
+    // Cancel any in-flight pre-gen — its _aiInProgress lock would block us.
+    // The pre-gen runner observes _preGenCanceled between phases.
+    if (state._preGenInProgress || state._preGenScheduled) {
+      cancelActivePreGen('user starting active session');
+      // Brief poll-and-wait so the in-flight phase can finish and the
+      // lock can clear. Cap at 4s — if pre-gen is stuck, surface the
+      // existing "in progress" message to the user.
+      let waited = 0;
+      while (_aiInProgress && waited < 4000) {
+        await new Promise(r => setTimeout(r, 200));
+        waited += 200;
+      }
+    }
     // Block while AI generation is still streaming — without this guard,
     // clicking "begin" mid-stream would start a session against the
     // partial script that's been written into scriptText so far. The
@@ -21406,6 +21499,43 @@ Start immediately:`;
       }
     }
 
+    // Pre-gen offer — opt-in prompt for tomorrow's program day. Surfaces
+    // only if advanceProgramDay just stashed an offer (i.e., the user
+    // is on a structured program with an empty cache for the next day).
+    // The user explicitly approves before any AI call fires.
+    const preGenBox = $('postPreGenOfferBox');
+    if (preGenBox) {
+      const offer = state._preGenOffer;
+      if (!wasEmergency && offer) {
+        const dayLabel = `Day ${offer.dayIndex + 1} of ${offer.prog.days}`;
+        preGenBox.style.display = '';
+        preGenBox.innerHTML = `
+          <div class="post-card-title">prepare tomorrow's session?</div>
+          <div style="font-size:0.82rem;line-height:1.55;color:var(--text-dim);margin-bottom:10px">
+            I can generate <strong>${escapeHtml(offer.prog.name)} — ${escapeHtml(dayLabel)}</strong> in the background while you reflect. When you return tomorrow it'll be ready instantly. Uses one round of AI calls now.
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn" id="preGenAcceptBtn" style="font-size:0.78rem">✨ yes, prepare it</button>
+            <button class="btn secondary" id="preGenSkipBtn" style="font-size:0.78rem">no thanks</button>
+          </div>`;
+        $('preGenAcceptBtn')?.addEventListener('click', async () => {
+          preGenBox.innerHTML = '<div class="post-card-title">tomorrow\'s session</div><div style="font-size:0.78rem;color:var(--text-dim)">Preparing in the background — you\'ll get a toast when it\'s ready.</div>';
+          state._preGenOffer = null;
+          // Use stored prog/ps snapshots — state._activeProgram was cleared
+          // by advanceProgramDay so we can't read from there.
+          schedulePreGenForProgramDay(offer.prog, offer.ps).catch(e => console.warn('[pre-gen] schedule failed:', e));
+        });
+        $('preGenSkipBtn')?.addEventListener('click', () => {
+          preGenBox.style.display = 'none';
+          preGenBox.innerHTML = '';
+          state._preGenOffer = null;
+        });
+      } else {
+        preGenBox.style.display = 'none';
+        preGenBox.innerHTML = '';
+      }
+    }
+
     // Emergency cooldown — duration from safetyConfig (default 30s, user-tunable)
     const statusIcon = $('postStatusIcon');
     if (wasEmergency) {
@@ -22595,6 +22725,193 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     try { await generateFullScript(); }
     finally { state.smartDirectorEnabled = _prevSD; }
   });
+  // ====================================================================
+  // SAVED SCRIPTS LIBRARY
+  // ====================================================================
+  // Persistent library of scripts the user has chosen to keep. Both the
+  // generator output and any user-pasted/edited text can be saved.
+  // Stored in IDB at SAVED_SCRIPTS_KEY; capped at 30 entries (drop oldest
+  // on overflow). Entries carry sourceMeta so loaded scripts can hint
+  // back at the persona/method/intention they were built for.
+  // ====================================================================
+  const SAVED_SCRIPTS_KEY = 'stillness_saved_scripts_v1';
+  const SAVED_SCRIPTS_MAX = 30;
+
+  async function loadSavedScripts() {
+    try { return (await idbGet(SAVED_SCRIPTS_KEY)) || []; } catch { return []; }
+  }
+  async function persistSavedScripts(arr) {
+    try { await idbSet(SAVED_SCRIPTS_KEY, arr); return true; }
+    catch (e) { console.warn('[saved-scripts] save failed:', e); return false; }
+  }
+
+  /** Format timestamp as relative ("3h ago", "yesterday", "5d ago") for
+   *  the saved-scripts list. Falls back to absolute date for older items. */
+  function _relTime(ts) {
+    if (!ts) return '';
+    const ms = Date.now() - ts;
+    const min = Math.floor(ms / 60000);
+    if (min < 1) return 'just now';
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h ago`;
+    const day = Math.floor(hr / 24);
+    if (day === 1) return 'yesterday';
+    if (day < 7) return `${day}d ago`;
+    if (day < 30) return `${Math.floor(day/7)}w ago`;
+    return new Date(ts).toLocaleDateString();
+  }
+
+  /** Render the saved-scripts list inside #savedScriptsList. Updates
+   *  the count badge in the summary line. Idempotent — call after every
+   *  CRUD op. */
+  async function renderSavedScripts() {
+    const list = $('savedScriptsList');
+    const countBadge = $('savedScriptsCount');
+    if (!list) return;
+    const all = await loadSavedScripts();
+    if (countBadge) countBadge.textContent = `(${all.length})`;
+    if (all.length === 0) {
+      list.innerHTML = `
+        <div style="padding:14px;background:var(--bg-deep);border:1px dashed var(--glass-border);font-size:0.78rem;color:var(--text-faint);text-align:center;line-height:1.55">
+          No saved scripts yet.<br>
+          <span style="font-size:0.72rem">Generate or paste a script, then tap <strong>💾 save</strong> on the actions bar to keep it here.</span>
+        </div>`;
+      return;
+    }
+    // Newest first
+    const sorted = [...all].sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+    list.innerHTML = sorted.map(entry => {
+      const meta = entry.sourceMeta || {};
+      const metaBits = [];
+      if (meta.persona) metaBits.push(escapeHtml(meta.persona));
+      if (meta.method) metaBits.push(escapeHtml(meta.method));
+      if (meta.length) metaBits.push(escapeHtml(meta.length));
+      const metaLine = metaBits.length ? metaBits.join(' · ') : 'no metadata';
+      const charCount = (entry.script || '').length;
+      return `
+        <div class="saved-script-row" data-id="${entry.id}">
+          <div class="ssr-main">
+            <div class="ssr-name">${escapeHtml(entry.name || 'untitled')}</div>
+            <div class="ssr-meta">${metaLine} · ${charCount.toLocaleString()} chars · ${_relTime(entry.savedAt)}</div>
+          </div>
+          <div class="ssr-actions">
+            <button type="button" class="ssr-btn" data-act="load"   title="Load this script into the editor">load</button>
+            <button type="button" class="ssr-btn" data-act="rename" title="Rename">✎</button>
+            <button type="button" class="ssr-btn ssr-btn-danger" data-act="delete" title="Delete">×</button>
+          </div>
+        </div>`;
+    }).join('');
+    // Wire up actions via delegation
+    list.querySelectorAll('.saved-script-row').forEach(row => {
+      const id = row.getAttribute('data-id');
+      row.querySelector('[data-act="load"]')?.addEventListener('click', () => loadSavedScript(id));
+      row.querySelector('[data-act="rename"]')?.addEventListener('click', () => renameSavedScript(id));
+      row.querySelector('[data-act="delete"]')?.addEventListener('click', () => deleteSavedScript(id));
+    });
+  }
+
+  /** Save the current script to the library. Defaults to a name based on
+   *  current persona/intention. promptAsync lets user customize. */
+  async function saveCurrentScript() {
+    const script = ($('scriptText')?.value || '').trim();
+    if (!script || script.length < 80) {
+      notify.warn('Nothing meaningful to save — generate or paste a script first.');
+      return;
+    }
+    const persona = getPersona();
+    const method = getMethod();
+    const intentionText = ($('intentionInput')?.value || '').trim().slice(0, 60);
+    const defaultName = intentionText
+      ? `${persona.name} · ${intentionText}`
+      : `${persona.name} · ${method.name}`;
+    const name = await promptAsync('Name this script', { defaultValue: defaultName, placeholder: 'My session script' });
+    if (name == null) return; // cancelled
+    const trimmed = name.trim().slice(0, 80) || defaultName;
+    const all = await loadSavedScripts();
+    const entry = {
+      id: 'ss_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
+      name: trimmed,
+      script,
+      savedAt: Date.now(),
+      sourceMeta: {
+        persona: persona.name,
+        method: method.name,
+        length: state.length,
+        intention: intentionText || null,
+      },
+    };
+    all.push(entry);
+    // Cap — drop oldest by savedAt if over limit
+    if (all.length > SAVED_SCRIPTS_MAX) {
+      all.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+      all.length = SAVED_SCRIPTS_MAX;
+    }
+    if (!await persistSavedScripts(all)) {
+      notify.error('Could not save: browser storage may be full.');
+      return;
+    }
+    notify.success(`Saved "${trimmed}".`);
+    // Open the details panel so the user sees their new save land
+    const det = $('savedScriptsDetails'); if (det) det.open = true;
+    renderSavedScripts();
+  }
+
+  async function loadSavedScript(id) {
+    const all = await loadSavedScripts();
+    const entry = all.find(e => e.id === id);
+    if (!entry) return;
+    // Confirm if there's unsaved content in the editor
+    const cur = ($('scriptText')?.value || '').trim();
+    if (cur && cur.length > 80 && cur !== state.fullScript) {
+      const ok = await confirmAsync(`Loading "${entry.name}" will replace the current script in the editor. Your unsaved edits will be lost.`);
+      if (!ok) return;
+    }
+    state.fullScript = entry.script;
+    state.parsedScript = parseScript(entry.script);
+    state.generatedPhaseOrder = (state.parsedScript.ordered || []).slice();
+    const ta = $('scriptText'); if (ta) ta.value = entry.script;
+    showScript();
+    updateStepUI();
+    notify.success(`Loaded "${entry.name}".`);
+  }
+
+  async function renameSavedScript(id) {
+    const all = await loadSavedScripts();
+    const entry = all.find(e => e.id === id);
+    if (!entry) return;
+    const newName = await promptAsync('Rename script', { defaultValue: entry.name, placeholder: 'New name' });
+    if (newName == null) return;
+    const trimmed = newName.trim().slice(0, 80);
+    if (!trimmed || trimmed === entry.name) return;
+    entry.name = trimmed;
+    await persistSavedScripts(all);
+    renderSavedScripts();
+  }
+
+  async function deleteSavedScript(id) {
+    const all = await loadSavedScripts();
+    const entry = all.find(e => e.id === id);
+    if (!entry) return;
+    const ok = await confirmAsync(`Delete "${entry.name}"?`);
+    if (!ok) return;
+    const filtered = all.filter(e => e.id !== id);
+    await persistSavedScripts(filtered);
+    notify.info(`Deleted "${entry.name}".`);
+    renderSavedScripts();
+  }
+
+  // Wire the library
+  $('saveScriptBtn')?.addEventListener('click', saveCurrentScript);
+  // Lazy-render on first details-open + initial population on app boot.
+  // The details element only inflates the list once it's opened, but the
+  // count badge updates on save regardless.
+  $('savedScriptsDetails')?.addEventListener('toggle', (e) => {
+    if (e.target.open) renderSavedScripts();
+  });
+  // Initial count refresh after page is interactive
+  setTimeout(() => { renderSavedScripts().catch(() => {}); }, 200);
+
   $('exportScriptBtn').addEventListener('click', exportScript);
   $('exportBundleBtn')?.addEventListener('click', exportSessionBundle);
   $('shareConfigBtn')?.addEventListener('click', shareCurrentConfig);
@@ -24332,6 +24649,62 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     state.stepsCompleted = { 1: true, 2: true, 3: true, 4: false, 5: false, 6: false };
     goToStep(4);
     notify.success(`Day ${dayNum}: ${dayFocus}`);
+
+    // Try pre-gen cache. Fire-and-forget — if a fresh script exists for
+    // this program+day, hydrate it into the textarea so the user lands
+    // on Step 4 with the script ready instead of having to click
+    // "generate full script" and wait. Async because of IDB read.
+    (async () => {
+      try {
+        const entry = await getCachedPreGen(prog.id, ps.currentDay);
+        if (!entry) return;
+        // Don't clobber if user has already started typing or generated something
+        const cur = $('scriptText');
+        if (cur && cur.value && cur.value.trim().length > 50 && cur.value !== state.fullScript) return;
+        state.fullScript = entry.script;
+        state.parsedScript = parseScript(entry.script);
+        state.generatedPhaseOrder = (state.parsedScript.ordered || []).slice();
+        if (cur) cur.value = entry.script;
+        showScript();
+        updateStepUI();
+        // Subtle badge — mounts above the script box, dismissable
+        _showPreGenBadge(prog.id, ps.currentDay, entry.generatedAt);
+        markFeatureUsed?.(FEAT.PRE_GEN);
+        console.log(`[pre-gen] ✓ loaded cached script for ${prog.id} day ${ps.currentDay}`);
+      } catch (e) {
+        console.warn('[pre-gen] cache load failed:', e);
+      }
+    })();
+  }
+
+  /** Show a small badge indicating the script was pre-generated. The
+   *  badge sits above #scriptText; click "regenerate fresh" to clear
+   *  the cache and force a fresh AI call. Idempotent — replaces any
+   *  existing badge. */
+  function _showPreGenBadge(programId, dayIndex, generatedAt) {
+    const scriptText = $('scriptText');
+    if (!scriptText) return;
+    // Remove any prior badge
+    const prior = document.getElementById('preGenBadge'); if (prior) prior.remove();
+    const ageMs = Date.now() - generatedAt;
+    const ageHr = Math.floor(ageMs / 3600000);
+    const ageStr = ageHr < 1 ? 'just now' : ageHr < 2 ? '1 hour ago' : `${ageHr} hours ago`;
+    const badge = document.createElement('div');
+    badge.id = 'preGenBadge';
+    badge.style.cssText = 'background:rgba(0,212,230,0.07);border:1px solid rgba(0,212,230,0.3);padding:8px 12px;margin-bottom:8px;font-size:0.74rem;color:var(--text-dim);display:flex;align-items:center;gap:10px';
+    badge.innerHTML = `
+      <span style="color:var(--neon-cyan);flex-shrink:0">✨</span>
+      <span style="flex:1">Pre-generated for you ${ageStr} — ready to play, or <button type="button" id="preGenRegenLink" style="background:none;border:none;color:var(--neon-cyan);cursor:pointer;text-decoration:underline;padding:0;font:inherit">regenerate fresh</button>.</span>
+      <button type="button" id="preGenDismiss" style="background:none;border:none;color:var(--text-faint);cursor:pointer;padding:0;font-size:1rem;line-height:1" title="dismiss">×</button>
+    `;
+    scriptText.parentNode.insertBefore(badge, scriptText);
+    document.getElementById('preGenRegenLink')?.addEventListener('click', async () => {
+      await clearPreGenCache(programId, dayIndex);
+      badge.remove();
+      // Trigger a fresh generation — the existing button does what we need
+      $('generateScriptBtn')?.click();
+    });
+    document.getElementById('preGenDismiss')?.addEventListener('click', () => badge.remove());
   }
 
   // Advance program after successful session completion
@@ -24345,8 +24718,253 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     if (ps.currentDay >= prog.days) {
       notify.success(`🎉 Congratulations! You completed "${prog.name}".`);
       await idbSet('stillness_program_v1', null); // Clear completed program
+      state._activeProgram = null;
+      return;
     }
     state._activeProgram = null;
+    // Stash pre-gen offer context — the post-session screen surfaces a
+    // consent prompt the user can accept or skip. NOT auto-scheduled —
+    // the user chose to be in control of when AI calls fire.
+    if (state.preGenEnabled !== false) {
+      // Skip if cache already has a fresh entry for this day
+      try {
+        const existing = await getCachedPreGen(prog.id, ps.currentDay);
+        if (!existing) {
+          state._preGenOffer = { progId: prog.id, dayIndex: ps.currentDay, prog: { ...prog }, ps: { ...ps }, offeredAt: Date.now() };
+        }
+      } catch (e) { console.warn('[pre-gen] offer setup failed:', e); }
+    }
+  }
+
+  // ====================================================================
+  // PROGRAM PRE-GEN — Generate tomorrow's session in the background
+  // ====================================================================
+  // After a program day completes, we have ~24h before the user opens
+  // the app for the next day. Use that window to pre-generate the
+  // script so the next session launch feels instant.
+  //
+  // Strategy: snapshot current state, mutate to mirror what
+  // startProgramDay would set up, run generateFullScript in headless
+  // mode (DOM writes guarded by state._preGenMode flag), restore
+  // state, cache the result keyed by program+day.
+  //
+  // Cancel-safe: any user-initiated AI call frees the lock by setting
+  // state._preGenCanceled. The pre-gen loop checks between phases.
+  //
+  // Cache invalidation: 26-hour expiry (covers the daily-program use
+  // case naturally). Per-program-day key. Most-recent 3 entries kept.
+  // ====================================================================
+  const PROGRAM_PREGEN_KEY = 'stillness_program_pregen_v1';
+  const PREGEN_MAX_AGE_MS  = 26 * 3600 * 1000;
+  const PREGEN_DELAY_MS    = 10_000;
+
+  function _pregenCacheKey(programId, dayIndex) {
+    return `${programId}:${dayIndex}`;
+  }
+
+  async function _pregenLoadCache() {
+    try { return (await idbGet(PROGRAM_PREGEN_KEY)) || {}; } catch { return {}; }
+  }
+
+  async function _pregenSaveCache(cache) {
+    // Bound to most-recent 3 entries to keep IDB tidy
+    const keys = Object.keys(cache);
+    if (keys.length > 3) {
+      const sorted = keys
+        .map(k => ({ k, ts: cache[k]?.generatedAt || 0 }))
+        .sort((a, b) => b.ts - a.ts);
+      const keep = new Set(sorted.slice(0, 3).map(x => x.k));
+      Object.keys(cache).forEach(k => { if (!keep.has(k)) delete cache[k]; });
+    }
+    try { await idbSet(PROGRAM_PREGEN_KEY, cache); } catch (e) { console.warn('[pre-gen] cache save failed:', e); }
+  }
+
+  async function getCachedPreGen(programId, dayIndex) {
+    const cache = await _pregenLoadCache();
+    const entry = cache[_pregenCacheKey(programId, dayIndex)];
+    if (!entry) return null;
+    if (Date.now() - (entry.generatedAt || 0) > PREGEN_MAX_AGE_MS) return null;
+    if (!entry.script || entry.script.length < 100) return null;
+    return entry;
+  }
+
+  async function clearPreGenCache(programId, dayIndex) {
+    const cache = await _pregenLoadCache();
+    const k = _pregenCacheKey(programId, dayIndex);
+    if (cache[k]) {
+      delete cache[k];
+      await _pregenSaveCache(cache);
+    }
+  }
+
+  /** Main scheduler. Called from advanceProgramDay after ps is saved. */
+  async function schedulePreGenForProgramDay(prog, ps) {
+    // Cancel any in-flight pre-gen for a different day before queuing new
+    if (state._preGenInProgress || state._preGenScheduled) {
+      state._preGenCanceled = true;
+      // Wait briefly for cancellation to propagate
+      await new Promise(r => setTimeout(r, 200));
+    }
+    state._preGenCanceled = false;
+    state._preGenScheduled = true;
+
+    // Skip if cache already exists and is fresh
+    const existing = await getCachedPreGen(prog.id, ps.currentDay);
+    if (existing) {
+      state._preGenScheduled = false;
+      console.log(`[pre-gen] cache hit for ${prog.id} day ${ps.currentDay}; skipping`);
+      return;
+    }
+
+    setTimeout(() => {
+      state._preGenScheduled = false;
+      // Re-check conditions before firing — user may have started an
+      // active session, or the program may have been quit.
+      if (state._preGenCanceled) return;
+      if (state._sessionStartTime) return;
+      if (_aiInProgress) {
+        // Defer 30s and try again, up to 3 retries
+        scheduleRetry(prog, ps, 1);
+        return;
+      }
+      runPreGenForProgramDay(prog, ps).catch(e => console.warn('[pre-gen] run failed:', e));
+    }, PREGEN_DELAY_MS);
+  }
+
+  function scheduleRetry(prog, ps, attempt) {
+    if (attempt > 3) {
+      console.log('[pre-gen] gave up after 3 retries');
+      return;
+    }
+    setTimeout(() => {
+      if (state._preGenCanceled) return;
+      if (state._sessionStartTime) return;
+      if (_aiInProgress) { scheduleRetry(prog, ps, attempt + 1); return; }
+      runPreGenForProgramDay(prog, ps).catch(e => console.warn('[pre-gen] retry failed:', e));
+    }, 30_000);
+  }
+
+  /** Snapshot relevant state, mutate to tomorrow's settings, run gen,
+   *  restore. Idempotent against double-fires via state._preGenInProgress. */
+  async function runPreGenForProgramDay(prog, ps) {
+    if (state._preGenInProgress) return;
+    state._preGenInProgress = true;
+
+    // Snapshot mutable surfaces we're going to touch
+    const snapshot = {
+      selectedPersonaId: state.selectedPersonaId,
+      selectedMethodId:  state.selectedMethodId,
+      intentionType:     state.intentionType,
+      length:            state.length,
+      soundscape:        state.soundscape,
+      droneEnabled:      state.droneEnabled,
+      vizOverride:       state.vizOverride,
+      fullScript:        state.fullScript,
+      _activeProgram:    state._activeProgram,
+      intentionInputVal: $('intentionInput')?.value || '',
+      lengthSelectVal:   $('lengthSelect')?.value || '',
+      ssSelectVal:       $('soundscapeSelect')?.value || '',
+      vizSelectVal:      $('vizSelect')?.value || '',
+    };
+
+    try {
+      // Apply tomorrow's program settings — mirrors startProgramDay's
+      // setup logic minus DOM rendering and goToStep.
+      state.selectedPersonaId = prog.persona;
+      state.selectedMethodId  = prog.method;
+      state.intentionType     = prog.intention;
+      state.length            = prog.length;
+      state.soundscape        = prog.soundscape;
+      state.droneEnabled      = prog.soundscape !== 'none';
+      if (prog.vizOverride) state.vizOverride = prog.vizOverride;
+      const dayNum = ps.currentDay + 1;
+      const overrides = prog.dayOverrides?.[dayNum];
+      if (overrides) {
+        if (overrides.soundscape) { state.soundscape = overrides.soundscape; state.droneEnabled = overrides.soundscape !== 'none'; }
+        if (overrides.vizOverride) state.vizOverride = overrides.vizOverride;
+        if (overrides.method) state.selectedMethodId = overrides.method;
+        if (overrides.persona) state.selectedPersonaId = overrides.persona;
+      }
+      // Also mirror to the form fields generateFullScript reads from
+      const intInp = $('intentionInput');
+      const dayFocus = prog.arc ? prog.arc[Math.min(ps.currentDay, (prog.arc?.length || 1) - 1)] : `Day ${dayNum} of structured ${prog.name} program`;
+      const anchors = Array.isArray(ps.anchors) ? ps.anchors : [];
+      const anchorContext = anchors.length ? `Prior anchors: ${anchors.join(', ')}. ` : '';
+      const intentionText = `${anchorContext}Day ${dayNum} of ${prog.days}: ${dayFocus}`;
+      if (intInp) intInp.value = intentionText;
+      const lenEl = $('lengthSelect'); if (lenEl) lenEl.value = state.length;
+      const ssEl = $('soundscapeSelect'); if (ssEl) ssEl.value = state.soundscape;
+      const intTypeEl = $('intentionType'); if (intTypeEl) intTypeEl.value = state.intentionType;
+
+      // Set the headless mode flag — DOM helpers and assembleAndShowScript
+      // gate on this to avoid visible side effects.
+      state._preGenMode = true;
+      state._preGenScript = '';
+
+      console.log(`[pre-gen] starting for ${prog.id} day ${ps.currentDay}…`);
+      await generateFullScript();
+      // Capture result if successful (assembleAndShowScript sets _preGenScript in headless mode)
+      const generated = state._preGenScript || '';
+      if (generated && generated.trim().length > 100 && !state._preGenCanceled) {
+        const cache = await _pregenLoadCache();
+        cache[_pregenCacheKey(prog.id, ps.currentDay)] = {
+          script: generated,
+          generatedAt: Date.now(),
+          programId: prog.id,
+          dayIndex: ps.currentDay,
+          dayFocus,
+        };
+        await _pregenSaveCache(cache);
+        console.log(`[pre-gen] ✓ cached script for ${prog.id} day ${ps.currentDay} (${generated.length} chars)`);
+        // Stash success state for the post-runner toast (fired below
+        // after _preGenMode is cleared, so the notify gate doesn't
+        // suppress it).
+        state._preGenJustCompleted = { ok: true, programName: prog.name, dayIndex: ps.currentDay, totalDays: prog.days };
+      } else if (state._preGenCanceled) {
+        console.log('[pre-gen] cancelled mid-flight');
+      } else {
+        console.warn('[pre-gen] no usable output');
+        state._preGenJustCompleted = { ok: false, programName: prog.name };
+      }
+    } catch (e) {
+      console.warn('[pre-gen] generation threw:', e);
+      state._preGenJustCompleted = { ok: false, programName: prog.name, error: e?.message };
+    } finally {
+      state._preGenMode = false;
+      state._preGenScript = '';
+      // Restore snapshot — order matters: state first, then DOM mirrors
+      Object.assign(state, snapshot);
+      delete state.intentionInputVal;
+      delete state.lengthSelectVal;
+      delete state.ssSelectVal;
+      delete state.vizSelectVal;
+      const intInp = $('intentionInput'); if (intInp) intInp.value = snapshot.intentionInputVal;
+      const lenEl = $('lengthSelect'); if (lenEl) lenEl.value = snapshot.lengthSelectVal;
+      const ssEl = $('soundscapeSelect'); if (ssEl) ssEl.value = snapshot.ssSelectVal;
+      const vizEl = $('vizSelect'); if (vizEl) vizEl.value = snapshot.vizSelectVal;
+      state._preGenInProgress = false;
+      // Surface the toast NOW that _preGenMode is cleared — notify gate
+      // is no longer suppressing. Skip if the user cancelled (they
+      // initiated something else and don't need a stale toast).
+      const result = state._preGenJustCompleted;
+      delete state._preGenJustCompleted;
+      if (result && !state._preGenCanceled) {
+        if (result.ok) {
+          notify.success(`✨ Tomorrow's session is ready — ${result.programName}, Day ${result.dayIndex + 1} of ${result.totalDays}.`, 7000);
+        } else {
+          notify.warn(`Couldn't pre-generate tomorrow's ${result.programName} session. You can generate when you start the day.`, 7000);
+        }
+      }
+    }
+  }
+
+  /** Cancellation hook — called from anywhere user action conflicts with
+   *  pre-gen. Sets the flag; the pre-gen loop checks between phases. */
+  function cancelActivePreGen(reason) {
+    if (state._preGenInProgress || state._preGenScheduled) {
+      state._preGenCanceled = true;
+      console.log(`[pre-gen] cancel requested: ${reason || 'unspecified'}`);
+    }
   }
 
   // ====================================================================
