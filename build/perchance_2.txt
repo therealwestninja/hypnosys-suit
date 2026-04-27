@@ -617,6 +617,12 @@ padding: 16px; margin-top: 16px; display: none;
   .phase-timeline-block.tl-emergence     { background: rgba(212,167,114,0.50); }
   .phase-timeline-block.tl-sounding      { background: rgba(201,168,85,0.45); }
   .phase-timeline-block.tl-custom        { background: rgba(0,212,230,0.45); }
+  /* New phase types: opt-in blocks for teaching, training, mission, goal.
+     Each has a distinct color so the timeline reads at a glance. */
+  .phase-timeline-block.tl-teaching      { background: rgba(120,200,140,0.50); }
+  .phase-timeline-block.tl-training      { background: rgba(201,168,85,0.55); }
+  .phase-timeline-block.tl-goal          { background: rgba(230,200,100,0.50); }
+  .phase-timeline-block.tl-mission       { background: rgba(255,140,80,0.55); }
   .phase-editor-row.row-flash { animation: rowFlash 0.7s ease; }
   @keyframes rowFlash {
     0%   { background: rgba(90,171,191,0.18); }
@@ -1130,6 +1136,24 @@ padding: 24px;
   }
   .phase-editor-row.is-sounding {
     border-left: 3px solid var(--accent-warm);
+    padding-left: 8px;
+  }
+  /* Opt-in phase types: teaching/training/mission/goal. Each gets its own
+     border-left color matching the tag tint used in the row label. */
+  .phase-editor-row.is-teaching {
+    border-left: 3px solid #7ec88c;
+    padding-left: 8px;
+  }
+  .phase-editor-row.is-training {
+    border-left: 3px solid var(--accent-warm);
+    padding-left: 8px;
+  }
+  .phase-editor-row.is-goal {
+    border-left: 3px solid #e6c864;
+    padding-left: 8px;
+  }
+  .phase-editor-row.is-mission {
+    border-left: 3px solid #ff9758;
     padding-left: 8px;
   }
   .bg-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; max-height: 380px; overflow-y: auto; padding: 8px 0; }
@@ -4078,6 +4102,10 @@ I return to myself easily"></textarea>
             <button class="preview-btn" id="addLevelPhaseBtn" title="Adds a Level — sustained-depth tonic between two deepeners. Holds the user at the current depth before going deeper.">+ add level</button>
             <button class="preview-btn" id="addWorkPhaseBtn">+ add work block</button>
             <button class="preview-btn" id="addAffirmPhaseBtn">+ add affirmation</button>
+            <button class="preview-btn" id="addTrainingPhaseBtn" title="Adds a Training — skill rehearsal in trance. Lead the user through 3-5 repetitions of one specific practice (mental, sensory, or somatic). Each rep slightly easier than the last.">+ add training</button>
+            <button class="preview-btn" id="addTeachingPhaseBtn" title="Adds a Teaching — psychoeducation primer in plain language. Explains the method, normalizes the experience, sets expectations. Best slotted between settling and induction.">+ add teaching</button>
+            <button class="preview-btn" id="addGoalPhaseBtn" title="Adds a Goal — outcome anchor / future-pacing. Vivid sensory rehearsal of what success FEELS like (somatic), not a goal-setting exercise (cognitive).">+ add goal</button>
+            <button class="preview-btn" id="addMissionPhaseBtn" title="Adds a Mission — concrete posthypnotic homework. ONE small doable task tied to waking life. Delivered as the user is surfacing.">+ add mission</button>
             <button class="preview-btn" id="addSoundingPhaseBtn" title="Adds a Sounding — a brief meta-awareness pause where the user notices their current internal state without changing it.">+ add sounding</button>
             <button class="preview-btn" id="addCustomPhaseBtn" title="Adds a user-authored block. Edit the text directly, or use Reimagine to have your guide rewrite it.">+ add custom</button>
             <button class="preview-btn" id="addLightenerPhaseBtn">+ add lightener</button>
@@ -5828,6 +5856,12 @@ I return to myself easily"></textarea>
     craftedSuggestion: null,
     fullScript: null,
     parsedScript: null,
+    // Opt-in phase types for this session: an array of base names like
+    // ['teaching','goal','mission']. Set by applyPreset / startProgramDay
+    // when a preset or program declares phaseExtras. Read by
+    // getSessionPhaseBlueprint via _applyPhaseExtras() so the default
+    // blueprint can inject the extras at their canonical positions.
+    _phaseExtras: [],
     droneEnabled: true,
     soundscape: 'drone',
     length: 'medium',
@@ -6050,26 +6084,41 @@ I return to myself easily"></textarea>
           console.log('[HNE.clearMetrics] metrics history wiped');
           return true;
         },
+        // Project metadata exposed by perchance_1.txt's knownProject list.
+        // Useful for sanity-checking that the top editor ↔ HTML panel
+        // versions are in sync (e.g. when filing a bug report). Returns
+        // null when running outside the Perchance environment.
+        project: () => {
+          try {
+            return (typeof root !== 'undefined' && root.knownProject)
+              ? { ...root.knownProject }
+              : null;
+          } catch { return null; }
+        },
       }),
       writable: false, configurable: false,
     });
   } catch {} // already defined or non-extensible — fine
 
   const PHASE_DURATIONS = {
-    micro:    { settling: 15,  induction: 30,  deepener: 15,  level: 10,  work: 60,   lightener: 15,  wake: 12, reintroduction: 20 },
-    quick:    { settling: 30,  induction: 90,  deepener: 30,  level: 20,  work: 120,  lightener: 30,  wake: 20, reintroduction: 30 },
-    short:    { settling: 60,  induction: 180, deepener: 60,  level: 40,  work: 240,  lightener: 45,  wake: 30, reintroduction: 45 },
-    medium:   { settling: 90,  induction: 300, deepener: 180, level: 60,  work: 360,  lightener: 60,  wake: 40, reintroduction: 60 },
-    long:     { settling: 120, induction: 420, deepener: 300, level: 90,  work: 540,  lightener: 75,  wake: 50, reintroduction: 75 },
+    micro:    { settling: 15,  induction: 30,  deepener: 15,  level: 10,  work: 60,   lightener: 15,  wake: 12, reintroduction: 20, teaching: 25,  training: 45,  mission: 20,  goal: 30  },
+    quick:    { settling: 30,  induction: 90,  deepener: 30,  level: 20,  work: 120,  lightener: 30,  wake: 20, reintroduction: 30, teaching: 45,  training: 75,  mission: 30,  goal: 50  },
+    short:    { settling: 60,  induction: 180, deepener: 60,  level: 40,  work: 240,  lightener: 45,  wake: 30, reintroduction: 45, teaching: 75,  training: 150, mission: 45,  goal: 75  },
+    medium:   { settling: 90,  induction: 300, deepener: 180, level: 60,  work: 360,  lightener: 60,  wake: 40, reintroduction: 60, teaching: 90,  training: 240, mission: 60,  goal: 100 },
+    long:     { settling: 120, induction: 420, deepener: 300, level: 90,  work: 540,  lightener: 75,  wake: 50, reintroduction: 75, teaching: 120, training: 360, mission: 75,  goal: 130 },
     // Phase 6 length-picker expansion. Each step adds ~1 Work + ~1 Affirm
     // pair; marathon also doubles the deepener/lightener depth (handled in
     // getSessionPhaseBlueprint), so its `deepener` total is split across two phases.
     // The `level` value is the budget for EACH level-block when it appears
     // (only marathon auto-places one; other lengths only use it if the user
     // manually adds a second deepener via the script editor).
-    extended: { settling: 150, induction: 480, deepener: 360, level: 100, work: 720,  lightener: 90,  wake: 60, reintroduction: 90 },
-    deep:     { settling: 180, induction: 540, deepener: 420, level: 120, work: 900,  lightener: 105, wake: 70, reintroduction: 105 },
-    marathon: { settling: 180, induction: 600, deepener: 540, level: 180, work: 1080, lightener: 120, wake: 80, reintroduction: 120 },
+    // teaching/training/mission/goal are OPT-IN — they don't appear in the
+    // default blueprint, only when explicitly added via editor, preset, or
+    // program. Their durations here are used when buildPhaseInstructions
+    // computes word budgets for AI generation.
+    extended: { settling: 150, induction: 480, deepener: 360, level: 100, work: 720,  lightener: 90,  wake: 60, reintroduction: 90,  teaching: 150, training: 480, mission: 90,  goal: 160 },
+    deep:     { settling: 180, induction: 540, deepener: 420, level: 120, work: 900,  lightener: 105, wake: 70, reintroduction: 105, teaching: 180, training: 600, mission: 100, goal: 190 },
+    marathon: { settling: 180, induction: 600, deepener: 540, level: 180, work: 1080, lightener: 120, wake: 80, reintroduction: 120, teaching: 200, training: 720, mission: 120, goal: 220 },
   };
 
   const _FALLBACK_PERSONA = { id: 'fallback', name: 'Guide', tagline: '', category: 'contemplative', systemPrompt: '' };
@@ -17077,6 +17126,10 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       affirm: idx ? `Affirmation ${idx}` : 'Affirmation',
       sounding: idx ? `Sounding ${idx}` : 'Sounding',
       custom: idx ? `Custom ${idx}` : 'Custom',
+      teaching: idx ? `Teaching ${idx}` : 'Teaching',
+      training: idx ? `Training ${idx}` : 'Training',
+      mission: idx ? `Mission ${idx}` : 'Mission',
+      goal: idx ? `Goal ${idx}` : 'Goal',
     };
     return labels[base] || phaseId;
   }
@@ -17183,7 +17236,10 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       phases.push(workCount > 1 ? `work-${i}` : 'work');
       if (hasAff) phases.push(workCount > 1 ? `affirm-${i}` : 'affirm');
     }
-    if (state.intentionType === 'sleep') return phases;
+    if (state.intentionType === 'sleep') {
+      // Sleep — no closers. Apply phase extras + return early.
+      return _applyPhaseExtras(phases);
+    }
     // Mirror the deepener depth on the way out — innermost lightener first,
     // unwinding back to surface awareness layer by layer. NO level between
     // lighteners — the ascent is meant to feel continuous.
@@ -17191,7 +17247,46 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       phases.push(deepenerCount > 1 ? `lightener-${l}` : 'lightener');
     }
     phases.push('wake', 'reintroduction');
-    return phases;
+    return _applyPhaseExtras(phases);
+  }
+
+  /**
+   * Inject opt-in phase types (teaching, training, mission, goal) into the
+   * default blueprint at their canonical positions. Driven by state._phaseExtras —
+   * an array of phase base names set when a preset or program with phaseExtras
+   * is applied.
+   *
+   * Multiple of the same kind get numbered (training-1, training-2). Insertion
+   * uses findPhaseInsertionIdx so the canonical order is preserved regardless
+   * of the order extras appear in the input.
+   *
+   * Returns the augmented phase ID array. No-op if extras is empty/missing.
+   */
+  function _applyPhaseExtras(phases) {
+    const extras = Array.isArray(state._phaseExtras) ? state._phaseExtras : null;
+    if (!extras || !extras.length) return phases;
+    // Convert to sections shape so findPhaseInsertionIdx can work on it.
+    let sections = phases.map(phaseId => ({ phaseId, text: '' }));
+    for (const rawKind of extras) {
+      const kind = String(rawKind || '').trim().toLowerCase();
+      if (!['teaching','training','mission','goal'].includes(kind)) continue;
+      const existingCount = sections.filter(s => phaseBase(s.phaseId) === kind).length;
+      const newId = existingCount > 0 ? `${kind}-${existingCount + 1}` : kind;
+      const insertIdx = findPhaseInsertionIdx(sections, kind);
+      sections.splice(insertIdx, 0, { phaseId: newId, text: '' });
+    }
+    // Renormalize: if we now have 2+ of a kind where the first was unnumbered,
+    // promote it to `-1`. Mirrors the addPhaseSection numbering rule so all
+    // multi-block kinds get consistent labels.
+    ['teaching','training','mission','goal'].forEach(kind => {
+      const indexes = sections.map((s, i) => phaseBase(s.phaseId) === kind ? i : -1).filter(i => i >= 0);
+      if (indexes.length >= 2) {
+        indexes.forEach((idx, n) => {
+          sections[idx] = { ...sections[idx], phaseId: `${kind}-${n + 1}` };
+        });
+      }
+    });
+    return sections.map(s => s.phaseId);
   }
 
   /**
@@ -17297,6 +17392,63 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       // No deepeners at all — fall back to before work
       const beforeWork = idxOf(s => ['work','affirm','lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
       if (beforeWork >= 0) return beforeWork;
+      return sections.length;
+    }
+    if (kind === 'teaching') {
+      // Teaching (psychoeducation primer) — slots between settling and
+      // induction. Goes BEFORE goal/induction so the user is oriented to
+      // the method before being asked to set an intention. Multiple
+      // teaching blocks stack at the same canonical position.
+      const lastSettling = lastIdxOf(s => phaseBase(s.phaseId) === 'settling');
+      const lastTeaching = lastIdxOf(s => phaseBase(s.phaseId) === 'teaching');
+      const beforeFraming = idxOf(s => ['goal','induction','deepener','work','affirm','lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
+      if (lastTeaching >= 0) return lastTeaching + 1;
+      if (beforeFraming >= 0) return beforeFraming;
+      if (lastSettling >= 0) return lastSettling + 1;
+      return 0;
+    }
+    if (kind === 'goal') {
+      // Goal (outcome anchor / future-pace) — slots between teaching/settling
+      // and induction. The intention is set BEFORE going under so the trance
+      // work has a target. Multiple goals stack at the same position; if the
+      // user wants a goal anchor near reintroduction (post-trance future-pace),
+      // they can manually drag it down with the up/down arrows.
+      const lastTeaching = lastIdxOf(s => phaseBase(s.phaseId) === 'teaching');
+      const lastSettling = lastIdxOf(s => phaseBase(s.phaseId) === 'settling');
+      const lastGoal = lastIdxOf(s => phaseBase(s.phaseId) === 'goal');
+      const beforeInduction = idxOf(s => ['induction','deepener','work','affirm','lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
+      if (lastGoal >= 0) return lastGoal + 1;
+      if (beforeInduction >= 0) return beforeInduction;
+      if (lastTeaching >= 0) return lastTeaching + 1;
+      if (lastSettling >= 0) return lastSettling + 1;
+      return 0;
+    }
+    if (kind === 'training') {
+      // Training (skill rehearsal in trance) — slots in the work zone,
+      // between the last deepener and the first lightener. Stacks alongside
+      // work blocks (canonical: deepener → training → work → lightener, or
+      // deepener → work → training → lightener depending on order added).
+      // Multiple trainings stack at the same canonical position.
+      const lastTraining = lastIdxOf(s => phaseBase(s.phaseId) === 'training');
+      const beforeReturn = idxOf(s => ['lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
+      if (lastTraining >= 0) return lastTraining + 1;
+      if (beforeReturn >= 0) return beforeReturn;
+      const lastDeepener = lastIdxOf(s => phaseBase(s.phaseId) === 'deepener');
+      if (lastDeepener >= 0) return lastDeepener + 1;
+      return sections.length;
+    }
+    if (kind === 'mission') {
+      // Mission (posthypnotic homework) — slots between wake and
+      // reintroduction. The mission is delivered as the user is surfacing
+      // (not deep, not fully back), so it lands at the threshold. Multiple
+      // missions stack at the same position; user can re-order if delivering
+      // multiple posthypnotics is intentional.
+      const lastMission = lastIdxOf(s => phaseBase(s.phaseId) === 'mission');
+      const lastWake = lastIdxOf(s => phaseBase(s.phaseId) === 'wake');
+      const reintroIdx = idxOf(s => phaseBase(s.phaseId) === 'reintroduction');
+      if (lastMission >= 0) return lastMission + 1;
+      if (reintroIdx >= 0) return reintroIdx;
+      if (lastWake >= 0) return lastWake + 1;
       return sections.length;
     }
     if (kind === 'custom') {
@@ -17465,6 +17617,99 @@ End with a brief acknowledgment that you're now continuing — bridging back to 
         // in the editor uses a separate flow (reimagineCustomPhase).
         // Leaving phaseInstructions[p] undefined is safe: generateSinglePhase
         // checks the phaseId and skips custom blocks during generation.
+      } else if (base === 'teaching') {
+        // Psychoeducation phase. Explain in plain language what's about to
+        // happen, normalize the experience, set expectations. Common in
+        // CBT-integrated hypnosis and modern clinical hypnotherapy where
+        // trance is reframed as a normal focused state rather than mystical.
+        // Multiple teaching phases (teaching-1, teaching-2) — first usually
+        // primes the method; later ones can introduce specific imagery or
+        // protocol concepts mid-session.
+        const teachIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
+        const teachCount = phases.filter(pp => phaseBase(pp) === 'teaching').length;
+        const role = teachCount === 1
+          ? 'PRIMER: explain plainly what trance is, what is about to happen, and what the user can expect to notice.'
+          : teachIdx === 1
+            ? 'PRIMER: explain plainly what trance is, what is about to happen, and how this method works.'
+            : `MID-SESSION PRIMER (${teachIdx} of ${teachCount}): introduce the next concept or imagery the user is about to work with, in plain language.`;
+        phaseInstructions[p] = `Write a TEACHING phase (~${targetWords.teaching} words). ROLE: ${role}
+
+This is psychoeducation, not therapy. Tone: clear, friendly, demystifying. The user should leave this phase understanding what's happening and feeling safer because of it.
+
+In ${persona.name}'s voice:
+  • Explain in plain language. No mystical framing.
+  • Normalize: this is a focused attentive state, not a magical altered consciousness.
+  • Reassure agency: the user remains in control, can think, can stop at any time.
+  • If relevant, name the technique by category (e.g. "breath-anchoring", "progressive relaxation").
+
+Avoid: jargon ("alpha state", "subconscious"), mystical language, performance pressure. Use \x5BPAUSE n\x5D markers between thoughts. Output ONLY script text.`;
+      } else if (base === 'training') {
+        // Skill rehearsal in trance. The narrator leads the user through
+        // 3-5 repetitions of a specific mental, sensory, or somatic
+        // movement. Each rep should be slightly easier or smoother than
+        // the last — Erickson's "ratification through repetition" pattern.
+        const trainIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
+        const trainCount = phases.filter(pp => phaseBase(pp) === 'training').length;
+        const role = trainCount === 1
+          ? 'core skill rehearsal — pick the single most relevant practice for the user\'s intention.'
+          : trainIdx === 1
+            ? `first of ${trainCount} skill blocks — establish the foundational practice.`
+            : trainIdx === trainCount
+              ? `final of ${trainCount} skill blocks — integrate or combine prior practices.`
+              : `block ${trainIdx} of ${trainCount} — a different skill, distinct from the others.`;
+        phaseInstructions[p] = `Write a TRAINING phase (~${targetWords.training} words). ROLE: ${role}
+
+This is skill rehearsal. Lead the user through THREE TO FIVE REPETITIONS of one specific practice — mental, sensory, or somatic. Each rep should feel slightly more skilled / smoother / more automatic than the last (ratification pattern).
+
+Pick ONE skill grounded in the user's intention. Examples: noticing without naming, releasing on the exhale, anchoring on a chosen word, pacing breath to a visual, returning attention without judgment. Pick what fits.
+
+Structure each rep:
+  • Setup: brief instruction.
+  • Execution: \x5BPAUSE 4-6\x5D for the user to actually do it.
+  • Ratification: a quiet observation that it's working ("good", "yes, like that", "even easier this time").
+
+End with the user holding the skill briefly. Do NOT introduce a new skill at the end — close on the practice they just trained. Use \x5BPAUSE n\x5D liberally. Output ONLY script text.`;
+      } else if (base === 'mission') {
+        // Posthypnotic homework assignment. Concrete, doable, tied to
+        // waking life. Quinn ERP and outcome-oriented protocols include a
+        // clear task the user carries out tomorrow or this week — bridges
+        // trance work to real change.
+        const missionIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
+        const missionCount = phases.filter(pp => phaseBase(pp) === 'mission').length;
+        phaseInstructions[p] = `Write a MISSION phase (~${targetWords.mission} words). This is the posthypnotic homework — ONE concrete, doable task tied to waking life.${missionCount > 1 ? ` (${missionIdx} of ${missionCount} — pick a distinct task from the others.)` : ''}
+
+The mission must be:
+  • SPECIFIC — name the trigger ("when you wake", "next time you cross a doorway", "tomorrow at lunch")
+  • SMALL — one breath, one sentence, one notice. Not a habit overhaul.
+  • TIED to the user's intention or the work just done.
+  • POSITIVELY framed — what to do, not what to avoid.
+
+Delivered in ${persona.name}'s voice as a quiet promise to themselves, not a command. Open with a phrase like "and here is your mission" or "one thing to carry with you" or whatever fits your voice. End with a phrase that lets the assignment settle ("that is enough", "small things, kept", "you'll know when").
+
+Avoid: lists of tasks, ambitious goals, anything that requires willpower to remember. The mission should feel like something the user could not help but do once cued. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`;
+      } else if (base === 'goal') {
+        // Outcome anchor / future-pacing. NOT a goal-setting exercise
+        // (cognitive). A sensory rehearsal of what success FEELS like
+        // (somatic). Erickson / NLP future-pace pattern. Should leave the
+        // user with a body-memory of the desired outcome, not a plan.
+        const goalIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
+        const goalCount = phases.filter(pp => phaseBase(pp) === 'goal').length;
+        const role = goalCount === 1
+          ? 'single anchor — establish the sensory shape of the desired outcome.'
+          : goalIdx === 1
+            ? `first of ${goalCount} anchors — initial future-pace, broad outcome.`
+            : `anchor ${goalIdx} of ${goalCount} — a different facet of the desired outcome (zoom in on one specific moment).`;
+        phaseInstructions[p] = `Write a GOAL phase (~${targetWords.goal} words). ROLE: ${role}
+
+This is FUTURE-PACING — sensory, not cognitive. The user should leave this phase with a body-memory of the desired outcome, not a plan or a list.
+
+In ${persona.name}'s voice:
+  • Open by inviting the user to see/feel/notice themselves AT the time the change has happened. Not before. Not in transit. There.
+  • Pick 3-4 sensory details only the user would notice — small ones. The way they hold their shoulders. The first breath of the morning. The thing they don't do anymore. The thing they do without thinking.
+  • Stay in present tense. The future is happening now.
+  • Linger. Use \x5BPAUSE 5-8\x5D between details so the user's nervous system has time to learn the shape of the outcome.
+
+Avoid: abstractions ("you will be confident"), goal-setting language ("your goal is to..."), commands. The user is OBSERVING themselves succeeded, not striving. End with one quiet phrase that lets the picture settle. Output ONLY script text.`;
       } else if (base === 'work') {
         const workIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
         let role;
@@ -18606,10 +18851,18 @@ ${s.text.trim()}`).join('\n\n').trim();
       const base = phaseBase(s.phaseId);
       const isCustom = base === 'custom';
       const isSounding = base === 'sounding';
+      const isTeaching = base === 'teaching';
+      const isTraining = base === 'training';
+      const isMission  = base === 'mission';
+      const isGoal     = base === 'goal';
       const rowClass = 'toggle-row phase-editor-row'
         + (m.pairGroup ? ' pair-' + m.pairGroup : '')
         + (isCustom ? ' is-custom' : '')
-        + (isSounding ? ' is-sounding' : '');
+        + (isSounding ? ' is-sounding' : '')
+        + (isTeaching ? ' is-teaching' : '')
+        + (isTraining ? ' is-training' : '')
+        + (isMission  ? ' is-mission'  : '')
+        + (isGoal     ? ' is-goal'     : '');
       const depthAttr = m.depth ? ` data-depth="${m.depth}"` : '';
       const tag = m.pairGroup === 'trance'
         ? '<span class="phase-pair-tag tag-trance" title="Induction ↔ Wake / Reintroduction">↕ trance</span>'
@@ -18619,7 +18872,15 @@ ${s.text.trim()}`).join('\n\n').trim();
             ? '<span class="phase-pair-tag" style="background:rgba(0,212,230,0.1);color:var(--neon-cyan)" title="User-authored block — bypasses AI generation">✎ custom</span>'
             : isSounding
               ? '<span class="phase-pair-tag" style="background:rgba(201,168,85,0.1);color:var(--accent-warm)" title="Meta-awareness pause — depth check / witness moment">◉ sounding</span>'
-              : '';
+              : isTeaching
+                ? '<span class="phase-pair-tag" style="background:rgba(120,200,140,0.1);color:#7ec88c;border-color:rgba(120,200,140,0.35)" title="Psychoeducation — explain the method in plain language">📖 teaching</span>'
+                : isTraining
+                  ? '<span class="phase-pair-tag" style="background:rgba(201,168,85,0.12);color:var(--accent-warm);border-color:rgba(201,168,85,0.4)" title="Skill rehearsal — repeated practice in trance">⚙ training</span>'
+                  : isGoal
+                    ? '<span class="phase-pair-tag" style="background:rgba(230,200,100,0.1);color:#e6c864;border-color:rgba(230,200,100,0.4)" title="Outcome anchor — sensory future-pacing">◎ goal</span>'
+                    : isMission
+                      ? '<span class="phase-pair-tag" style="background:rgba(255,140,80,0.1);color:#ff9758;border-color:rgba(255,140,80,0.4)" title="Posthypnotic homework — concrete waking-life task">➤ mission</span>'
+                      : '';
       const preview = escapeHtml((s.text || '').replace(/\x5BPAUSE\s+\d+\x5D/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 100) || 'empty');
       // Per-phase duration estimate. Same formula as getScriptMetrics:
       // words / 50 wpm + pauseSecs. Surfaced as a small inline tag next
@@ -19024,6 +19285,33 @@ ${s.text.trim()}`).join('\n\n').trim();
     }
     if (phaseId === 'wake') return 'In a moment, coming all the way back now. Five, returning. Four, breathing deeper. Three, energy returning. Two, eyes beginning to open. One, fully awake and alert. \x5BPAUSE 3\x5D';
     if (phaseId === 'reintroduction') return 'Welcome back. When you feel ready, slowly get up. Stretch. Shake it off. Go about your day. \x5BPAUSE 3\x5D';
+    if (phaseBase(phaseId) === 'teaching') {
+      // Psychoeducation phase — explains in plain language what is about to
+      // happen, normalizes the experience, sets expectations. Common in
+      // CBT-integrated hypnosis where the user is helped to understand
+      // trance as a normal state rather than something mystical.
+      return 'Before we begin, a brief note. What you are about to experience is a focused, attentive state — natural to your nervous system, not unusual. You will hear my voice, you will be able to think and respond, and you will remain in control. The depth will come from your willingness to follow along, not from anything I do. \x5BPAUSE 4\x5D';
+    }
+    if (phaseBase(phaseId) === 'training') {
+      // Skill rehearsal in trance — repeated practice of a specific movement
+      // (mental, sensory, or bodily). Three reps is the canonical pattern,
+      // each one slightly more skilled / deeper / faster than the last.
+      return 'Now we will practice. Three times — each one a little easier than the last. First time: notice. \x5BPAUSE 5\x5D Second time: notice again, with less effort. \x5BPAUSE 5\x5D Third time: it happens almost on its own. \x5BPAUSE 5\x5D';
+    }
+    if (phaseBase(phaseId) === 'mission') {
+      // Posthypnotic homework assignment. Concrete, doable, tied to waking
+      // life. Quinn ERP / outcome-oriented protocols include a clear
+      // task the user carries out tomorrow or this week — bridges trance
+      // work to real change.
+      return 'And here is your mission. Tomorrow, when you first notice the urge to do the old thing — pause for one breath. Just one. That single breath is the whole task. \x5BPAUSE 4\x5D That is enough. \x5BPAUSE 3\x5D';
+    }
+    if (phaseBase(phaseId) === 'goal') {
+      // Outcome anchor / future-pacing. Vivid sensory description of the
+      // desired future state. Not a goal-setting exercise (cognitive) — a
+      // sensory rehearsal of what success FEELS like (somatic). Erickson /
+      // NLP future-pace pattern.
+      return 'See yourself there. The day this works. The way it looks, the way it feels in your body, the small differences only you would notice. \x5BPAUSE 5\x5D Stay there a moment. Let your nervous system learn the shape of it. \x5BPAUSE 5\x5D';
+    }
     return 'New phase text. \x5BPAUSE 3\x5D';
   }
 
@@ -19045,7 +19333,7 @@ ${s.text.trim()}`).join('\n\n').trim();
       const existingCount = countPhaseBase(sections.concat(added), kind);
       let id = kind;
       // Numbered IDs for anything that can legitimately appear multiple times
-      if (['work', 'affirm', 'deepener', 'lightener', 'sounding', 'custom'].includes(kind)) {
+      if (['work', 'affirm', 'deepener', 'lightener', 'sounding', 'custom', 'teaching', 'training', 'mission', 'goal'].includes(kind)) {
         const nextN = existingCount + 1;
         id = nextN > 1 ? `${kind}-${nextN}` : kind;
         // Rename the first occurrence to `${kind}-1` for consistency once we have 2+.
@@ -19100,7 +19388,10 @@ ${s.text.trim()}`).join('\n\n').trim();
     } else if (base === 'lightener') {
       // Naked lightener add (for repair when the paired deepener exists unpaired).
       insertSection(buildSection('lightener'));
-    } else if (base === 'work' || base === 'affirm') {
+    } else if (base === 'work' || base === 'affirm' || base === 'teaching' || base === 'training' || base === 'mission' || base === 'goal') {
+      // Stackable opt-in phases — buildSection handles numbering; no pair logic.
+      // teaching: psychoeducation; training: skill rehearsal; mission: posthypnotic
+      // homework; goal: outcome anchor / future-pace.
       insertSection(buildSection(base));
     } else {
       insertSection({ phaseId: base, text: scaffoldForPhase(base) });
@@ -19108,7 +19399,7 @@ ${s.text.trim()}`).join('\n\n').trim();
 
     // Normalize IDs: if we now have 2+ of a kind where the first was unnumbered,
     // promote it to `-1` so downstream code sees consistent numbering.
-    ['work', 'affirm', 'deepener', 'level', 'lightener', 'sounding', 'custom'].forEach(kind => {
+    ['work', 'affirm', 'deepener', 'level', 'lightener', 'sounding', 'custom', 'teaching', 'training', 'mission', 'goal'].forEach(kind => {
       const indexes = sections.map((s, i) => phaseBase(s.phaseId) === kind ? i : -1).filter(i => i >= 0);
       if (indexes.length >= 2) {
         indexes.forEach((sectionIdx, n) => {
@@ -23409,6 +23700,10 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   $('addLevelPhaseBtn')?.addEventListener('click', () => addPhaseSection('level'));
   $('addWorkPhaseBtn')?.addEventListener('click', () => addPhaseSection('work'));
   $('addAffirmPhaseBtn')?.addEventListener('click', () => addPhaseSection('affirm'));
+  $('addTeachingPhaseBtn')?.addEventListener('click', () => addPhaseSection('teaching'));
+  $('addTrainingPhaseBtn')?.addEventListener('click', () => addPhaseSection('training'));
+  $('addGoalPhaseBtn')?.addEventListener('click', () => addPhaseSection('goal'));
+  $('addMissionPhaseBtn')?.addEventListener('click', () => addPhaseSection('mission'));
   $('addSoundingPhaseBtn')?.addEventListener('click', () => addPhaseSection('sounding'));
   $('addCustomPhaseBtn')?.addEventListener('click', () => addPhaseSection('custom'));
   $('addLightenerPhaseBtn')?.addEventListener('click', () => addPhaseSection('lightener'));
@@ -25036,9 +25331,11 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     { id: 'confidence', icon: '🦁', name: 'Confidence', desc: 'Unshakable self-belief',
       persona: 'commander', method: 'staircase', intention: 'emotional', length: 'medium', soundscape: 'drone', vizOverride: 'tunnel' },
     { id: 'flow', icon: '🏆', name: 'Peak Flow', desc: 'Sports & performance',
-      persona: 'martial-artist', method: 'ericksonian', intention: 'performance', length: 'medium', soundscape: 'heartbeat', vizOverride: 'mandala' },
+      persona: 'martial-artist', method: 'ericksonian', intention: 'performance', length: 'medium', soundscape: 'heartbeat', vizOverride: 'mandala',
+      phaseExtras: ['goal'] /* Future-pacing anchor — somatic rehearsal of the performance state */ },
     { id: 'habits', icon: '🔄', name: 'Habit Change', desc: 'Break or build a habit',
-      persona: 'therapist', method: 'staircase', intention: 'behavior', length: 'medium', soundscape: 'rain', vizOverride: 'tunnel' },
+      persona: 'therapist', method: 'staircase', intention: 'behavior', length: 'medium', soundscape: 'rain', vizOverride: 'tunnel',
+      phaseExtras: ['mission'] /* Posthypnotic homework — concrete daily action tied to the new habit */ },
     { id: 'creativity', icon: '🎨', name: 'Creative Flow', desc: 'Dissolve creative blocks',
       persona: 'mystic', method: 'ericksonian', intention: 'creativity', length: 'medium', soundscape: 'fire', vizOverride: 'sacred-geo' },
     { id: 'energy', icon: '☀️', name: 'Energy Boost', desc: 'Wake up & activate',
@@ -25051,6 +25348,20 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       persona: 'driver', method: 'highway', intention: 'trance', length: 'medium', soundscape: 'train', vizOverride: 'rain' },
     { id: 'temple', icon: '🕉️', name: 'Temple Sit', desc: 'Deep stillness meditation',
       persona: 'mystic', method: 'breath-478', intention: 'trance', length: 'long', soundscape: 'temple', vizOverride: 'sacred-geo' },
+    /* New opt-in presets demonstrating the new phase types. Each has a single
+       defining extra phase that distinguishes it from a vanilla preset. */
+    { id: 'method-intro', icon: '📖', name: 'Method Intro', desc: 'First-time? Start here',
+      persona: 'therapist', method: 'progressive', intention: 'trance', length: 'medium', soundscape: 'rain', vizOverride: 'breathing',
+      phaseExtras: ['teaching'] /* Psychoeducation primer for first-timers — explains trance plainly before going under */ },
+    { id: 'skill-build', icon: '⚙️', name: 'Skill Builder', desc: 'Train one skill in trance',
+      persona: 'old-master', method: 'staircase', intention: 'behavior', length: 'medium', soundscape: 'temple', vizOverride: 'mandala',
+      phaseExtras: ['training'] /* Skill rehearsal — repeated practice in trance for one specific capacity */ },
+    { id: 'mission-brief', icon: '➤', name: 'Mission Brief', desc: 'Short with a posthypnotic task',
+      persona: 'commander', method: 'dave-elman', intention: 'behavior', length: 'short', soundscape: 'drone',
+      phaseExtras: ['mission'] /* Posthypnotic homework focus — the whole session points to one concrete waking-life task */ },
+    { id: 'goal-lock', icon: '◎', name: 'Goal Lock-in', desc: 'Anchor a desired outcome',
+      persona: 'martial-artist', method: 'ericksonian', intention: 'performance', length: 'medium', soundscape: 'heartbeat', vizOverride: 'tunnel',
+      phaseExtras: ['goal'] /* Outcome anchor — vivid sensory future-pacing as the primary therapeutic mechanism */ },
   ];
 
   function renderPresets() {
@@ -25071,6 +25382,9 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     state.intentionType = p.intention; state.length = p.length;
     state.soundscape = p.soundscape; state.droneEnabled = p.soundscape !== 'none';
     if (p.vizOverride) { state.vizOverride = p.vizOverride; const ve = $('vizSelect'); if (ve) ve.value = p.vizOverride; }
+    // Opt-in phase types from the preset. Reset to empty when preset doesn't
+    // specify any so prior preset's extras don't leak forward.
+    state._phaseExtras = Array.isArray(p.phaseExtras) ? [...p.phaseExtras] : [];
     $('intentionType').value = p.intention;
     $('lengthSelect').value = p.length;
     const ssSelect = $('soundscapeSelect');
@@ -25092,24 +25406,56 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       dayOverrides: { 1: { soundscape: 'rain' }, 3: { soundscape: 'underwater' }, 5: { soundscape: 'cave' }, 7: { soundscape: 'ocean', vizOverride: 'smoke' } } },
     { id: 'anxiety-14', name: '14-Day Calm', icon: '🍃', days: 14, desc: 'Systematic anxiety reduction',
       persona: 'therapist', method: 'breath-478', intention: 'release', length: 'medium', soundscape: 'rain', vizOverride: 'breathing',
-      arc: ['Breath awareness & safety','Safe place visualization','Calm anchor installation','Body tension release','Worry containment','Trigger desensitization','Expanding calm','Social ease','Confidence layering','Automatic calm response','Stress inoculation','Resilience building','Future pacing','Integration & autonomy'],
-      dayOverrides: { 4: { soundscape: 'underwater', vizOverride: 'smoke' }, 8: { soundscape: 'forest' }, 11: { soundscape: 'temple', vizOverride: 'sacred-geo' } } },
+      arc: ['Breath awareness & safety','Safe place visualization','Calm anchor installation','Body tension release','Worry containment','Trigger desensitization','Expanding calm + daily mission','Social ease + daily mission','Confidence layering + daily mission','Automatic calm response + daily mission','Stress inoculation + daily mission','Resilience building + daily mission','Future pacing + goal anchor','Integration & autonomy'],
+      dayOverrides: {
+        4:  { soundscape: 'underwater', vizOverride: 'smoke' },
+        7:  { phaseExtras: ['mission'] },
+        8:  { soundscape: 'forest', phaseExtras: ['mission'] },
+        9:  { phaseExtras: ['mission'] },
+        10: { phaseExtras: ['mission'] },
+        11: { soundscape: 'temple', vizOverride: 'sacred-geo', phaseExtras: ['mission'] },
+        12: { phaseExtras: ['mission'] },
+        13: { phaseExtras: ['goal'] },
+        14: { phaseExtras: ['goal','mission'] }
+      } },
     { id: 'confidence-10', name: '10-Day Confidence', icon: '🦁', days: 10, desc: 'Build unshakable self-belief',
       persona: 'commander', method: 'staircase', intention: 'emotional', length: 'medium', soundscape: 'drone', vizOverride: 'tunnel',
-      arc: ['Baseline & intention setting','Inner critic observation','Resourceful memory access','Posture & presence anchor','Voice of authority','Social confidence','Challenge reframe','Peak performance state','Identity integration','Future self embodiment'] },
+      arc: ['Baseline + theory primer','Inner critic observation','Resourceful memory access','Posture & presence anchor','Voice of authority','Social confidence + skill rehearsal','Challenge reframe + skill rehearsal','Peak performance state + skill rehearsal','Identity integration + future-pace anchor','Future self embodiment + outcome lock-in'],
+      dayOverrides: {
+        1:  { phaseExtras: ['teaching'] },
+        6:  { phaseExtras: ['training'] },
+        7:  { phaseExtras: ['training'] },
+        8:  { phaseExtras: ['training'] },
+        9:  { phaseExtras: ['goal'] },
+        10: { phaseExtras: ['goal','mission'] }
+      } },
     { id: 'pain-6', name: '6-Week Pain', icon: '💊', days: 42, desc: 'Structured pain management (clinical model)',
       persona: 'bodyworker', method: 'pain-dial', intention: 'pain', length: 'medium', soundscape: 'bowls', vizOverride: 'waveform',
-      arc: null },
+      arc: null,
+      phaseExtras: ['training'] /* Every day rehearses the pain-dial skill — clinical protocol */ },
     { id: 'focus-7', name: '7-Day Focus', icon: '🎯', days: 7, desc: 'Deep concentration training',
       persona: 'scientist', method: 'betty-erickson', intention: 'focus', length: 'medium', soundscape: 'brown', vizOverride: 'waveform',
-      arc: ['Attention narrowing','Distraction dismissal','Time compression','Flow state entry','Sustained immersion','Automatic focus trigger','Integration & autonomous flow'] },
+      arc: ['Attention narrowing','Distraction dismissal','Time compression','Flow state entry','Sustained immersion','Automatic focus trigger','Integration + outcome anchor'],
+      dayOverrides: {
+        7: { phaseExtras: ['goal'] }
+      } },
     { id: 'depth-7', name: '7-Day Depth', icon: '🌀', days: 7, desc: 'Progressive trance depth training',
       persona: 'old-master', method: 'staircase', intention: 'trance', length: 'medium', soundscape: 'cave', vizOverride: 'tunnel',
-      arc: ['Light trance familiarity','Deepening through breath','Fractionation cycling','Somnambulism approach','Time distortion','Autonomous depth trigger','Integration & self-hypnosis'],
-      dayOverrides: { 2: { method: 'breath-478' }, 3: { method: 'fractionation', vizOverride: 'aurora' }, 5: { soundscape: 'underwater', vizOverride: 'smoke' } } },
+      arc: ['Light trance familiarity + theory primer','Deepening through breath','Fractionation cycling','Somnambulism approach','Time distortion','Autonomous depth trigger + skill rehearsal','Integration & self-hypnosis + skill rehearsal'],
+      dayOverrides: {
+        1: { phaseExtras: ['teaching'] },
+        2: { method: 'breath-478' },
+        3: { method: 'fractionation', vizOverride: 'aurora' },
+        5: { soundscape: 'underwater', vizOverride: 'smoke' },
+        6: { phaseExtras: ['training'] },
+        7: { phaseExtras: ['training'] }
+      } },
     { id: 'stress-5', name: '5-Day Stress Reset', icon: '🧘', days: 5, desc: 'Decompress from burnout',
       persona: 'yoga-teacher', method: 'progressive', intention: 'release', length: 'medium', soundscape: 'underwater', vizOverride: 'smoke',
-      arc: ['Body awareness & tension map','Breath as release valve','Safe place construction','Stress container visualization','Integration & resilience anchor'] },
+      arc: ['Body awareness & tension map','Breath as release valve','Safe place construction','Stress container visualization','Integration & resilience anchor + outcome'],
+      dayOverrides: {
+        5: { phaseExtras: ['goal'] }
+      } },
   ];
 
   async function getActiveProgramState() {
@@ -25188,6 +25534,15 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       if (overrides.vizOverride) { state.vizOverride = overrides.vizOverride; const ve = $('vizSelect'); if (ve) ve.value = overrides.vizOverride; }
       if (overrides.method) state.selectedMethodId = overrides.method;
       if (overrides.persona) state.selectedPersonaId = overrides.persona;
+    }
+    // Phase extras: per-day overrides win, then program-wide. Reset to []
+    // when neither specifies any so prior day's extras don't leak.
+    if (Array.isArray(overrides?.phaseExtras)) {
+      state._phaseExtras = [...overrides.phaseExtras];
+    } else if (Array.isArray(prog.phaseExtras)) {
+      state._phaseExtras = [...prog.phaseExtras];
+    } else {
+      state._phaseExtras = [];
     }
     $('intentionType').value = prog.intention;
     $('lengthSelect').value = prog.length;
