@@ -36,6 +36,7 @@ $meta
 // Plugins — only what the Slideshow actually uses.
 // The HTML panel calls root.textToImagePlugin(...) for every generation.
 // ──────────────────────────────────────────────────────────────────────
+aiTextPlugin = {import:ai-text-plugin}
 textToImagePlugin = {import:text-to-image-plugin}
 
 $output

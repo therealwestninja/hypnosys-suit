@@ -1,24 +1,3 @@
-<!--
-  SLIDESHOW.txt
-  ══════════════════════════════════════════════════════════════════════════
-  Stripped-down AI slideshow generator for Perchance. Fill the form,
-  generate images to the local IndexedDB, then click PLAY FULLSCREEN for a
-  continuous transitioned slideshow.
-
-  TOP-EDITOR DSL (required — paste this in the Perchance top editor):
-
-      $meta
-        title = AI Slideshow
-        description = Generate AI images and play them as a fullscreen slideshow.
-
-      textToImagePlugin = {import:text-to-image-plugin}
-
-      $output
-
-  This file goes in the HTML panel below the top editor. The HTML panel
-  renders directly — no {import-html:...} needed.
--->
-
 <style>
   :root {
     --bg: #0a0a0a;
@@ -209,6 +188,126 @@
     min-height: 1.2em;
   }
 
+  /* ═══ STYLE PRESET CHIPS ═══
+     Compact tappable prompt-modifier chips. Each chip contributes its own
+     prompt + negative fragment to the generation call WITHOUT mutating
+     the user's textarea, so the user's authored prompt is never
+     overwritten. Mirrors the BG_STYLE_PRESETS pattern from HNE. */
+  .chips-wrap { margin-top: 12px; }
+  .chips-header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; margin-bottom: 6px;
+  }
+  .chips-header .field-label { margin: 0; flex-shrink: 0; }
+  .chips-clear {
+    background: transparent; border: none; color: var(--text-faint);
+    font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 6px; cursor: pointer; font-family: var(--font);
+    transition: color 0.12s, background 0.12s;
+  }
+  .chips-clear:hover:not(:disabled) { color: var(--amber); background: rgba(255,179,0,0.06); }
+  .chips-clear:disabled { opacity: 0.4; cursor: default; }
+  .chip-cat-row {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px;
+    padding: 3px 0;
+  }
+  .chip-cat-label {
+    font-size: 0.6rem; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    min-width: 70px; padding-right: 4px; flex-shrink: 0;
+  }
+  .style-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text-dim); font-size: 0.74rem;
+    font-family: var(--font); padding: 4px 10px;
+    cursor: pointer; line-height: 1.4; user-select: none;
+    transition: color 0.15s, background 0.15s, border-color 0.15s, font-weight 0.15s;
+  }
+  .style-chip:hover { color: var(--text); border-color: rgba(0,229,255,0.4); }
+  .style-chip.active {
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    background: rgba(0,229,255,0.10);
+    padding: 3px 9px; /* compensate for thicker border */
+    font-weight: 700;
+  }
+  .style-chip.active::before {
+    content: '✓';
+    margin-right: 3px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* ═══ ENHANCE BUTTON ROW (above prompt) ═══ */
+  .prompt-head-row {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 8px; margin-bottom: 4px;
+  }
+  .prompt-head-row .field-label { margin: 0; }
+  .enhance-controls {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .enhance-controls select {
+    width: auto; font-size: 0.7rem; padding: 3px 6px;
+    background: var(--bg-soft);
+  }
+  .btn-mini {
+    background: transparent; color: var(--accent);
+    border: 1px solid var(--accent); padding: 3px 9px;
+    font-family: var(--font); font-size: 0.7rem;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    font-weight: 600; cursor: pointer;
+    transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+  }
+  .btn-mini:hover:not(:disabled) {
+    background: var(--accent); color: #000;
+    box-shadow: 0 0 8px rgba(0,229,255,0.4);
+  }
+  .btn-mini:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ═══ ADVANCED-CONTROLS NOTE ═══
+     Shown to free-Perchance users explaining that orientation / prompt
+     strength / quality steps are inactive on the documented plugin API.
+     Mirrors HNE's _applyAdvancedBgControlGating() explainer. */
+  .advanced-note {
+    font-style: italic; color: var(--text-faint);
+    font-size: 0.68rem; line-height: 1.5;
+    margin-top: 8px; padding: 8px 10px;
+    background: rgba(255,180,80,0.05);
+    border-left: 2px solid rgba(255,180,80,0.3);
+  }
+
+  /* ═══ GALLERY TOOLBAR (sort + favorites filter) ═══ */
+  .gallery-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    margin: 0 0 10px; flex-wrap: wrap;
+  }
+  .gallery-toolbar .toolbar-label {
+    font-size: 0.62rem; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    flex-shrink: 0;
+  }
+  .gallery-toolbar select {
+    width: auto; min-width: 140px; flex: 0 1 auto;
+    font-size: 0.78rem; padding: 5px 10px;
+    background-color: var(--bg);
+  }
+  .gallery-toolbar .spacer { flex: 1; }
+  .fav-filter {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-dim); font-size: 0.7rem;
+    padding: 5px 10px; cursor: pointer; font-family: var(--font);
+    letter-spacing: 0.05em;
+    transition: color 0.12s, border-color 0.12s, background 0.12s, box-shadow 0.12s;
+  }
+  .fav-filter:hover { color: var(--text); border-color: var(--text-faint); }
+  .fav-filter.active {
+    color: var(--amber); border-color: var(--amber);
+    background: rgba(255,179,0,0.08);
+    box-shadow: 0 0 8px rgba(255,140,0,0.3);
+  }
+
   .gallery {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
@@ -220,6 +319,9 @@
     aspect-ratio: 1;
     background: #111;
     overflow: hidden;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
   .gallery-item img {
     width: 100%;
@@ -227,23 +329,62 @@
     object-fit: cover;
     display: block;
     opacity: 0.85;
-    transition: opacity 0.12s;
+    transition: opacity 0.12s, transform 0.2s;
   }
-  .gallery-item:hover img { opacity: 1; }
-  .gallery-item .del {
+  .gallery-item:hover img { opacity: 1; transform: scale(1.04); }
+  /* All hover-only buttons share these positioning rules */
+  .gallery-item .item-btn {
     position: absolute;
-    top: 4px; right: 4px;
     background: rgba(0,0,0,0.75);
-    color: var(--danger);
     border: none;
     width: 22px; height: 22px;
-    font-size: 0.8rem;
+    line-height: 22px; text-align: center;
+    font-size: 0.78rem;
     cursor: pointer;
     opacity: 0;
-    transition: opacity 0.12s;
+    transition: opacity 0.12s, color 0.12s, background 0.12s;
+    padding: 0;
   }
-  .gallery-item:hover .del { opacity: 1; }
+  .gallery-item:hover .item-btn { opacity: 1; }
+  .gallery-item .del {
+    top: 4px; right: 4px; color: var(--danger);
+  }
   .gallery-item .del:hover { color: #fff; background: var(--danger); }
+  .gallery-item .dl {
+    top: 4px; left: 4px; color: var(--text-faint);
+    font-size: 0.7rem;
+  }
+  .gallery-item .dl:hover { color: var(--accent); }
+  .gallery-item .fav {
+    bottom: 4px; right: 4px; color: var(--text-faint);
+    font-size: 0.85rem;
+  }
+  /* Active favorites are always visible (not just on hover) */
+  .gallery-item .fav.active {
+    opacity: 1;
+    color: var(--amber);
+    text-shadow: 0 0 6px rgba(255,179,0,0.7);
+  }
+  .gallery-item .fav:hover { color: var(--amber); }
+  .gallery-item.is-fav {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 1px rgba(255,179,0,0.25), 0 0 8px rgba(255,140,0,0.18);
+  }
+  /* Tiny seed badge — bottom-left, monospace, hover-only */
+  .gallery-item .seed-tag {
+    position: absolute;
+    bottom: 4px; left: 4px;
+    background: rgba(0,0,0,0.75);
+    color: var(--text-faint);
+    padding: 1px 5px;
+    font-size: 0.56rem;
+    font-family: ui-monospace, 'SF Mono', monospace;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.18s;
+  }
+  .gallery-item:hover .seed-tag { opacity: 0.85; }
   .gallery-empty {
     grid-column: 1 / -1;
     text-align: center;
@@ -251,6 +392,197 @@
     color: var(--text-faint);
     font-size: 0.85rem;
     font-style: italic;
+  }
+  .gallery-info {
+    text-align: center;
+    color: var(--text-faint);
+    font-size: 0.72rem;
+    margin: 8px 0 0;
+    letter-spacing: 0.04em;
+  }
+
+  /* ═══ QUEUE STATUS — pending vs generating split ═══ */
+  .queue-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 12px; flex-wrap: wrap;
+  }
+  .queue-status {
+    font-size: 0.74rem; color: var(--amber-hot);
+    letter-spacing: 0.04em;
+    margin-left: auto; padding: 3px 0;
+  }
+  .queue-status.hidden { display: none; }
+  .btn.tiny {
+    padding: 6px 12px; font-size: 0.7rem;
+  }
+
+  /* ═══ LIGHTBOX PREVIEW POPUP ═══
+     Sized to fit a 512×512 image plus chrome — no longer fullscreen.
+     Click an image in the gallery → modal preview with metadata, nav,
+     and a fullscreen-toggle button to enter the bigger zoom/pan viewer. */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 110;
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal-backdrop.visible { display: flex; }
+  .preview-card {
+    background: var(--bg); border: 1px solid var(--border);
+    padding: 14px;
+    max-width: min(560px, 92vw); max-height: 92vh;
+    display: flex; flex-direction: column; gap: 10px;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  }
+  .preview-stage {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    background: #000;
+    width: 100%; min-height: 200px;
+    overflow: hidden;
+  }
+  .preview-stage img {
+    display: block; max-width: 100%; max-height: min(512px, 70vh);
+    object-fit: contain;
+    user-select: none; -webkit-user-drag: none;
+  }
+  .preview-meta {
+    color: var(--text-faint); font-size: 0.7rem;
+    font-family: ui-monospace, 'SF Mono', monospace;
+    text-align: center;
+  }
+  .preview-prompt {
+    color: var(--text-dim); font-size: 0.78rem; line-height: 1.45;
+    background: var(--bg-soft); border: 1px solid var(--border);
+    padding: 8px 10px;
+    max-height: 80px; overflow-y: auto;
+  }
+  .preview-prompt:empty { display: none; }
+  .preview-actions {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    justify-content: center; align-items: center;
+  }
+  .preview-action, .preview-nav {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 8px 14px; font-size: 0.78rem; cursor: pointer;
+    letter-spacing: 0.04em; font-family: var(--font);
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .preview-action:hover, .preview-nav:hover {
+    color: var(--accent); border-color: var(--accent);
+  }
+  .preview-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+  .preview-nav:disabled:hover { color: var(--text-dim); border-color: var(--border); }
+  .preview-action.danger:hover {
+    color: #ff7a7a; border-color: rgba(255,122,122,0.5);
+  }
+  #lightboxFavorite.active {
+    color: var(--amber); border-color: var(--amber);
+    background: rgba(255,179,0,0.08);
+  }
+  .preview-close {
+    position: absolute; top: 8px; right: 8px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-faint);
+    width: 28px; height: 28px; line-height: 26px; padding: 0;
+    font-size: 0.85rem; cursor: pointer; text-align: center;
+  }
+  .preview-close:hover { color: var(--text); border-color: var(--text); }
+  /* Fullscreen-toggle on the preview stage — hover-revealed on desktop,
+     always visible on touch (no hover affordance there). */
+  .preview-fullscreen {
+    position: absolute; top: 6px; right: 6px;
+    background: rgba(0,0,0,0.6); border: 1px solid var(--border);
+    color: var(--text-faint);
+    width: 28px; height: 28px; line-height: 26px; padding: 0;
+    font-size: 0.78rem; cursor: pointer; text-align: center;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .preview-stage:hover .preview-fullscreen,
+  .preview-fullscreen:focus { opacity: 1; }
+  .preview-fullscreen:hover { color: var(--accent); border-color: var(--accent); }
+  @media (hover: none) { .preview-fullscreen { opacity: 0.85; } }
+
+  /* ═══ FULLSCREEN VIEWER — zoom / pan / swipe ═══
+     Sits on top of the preview popup. Closing fullscreen returns the
+     user to the compact preview at the same view/index. */
+  #fullscreenModal { background: rgba(0,0,0,0.96); z-index: 120; padding: 0; }
+  #fullscreenModal.visible { display: flex; }
+  .fs-stage {
+    position: relative;
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    touch-action: none; /* JS owns pinch + swipe */
+  }
+  .fs-stage img {
+    max-width: 92vw; max-height: 88vh;
+    object-fit: contain;
+    transform-origin: center center;
+    transition: transform 0.18s ease-out;
+    will-change: transform;
+    user-select: none; -webkit-user-drag: none;
+    cursor: grab;
+  }
+  .fs-stage img.dragging { cursor: grabbing; transition: none; }
+  .fs-stage img.no-transition { transition: none; }
+  .fs-meta {
+    position: absolute; left: 14px; top: 14px;
+    color: var(--text-faint); font-size: 0.7rem;
+    font-family: ui-monospace, 'SF Mono', monospace;
+    background: rgba(0,0,0,0.5);
+    padding: 6px 10px;
+    pointer-events: none;
+  }
+  .fs-prev, .fs-next, .fs-close {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    background: rgba(0,0,0,0.55); border: 1px solid var(--border);
+    color: var(--text);
+    width: 44px; height: 44px;
+    font-size: 1.4rem; line-height: 42px;
+    cursor: pointer; padding: 0; text-align: center;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .fs-prev { left: 16px; }
+  .fs-next { right: 16px; }
+  .fs-prev:hover, .fs-next:hover, .fs-close:hover {
+    background: rgba(0,0,0,0.85);
+    color: var(--accent); border-color: var(--accent);
+  }
+  .fs-prev:disabled, .fs-next:disabled { opacity: 0.25; cursor: default; }
+  .fs-close {
+    top: 14px; right: 14px; left: auto; transform: none;
+    width: 36px; height: 36px; font-size: 1rem; line-height: 34px;
+  }
+  .fs-zoom-bar {
+    position: absolute; bottom: 14px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; align-items: center; gap: 4px;
+    background: rgba(0,0,0,0.7); border: 1px solid var(--border);
+    padding: 4px 6px;
+  }
+  .fs-zoom-bar button {
+    background: none; border: none; color: var(--text-dim);
+    cursor: pointer; padding: 4px 9px; font-size: 0.82rem;
+    min-width: 28px; font-family: var(--font);
+    transition: color 0.15s, background 0.15s;
+  }
+  .fs-zoom-bar button:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+  .fs-zoom-bar #fsZoomLabel {
+    color: var(--text-faint); font-size: 0.7rem;
+    font-family: ui-monospace, 'SF Mono', monospace;
+    min-width: 44px; text-align: center; pointer-events: none;
+  }
+  @media (max-width: 540px) {
+    .fs-prev { left: 6px; }
+    .fs-next { right: 6px; }
+    .fs-meta { font-size: 0.62rem; top: 10px; left: 10px; padding: 4px 8px; }
+    .fs-zoom-bar button { padding: 4px 6px; }
   }
 
   .slide-row {
@@ -287,6 +619,12 @@
     overflow: hidden;
   }
   #player.active { display: block; }
+  /* When a 3D-flip transition is running, the player gets perspective
+     so the rotateX / rotateY transforms on slides actually look like
+     cards flipping rather than instant snaps. The class is added at
+     the start of the flip transition and removed on cleanup. */
+  #player.flipping { perspective: 1500px; }
+  #player.flipping .slide { transform-style: preserve-3d; }
   #player .slide {
     position: absolute;
     inset: 0;
@@ -348,14 +686,17 @@
   }
   .segmented button.active:hover { color: #000; }
 
-  /* Transition grid — 3 cols desktop, 2 cols mobile */
+  /* Transition grid — 4 cols desktop, 2 cols mobile */
   .transition-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
     margin-top: 6px;
   }
-  @media (max-width: 600px) {
+  @media (max-width: 720px) {
+    .transition-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 500px) {
     .transition-grid { grid-template-columns: repeat(2, 1fr); }
   }
   .transition-grid label {
@@ -462,7 +803,17 @@
     <div class="panel-title">Image generator</div>
     <div class="prompt-grid">
       <div>
-        <label class="field-label">Prompt <span style="color:var(--accent);">+</span></label>
+        <div class="prompt-head-row">
+          <label class="field-label">Prompt <span style="color:var(--accent);">+</span></label>
+          <div class="enhance-controls">
+            <select id="enhanceLength" title="Verbosity of the enhanced prompt">
+              <option value="short">short</option>
+              <option value="medium" selected>medium</option>
+              <option value="long">long</option>
+            </select>
+            <button type="button" class="btn-mini" id="enhanceBtn" title="Rewrite your prompt as an optimized AI image prompt">✨ enhance</button>
+          </div>
+        </div>
         <textarea id="promptPos" placeholder="dark ethereal misty landscape, dreamlike, soft focus..."></textarea>
       </div>
       <div>
@@ -470,6 +821,18 @@
         <textarea id="promptNeg" placeholder="text, watermark, bright, harsh, deformed..."></textarea>
       </div>
     </div>
+
+    <!-- Style preset chips — additive modifiers that compose with the typed
+         prompt without mutating the textarea. Each selected chip contributes
+         its `prompt` and `negative` fragments inside currentParams(). -->
+    <div class="chips-wrap">
+      <div class="chips-header">
+        <label class="field-label">Style presets <span class="hint" id="chipCount" style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--text-faint);"></span></label>
+        <button type="button" class="chips-clear" id="chipsClear" disabled>clear all</button>
+      </div>
+      <div id="styleChips"><!-- populated by buildStyleChips() --></div>
+    </div>
+
     <div class="controls-grid">
       <div>
         <label class="field-label">Orientation</label>
@@ -489,9 +852,18 @@
         <input type="range" id="steps" min="15" max="50" step="1" value="30">
       </div>
     </div>
+    <!-- Free Perchance plugin only honors {prompt, negative}; the other params
+         are sent only as a best-effort hint and may not change output. -->
+    <div class="advanced-note">
+      ⓘ Orientation, prompt strength, and quality steps are best-effort hints — Perchance's free image plugin only documents <em>prompt</em> and <em>negative</em>. They're sent regardless and may take effect on plugin updates or alternate routes.
+    </div>
+
     <div class="btn-row">
-      <button class="btn" id="gen1">Generate 1</button>
-      <button class="btn" id="gen4">Generate 4 (parallel)</button>
+      <button class="btn" id="gen1">+1 image</button>
+      <button class="btn" id="gen5">+5 images</button>
+      <button class="btn ghost tiny" id="qRemove" style="display:none">−1 queued</button>
+      <button class="btn ghost tiny" id="qClear" style="display:none">clear queue</button>
+      <span class="queue-status hidden" id="queueStatus"></span>
     </div>
     <div class="status" id="genStatus"></div>
   </div>
@@ -499,13 +871,26 @@
   <!-- Gallery -->
   <div class="panel">
     <div class="panel-title">Gallery <span id="galleryCount" style="color:var(--text-faint);font-weight:400;letter-spacing:0;text-transform:none;">(0)</span></div>
+
+    <!-- Sort + favorites filter — same toolbar pattern as HNE's bg-gallery -->
+    <div class="gallery-toolbar">
+      <span class="toolbar-label">sort</span>
+      <select id="gallerySort">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="favorites">Favorites first</option>
+        <option value="seed">By seed</option>
+      </select>
+      <button type="button" class="fav-filter" id="favFilter" aria-pressed="false" title="show only favorited images">★ favorites only</button>
+      <span class="spacer"></span>
+      <button class="btn ghost tiny" id="downloadAll">⬇ all</button>
+      <button class="btn ghost tiny" id="clearAll">🗑 clear</button>
+    </div>
+
     <div class="gallery" id="gallery">
       <div class="gallery-empty">No images yet. Generate some above.</div>
     </div>
-    <div class="btn-row">
-      <button class="btn ghost" id="clearAll">Clear all</button>
-      <button class="btn ghost" id="downloadAll">Download all</button>
-    </div>
+    <div class="gallery-info" id="galleryInfo"></div>
   </div>
 
   <!-- Slideshow settings -->
@@ -570,6 +955,46 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+<!-- ═══ LIGHTBOX PREVIEW POPUP ═══ -->
+<!-- Compact image viewer with metadata + nav. Opened on gallery item click.
+     Hands off to the fullscreen viewer for zoom/pan via the ⛶ button. -->
+<div class="modal-backdrop" id="lightboxModal">
+  <div class="preview-card">
+    <button class="preview-close" id="lightboxClose" aria-label="close" title="close (Esc)">✕</button>
+    <div class="preview-stage" id="lightboxStage">
+      <img id="lightboxImg" alt="">
+      <button class="preview-fullscreen" id="lightboxFullscreen" aria-label="open fullscreen" title="open fullscreen (Enter)">⛶</button>
+    </div>
+    <div class="preview-meta" id="lightboxMeta"></div>
+    <div class="preview-prompt" id="lightboxPrompt"></div>
+    <div class="preview-actions">
+      <button class="preview-nav" id="lightboxPrev" aria-label="previous image" title="previous (←)">‹ prev</button>
+      <button class="preview-action" id="lightboxFavorite" aria-label="favorite" title="favorite (f)">☆ favorite</button>
+      <button class="preview-action danger" id="lightboxDelete" aria-label="delete" title="delete (Delete)">🗑 delete</button>
+      <button class="preview-nav" id="lightboxNext" aria-label="next image" title="next (→)">next ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ FULLSCREEN VIEWER — zoom / pan / swipe ═══ -->
+<!-- Sits on top of the lightbox preview. Closing fullscreen returns the
+     user to the compact preview at the same view/index. -->
+<div class="modal-backdrop" id="fullscreenModal">
+  <div class="fs-stage" id="fsStage">
+    <img id="fsImg" alt="">
+    <div class="fs-meta" id="fsMeta"></div>
+    <button class="fs-close" id="fsClose" aria-label="close fullscreen" title="back to preview (Esc)">✕</button>
+    <button class="fs-prev" id="fsPrev" aria-label="previous" title="previous (←)">‹</button>
+    <button class="fs-next" id="fsNext" aria-label="next" title="next (→)">›</button>
+    <div class="fs-zoom-bar">
+      <button id="fsZoomOut" title="zoom out (-)">−</button>
+      <button id="fsZoomFit" title="reset zoom (0)">fit</button>
+      <span id="fsZoomLabel">100%</span>
+      <button id="fsZoomIn" title="zoom in (+)">+</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
   'use strict';
@@ -580,7 +1005,14 @@
   const DB_NAME = 'slideshow-db';
   const DB_STORE = 'kv';
   const MANIFEST_KEY = 'manifest';
-  const MAX_IMAGES = 50;
+  // 150 images at typical 768×512 JPEG sizes ≈ 15-30MB total; still well
+  // under any device's IDB pressure threshold. Favorited entries are
+  // protected from eviction (see cacheStore() below).
+  //
+  // This cap is also the hard ceiling for total in-flight work — the
+  // queue runner refuses to schedule more than (MAX_IMAGES - cached -
+  // active - pending) at any time, so the user can never overshoot.
+  const MAX_IMAGES = 150;
   let _db = null, _dbP = null;
 
   function openDb() {
@@ -631,19 +1063,60 @@
   }
 
   // ══════════════════════════════════════════════════════════════════════
-  // Cache — image Blobs stored individually; manifest tracks order
+  // Cache — image Blobs stored individually; manifest tracks order +
+  // metadata. Each entry: { id, prompt, createdAt, seed?, favorited? }
+  //
+  // `seed` and `favorited` are optional — entries persisted before this
+  // feature shipped won't have them, so all readers use `?? null` /
+  // `=== true` patterns rather than expecting them to be present.
+  //
+  // Eviction: when the cache is full, prefer non-favorited oldest entries
+  // for eviction. Only evict a favorited entry as a last resort (every
+  // slot is favorited). The new image is appended AFTER eviction so it
+  // can never become its own eviction target.
   // ══════════════════════════════════════════════════════════════════════
-  async function cacheStore(dataUrl, prompt) {
+  async function cacheStore(dataUrl, prompt, seed) {
     const id = 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
     const blob = await fetch(dataUrl).then(r => r.blob());
     const manifest = (await idbGet(MANIFEST_KEY)) || [];
-    manifest.push({ id, prompt: prompt || '', createdAt: Date.now() });
-    while (manifest.length > MAX_IMAGES) {
-      const old = manifest.shift();
-      await idbDel(old.id);
-    }
+
+    // Step 1 — save the new blob first. If anything fails after this
+    // point the worst case is an orphan blob (small storage leak)
+    // rather than a manifest entry pointing at a missing blob.
     await idbSet(id, blob);
+
+    // Step 2 — decide evictions in memory. Walk oldest→newest preferring
+    // non-favorited entries; only evict a favorite when literally every
+    // slot is favorited.
+    const evicted = [];
+    while (manifest.length >= MAX_IMAGES) {
+      let evictIdx = manifest.findIndex(m => !m.favorited);
+      if (evictIdx === -1) {
+        // Every entry is favorited — evict the absolute oldest as a
+        // last resort. User can re-favorite the new one if they want.
+        console.warn('[cache] all entries favorited; evicting oldest');
+        evictIdx = 0;
+      }
+      const [removed] = manifest.splice(evictIdx, 1);
+      if (removed) evicted.push(removed);
+    }
+
+    // Step 3 — append + persist manifest. After this write the cache
+    // is fully consistent.
+    manifest.push({
+      id,
+      prompt: prompt || '',
+      createdAt: Date.now(),
+      seed: (typeof seed === 'number' && Number.isFinite(seed)) ? seed : null,
+      favorited: false,
+    });
     await idbSet(MANIFEST_KEY, manifest);
+
+    // Step 4 — best-effort cleanup of evicted blobs.
+    for (const old of evicted) {
+      try { await idbDel(old.id); }
+      catch (e) { console.warn('[cache] failed to delete evicted blob', old.id, e); }
+    }
     return id;
   }
   const getManifest = () => idbGet(MANIFEST_KEY).then(m => m || []);
@@ -661,12 +1134,79 @@
     for (const e of m) await idbDel(e.id);
     await idbSet(MANIFEST_KEY, []);
   }
+
+  /** Toggle the `favorited` flag on a manifest entry. Returns the new
+   *  value, or null if the entry wasn't found. */
+  async function cacheToggleFavorite(id) {
+    const m = await getManifest();
+    const entry = m.find(e => e.id === id);
+    if (!entry) return null;
+    entry.favorited = !entry.favorited;
+    await idbSet(MANIFEST_KEY, m);
+    return entry.favorited;
+  }
+
+  /** Return a sorted/filtered VIEW of the manifest. Doesn't mutate
+   *  storage. Modes: newest | oldest | favorites | seed.
+   *  When favOnly is true, drop non-favorited entries entirely. */
+  function sortManifest(manifest, mode, favOnly) {
+    let view = (manifest || []).slice();
+    if (favOnly) view = view.filter(m => m.favorited === true);
+    switch (mode) {
+      case 'oldest':
+        view.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        break;
+      case 'favorites':
+        // Favorites first; within each group, newest first.
+        view.sort((a, b) => {
+          const fa = a.favorited === true ? 1 : 0;
+          const fb = b.favorited === true ? 1 : 0;
+          if (fa !== fb) return fb - fa;
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
+        break;
+      case 'seed':
+        // Numeric seed sort; entries without a seed sink to the bottom.
+        view.sort((a, b) => {
+          const sa = (typeof a.seed === 'number') ? a.seed : Infinity;
+          const sb = (typeof b.seed === 'number') ? b.seed : Infinity;
+          if (sa !== sb) return sa - sb;
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
+        break;
+      case 'newest':
+      default:
+        view.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        break;
+    }
+    return view;
+  }
+
+  /** Per-id click debounce — prevents rapid-fire clicks from queuing
+   *  duplicate downloads of the same image. Cleared 1.5s after click. */
+  const _downloadInflight = new Set();
+  function _extFromMime(mime) {
+    // Perchance's text-to-image plugin defaults to JPEG. Older blobs
+    // may be PNG. Detect from the blob's actual type rather than
+    // guessing — saves the user from a wrongly-extensioned file.
+    if (!mime || typeof mime !== 'string') return 'jpg';
+    const m = mime.toLowerCase();
+    if (m.includes('jpeg') || m.includes('jpg')) return 'jpg';
+    if (m.includes('png')) return 'png';
+    if (m.includes('webp')) return 'webp';
+    if (m.includes('gif')) return 'gif';
+    return 'jpg';
+  }
   async function cacheDownload(id) {
+    if (_downloadInflight.has(id)) return; // debounce
+    _downloadInflight.add(id);
+    setTimeout(() => _downloadInflight.delete(id), 1500);
     const blob = await idbGet(id);
     if (!blob) return;
+    const ext = _extFromMime(blob.type);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = id + '.png';
+    a.download = id + '.' + ext;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
@@ -674,11 +1214,18 @@
   // ══════════════════════════════════════════════════════════════════════
   // Settings persistence — single `settings` key in the same kv store.
   // Covers: prompt text (pos/neg), generator params, playback params,
-  // enabled transitions, order mode, auto-gen toggle.
+  // enabled transitions, order mode, auto-gen toggle, active style
+  // chip ids, gallery sort mode, favorites-only filter, enhance length.
   //
   // Writes are debounced so rapid slider / typing events don't thrash IDB.
   // ══════════════════════════════════════════════════════════════════════
   const SETTINGS_KEY = 'settings';
+
+  // Active state for things that don't bind directly to a DOM element
+  // and need a JS-side variable to round-trip through saveSettings().
+  let activeStyleIds = [];          // string[] — currently-toggled style chip ids
+  let gallerySort = 'newest';       // 'newest' | 'oldest' | 'favorites' | 'seed'
+  let favOnly = false;              // favorites-only filter
 
   // DEFAULT_SETTINGS is materialised lazily (after TRANSITIONS is declared
   // below) because it references DEFAULT_ENABLED which lives in the
@@ -696,6 +1243,10 @@
       order:              'sequential',
       autoGen:            false,
       enabledTransitions: Array.from(DEFAULT_ENABLED),
+      activeStyleIds:     [],
+      gallerySort:        'newest',
+      favOnly:            false,
+      enhanceLength:      'medium',
     };
   }
 
@@ -707,6 +1258,7 @@
     $('promptPos').value = s.promptPos || '';
     $('promptNeg').value = s.promptNeg || '';
     $('orientation').value = s.orientation;
+    if ($('enhanceLength')) $('enhanceLength').value = s.enhanceLength || 'medium';
 
     // Sliders + their value readouts
     $('guidance').value = s.guidance;
@@ -732,6 +1284,21 @@
     document.querySelectorAll('#transitionGrid input[type="checkbox"]').forEach(cb => {
       cb.checked = enabled.has(cb.value);
     });
+
+    // Style chips — restore active selection (filter to known ids so
+    // a stale saved id from a renamed/removed preset is dropped quietly)
+    activeStyleIds = Array.isArray(s.activeStyleIds)
+      ? s.activeStyleIds.filter(id => STYLE_PRESET_MAP[id])
+      : [];
+
+    // Gallery toolbar state
+    gallerySort = ['newest','oldest','favorites','seed'].includes(s.gallerySort) ? s.gallerySort : 'newest';
+    favOnly = s.favOnly === true;
+    if ($('gallerySort')) $('gallerySort').value = gallerySort;
+    if ($('favFilter')) {
+      $('favFilter').classList.toggle('active', favOnly);
+      $('favFilter').setAttribute('aria-pressed', favOnly ? 'true' : 'false');
+    }
   }
 
   let _saveTimer = null;
@@ -749,6 +1316,10 @@
         order:              currentOrder,
         autoGen:            $('autoGen').checked,
         enabledTransitions: getEnabledTransitions(),
+        activeStyleIds:     activeStyleIds.slice(),
+        gallerySort:        gallerySort,
+        favOnly:            favOnly,
+        enhanceLength:      $('enhanceLength')?.value || 'medium',
       };
       idbSet(SETTINGS_KEY, payload);
     }, delay);
@@ -765,6 +1336,56 @@
   }
 
   // ══════════════════════════════════════════════════════════════════════
+  // Style preset chips — additive prompt fragments
+  // ══════════════════════════════════════════════════════════════════════
+  // Curated style fragments. Each chip the user toggles contributes its
+  // `prompt` and `negative` fragments to the final call WITHOUT mutating
+  // the textarea — so users can freely edit their own prompt and the
+  // chips compose on top.
+  //
+  // Active selections live in `activeStyleIds`. Composed inside
+  // currentParams(). Categories are visual-only — no exclusion rules,
+  // stack as many across categories as you like.
+  //
+  // To add a preset: append to STYLE_PRESETS. To rename a category:
+  // change both the `cat` and the matching label in STYLE_CATEGORIES.
+  // To migrate ids: filter unknown ids out gracefully on load (the
+  // loader already does this).
+  // ══════════════════════════════════════════════════════════════════════
+  const STYLE_CATEGORIES = [
+    { id: 'atmosphere', label: 'Atmosphere' },
+    { id: 'nature',     label: 'Nature'     },
+    { id: 'abstract',   label: 'Abstract'   },
+    { id: 'style',      label: 'Style'      },
+  ];
+  const STYLE_PRESETS = [
+    // Atmosphere — environmental qualities (lighting, weather, time of day)
+    { id: 'misty',      cat: 'atmosphere', label: 'Misty',         prompt: 'misty fog, drifting low clouds, ethereal haze, soft visibility',                          negative: 'sharp clarity, hard edges' },
+    { id: 'twilight',   cat: 'atmosphere', label: 'Twilight',      prompt: 'twilight blue hour, indigo and violet sky, soft fading light',                            negative: 'high noon, harsh sunlight' },
+    { id: 'underwater', cat: 'atmosphere', label: 'Underwater',    prompt: 'underwater scene, soft refracted light beams, slow drifting particles, deep blue-green',  negative: 'bright sun, dry land' },
+    { id: 'aurora',     cat: 'atmosphere', label: 'Aurora',        prompt: 'aurora borealis ribbons, soft green and violet light bands, starry night',                negative: 'daytime, blue sky' },
+    { id: 'cosmic',     cat: 'atmosphere', label: 'Cosmic',        prompt: 'deep space nebula, soft star clusters, swirling cosmic dust, indigo and magenta',          negative: 'earth, ground, mundane' },
+    // Nature — recognisable landscapes
+    { id: 'forest',     cat: 'nature',     label: 'Forest',        prompt: 'ancient forest at dusk, soft mossy ground, dappled fading light, deep shadows',           negative: 'open field, bright midday' },
+    { id: 'ocean',      cat: 'nature',     label: 'Ocean',         prompt: 'calm ocean horizon, slow gentle waves, soft pastel sky, infinite distance',                negative: 'storm, choppy waves' },
+    { id: 'mountains',  cat: 'nature',     label: 'Mountains',     prompt: 'distant snow-capped mountains, soft layered haze, muted blue-gray palette',                negative: 'close-up, sharp detail' },
+    { id: 'meadow',     cat: 'nature',     label: 'Meadow',        prompt: 'soft grass meadow at dawn, golden mist, gentle suggestion of breeze, warm muted tones',    negative: 'concrete, urban' },
+    { id: 'cave',       cat: 'nature',     label: 'Cave',          prompt: 'dim luminous cave interior, soft bioluminescent glow, smooth wet stone, deep shadows',     negative: 'bright, exposed, daylight' },
+    // Abstract — non-figurative
+    { id: 'flowing',    cat: 'abstract',   label: 'Flowing',       prompt: 'flowing abstract liquid forms, slow swirling color gradients, soft ink-in-water',          negative: 'rigid geometry, sharp angles' },
+    { id: 'fractal',    cat: 'abstract',   label: 'Fractal',       prompt: 'soft fractal mandala, gentle radial symmetry, muted dreamlike palette',                    negative: 'literal scene, recognizable objects' },
+    { id: 'gradient',   cat: 'abstract',   label: 'Gradient',      prompt: 'pure soft color gradient, smooth transitions of indigo violet and amber, no objects',      negative: 'figures, shapes, faces' },
+    { id: 'particles',  cat: 'abstract',   label: 'Particles',     prompt: 'floating dust motes, soft light particles drifting, dark moody backdrop',                  negative: 'crisp focus, sharp' },
+    // Style — rendering medium
+    { id: 'watercolor', cat: 'style',      label: 'Watercolor',    prompt: 'soft watercolor wash, gentle color bleeds, subtle paper texture, hand-painted',            negative: 'photographic, digital, sharp' },
+    { id: 'oil',        cat: 'style',      label: 'Oil paint',     prompt: 'soft oil painting, romantic style, visible brush strokes, muted impressionist palette',    negative: 'photograph, sharp digital' },
+    { id: 'charcoal',   cat: 'style',      label: 'Charcoal',      prompt: 'soft charcoal sketch, monochromatic gray tones, atmospheric haze, hand-drawn lines',       negative: 'colorful, photo' },
+    { id: 'longexp',    cat: 'style',      label: 'Long exposure', prompt: 'long exposure photograph, soft motion blur trails, smooth water and clouds, dreamlike',    negative: 'frozen action, sharp' },
+    { id: 'film',       cat: 'style',      label: 'Film',          prompt: 'analog film photograph, soft grain, faded vintage palette, warm muted highlights',         negative: 'crisp digital, oversaturated' },
+  ];
+  const STYLE_PRESET_MAP = Object.fromEntries(STYLE_PRESETS.map(p => [p.id, p]));
+
+  // ══════════════════════════════════════════════════════════════════════
   // Generator — parallel-capable, clamped to MAX_PARALLEL (= Perchance's limit)
   // ══════════════════════════════════════════════════════════════════════
   const MAX_PARALLEL = 4;
@@ -776,13 +1397,45 @@
   };
   let activeGens = 0;
 
+  /** Compose the final generation params from the user's textareas plus
+   *  any active style chips. Pure — no side effects.
+   *
+   *    1. user prompt              → primary intent (always first)
+   *    2. active preset fragments  → additive, appended in selection order
+   *    3. fallback defaults        → only when nothing else is set
+   *
+   *  Each preset contributes BOTH a prompt and a negative fragment, so
+   *  e.g. picking "Misty" automatically negates "sharp clarity, hard
+   *  edges". Empty pieces are filtered out so we never emit a stray
+   *  leading/trailing comma.
+   *
+   *  A fresh client-side seed is generated each call (signed-32-bit
+   *  positive) and stored on the manifest entry so the gallery can sort
+   *  by it and a future "regen with same seed" feature has the value. */
   function currentParams() {
+    const userPrompt = ($('promptPos').value || '').trim();
+    const userNeg = ($('promptNeg').value || '').trim();
+    const activePresets = activeStyleIds.map(id => STYLE_PRESET_MAP[id]).filter(Boolean);
+
+    const promptParts = [userPrompt, ...activePresets.map(p => p.prompt)].filter(Boolean);
+    const finalPrompt = promptParts.length
+      ? promptParts.join(', ')
+      : 'abstract dreamlike ethereal, soft focus';
+
+    const negParts = [userNeg, ...activePresets.map(p => p.negative).filter(Boolean)].filter(Boolean);
+    const finalNeg = negParts.length
+      ? negParts.join(', ')
+      : 'text, watermark, deformed';
+
+    const seed = Math.floor(Math.random() * 2147483647);
+
     return {
-      prompt: $('promptPos').value.trim() || 'abstract dreamlike ethereal',
-      negative: $('promptNeg').value.trim() || 'text, watermark, deformed',
+      prompt: finalPrompt,
+      negative: finalNeg,
       resolution: RESOLUTIONS[$('orientation').value] || null,
       guidance: Number($('guidance').value),
       steps: Number($('steps').value),
+      seed,
     };
   }
 
@@ -796,26 +1449,30 @@
     activeGens++;
     try {
       const p = currentParams();
+      // The text-to-image-plugin's documented contract is {prompt,
+      // negative, style}. Sending undocumented extras like
+      // numInferenceSteps / guidanceScale / seed / resolution routes
+      // their values through Perchance's DSL evaluator, which parses
+      // `{listName}` as a list reference and throws on
+      // brace-containing user input. We pass ONLY the documented
+      // fields here, and capture the seed locally for the manifest.
+      // (HNE makes the same call shape; see bgEngine.generateOne.)
       const call = {
         prompt: p.prompt,
-        negativePrompt: p.negative,
         negative: p.negative,
-        guidanceScale: p.guidance,
-        numInferenceSteps: p.steps,
-        steps: p.steps,
-        seed: -1,
       };
-      if (p.resolution) call.resolution = p.resolution;
       const result = await root.textToImagePlugin(call);
       const dataUrl = result?.dataUrl || String(result);
       if (!dataUrl || !dataUrl.startsWith('data:')) return null;
-      const id = await cacheStore(dataUrl, p.prompt);
+      const id = await cacheStore(dataUrl, p.prompt, p.seed);
+      _bumpQueueUI();
       return id;
     } catch (e) {
       console.error('generateOne:', e);
       return null;
     } finally {
       activeGens--;
+      _bumpQueueUI();
     }
   }
 
@@ -825,33 +1482,769 @@
   }
 
   // ══════════════════════════════════════════════════════════════════════
-  // Gallery rendering
+  // Gallery rendering — sort/filter aware, with favorites + seed badges
   // ══════════════════════════════════════════════════════════════════════
+  // Uses a generation-token guard so concurrent renders (e.g. fast
+  // delete + add) don't clobber each other's DOM mutations.
+  let _galleryRenderGen = 0;
+
   async function renderGallery() {
     const grid = $('gallery');
     const count = $('galleryCount');
+    const info = $('galleryInfo');
+    if (!grid) return;
+
+    const myGen = ++_galleryRenderGen;
     const manifest = await getManifest();
-    count.textContent = `(${manifest.length})`;
-    if (!manifest.length) {
-      grid.innerHTML = '<div class="gallery-empty">No images yet. Generate some above.</div>';
+    if (myGen !== _galleryRenderGen) return; // newer render started
+
+    if (count) count.textContent = `(${manifest.length})`;
+    _lastKnownCacheCount = manifest.length;
+    // Refresh the +1/+5 enabled state in case a delete just freed headroom.
+    _bumpQueueUI();
+
+    // Sync toolbar controls — opening the panel from anywhere reflects
+    // the persisted state.
+    if ($('gallerySort') && $('gallerySort').value !== gallerySort) {
+      $('gallerySort').value = gallerySort;
+    }
+    if ($('favFilter')) {
+      $('favFilter').classList.toggle('active', favOnly);
+      $('favFilter').setAttribute('aria-pressed', favOnly ? 'true' : 'false');
+    }
+
+    const view = sortManifest(manifest, gallerySort, favOnly);
+    const favCount = manifest.filter(m => m.favorited === true).length;
+
+    if (info) {
+      const totalStr = `${manifest.length} image${manifest.length === 1 ? '' : 's'}`;
+      const favStr = favCount > 0 ? ` · ${favCount} favorite${favCount === 1 ? '' : 's'}` : '';
+      const filterStr = favOnly && favCount !== manifest.length ? ` · showing ${view.length}` : '';
+      info.textContent = totalStr + favStr + filterStr;
+    }
+
+    if (!view.length) {
+      grid.innerHTML = manifest.length === 0
+        ? '<div class="gallery-empty">No images yet. Generate some above.</div>'
+        : '<div class="gallery-empty">No images match the current filter.</div>';
       return;
     }
-    // Newest first
-    const items = [...manifest].reverse();
-    grid.innerHTML = items.map(e =>
-      `<div class="gallery-item" data-id="${e.id}">
+
+    // Build grid markup. Each item carries data-id (for action buttons)
+    // and data-idx (relative to the current sorted view) so clicking
+    // opens the lightbox at the right position.
+    grid.innerHTML = view.map((c, idx) => {
+      const seedTag = (typeof c.seed === 'number') ? `<div class="seed-tag" title="seed">#${c.seed}</div>` : '';
+      const favClass = c.favorited === true ? ' is-fav' : '';
+      const favActive = c.favorited === true ? ' active' : '';
+      const favIcon = c.favorited === true ? '★' : '☆';
+      const tip = c.prompt ? c.prompt.replace(/"/g, '&quot;').slice(0, 200) : 'click to view';
+      return `<div class="gallery-item${favClass}" data-id="${c.id}" data-idx="${idx}" title="${tip}">
         <img alt="" loading="lazy">
-        <button class="del" data-id="${e.id}" title="delete">✕</button>
-      </div>`
-    ).join('');
-    // Lazy-load thumbnails — avoid holding 50 blob URLs forever
-    items.forEach(e => {
-      cacheGetUrl(e.id).then(url => {
-        if (!url) return;
-        const img = grid.querySelector(`[data-id="${e.id}"] img`);
-        if (img) img.src = url;
+        <button class="item-btn del" data-id="${c.id}" title="delete" aria-label="delete">✕</button>
+        <button class="item-btn dl" data-id="${c.id}" title="download" aria-label="download">⬇</button>
+        <button class="item-btn fav${favActive}" data-id="${c.id}" title="${c.favorited === true ? 'unfavorite' : 'favorite'}" aria-label="favorite" aria-pressed="${c.favorited === true ? 'true' : 'false'}">${favIcon}</button>
+        ${seedTag}
+      </div>`;
+    }).join('');
+
+    // Lazy-load thumbnails — bail per-iteration if a newer render started
+    // OR if the matching DOM node is gone (item was deleted concurrently).
+    for (const entry of view) {
+      if (myGen !== _galleryRenderGen) return;
+      const url = await cacheGetUrl(entry.id);
+      if (myGen !== _galleryRenderGen) {
+        if (url) URL.revokeObjectURL(url); // not going to use this — release
+        return;
+      }
+      const img = grid.querySelector(`.gallery-item[data-id="${entry.id}"] img`);
+      if (img && url) {
+        img.src = url;
+      } else if (url) {
+        URL.revokeObjectURL(url); // item vanished mid-fetch
+      }
+    }
+
+    // Per-button handlers — stop propagation so a button click doesn't
+    // also trigger the item-body's lightbox-open click.
+    grid.querySelectorAll('.del').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await cacheDelete(btn.dataset.id);
+        renderGallery();
       });
     });
+    grid.querySelectorAll('.dl').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cacheDownload(btn.dataset.id);
+      });
+    });
+    grid.querySelectorAll('.fav').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await cacheToggleFavorite(btn.dataset.id);
+        renderGallery();
+      });
+    });
+    // Click on the item body (not on a button) opens the lightbox at this
+    // position in the SORTED view — so the lightbox's prev/next walk in
+    // the same order the user is looking at.
+    grid.querySelectorAll('.gallery-item').forEach(itemEl => {
+      itemEl.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        const idx = Number(itemEl.dataset.idx);
+        if (Number.isFinite(idx)) lightbox.open(view, idx);
+      });
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Style chip UI — additive prompt modifiers (no textarea mutation)
+  // ══════════════════════════════════════════════════════════════════════
+  function buildStyleChips() {
+    const root = $('styleChips');
+    const countEl = $('chipCount');
+    const clearBtn = $('chipsClear');
+    if (!root) return;
+
+    const active = new Set(activeStyleIds);
+    // Group by category for one row per category
+    const byCat = {};
+    for (const cat of STYLE_CATEGORIES) byCat[cat.id] = [];
+    for (const p of STYLE_PRESETS) {
+      if (!byCat[p.cat]) byCat[p.cat] = [];
+      byCat[p.cat].push(p);
+    }
+    const rows = STYLE_CATEGORIES.map(cat => {
+      const items = byCat[cat.id] || [];
+      if (!items.length) return '';
+      const chips = items.map(p => {
+        const cls = active.has(p.id) ? 'style-chip active' : 'style-chip';
+        const tip = (p.prompt || '').replace(/"/g, '&quot;');
+        return `<button type="button" class="${cls}" data-style-id="${p.id}" title="${tip}" aria-pressed="${active.has(p.id) ? 'true' : 'false'}">${p.label}</button>`;
+      }).join('');
+      return `<div class="chip-cat-row"><span class="chip-cat-label">${cat.label}</span>${chips}</div>`;
+    }).join('');
+    root.innerHTML = rows;
+
+    if (countEl) countEl.textContent = active.size > 0 ? `· ${active.size} active` : '';
+    if (clearBtn) clearBtn.disabled = active.size === 0;
+
+    // Wire each chip — rebuild the whole row on each click rather than
+    // mutating in place (simpler, and the row is tiny).
+    root.querySelectorAll('.style-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const id = chip.dataset.styleId;
+        if (!id) return;
+        const cur = new Set(activeStyleIds);
+        if (cur.has(id)) cur.delete(id); else cur.add(id);
+        activeStyleIds = Array.from(cur);
+        buildStyleChips();
+        saveSettings(0);
+      });
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Prompt enhancer — uses aiTextPlugin to rewrite the user's casual
+  // input into an optimized AI image generation prompt at the requested
+  // verbosity. Streams back into the textarea. Click again to cancel.
+  //
+  // Adapted from HNE's BG_ENHANCE_INSTRUCTIONS (which were in turn
+  // adapted from promptyx). The instructions are intentionally strict
+  // about format ("ONLY the final raw prompt string, no preamble") so
+  // the streamed result drops straight into the textarea unedited.
+  // ══════════════════════════════════════════════════════════════════════
+  const ENHANCE_INSTRUCTIONS = {
+    short: `ROLE: Expert AI image prompt engineer.
+ACTION: Transform the input into a concise, optimized AI image generation prompt (300-600 chars).
+FORMAT: Comma-separated precise visual descriptors only.
+ENHANCE WITH: specific lighting type, camera angle/lens, primary color palette, key material/texture detail, mood/atmosphere word, one compositional technique.
+FORBIDDEN: 8K, UHD, hyperrealism, "extreme detail", explanatory sentences, question marks, quotes around the result.
+OUTPUT: ONLY the final raw prompt string. No preamble. No quotes. No "Here's your prompt:" or similar.`,
+    medium: `ROLE: Expert AI image prompt engineer.
+ACTION: Transform the input into a richly-detailed AI image generation prompt (600-1100 chars).
+FORMAT: Comma-separated visual descriptors with moderate depth.
+ENHANCE WITH: specific lighting setup, focal length/camera type, 2-3 color palette descriptors, multiple surface textures, spatial composition (foreground/midground/background), atmosphere/weather, time of day, style anchor (one artist or aesthetic reference).
+FORBIDDEN: 8K, UHD, hyperrealism, "extreme detail", narration, instructional language, quotes around the result.
+OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
+    long: `ROLE: Expert AI image prompt engineer.
+ACTION: Transform the input into a comprehensive, cinematic-quality AI image generation prompt (1100-1600 chars).
+FORMAT: Flowing comma-separated visual descriptors at maximum fidelity.
+ENHANCE WITH: complex multi-source lighting rig, specific lens + aperture + film stock, exhaustive color grading descriptor, layered texture details (micro and macro), full environmental world-building (weather + time + season + location), subject details, composition framing technique, emotional/psychological undertone, 1-2 specific artist/film/art-movement references.
+FORBIDDEN: 8K, UHD, hyperrealism, "extreme detail", storytelling prose, instructional text, quotes around the result.
+OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
+  };
+
+  let _enhanceToken = 0;
+  let _enhanceRunning = false;
+
+  async function runEnhance() {
+    const btn = $('enhanceBtn');
+    const input = $('promptPos');
+    if (!btn || !input) return;
+
+    // Toggle-cancel if already running — increment token so the in-flight
+    // call sees a stale token and bails on its next chunk.
+    if (_enhanceRunning) {
+      _enhanceToken++;
+      _enhanceRunning = false;
+      btn.disabled = false;
+      btn.textContent = '✨ enhance';
+      return;
+    }
+
+    if (typeof root === 'undefined' || !root.aiTextPlugin) {
+      toast('Prompt enhancer needs aiTextPlugin in the top-editor DSL.', 'warn');
+      return;
+    }
+
+    const userInput = (input.value || '').trim();
+    if (!userInput) {
+      toast('Type a casual idea first — I\'ll engineer it into an optimized image prompt.', 'warn');
+      return;
+    }
+
+    const length = $('enhanceLength')?.value || 'medium';
+    const instr = ENHANCE_INSTRUCTIONS[length] || ENHANCE_INSTRUCTIONS.medium;
+    const myToken = ++_enhanceToken;
+    _enhanceRunning = true;
+    btn.textContent = '⏹ stop';
+
+    const original = userInput;
+    input.value = '';
+    let acc = '';
+
+    try {
+      const streamObj = root.aiTextPlugin({
+        instruction: `${instr}\n\nUser Input: ${original}`,
+        onChunk: (data) => {
+          if (myToken !== _enhanceToken) {
+            try { streamObj?.stop?.(); } catch {}
+            throw new Error('cancelled');
+          }
+          if (data.isFromStartWith) return;
+          acc += data.textChunk || '';
+          input.value = acc;
+        },
+      });
+      const result = await streamObj;
+      if (myToken !== _enhanceToken) return;
+
+      // Some flows return the whole text on result.generatedText
+      // without ever firing onChunk; pick whichever's non-empty.
+      const finalText = (acc || result?.generatedText || '').trim();
+      if (!finalText) {
+        input.value = original;
+        toast('Enhance returned nothing — your original prompt was kept.', 'warn');
+        return;
+      }
+      // Strip stray surrounding quotes some models add despite instructions
+      const cleaned = finalText.replace(/^["']|["']$/g, '');
+      input.value = cleaned;
+      toast(`Prompt enhanced (${length}).`);
+    } catch (e) {
+      if (e?.message === 'cancelled') {
+        input.value = original;
+        toast('Enhance cancelled — original prompt restored.');
+      } else {
+        input.value = original;
+        console.warn('[enhance] failed:', e);
+        toast('Enhance failed — your original prompt was kept.', 'warn');
+      }
+    } finally {
+      if (myToken === _enhanceToken) {
+        _enhanceRunning = false;
+        btn.disabled = false;
+        btn.textContent = '✨ enhance';
+        saveSettings(0);
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Lightbox preview popup + Fullscreen zoom/pan viewer
+  // ══════════════════════════════════════════════════════════════════════
+  // Two-tier viewer:
+  //   • Lightbox (z:110) — compact preview with metadata + nav buttons
+  //   • Fullscreen (z:120) — wheel/pinch zoom + drag pan + swipe nav
+  // Closing fullscreen returns to the lightbox at the same view/index;
+  // closing the lightbox closes both.
+  //
+  // State lives on this object (not in saved settings) — every reopen
+  // starts fresh.
+  const lightbox = {
+    view: [],
+    index: 0,
+    _bound: false,
+    _fsBound: false,
+    _fsScale: 1,
+    _fsPanX: 0, _fsPanY: 0,
+    _fsMinScale: 1,
+    _fsMaxScale: 8,
+    _fsDrag: null,
+    _fsPinch: null,
+    _fsSwipe: null,
+
+    open(view, index) {
+      if (!Array.isArray(view) || view.length === 0) return;
+      this.view = view;
+      this.index = Math.max(0, Math.min(index | 0, view.length - 1));
+      this._bindOnce();
+      const modal = $('lightboxModal');
+      if (modal) modal.classList.add('visible');
+      document.body.style.overflow = 'hidden';
+      this._loadCurrent();
+    },
+    close() {
+      this.exitFullscreen();
+      const modal = $('lightboxModal');
+      if (modal) modal.classList.remove('visible');
+      document.body.style.overflow = '';
+      for (const id of ['lightboxImg', 'fsImg']) {
+        const img = $(id);
+        if (img && img.src && img.src.startsWith('blob:')) {
+          try { URL.revokeObjectURL(img.src); } catch {}
+          img.src = '';
+        }
+      }
+    },
+    next() {
+      if (this.index >= this.view.length - 1) return;
+      this.index++;
+      this._loadCurrent();
+      if (this._isFullscreen()) this._fsLoadCurrent();
+    },
+    prev() {
+      if (this.index <= 0) return;
+      this.index--;
+      this._loadCurrent();
+      if (this._isFullscreen()) this._fsLoadCurrent();
+    },
+
+    async _loadCurrent() {
+      const entry = this.view[this.index];
+      if (!entry) return;
+      const img = $('lightboxImg');
+      const meta = $('lightboxMeta');
+      const promptEl = $('lightboxPrompt');
+      const favBtn = $('lightboxFavorite');
+      const prevBtn = $('lightboxPrev');
+      const nextBtn = $('lightboxNext');
+
+      if (img && img.src && img.src.startsWith('blob:')) {
+        try { URL.revokeObjectURL(img.src); } catch {}
+      }
+      const url = await cacheGetUrl(entry.id);
+      if (img && url) img.src = url;
+
+      if (meta) {
+        const parts = [`${this.index + 1} / ${this.view.length}`];
+        if (typeof entry.seed === 'number') parts.push(`seed ${entry.seed}`);
+        if (entry.createdAt) {
+          const d = new Date(entry.createdAt);
+          parts.push(d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        }
+        meta.textContent = parts.join(' · ');
+      }
+      if (promptEl) {
+        const p = entry.prompt || '';
+        promptEl.textContent = p.length > 240 ? p.slice(0, 237) + '…' : p;
+      }
+      if (favBtn) {
+        favBtn.classList.toggle('active', entry.favorited === true);
+        favBtn.textContent = entry.favorited === true ? '★ favorited' : '☆ favorite';
+        favBtn.title = entry.favorited === true ? 'unfavorite (f)' : 'favorite (f)';
+      }
+      if (prevBtn) prevBtn.disabled = this.index <= 0;
+      if (nextBtn) nextBtn.disabled = this.index >= this.view.length - 1;
+    },
+
+    enterFullscreen() {
+      const fs = $('fullscreenModal');
+      if (!fs) return;
+      this._bindFullscreenOnce();
+      fs.classList.add('visible');
+      this._fsResetZoom();
+      this._fsLoadCurrent();
+    },
+    exitFullscreen() {
+      const fs = $('fullscreenModal');
+      if (!fs || !fs.classList.contains('visible')) return;
+      fs.classList.remove('visible');
+      const fsImg = $('fsImg');
+      if (fsImg && fsImg.src && fsImg.src.startsWith('blob:')) {
+        try { URL.revokeObjectURL(fsImg.src); } catch {}
+        fsImg.src = '';
+      }
+      this._fsDrag = null;
+      this._fsPinch = null;
+      this._fsSwipe = null;
+    },
+    _isFullscreen() {
+      return $('fullscreenModal')?.classList.contains('visible') === true;
+    },
+
+    async _fsLoadCurrent() {
+      const entry = this.view[this.index];
+      if (!entry) return;
+      const img = $('fsImg');
+      const meta = $('fsMeta');
+      const prevBtn = $('fsPrev');
+      const nextBtn = $('fsNext');
+      if (img && img.src && img.src.startsWith('blob:')) {
+        try { URL.revokeObjectURL(img.src); } catch {}
+      }
+      const url = await cacheGetUrl(entry.id);
+      if (img && url) {
+        img.src = url;
+        // Suppress the transition during image swap so reset-zoom doesn't
+        // animate the new image's transform from the old image's matrix.
+        img.classList.add('no-transition');
+        requestAnimationFrame(() => {
+          this._fsResetZoom();
+          requestAnimationFrame(() => img.classList.remove('no-transition'));
+        });
+      }
+      if (meta) {
+        const parts = [`${this.index + 1} / ${this.view.length}`];
+        if (typeof entry.seed === 'number') parts.push(`seed ${entry.seed}`);
+        meta.textContent = parts.join(' · ');
+      }
+      if (prevBtn) prevBtn.disabled = this.index <= 0;
+      if (nextBtn) nextBtn.disabled = this.index >= this.view.length - 1;
+    },
+
+    _fsApplyTransform() {
+      const img = $('fsImg');
+      if (!img) return;
+      img.style.transform = `translate(${this._fsPanX}px, ${this._fsPanY}px) scale(${this._fsScale})`;
+      const lbl = $('fsZoomLabel');
+      if (lbl) lbl.textContent = `${Math.round(this._fsScale * 100)}%`;
+    },
+    _fsResetZoom() {
+      this._fsScale = 1; this._fsPanX = 0; this._fsPanY = 0;
+      this._fsApplyTransform();
+    },
+    /** Zoom around a screen-space focal point — keeps the pixel under
+     *  the cursor anchored. */
+    _fsZoomAt(factor, focalX, focalY) {
+      const newScale = Math.max(this._fsMinScale, Math.min(this._fsMaxScale, this._fsScale * factor));
+      if (newScale === this._fsScale) return;
+      const stage = $('fsStage');
+      if (!stage) { this._fsScale = newScale; this._fsApplyTransform(); return; }
+      const rect = stage.getBoundingClientRect();
+      const sx = focalX - rect.left - rect.width / 2;
+      const sy = focalY - rect.top  - rect.height / 2;
+      const ratio = newScale / this._fsScale;
+      this._fsPanX = sx - (sx - this._fsPanX) * ratio;
+      this._fsPanY = sy - (sy - this._fsPanY) * ratio;
+      this._fsScale = newScale;
+      this._fsApplyTransform();
+    },
+
+    _bindOnce() {
+      if (this._bound) return;
+      this._bound = true;
+      const self = this;
+      const modal = $('lightboxModal');
+
+      $('lightboxClose')?.addEventListener('click', () => self.close());
+      $('lightboxPrev') ?.addEventListener('click', () => self.prev());
+      $('lightboxNext') ?.addEventListener('click', () => self.next());
+      $('lightboxFullscreen')?.addEventListener('click', () => self.enterFullscreen());
+      $('lightboxFavorite')?.addEventListener('click', async () => {
+        const entry = self.view[self.index];
+        if (!entry) return;
+        const newVal = await cacheToggleFavorite(entry.id);
+        if (newVal !== null) {
+          entry.favorited = newVal;
+          self._loadCurrent();
+          renderGallery();
+        }
+      });
+      $('lightboxDelete')?.addEventListener('click', async () => {
+        const entry = self.view[self.index];
+        if (!entry) return;
+        await cacheDelete(entry.id);
+        self.view.splice(self.index, 1);
+        if (self.view.length === 0) { renderGallery(); self.close(); return; }
+        if (self.index >= self.view.length) self.index = self.view.length - 1;
+        self._loadCurrent();
+        if (self._isFullscreen()) self._fsLoadCurrent();
+        renderGallery();
+      });
+
+      // Click backdrop (not the card) closes — but only when fullscreen
+      // isn't on top of us.
+      modal?.addEventListener('click', (e) => {
+        if (self._isFullscreen()) return;
+        if (e.target === modal) self.close();
+      });
+
+      // Keyboard nav — fullscreen owns its own keys when visible
+      document.addEventListener('keydown', (e) => {
+        if (self._isFullscreen()) return;
+        if (!modal?.classList.contains('visible')) return;
+        switch (e.key) {
+          case 'Escape':     e.preventDefault(); self.close(); break;
+          case 'ArrowLeft':  e.preventDefault(); self.prev();  break;
+          case 'ArrowRight': e.preventDefault(); self.next();  break;
+          case 'Enter':      e.preventDefault(); self.enterFullscreen(); break;
+          case 'f': case 'F': e.preventDefault();
+            $('lightboxFavorite')?.click(); break;
+          case 'Delete': case 'Backspace': e.preventDefault();
+            $('lightboxDelete')?.click(); break;
+        }
+      });
+    },
+
+    _bindFullscreenOnce() {
+      if (this._fsBound) return;
+      this._fsBound = true;
+      const self = this;
+      const fs = $('fullscreenModal');
+      const stage = $('fsStage');
+      const img = $('fsImg');
+
+      $('fsClose')?.addEventListener('click', () => self.exitFullscreen());
+      $('fsPrev') ?.addEventListener('click', () => self.prev());
+      $('fsNext') ?.addEventListener('click', () => self.next());
+      $('fsZoomIn') ?.addEventListener('click', () => self._fsZoomAt(1.25, window.innerWidth / 2, window.innerHeight / 2));
+      $('fsZoomOut')?.addEventListener('click', () => self._fsZoomAt(0.8,  window.innerWidth / 2, window.innerHeight / 2));
+      $('fsZoomFit')?.addEventListener('click', () => self._fsResetZoom());
+
+      // Click backdrop exits fullscreen (returns to lightbox preview)
+      fs?.addEventListener('click', (e) => {
+        if (e.target === fs) self.exitFullscreen();
+      });
+
+      // Keyboard — only when fullscreen is the topmost layer
+      document.addEventListener('keydown', (e) => {
+        if (!self._isFullscreen()) return;
+        switch (e.key) {
+          case 'Escape':     e.preventDefault(); self.exitFullscreen(); break;
+          case 'ArrowLeft':  e.preventDefault(); self.prev();  break;
+          case 'ArrowRight': e.preventDefault(); self.next();  break;
+          case '+': case '=': e.preventDefault();
+            self._fsZoomAt(1.25, window.innerWidth / 2, window.innerHeight / 2); break;
+          case '-': case '_': e.preventDefault();
+            self._fsZoomAt(0.8,  window.innerWidth / 2, window.innerHeight / 2); break;
+          case '0':           e.preventDefault(); self._fsResetZoom(); break;
+        }
+      });
+
+      // Mouse wheel zoom around cursor
+      stage?.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.12 : 0.89;
+        self._fsZoomAt(factor, e.clientX, e.clientY);
+      }, { passive: false });
+
+      // Drag to pan when zoomed in
+      img?.addEventListener('mousedown', (e) => {
+        if (self._fsScale <= 1.0001) return;
+        e.preventDefault();
+        self._fsDrag = { startX: e.clientX, startY: e.clientY, panX: self._fsPanX, panY: self._fsPanY };
+        img.classList.add('dragging');
+      });
+      document.addEventListener('mousemove', (e) => {
+        if (!self._fsDrag) return;
+        self._fsPanX = self._fsDrag.panX + (e.clientX - self._fsDrag.startX);
+        self._fsPanY = self._fsDrag.panY + (e.clientY - self._fsDrag.startY);
+        self._fsApplyTransform();
+      });
+      document.addEventListener('mouseup', () => {
+        if (self._fsDrag) { self._fsDrag = null; img?.classList.remove('dragging'); }
+      });
+
+      // Touch — single touch swipes (when at fit) OR pans (when zoomed),
+      // two touches pinch-zoom around midpoint.
+      const SWIPE_THRESHOLD = 50;
+      const SWIPE_AXIS_RATIO = 1.4;
+      stage?.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          const t = e.touches[0];
+          if (self._fsScale > 1.0001) {
+            self._fsDrag = { startX: t.clientX, startY: t.clientY, panX: self._fsPanX, panY: self._fsPanY };
+            self._fsSwipe = null;
+          } else {
+            self._fsSwipe = { startX: t.clientX, startY: t.clientY };
+            self._fsDrag = null;
+          }
+        } else if (e.touches.length === 2) {
+          self._fsDrag = null; self._fsSwipe = null;
+          const [a, b] = e.touches;
+          const dx = b.clientX - a.clientX, dy = b.clientY - a.clientY;
+          self._fsPinch = { startDist: Math.hypot(dx, dy), startScale: self._fsScale };
+        }
+      }, { passive: true });
+      stage?.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1 && self._fsDrag) {
+          const t = e.touches[0];
+          self._fsPanX = self._fsDrag.panX + (t.clientX - self._fsDrag.startX);
+          self._fsPanY = self._fsDrag.panY + (t.clientY - self._fsDrag.startY);
+          self._fsApplyTransform();
+          e.preventDefault();
+        } else if (e.touches.length === 2 && self._fsPinch) {
+          const [a, b] = e.touches;
+          const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+          const target = self._fsPinch.startScale * (dist / self._fsPinch.startDist);
+          const midX = (a.clientX + b.clientX) / 2;
+          const midY = (a.clientY + b.clientY) / 2;
+          self._fsZoomAt(target / self._fsScale, midX, midY);
+          e.preventDefault();
+        }
+      }, { passive: false });
+      stage?.addEventListener('touchend', (e) => {
+        if (self._fsSwipe && e.changedTouches.length > 0) {
+          const t = e.changedTouches[0];
+          const dx = t.clientX - self._fsSwipe.startX;
+          const dy = t.clientY - self._fsSwipe.startY;
+          if (Math.abs(dx) >= SWIPE_THRESHOLD && Math.abs(dx) >= Math.abs(dy) * SWIPE_AXIS_RATIO) {
+            if (dx < 0) self.next(); else self.prev();
+          }
+        }
+        if (e.touches.length === 0) { self._fsDrag = null; self._fsPinch = null; self._fsSwipe = null; }
+      });
+
+      // Double-click toggles between fit and 2× — quick zoom
+      img?.addEventListener('dblclick', (e) => {
+        if (self._fsScale > 1.0001) self._fsResetZoom();
+        else self._fsZoomAt(2, e.clientX, e.clientY);
+      });
+    },
+  };
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Generation queue — split pending vs active, hard-capped at MAX_IMAGES
+  // ══════════════════════════════════════════════════════════════════════
+  // The +1 / +5 buttons add to a pending counter; a runner drains the
+  // pending queue by launching up to MAX_PARALLEL generations at a time.
+  // The status bar shows both counters separately so the user can tell
+  // "queued but not started" from "currently generating".
+  //
+  // Hard cap: gallery + pending + active is never allowed to exceed
+  // MAX_IMAGES. Every queue-add intent is clamped against the
+  // currently-cached size. _qAdd() returns the number actually accepted
+  // so the UI can show "added 3 of 5 (cap reached)" rather than silently
+  // doing the wrong thing. Without this clamp the queue can outrun the
+  // cache cap — when those generations finish, cacheStore() would
+  // start evicting older (potentially favorited) entries to make room.
+  let _qPending = 0;
+  let _qRunning = false;
+
+  function _bumpQueueUI() {
+    const status = $('queueStatus');
+    const qRemove = $('qRemove');
+    const qClear = $('qClear');
+    const total = _qPending + activeGens;
+    if (total > 0) {
+      const parts = [];
+      if (_qPending > 0) parts.push(`${_qPending} queued`);
+      if (activeGens > 0) parts.push(`${activeGens} generating`);
+      if (status) {
+        status.textContent = parts.join(' · ');
+        status.classList.remove('hidden');
+      }
+      if (qRemove) qRemove.style.display = _qPending > 0 ? '' : 'none';
+      if (qClear)  qClear.style.display  = _qPending > 0 ? '' : 'none';
+    } else {
+      if (status) status.classList.add('hidden');
+      if (qRemove) qRemove.style.display = 'none';
+      if (qClear)  qClear.style.display  = 'none';
+    }
+    // Disable +1 / +5 when total work would exceed the cap. We can't
+    // know the cached count synchronously without another IDB hit, but
+    // we use the last-known count + active + pending as a proxy. The
+    // accurate clamp happens inside _qAdd(); we leave +5 enabled with
+    // 1+ slots available so it can partially-accept and warn the user
+    // rather than hiding the option entirely.
+    const gen1 = $('gen1'); const gen5 = $('gen5');
+    const knownTotal = _lastKnownCacheCount + _qPending + activeGens;
+    const atCap = knownTotal >= MAX_IMAGES;
+    if (gen1) gen1.disabled = atCap;
+    if (gen5) gen5.disabled = atCap;
+  }
+
+  // Last-known cached image count, refreshed on every render and on
+  // every queue add. Lets _bumpQueueUI() reason about cap-headroom
+  // without an IDB read on every hover.
+  let _lastKnownCacheCount = 0;
+
+  async function _qRun() {
+    if (_qRunning) return;
+    _qRunning = true;
+    while (_qPending > 0) {
+      const batch = Math.min(_qPending, MAX_PARALLEL - activeGens);
+      if (batch <= 0) {
+        await sleep(200);
+        _bumpQueueUI();
+        continue;
+      }
+      _qPending -= batch;
+      _bumpQueueUI();
+      $('genStatus').textContent = `Generating ${batch} image${batch === 1 ? '' : 's'}…`;
+      const promises = Array.from({ length: batch }, () =>
+        generateOne().then(id => {
+          _bumpQueueUI();
+          if (id) renderGallery(); // progressive — each image lands as it arrives
+          return id;
+        })
+      );
+      await Promise.all(promises);
+      const m = await getManifest();
+      _lastKnownCacheCount = m.length;
+      const remaining = _qPending + activeGens;
+      $('genStatus').textContent = remaining > 0
+        ? `${m.length} image${m.length === 1 ? '' : 's'} in cache. ${remaining} remaining…`
+        : `Done. ${m.length} image${m.length === 1 ? '' : 's'} in cache.`;
+      renderGallery();
+    }
+    _bumpQueueUI();
+    _qRunning = false;
+  }
+
+  /** Try to queue `n` more generations. Clamps against the hard cap of
+   *  MAX_IMAGES total (cached + pending + active). Returns the number
+   *  actually accepted, so the caller can warn the user when their ask
+   *  was partially or fully refused. */
+  async function _qAdd(n) {
+    const m = await getManifest();
+    _lastKnownCacheCount = m.length;
+    const inFlight = _qPending + activeGens;
+    const headroom = Math.max(0, MAX_IMAGES - m.length - inFlight);
+    const accepted = Math.min(n, headroom);
+    if (accepted <= 0) {
+      toast(`Cap reached — ${m.length} cached + ${inFlight} in flight = ${m.length + inFlight}/${MAX_IMAGES}. Delete some images first or favorite less.`, 'warn');
+      _bumpQueueUI();
+      return 0;
+    }
+    if (accepted < n) {
+      toast(`Only queued ${accepted} of ${n} — at the ${MAX_IMAGES}-image cap.`, 'warn');
+    }
+    _qPending += accepted;
+    _bumpQueueUI();
+    _qRun();
+    return accepted;
+  }
+  function _qRemoveOne() {
+    if (_qPending > 0) {
+      _qPending--;
+      _bumpQueueUI();
+      if (_qPending === 0 && activeGens === 0) {
+        $('genStatus').textContent = 'Queue cleared.';
+      }
+    }
+  }
+  function _qClearAll() {
+    if (_qPending <= 0) return;
+    const dropped = _qPending;
+    _qPending = 0;
+    _bumpQueueUI();
+    $('genStatus').textContent = `Queue cleared (${dropped} dropped). Active generations will finish.`;
+    toast(`Queue cleared — ${dropped} pending dropped.`);
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -862,8 +2255,11 @@
 
   // Default-enabled transitions — picked to give a pleasant mix without being
   // visually overwhelming. User can toggle individually or use the All/None buttons.
+  // Keep this list small and calm — there are 30+ available, so a default of
+  // 8 or so gives variety without overwhelming first-time users.
   const DEFAULT_ENABLED = new Set([
-    'crossfade', 'fadeBlack', 'kenburns', 'slideLeft', 'zoomIn', 'blur',
+    'crossfade', 'fadeBlack', 'kenburns', 'breathe',
+    'slideLeft', 'pushLeft', 'zoomIn', 'blur',
   ]);
 
   function getEnabledTransitions() {
@@ -899,11 +2295,18 @@
   // from BOTH slides so the next transition starts from a known state.
   // ══════════════════════════════════════════════════════════════════════
   function prepSlides(oldEl, newEl) {
-    // newEl is going to be the incoming slide — wipe its inline styles
+    // newEl is going to be the incoming slide — wipe its inline styles.
+    // Includes properties the newer transitions touch (mask-image,
+    // transformOrigin, backfaceVisibility) so transition leakage is
+    // impossible — every run starts from a known-clean state.
     newEl.style.transition = 'none';
     newEl.style.transform = '';
     newEl.style.filter = '';
     newEl.style.clipPath = '';
+    newEl.style.maskImage = '';
+    newEl.style.webkitMaskImage = '';
+    newEl.style.transformOrigin = '';
+    newEl.style.backfaceVisibility = '';
     newEl.style.opacity = '0';
     newEl.style.zIndex = '2';
     // oldEl keeps its bg image but we ensure its z-index is below
@@ -920,6 +2323,10 @@
         el.style.transform = '';
         el.style.filter = '';
         el.style.clipPath = '';
+        el.style.maskImage = '';
+        el.style.webkitMaskImage = '';
+        el.style.transformOrigin = '';
+        el.style.backfaceVisibility = '';
         el.style.opacity = '0';
         el.style.backgroundImage = '';
         el.classList.remove('show');
@@ -1134,6 +2541,609 @@
         }, dur * 1000 + 50);
       },
     },
+
+    // ─── Mirrors of existing slides/wipes ─────────────────────────────
+    slideRight: {
+      label: 'Slide right',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'translateX(-100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateX(0)';
+        oldEl.style.transform = 'translateX(100%)';
+        newEl.classList.add('show');
+        scheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    slideDown: {
+      label: 'Slide down',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'translateY(-100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateY(0)';
+        oldEl.style.transform = 'translateY(100%)';
+        newEl.classList.add('show');
+        scheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    wipeRight: {
+      label: 'Wipe right',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.clipPath = 'inset(0 0 0 100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `clip-path ${dur}s ease`;
+        newEl.style.clipPath = 'inset(0 0 0 0)';
+        newEl.classList.add('show');
+        setTimeout(() => {
+          oldEl.classList.remove('show');
+          oldEl.style.opacity = '0';
+          oldEl.style.backgroundImage = '';
+        }, dur * 1000 + 50);
+      },
+    },
+    wipeUp: {
+      label: 'Wipe up',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        // Clip is bottom→top: start fully clipped from top, reveal from bottom
+        newEl.style.clipPath = 'inset(100% 0 0 0)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `clip-path ${dur}s ease`;
+        newEl.style.clipPath = 'inset(0 0 0 0)';
+        newEl.classList.add('show');
+        setTimeout(() => {
+          oldEl.classList.remove('show');
+          oldEl.style.opacity = '0';
+          oldEl.style.backgroundImage = '';
+        }, dur * 1000 + 50);
+      },
+    },
+    wipeDown: {
+      label: 'Wipe down',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.clipPath = 'inset(0 0 100% 0)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `clip-path ${dur}s ease`;
+        newEl.style.clipPath = 'inset(0 0 0 0)';
+        newEl.classList.add('show');
+        setTimeout(() => {
+          oldEl.classList.remove('show');
+          oldEl.style.opacity = '0';
+          oldEl.style.backgroundImage = '';
+        }, dur * 1000 + 50);
+      },
+    },
+    diagonalWipe: {
+      label: 'Diagonal wipe',
+      run(oldEl, newEl, url, dur) {
+        // Polygon clip walks from top-left corner outward to a full square.
+        // The polygon points define a triangle that grows along the
+        // anti-diagonal so the leading edge sweeps from corner to corner.
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.clipPath = 'polygon(0 0, 0 0, 0 0)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `clip-path ${dur}s ease`;
+        newEl.style.clipPath = 'polygon(0 0, 200% 0, 0 200%)';
+        newEl.classList.add('show');
+        setTimeout(() => {
+          oldEl.classList.remove('show');
+          oldEl.style.opacity = '0';
+          oldEl.style.backgroundImage = '';
+        }, dur * 1000 + 50);
+      },
+    },
+
+    // ─── Push transitions (both slides move together) ──────────────────
+    // The push family differs from slide in that BOTH slides move with
+    // the same velocity, so they appear glued together — like dragging
+    // a film strip across the viewport. Slide animates only the new
+    // slide overtop a stationary old one.
+    pushLeft: {
+      label: 'Push left',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'translateX(100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateX(0)';
+        oldEl.style.transform = 'translateX(-100%)';
+        newEl.classList.add('show');
+        scheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    pushRight: {
+      label: 'Push right',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'translateX(-100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateX(0)';
+        oldEl.style.transform = 'translateX(100%)';
+        newEl.classList.add('show');
+        scheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    pushUp: {
+      label: 'Push up',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'translateY(100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateY(0)';
+        oldEl.style.transform = 'translateY(-100%)';
+        newEl.classList.add('show');
+        scheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    pushDown: {
+      label: 'Push down',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'translateY(-100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateY(0)';
+        oldEl.style.transform = 'translateY(100%)';
+        newEl.classList.add('show');
+        scheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+
+    // ─── Rotation / 3D transitions ────────────────────────────────────
+    spin: {
+      label: 'Spin',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.transform = 'rotate(-180deg) scale(0.5)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'rotate(0) scale(1)';
+        newEl.classList.add('show');
+        oldEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease`;
+        oldEl.style.transform = 'rotate(180deg) scale(0.5)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+        scheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    swirl: {
+      label: 'Swirl',
+      run(oldEl, newEl, url, dur) {
+        // Like spin but tighter rotation + slow grow, more vortex-y
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.transform = 'rotate(360deg) scale(0)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-out`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'rotate(0) scale(1)';
+        newEl.classList.add('show');
+        oldEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-in`;
+        oldEl.style.transform = 'rotate(-360deg) scale(0)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+        scheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    flipH: {
+      label: 'Flip horizontal',
+      run(oldEl, newEl, url, dur) {
+        // 3D card-flip on the Y axis. Both slides need the perspective
+        // applied via #player.flipping (set in CSS). The new slide
+        // starts back-facing; after half-duration, it flips into view.
+        const player = document.getElementById('player');
+        if (player) player.classList.add('flipping');
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.transformOrigin = 'center';
+        newEl.style.backfaceVisibility = 'hidden';
+        newEl.style.transform = 'rotateY(180deg)';
+        oldEl.style.transformOrigin = 'center';
+        oldEl.style.backfaceVisibility = 'hidden';
+        oldEl.style.transform = 'rotateY(0deg)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease-in-out`;
+        oldEl.style.transition = `transform ${dur}s ease-in-out`;
+        newEl.style.transform = 'rotateY(0deg)';
+        oldEl.style.transform = 'rotateY(-180deg)';
+        newEl.classList.add('show');
+        setTimeout(() => {
+          if (player) player.classList.remove('flipping');
+          oldEl.classList.remove('show');
+          oldEl.style.opacity = '0';
+          oldEl.style.backfaceVisibility = '';
+          oldEl.style.transformOrigin = '';
+          newEl.style.backfaceVisibility = '';
+          newEl.style.transformOrigin = '';
+        }, dur * 1000 + 50);
+      },
+    },
+    flipV: {
+      label: 'Flip vertical',
+      run(oldEl, newEl, url, dur) {
+        const player = document.getElementById('player');
+        if (player) player.classList.add('flipping');
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.transformOrigin = 'center';
+        newEl.style.backfaceVisibility = 'hidden';
+        newEl.style.transform = 'rotateX(180deg)';
+        oldEl.style.transformOrigin = 'center';
+        oldEl.style.backfaceVisibility = 'hidden';
+        oldEl.style.transform = 'rotateX(0deg)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease-in-out`;
+        oldEl.style.transition = `transform ${dur}s ease-in-out`;
+        newEl.style.transform = 'rotateX(0deg)';
+        oldEl.style.transform = 'rotateX(-180deg)';
+        newEl.classList.add('show');
+        setTimeout(() => {
+          if (player) player.classList.remove('flipping');
+          oldEl.classList.remove('show');
+          oldEl.style.opacity = '0';
+          oldEl.style.backfaceVisibility = '';
+          oldEl.style.transformOrigin = '';
+          newEl.style.backfaceVisibility = '';
+          newEl.style.transformOrigin = '';
+        }, dur * 1000 + 50);
+      },
+    },
+    rollLeft: {
+      label: 'Roll left',
+      run(oldEl, newEl, url, dur) {
+        // Like slideLeft but the incoming slide rotates as it travels —
+        // gives a paper-tube unfurling feel. 30° is enough to sell the
+        // motion without making text unreadable.
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'translateX(100%) rotate(15deg)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateX(0) rotate(0)';
+        oldEl.style.transform = 'translateX(-100%) rotate(-15deg)';
+        newEl.classList.add('show');
+        scheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+
+    // ─── Zoom variations ──────────────────────────────────────────────
+    crossZoom: {
+      label: 'Cross zoom',
+      run(oldEl, newEl, url, dur) {
+        // Old falls toward viewer (scale up + fade), new arrives from
+        // far away (scale up from 0.5 + fade in). Cinematic "passing
+        // through" feel — works well between dissimilar images.
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.transform = 'scale(0.5)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-out`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'scale(1)';
+        newEl.classList.add('show');
+        oldEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-in`;
+        oldEl.style.transform = 'scale(2.2)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+      },
+    },
+    zoomBlur: {
+      label: 'Zoom blur',
+      run(oldEl, newEl, url, dur) {
+        // Zoom in with heavy blur dropping to clarity — focus-pull effect
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.transform = 'scale(1.4)';
+        newEl.style.filter = 'blur(40px)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-out, filter ${dur}s ease-out`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'scale(1)';
+        newEl.style.filter = 'blur(0px)';
+        newEl.classList.add('show');
+        oldEl.style.transition = `opacity ${dur}s ease, filter ${dur}s ease`;
+        oldEl.style.filter = 'blur(40px)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+        setTimeout(() => { oldEl.style.filter = ''; }, dur * 1000 + 150);
+      },
+    },
+
+    // ─── Shape-based wipes ────────────────────────────────────────────
+    circleClose: {
+      label: 'Circle close',
+      run(oldEl, newEl, url, dur) {
+        // New slide sits underneath at full opacity from the start.
+        // The OLD slide's clip-path closes inward to a point, revealing
+        // the new one below. Inverse of the iris transition.
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.zIndex = '1'; // underneath
+        oldEl.style.zIndex = '2'; // on top
+        oldEl.style.clipPath = 'circle(150% at 50% 50%)';
+        void oldEl.offsetWidth;
+        oldEl.style.transition = `clip-path ${dur}s ease`;
+        oldEl.style.clipPath = 'circle(0% at 50% 50%)';
+        newEl.classList.add('show');
+        setTimeout(() => {
+          oldEl.classList.remove('show');
+          oldEl.style.opacity = '0';
+          oldEl.style.clipPath = '';
+          oldEl.style.zIndex = '';
+          newEl.style.zIndex = '';
+        }, dur * 1000 + 50);
+      },
+    },
+    splitV: {
+      label: 'Split vertical',
+      run(oldEl, newEl, url, dur) {
+        // Old splits along a vertical seam: top half slides up, bottom
+        // half slides down (using clip-path on a single element via
+        // animation isn't doable; we fake it with a clip-inset wipe
+        // instead — it reads as the seam opening from the middle).
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.zIndex = '1';
+        oldEl.style.zIndex = '2';
+        oldEl.style.clipPath = 'inset(0 0 0 0)';
+        void oldEl.offsetWidth;
+        oldEl.style.transition = `clip-path ${dur}s ease`;
+        oldEl.style.clipPath = 'inset(50% 0 50% 0)'; // horizontal slit closes vertically
+        newEl.classList.add('show');
+        setTimeout(() => {
+          oldEl.classList.remove('show');
+          oldEl.style.opacity = '0';
+          oldEl.style.clipPath = '';
+          oldEl.style.zIndex = '';
+          newEl.style.zIndex = '';
+        }, dur * 1000 + 50);
+      },
+    },
+    splitH: {
+      label: 'Split horizontal',
+      run(oldEl, newEl, url, dur) {
+        // Like splitV but the seam runs vertically, splitting old
+        // into left/right halves that pinch toward the center seam.
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.zIndex = '1';
+        oldEl.style.zIndex = '2';
+        oldEl.style.clipPath = 'inset(0 0 0 0)';
+        void oldEl.offsetWidth;
+        oldEl.style.transition = `clip-path ${dur}s ease`;
+        oldEl.style.clipPath = 'inset(0 50% 0 50%)';
+        newEl.classList.add('show');
+        setTimeout(() => {
+          oldEl.classList.remove('show');
+          oldEl.style.opacity = '0';
+          oldEl.style.clipPath = '';
+          oldEl.style.zIndex = '';
+          newEl.style.zIndex = '';
+        }, dur * 1000 + 50);
+      },
+    },
+
+    // ─── Color / filter transitions ───────────────────────────────────
+    fadeColor: {
+      label: 'Fade → color',
+      async run(oldEl, newEl, url, dur) {
+        // Like fadeBlack/fadeWhite but through a randomized warm or
+        // cool hue each time. Skews to colors that feel ambient
+        // (deep magenta, indigo, teal, gold) rather than alarming reds.
+        const hues = [280, 240, 200, 170, 40, 320]; // magenta, indigo, cyan-ish, teal, gold, pink
+        const hue = hues[Math.floor(Math.random() * hues.length)];
+        const flashColor = `hsl(${hue}, 70%, 35%)`;
+        const b = $('blackout');
+        b.style.background = flashColor;
+        b.style.transition = `opacity ${dur / 2}s ease`;
+        b.classList.add('show');
+        await sleep(dur * 500);
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.classList.add('show');
+        oldEl.classList.remove('show');
+        oldEl.style.opacity = '0';
+        await sleep(50);
+        b.classList.remove('show');
+        // Restore blackout to its default (#000) after the next swap settles
+        setTimeout(() => { b.style.background = '#000'; }, dur * 1000 + 300);
+      },
+    },
+    desaturate: {
+      label: 'Desaturate',
+      run(oldEl, newEl, url, dur) {
+        // Old desaturates to grayscale while new fades in at full color
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.filter = 'grayscale(1)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, filter ${dur}s ease`;
+        newEl.style.opacity = '1';
+        newEl.style.filter = 'grayscale(0)';
+        newEl.classList.add('show');
+        oldEl.style.transition = `opacity ${dur}s ease, filter ${dur}s ease`;
+        oldEl.style.filter = 'grayscale(1)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+        setTimeout(() => { oldEl.style.filter = ''; }, dur * 1000 + 150);
+      },
+    },
+    bloom: {
+      label: 'Bloom',
+      async run(oldEl, newEl, url, dur) {
+        // Quick white overexposure (about 1/3 of duration) then crossfade in
+        const b = $('blackout');
+        b.style.background = '#fff';
+        b.style.transition = `opacity ${dur / 3}s ease`;
+        b.classList.add('show');
+        await sleep(dur * 333);
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur * 0.4}s ease`;
+        newEl.style.opacity = '1';
+        newEl.classList.add('show');
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+        await sleep(50);
+        b.classList.remove('show');
+        setTimeout(() => { b.style.background = '#000'; }, dur * 1000 + 300);
+      },
+    },
+    burn: {
+      label: 'Burn',
+      run(oldEl, newEl, url, dur) {
+        // Hot warm-yellow tint as old fades; new fades in cool. The
+        // contrast reads as a film burn-out without the harshness.
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease`;
+        newEl.style.opacity = '1';
+        newEl.classList.add('show');
+        oldEl.style.transition = `opacity ${dur}s ease, filter ${dur}s ease`;
+        oldEl.style.filter = 'sepia(1) hue-rotate(-20deg) saturate(2) brightness(1.3)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+        setTimeout(() => { oldEl.style.filter = ''; }, dur * 1000 + 150);
+      },
+    },
+    vignetteOut: {
+      label: 'Vignette',
+      run(oldEl, newEl, url, dur) {
+        // Old slide darkens from the edges inward (ring closes) while
+        // new fades in underneath at full brightness. The mask is a
+        // shrinking radial gradient applied via -webkit-mask-image.
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.zIndex = '1';
+        oldEl.style.zIndex = '2';
+        oldEl.style.maskImage = 'radial-gradient(circle, black 100%, transparent 100%)';
+        oldEl.style.webkitMaskImage = 'radial-gradient(circle, black 100%, transparent 100%)';
+        void oldEl.offsetWidth;
+        oldEl.style.transition = `mask-image ${dur}s ease, -webkit-mask-image ${dur}s ease, opacity ${dur}s ease`;
+        oldEl.style.maskImage = 'radial-gradient(circle, black 0%, transparent 0%)';
+        oldEl.style.webkitMaskImage = 'radial-gradient(circle, black 0%, transparent 0%)';
+        oldEl.style.opacity = '0';
+        newEl.classList.add('show');
+        oldEl.classList.remove('show');
+        setTimeout(() => {
+          oldEl.style.maskImage = '';
+          oldEl.style.webkitMaskImage = '';
+          oldEl.style.zIndex = '';
+          newEl.style.zIndex = '';
+        }, dur * 1000 + 100);
+      },
+    },
+
+    // ─── Combo / kinetic ──────────────────────────────────────────────
+    fallIn: {
+      label: 'Fall in',
+      run(oldEl, newEl, url, dur) {
+        // New drops from above with a slight overshoot; old slides
+        // down a little while fading. Bouncy entrance, gentle exit.
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '0';
+        newEl.style.transform = 'translateY(-30%) scale(1.05)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur * 0.6}s ease, transform ${dur}s cubic-bezier(.34, 1.36, .64, 1)`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'translateY(0) scale(1)';
+        newEl.classList.add('show');
+        oldEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-in`;
+        oldEl.style.transform = 'translateY(15%)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+        scheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    floatIn: {
+      label: 'Float in',
+      run(oldEl, newEl, url, dur) {
+        // The opposite of fallIn — drifts upward gently. Hot-air-balloon
+        // ascending feel: slow, calm, no bounce.
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '0';
+        newEl.style.transform = 'translateY(20%) scale(0.95)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-out`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'translateY(0) scale(1)';
+        newEl.classList.add('show');
+        oldEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-in`;
+        oldEl.style.transform = 'translateY(-15%) scale(1.05)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+        scheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    breathe: {
+      label: 'Breathe',
+      run(oldEl, newEl, url, dur) {
+        // Slow scale-pulse at the start of new slide (1.0 → 1.03 → 1.0)
+        // alongside a crossfade. Reads like a quiet inhale/exhale —
+        // closest cousin to the kenburns transition but symmetrical.
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.transform = 'scale(0.97)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur * 1.5}s ease-in-out`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'scale(1)';
+        newEl.classList.add('show');
+        oldEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-out`;
+        oldEl.style.transform = 'scale(1.03)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+        scheduleCleanup(oldEl, dur * 1500 + 100);
+      },
+    },
   };
 
   // ══════════════════════════════════════════════════════════════════════
@@ -1277,6 +3287,7 @@
       });
       $('blackout').classList.remove('show');
       $('player').classList.remove('active');
+      $('player').classList.remove('flipping'); // a flip transition may have been mid-flight
       if (document.fullscreenElement)        document.exitFullscreen?.();
       else if (document.webkitFullscreenElement) document.webkitExitFullscreen?.();
       renderGallery();
@@ -1310,9 +3321,22 @@
   $('promptPos').addEventListener('input', () => saveSettings());
   $('promptNeg').addEventListener('input', () => saveSettings());
 
-  // Orientation + auto-gen
+  // Orientation + auto-gen + enhance length selector
   $('orientation').addEventListener('change', () => saveSettings(0));
   $('autoGen').addEventListener('change', () => saveSettings(0));
+  $('enhanceLength')?.addEventListener('change', () => saveSettings(0));
+
+  // ✨ Prompt enhancer — toggle-cancel handled inside runEnhance()
+  $('enhanceBtn')?.addEventListener('click', runEnhance);
+
+  // Style chips — clear-all wipes selections (individual chips wire
+  // themselves inside buildStyleChips() since they're rebuilt on toggle)
+  $('chipsClear')?.addEventListener('click', () => {
+    if (!activeStyleIds.length) return;
+    activeStyleIds = [];
+    buildStyleChips();
+    saveSettings(0);
+  });
 
   // Playback order — segmented control (Sequential / Random)
   $('orderSeg').addEventListener('click', e => {
@@ -1343,50 +3367,32 @@
     if (e.target.matches('input[type="checkbox"]')) saveSettings(0);
   });
 
-  $('gen1').addEventListener('click', async () => {
-    const btn = $('gen1');
-    btn.disabled = true;
-    $('genStatus').textContent = 'Generating 1 image…';
-    const id = await generateOne();
-    btn.disabled = false;
-    if (id) {
-      $('genStatus').textContent = 'Done.';
-      renderGallery();
-    } else {
-      $('genStatus').textContent = 'Generation failed. Try again or check the console.';
-    }
+  // Gallery sort + favorites filter — both persisted, both re-render
+  $('gallerySort')?.addEventListener('change', (e) => {
+    gallerySort = e.target.value || 'newest';
+    saveSettings(0);
+    renderGallery();
+  });
+  $('favFilter')?.addEventListener('click', () => {
+    favOnly = !favOnly;
+    saveSettings(0);
+    renderGallery();
   });
 
-  $('gen4').addEventListener('click', async () => {
-    const btn = $('gen4');
-    btn.disabled = true;
-    $('genStatus').textContent = 'Generating 4 images in parallel…';
-    let done = 0;
-    const promises = Array.from({ length: 4 }, () =>
-      generateOne().then(id => {
-        done++;
-        $('genStatus').textContent = `${done} of 4 complete…`;
-        if (id) renderGallery(); // progressive render
-      })
-    );
-    await Promise.all(promises);
-    btn.disabled = false;
-    $('genStatus').textContent = 'Batch done.';
-  });
+  // Generation buttons — queue-based, hard-capped at MAX_IMAGES
+  $('gen1').addEventListener('click', () => _qAdd(1));
+  $('gen5').addEventListener('click', () => _qAdd(5));
+  $('qRemove')?.addEventListener('click', _qRemoveOne);
+  $('qClear') ?.addEventListener('click', _qClearAll);
 
-  $('gallery').addEventListener('click', async e => {
-    const delBtn = e.target.closest('.del');
-    if (delBtn) {
-      e.stopPropagation();
-      await cacheDelete(delBtn.dataset.id);
-      renderGallery();
-    }
-  });
+  // Old delegated .del handler is no longer needed — renderGallery()
+  // wires per-item .del / .dl / .fav handlers directly inside the
+  // grid. The body click of each item opens the lightbox.
 
   $('clearAll').addEventListener('click', async () => {
     const m = await getManifest();
     if (!m.length) return;
-    if (!confirm(`Delete all ${m.length} images?`)) return;
+    if (!confirm(`Delete all ${m.length} images? Favorited ones will be removed too.`)) return;
     await cacheClear();
     renderGallery();
     toast('Gallery cleared.');
@@ -1404,7 +3410,10 @@
 
   $('playBtn').addEventListener('click', () => player.start());
 
-  // Exit on click OR ESC (ESC exits fullscreen; we hook fullscreenchange too)
+  // Exit on click OR ESC (ESC exits fullscreen; we hook fullscreenchange too).
+  // The .ignore-click guard prevents the player from closing immediately
+  // when the user releases their click on Play Fullscreen — the click
+  // bubbles into the fullscreen player otherwise.
   $('player').addEventListener('click', () => player.stop());
   document.addEventListener('keydown', e => {
     if (!player.running) return;
@@ -1420,9 +3429,13 @@
   // ══════════════════════════════════════════════════════════════════════
   // Initial paint — order matters:
   //   1. Build transition grid (creates checkbox DOM)
-  //   2. Load persisted settings (populates inputs, checks boxes)
-  //   3. Render gallery (async, independent of settings)
-  //   4. Best-effort: ask browser to keep our IndexedDB around
+  //   2. Build style chips (creates chip DOM — needed before loadSettings
+  //      can sync the active state into them)
+  //   3. Load persisted settings (populates inputs, checks boxes)
+  //   4. Re-render style chips with the loaded active set
+  //   5. Render gallery (async, independent of settings)
+  //   6. Refresh queue UI (so cap-headroom is reflected immediately)
+  //   7. Best-effort: ask browser to keep our IndexedDB around
   // ══════════════════════════════════════════════════════════════════════
 
   // iOS Safari: stop the browser from auto-zooming when the user focuses
@@ -1443,8 +3456,11 @@
 
   (async () => {
     buildTransitionGrid();
+    buildStyleChips();
     try { await loadSettings(); } catch (e) { console.error('loadSettings:', e); }
-    renderGallery();
+    buildStyleChips(); // re-render after settings populated activeStyleIds
+    await renderGallery();
+    _bumpQueueUI();
     tryPersistBrowserStorageData();
   })();
 })();
