@@ -961,6 +961,80 @@ padding: 24px;
   .modal .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
   .modal .modal-actions .btn { flex: 1; }
 
+  /* ============ ONBOARDING QUIZ ============ */
+  /* First-run personalization. Sidebar entry button + scrollable modal
+     of single-select chip rows. Hides permanently after completion via
+     body.onboarding-quiz-done. */
+  body.onboarding-quiz-done #onboardingQuizBtn { display: none !important; }
+  .onboarding-quiz-btn.btn.primary {
+    background: linear-gradient(135deg, rgba(0,212,230,0.18), rgba(201,168,85,0.10));
+    border: 1px solid var(--neon-cyan);
+    color: var(--text);
+    letter-spacing: 0.04em;
+    box-shadow: 0 0 14px rgba(0,212,230,0.18);
+    transition: all 0.2s;
+  }
+  .onboarding-quiz-btn.btn.primary:hover {
+    background: linear-gradient(135deg, rgba(0,212,230,0.28), rgba(201,168,85,0.16));
+    box-shadow: 0 0 22px rgba(0,212,230,0.32);
+  }
+  .oq-question { margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--glass-border); }
+  .oq-question:last-of-type { border-bottom: none; }
+  .oq-question-text { font-size: 0.9rem; color: var(--text); margin-bottom: 10px; line-height: 1.45; font-weight: 500; }
+  .oq-options { display: flex; flex-wrap: wrap; gap: 6px; }
+  .oq-option {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
+    color: var(--text-dim); padding: 7px 12px;
+    font-family: var(--font-body); font-size: 0.78rem;
+    cursor: pointer; transition: all 0.15s;
+    letter-spacing: 0.02em; line-height: 1.3;
+  }
+  .oq-option:hover { color: var(--text); border-color: var(--neon-amber); }
+  .oq-option.selected {
+    background: rgba(0,212,230,0.12); border-color: var(--neon-cyan);
+    color: var(--text); font-weight: 600;
+  }
+  .oq-intro {
+    font-size: 0.78rem; color: var(--text-dim); line-height: 1.55;
+    margin-bottom: 18px; padding: 10px 12px;
+    background: rgba(0,212,230,0.04); border-left: 2px solid var(--neon-cyan);
+  }
+  .oq-progress {
+    font-size: 0.66rem; color: var(--text-faint); letter-spacing: 0.08em;
+    text-transform: uppercase; margin-top: 6px;
+  }
+
+  /* ============ GLOSSARY TOOLTIPS (UX1.4) ============
+     Hover/tap surface for technical hypnosis terminology. Marks up
+     terms inline with .gloss-term and a data-gloss attribute key;
+     a single popover element is positioned near the target on demand
+     and dismissed on outside-click. Tap on touch devices. */
+  .gloss-term {
+    border-bottom: 1px dashed var(--neon-amber);
+    cursor: help;
+    text-decoration: none;
+    color: inherit;
+  }
+  .gloss-term:hover { border-bottom-color: var(--neon-cyan); color: var(--text); }
+  .gloss-popover {
+    position: fixed; z-index: 200;
+    max-width: 320px;
+    background: var(--bg); border: 1px solid var(--neon-cyan);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.5);
+    padding: 10px 12px;
+    font-size: 0.78rem; line-height: 1.5;
+    color: var(--text); pointer-events: none;
+    opacity: 0; transform: translateY(-4px);
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .gloss-popover.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .gloss-popover .gloss-term-title {
+    font-size: 0.66rem; color: var(--neon-cyan);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 4px; font-weight: 600;
+  }
+  .gloss-popover .gloss-defn { color: var(--text-dim); }
+
   /* ============ SOFT-PAUSE OVERLAY (first Esc press) ============ */
   /* Shown over the session when the user hits Esc once. Gives them a calm
      "you're safe, take your time" landing — they can resume or commit to a
@@ -1929,6 +2003,39 @@ min-width: 28px; min-height: 0;
     0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
     50%      { transform: translate(-50%, -50%) scale(1.6); opacity: 0.6; }
   }
+
+  /* ============ PERSONAL SYMBOL OVERLAY (V1.1) ============
+     Faded image of the user's crafted-suggestion symbol, layered over
+     the visualizer during the work phase. Reinforces installation by
+     pairing the visual anchor with the spoken suggestion. ~30% peak
+     opacity so it sits behind the fixation dot, slow breath pulsing
+     synced to the work-phase pacing. Removed via fade-out on phase exit. */
+  .personal-symbol-overlay {
+    position: absolute; top: 50%; left: 50%;
+    width: 280px; height: 280px; max-width: 60vw; max-height: 60vh;
+    transform: translate(-50%, -50%);
+    pointer-events: none; z-index: 8;
+    opacity: 0; transition: opacity 1.5s ease-out;
+    filter: blur(0.5px);
+    mix-blend-mode: screen;
+  }
+  .personal-symbol-overlay.visible {
+    opacity: 0.32;
+    animation: symbol-breath 7s ease-in-out infinite;
+  }
+  .personal-symbol-overlay img {
+    width: 100%; height: 100%; object-fit: contain;
+    border-radius: 50%;
+  }
+  @keyframes symbol-breath {
+    0%, 100% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.22; }
+    50%      { transform: translate(-50%, -50%) scale(1.05); opacity: 0.40; }
+  }
+  /* Reduced motion — drop the breath animation but keep the fade-in. */
+  @media (prefers-reduced-motion: reduce) {
+    .personal-symbol-overlay.visible { animation: none; opacity: 0.28; }
+  }
+
   .highway-canvas { position: absolute; inset: 0; }
   .spiral-svg {
     position: absolute; top: 50%; left: 50%;
@@ -3736,6 +3843,17 @@ padding: 6px 10px; font-size: 1.1rem;
   <div class="app-layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-inner">
+        <!-- Onboarding quiz — first-run personalization. Pre-fills the
+             profile in 60 seconds so the AI/Director have something to
+             work with from session 1. Hides itself permanently after
+             the quiz is completed (toggle via body.onboarding-quiz-done).
+             Also hidden if the user already filled meaningful profile
+             data manually (heuristic: pfName or pfExperience set), since
+             a returning user shouldn't be re-prompted. -->
+        <button class="btn primary onboarding-quiz-btn" id="onboardingQuizBtn"
+                style="width:100%;font-size:0.78rem;padding:9px;margin-bottom:10px;display:none">
+          ✨ personalize HNE — 1-min quiz
+        </button>
         <!-- Cloud account slug — sign in / out, presence count.
              Lives at the top with a separator below so it reads as
              a distinct subsystem from the profile + stats below. -->
@@ -12566,31 +12684,145 @@ I return to myself easily"></textarea>
   }
 
   // ── Phase 5 & 8: Recommendation engine ──
-  function getRecommendation(adaptive, analytics) {
+  // Cluster C — Profile-aware filtering. Today the local Director ignores
+  // posture, health-notes, spiritual-frame, and co-presence even though the
+  // AI prompt assembly reads them. These small filters bring the local pick
+  // into line with what the AI sees, so cold-start users without enough
+  // weighted-reward data still get appropriate recommendations.
+  //
+  // Method ids referenced here come from METHODS at line ~14000.
+  const _C1_POSTURE_BLOCK = {
+    // Walking — body-attention methods are unsafe; pick anything cognitive instead.
+    walking:    new Set(['hand-heaviness', 'arm-catalepsy', 'progressive', 'floating-body', 'glove-anesthesia', 'magnetic-hands', 'arm-drop']),
+    // Lying-side — symmetric body-scan methods feel awkward when one arm is pinned.
+    'lying-side': new Set(['progressive', 'body-awareness', 'floating-body']),
+  };
+  // C3 — pattern → method-ids to suppress when the pattern appears in pfHealthNotes.
+  // Conservative: only matches strong, unambiguous keywords. Free-text notes
+  // are noisy; better to under-filter than over-filter.
+  const _C3_HEALTH_BLOCKS = [
+    { re: /\bmigraine|seizure|epilep/i, methods: ['shock-induction'] /* viz-side already blocked via INTENSE_VIZ_LIST + safety relax gate */ },
+    { re: /\bpregnan/i,                  methods: ['shock-induction', 'eye-roll'] },
+    { re: /\bptsd|trauma|dissociat/i,    methods: ['eye-roll', 'shock-induction', 'fractionation', 'confusion'] },
+    { re: /\bpsychosis|schizo/i,         methods: ['confusion', 'fractionation', 'time-distortion'] },
+    { re: /\bvertigo|dizz|inner ear/i,   methods: ['floating-body', 'spiral'] },
+  ];
+  // C4 — secular spiritual frame → prefer methods that don't lean mystical.
+  // We don't HARD filter (the user might enjoy the imagery anyway); we just
+  // remove a small bias if they've explicitly chosen secular framing.
+  const _C4_MYSTICAL_TAGS = new Set(['spiritual', 'mystic', 'sacred']);
+
+  function _personaCountByHour(history) {
+    // C2 — Compute persona × hour distribution for time-of-day biasing.
+    // Returns { personaId: [count_h0, count_h1, ..., count_h23] }.
+    const map = {};
+    for (const r of history || []) {
+      if (!r?.personaId || !r.date) continue;
+      const h = new Date(r.date).getHours();
+      if (!map[r.personaId]) map[r.personaId] = new Array(24).fill(0);
+      map[r.personaId][h]++;
+    }
+    return map;
+  }
+
+  function getRecommendation(adaptive, analytics, profile, history) {
     // Compute top weight + confidence (separation from second choice).
     // Low-confidence picks (close to 2nd) are suppressed so adaptive
     // doesn't over-commit on early data. Also requires a minimum sample
     // size on the underlying counter so single-session preferences don't
     // dominate. analytics.* maps tally usage; adaptive.w.* are weighted
     // reward sums.
-    const topW = (weightMap, countMap, minSamples = 3, minSeparation = 0.15) => {
-      const entries = Object.entries(weightMap || {}).sort((a, b) => b[1] - a[1]);
+    //
+    // Cluster C — `profile` and `history` are optional. When passed, the
+    // function applies posture/health/spiritual/co-presence filters AND
+    // a time-of-day persona boost. Absent → behaves as the original
+    // 2-arg signature (callers without profile context still work).
+    const topW = (weightMap, countMap, minSamples = 3, minSeparation = 0.15, blockSet = null) => {
+      let entries = Object.entries(weightMap || {}).sort((a, b) => b[1] - a[1]);
+      // C1/C3 filtering — drop blocked ids before picking the top.
+      if (blockSet && blockSet.size) entries = entries.filter(([k]) => !blockSet.has(k));
       if (!entries.length) return { id: null, confidence: 0 };
       const [top, second] = entries;
       const topCount = (countMap || {})[top[0]] || 0;
       if (topCount < minSamples) return { id: null, confidence: 0 };
       const separation = second ? (top[1] - second[1]) : top[1];
-      // Confidence: how much the top wins by, normalized. Caps at 1.0.
       const denom = Math.max(Math.abs(top[1]) + Math.abs(second?.[1] ?? 0), 0.01);
       const confidence = Math.max(0, Math.min(1, separation / denom));
       if (confidence < minSeparation) return { id: null, confidence };
       return { id: top[0], confidence };
     };
     const aP = analytics?.p || {}, aM = analytics?.m || {}, aS = analytics?.s || {}, aL = analytics?.ln || {};
-    const personaPick    = topW(adaptive.w.p,  aP);
-    const methodPick     = topW(adaptive.w.m,  aM);
-    const soundscapePick = topW(adaptive.w.s,  aS, 3, 0.10); // sound is lower-stakes; ease threshold
-    const lengthPick     = topW(adaptive.w.ln, aL);
+
+    // Build Cluster C method block-set + persona time-of-day boost map.
+    let methodBlockSet = null;
+    let personaBoost = null;
+    let soundscapeBoost = null;
+    if (profile) {
+      // C1 · Posture-aware method filter
+      const postureBlock = _C1_POSTURE_BLOCK[profile.posture];
+      if (postureBlock) methodBlockSet = new Set(postureBlock);
+      // C3 · Health-notes safety gate — token-match a small pattern list
+      const notes = String(profile.healthNotes || '');
+      if (notes) {
+        for (const rule of _C3_HEALTH_BLOCKS) {
+          if (rule.re.test(notes)) {
+            if (!methodBlockSet) methodBlockSet = new Set();
+            for (const m of rule.methods) methodBlockSet.add(m);
+          }
+        }
+      }
+      // C5 · Co-presence soundscape biasing — boost low-attention soundscapes
+      // when sessions happen with someone else in the room or in public.
+      // Soft boost via a derived weight overlay rather than a hard filter.
+      if (profile.coPresence === 'shared' || profile.coPresence === 'public') {
+        soundscapeBoost = { drone: 0.5, brown: 0.5, pink: 0.4, rain: 0.3, fan: 0.3 };
+      }
+      // C4 — Spiritual-frame method filter: secular users don't get mystical
+      // pushed onto them. Soft suppression — read METHODS' tags if available.
+      if (profile.spiritualFrame === 'secular' && typeof METHODS !== 'undefined') {
+        const mysticalIds = new Set(
+          METHODS.filter(m => Array.isArray(m.tags) && m.tags.some(t => _C4_MYSTICAL_TAGS.has(t)))
+                 .map(m => m.id)
+        );
+        if (mysticalIds.size) {
+          if (!methodBlockSet) methodBlockSet = new Set();
+          for (const m of mysticalIds) methodBlockSet.add(m);
+        }
+      }
+    }
+
+    // C2 · Time-of-day persona biasing — overlay a small reward boost on
+    // the persona currently most-used at this hour, before topW picks.
+    let personaWeights = adaptive.w.p;
+    if (history && history.length >= 5) {
+      const hour = new Date().getHours();
+      const byHour = _personaCountByHour(history);
+      let bestPersona = null, bestCount = 0;
+      for (const pid in byHour) {
+        const c = byHour[pid][hour] || 0;
+        if (c > bestCount) { bestCount = c; bestPersona = pid; }
+      }
+      // Only boost when the hour-match is meaningful (≥3 sessions at this hour).
+      if (bestPersona && bestCount >= 3) {
+        personaWeights = { ...adaptive.w.p };
+        personaWeights[bestPersona] = (personaWeights[bestPersona] || 0) + 0.5 * bestCount;
+        personaBoost = { id: bestPersona, count: bestCount, hour };
+      }
+    }
+
+    // C5 — Soundscape boost overlay
+    let soundscapeWeights = adaptive.w.s;
+    if (soundscapeBoost) {
+      soundscapeWeights = { ...adaptive.w.s };
+      for (const k in soundscapeBoost) {
+        soundscapeWeights[k] = (soundscapeWeights[k] || 0) + soundscapeBoost[k];
+      }
+    }
+
+    const personaPick    = topW(personaWeights,        aP);
+    const methodPick     = topW(adaptive.w.m,          aM, 3, 0.15, methodBlockSet);
+    const soundscapePick = topW(soundscapeWeights,     aS, 3, 0.10);
+    const lengthPick     = topW(adaptive.w.ln,         aL);
     const rec = {
       persona:    personaPick.id,
       method:     methodPick.id,
@@ -12604,6 +12836,14 @@ I return to myself easily"></textarea>
         soundscape: soundscapePick.confidence,
         length:     lengthPick.confidence,
       },
+      // Cluster C diagnostics — surfaced on the Director Brief card so
+      // power users can see WHY a given recommendation came out the way it
+      // did. All fields optional; null when filter didn't fire.
+      _cluster_c: (methodBlockSet || personaBoost || soundscapeBoost) ? {
+        blockedMethods:  methodBlockSet  ? [...methodBlockSet]   : null,
+        personaTimeBoost: personaBoost,
+        soundscapeBoost:  soundscapeBoost ? Object.keys(soundscapeBoost) : null,
+      } : null,
     };
     // Difficulty-based length override
     if (adaptive.recoveryMode) rec.length = 'short';
@@ -13238,7 +13478,13 @@ Practitioner profile (full, natural sentences):`;
       // (Previously compared adaptive.ts — a Date.now() timestamp — against the literal 3,
       // which was always false after any session.)
       if (!adaptive || !analytics || (analytics.comp?.total || 0) < 3) return;
-      const rec = getRecommendation(adaptive, analytics);
+      // Cluster C — pass profile + history into the recommendation engine
+      // so it can apply posture/health/spiritual/co-presence filters and
+      // time-of-day persona biasing. Both are best-effort reads; the engine
+      // falls through gracefully when either is missing.
+      const profile = (typeof getProfile === 'function') ? getProfile() : null;
+      const history = (await idbGet('stillness_history_v1')) || [];
+      const rec = getRecommendation(adaptive, analytics, profile, history);
       // Stash for UI surfaces (Director-shows-its-work card, etc.). Includes
       // per-field confidence so UI can label recommendations as
       // tentative/confident.
@@ -14055,11 +14301,42 @@ ${messages}
     // Phase 4: time-of-day badge on the method most-used at this hour
     _applyTimeOfDayBadge('method');
   }
+  // UX1.4 — Auto-mark glossary terms in free text. Walks a string and wraps
+  // every match against the GLOSSARY keys with a .gloss-term span. Whole-word
+  // matches only (\b boundaries), case-insensitive, runs once per term to
+  // avoid wrapping already-wrapped text. Returns HTML — caller is responsible
+  // for ensuring the source was already escaped or trusted.
+  //
+  // Lazy regex build — GLOSSARY is declared further down in the script body,
+  // so we can't compile at definition time without hitting the TDZ. Built on
+  // first call and cached thereafter.
+  let _GLOSS_MARKUP_RE_CACHE = null;
+  function _buildGlossRegex() {
+    if (typeof GLOSSARY === 'undefined') return null;
+    const keys = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
+    return keys.length
+      ? new RegExp('\\b(' + keys.map(k => k.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|') + ')\\b', 'gi')
+      : null;
+  }
+  function markGlossaryTerms(html) {
+    if (!html) return html;
+    if (!_GLOSS_MARKUP_RE_CACHE) _GLOSS_MARKUP_RE_CACHE = _buildGlossRegex();
+    if (!_GLOSS_MARKUP_RE_CACHE) return html;
+    return html.replace(_GLOSS_MARKUP_RE_CACHE, (m) => {
+      const key = m.toLowerCase();
+      if (typeof _GLOSS_LC === 'undefined' || !_GLOSS_LC[key]) return m;
+      return `<span class="gloss-term" data-gloss="${key}">${m}</span>`;
+    });
+  }
+
   function renderMethodDetail() {
     const m = getMethod();
     const el = $('methodDetail');
     if (!m) { el.innerHTML = ''; return; }
-    el.innerHTML = `<div class="detail-title">${escapeHtml(m.name)}</div><div>${escapeHtml(m.detail)}</div>`;
+    // Escape FIRST, then mark up glossary terms — markGlossaryTerms only
+    // injects safe span tags around matched plain words, so the order is safe.
+    const detailHtml = markGlossaryTerms(escapeHtml(m.detail));
+    el.innerHTML = `<div class="detail-title">${escapeHtml(m.name)}</div><div>${detailHtml}</div>`;
   }
   function updateIntentionHint() {
     const type = $('intentionType').value;
@@ -18805,6 +19082,68 @@ ${messages}
   // spammed.
   let _lastReducedMotionToastAt = 0;
 
+  // V1.1 — Personal-symbol overlay for the work phase. Fades the user's
+  // crafted-suggestion symbol over the visualizer when work begins, fades
+  // it out when the phase ends. Idempotent — repeatedly calling with the
+  // same phase is a no-op. Survives mid-session viz swaps because the
+  // setupVisual child-preserve filters now whitelist .personal-symbol-overlay.
+  let _personalSymbolBlobUrl = null;
+  async function _updatePersonalSymbolOverlay(phase) {
+    const stage = $('stage');
+    if (!stage) return;
+    const baseKind = (typeof phaseBase === 'function') ? phaseBase(phase) : String(phase || '').replace(/-\d+$/, '');
+    const isWork = baseKind === 'work';
+    const existing = stage.querySelector('.personal-symbol-overlay');
+    if (!isWork) {
+      // Fade out then remove on phase exit.
+      if (existing) {
+        existing.classList.remove('visible');
+        // Small delay > CSS transition so DOM doesn't flicker if the
+        // next phase is also non-work; setupVisual filters keep it alive
+        // across viz swaps but NOT across removeChild here.
+        setTimeout(() => { try { existing.remove(); } catch {} }, 1600);
+      }
+      return;
+    }
+    // Work phase. Need a cached symbol for the current crafted suggestion.
+    const suggestion = state.craftedSuggestion;
+    if (!suggestion) return;
+    if (typeof suggestionSymbolGet !== 'function' || typeof _suggestionHash !== 'function') return;
+    try {
+      const hash = _suggestionHash(suggestion);
+      const url = await suggestionSymbolGet(hash);
+      if (!url) return; // no cached symbol — silent
+      // Already showing this exact URL? Idempotent skip.
+      if (existing && existing.dataset.symbolHash === hash) {
+        existing.classList.add('visible');
+        return;
+      }
+      // Replace any prior overlay
+      if (existing) existing.remove();
+      // Revoke previous blob URL to avoid leaks across phases / sessions
+      if (_personalSymbolBlobUrl && _personalSymbolBlobUrl !== url) {
+        try { URL.revokeObjectURL(_personalSymbolBlobUrl); } catch {}
+      }
+      _personalSymbolBlobUrl = url;
+      const overlay = document.createElement('div');
+      overlay.className = 'personal-symbol-overlay';
+      overlay.dataset.symbolHash = hash;
+      overlay.setAttribute('aria-hidden', 'true');
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      img.draggable = false;
+      overlay.appendChild(img);
+      // Insert ABOVE the canvas/svg layers but below fixation-dot. Z-index
+      // 8 in CSS handles ordering; insertion order is just a fallback.
+      stage.appendChild(overlay);
+      // Trigger fade-in on next frame so the CSS transition runs.
+      requestAnimationFrame(() => overlay.classList.add('visible'));
+    } catch (e) {
+      console.warn('[symbol overlay] update failed:', e);
+    }
+  }
+
   function setupVisual(visualType) {
     // ── Reduced-motion safety gate ──────────────────────────────────────
     // Re-evaluate OS preference on every call so:
@@ -18865,7 +19204,8 @@ ${messages}
     Array.from(stage.children).forEach(c => {
       if (!c.classList.contains('fixation-dot') && !c.classList.contains('audio-indicator')
         && !c.classList.contains('persona-indicator') && !c.classList.contains('method-indicator')
-        && !c.classList.contains('session-progress-wrap')) c.remove();
+        && !c.classList.contains('session-progress-wrap')
+        && !c.classList.contains('personal-symbol-overlay')) c.remove();
     });
 
     // Neural Bloom — WebGL flagship (spec §4)
@@ -23678,6 +24018,13 @@ Start immediately:`;
       else if (gap === 2 && freezesUsed < 2) { streak++; freezesUsed++; checkDay = day; }
       else break;
     }
+    // E1.5 — Streak grace celebration. When the user's current streak only
+    // survives because grace day(s) were used, reframe the near-miss as
+    // resilience rather than a debt. Visual-only, no UI TTS per §0a. Stored
+    // as state for the panel renderer below; reset to null when no grace.
+    state._streakGraceUsedThisRender = (streak > 0 && freezesUsed > 0)
+      ? { freezesUsed, streak }
+      : null;
     if (streakEl) streakEl.textContent = streak > 0 ? `${streak}-day streak` : `${totalSessions} sessions`;
 
     if (statsEl) {
@@ -23685,6 +24032,15 @@ Start immediately:`;
       const callouts = derivePatternCallouts(history);
       const calloutHtml = callouts.length
         ? `<div style="margin-bottom:8px;padding:6px 8px;background:var(--bg-deep);border-left:2px solid var(--neon-cyan);font-size:0.66rem;line-height:1.45;color:var(--text-dim)">${callouts.map(c => `<div style="margin:2px 0">${escapeHtml(c)}</div>`).join('')}</div>`
+        : '';
+      // E1.5 grace-celebration banner — quiet, encouraging, sits at the top
+      // of the stats panel above the callouts so users see it first when the
+      // streak was preserved by grace.
+      const grace = state._streakGraceUsedThisRender;
+      const graceHtml = grace
+        ? `<div style="margin-bottom:8px;padding:6px 8px;background:rgba(92,184,122,0.06);border-left:2px solid var(--accent-green,#5cb87a);font-size:0.66rem;line-height:1.5;color:var(--text-dim)">
+            <span style="color:var(--accent-green,#5cb87a)">✦ streak preserved</span> — you used ${grace.freezesUsed === 1 ? 'a grace day' : `${grace.freezesUsed} grace days`}. Resilience is part of practice; missing a day is not a failure.
+          </div>`
         : '';
       // Weekly digest — passive surface, picked up from state when available.
       // Rendered alongside callouts; users discover when they open the panel
@@ -23697,7 +24053,7 @@ Start immediately:`;
             ${wd.topPersona ? `<div style="color:var(--text-faint)">top guide: ${escapeHtml(wd.topPersona)}${wd.topMethod ? ` · top method: ${escapeHtml(wd.topMethod)}` : ''}</div>` : ''}
           </div>`
         : '';
-      let html = calloutHtml + digestHtml + `
+      let html = graceHtml + calloutHtml + digestHtml + `
         <div class="sidebar-stat-row"><span>Sessions</span><span class="sidebar-stat-val">${totalSessions}</span></div>
         <div class="sidebar-stat-row"><span>Minutes</span><span class="sidebar-stat-val">${totalMinutes}</span></div>
         <div class="sidebar-stat-row"><span>Streak</span><span class="sidebar-stat-val">${streak} days</span></div>
@@ -24677,8 +25033,9 @@ Start immediately:`;
       _scriptEditedSinceGen = false;
     }
 
-    // Daily session cap
-    if (!(await checkDailyCap())) return;
+    // Booster sessions are valid practice — no per-day cap. Session-length
+    // soft cap (safetyConfig.maxSessionMinutes) and emergency-cooldown remain
+    // in effect. Removed: checkDailyCap (3/day) — see ROADMAP §1.
 
     // Check TTS availability
     const voiceList = (typeof speechSynthesis !== 'undefined') ? speechSynthesis.getVoices() : [];
@@ -24798,7 +25155,8 @@ Start immediately:`;
       Array.from(stage.children).forEach(c => {
         if (!c.classList.contains('fixation-dot') && !c.classList.contains('audio-indicator')
           && !c.classList.contains('persona-indicator') && !c.classList.contains('method-indicator')
-          && !c.classList.contains('session-progress-wrap') && !c.classList.contains('transcript-panel')) c.remove();
+          && !c.classList.contains('session-progress-wrap') && !c.classList.contains('transcript-panel')
+          && !c.classList.contains('personal-symbol-overlay')) c.remove();
       });
     } else {
       setupVisual(vizChoice);
@@ -24983,6 +25341,10 @@ Start immediately:`;
       // Update phase state — dot, label, and drone frequency updated up
       // front so the HUD reflects the phase you're about to hear.
       state._currentPhase = phase;
+      // V1.1 — fade the user's crafted-suggestion symbol over the viz on
+      // entry to a work phase, fade out on exit. Reinforces the spoken
+      // suggestion with a sustained visual anchor. No-op if no symbol cached.
+      try { _updatePersonalSymbolOverlay(phase); } catch (e) { console.warn('[symbol overlay]', e); }
       // Phase-aware speech rate. Settling stays at base, induction starts
       // slowing, deepener is slowest, work is moderate, lightener accelerates
       // back, wake briskest, reintroduction normal. Strip dynamic suffix
@@ -25832,6 +26194,17 @@ Start immediately:`;
     stopRecording(); // Stop any active recording before tearing down audio
     await drone.stop(); stopVisuals(); speechSynthesis.cancel();
     if (state.useLocalTTS && _localTTS.ready) _localTTS.cancel();
+    // V1.1 — clean up the personal-symbol overlay if one was up. Revoke
+    // the blob URL too so we don't leak. Idempotent.
+    try {
+      const _stage = $('stage');
+      const _ov = _stage?.querySelector('.personal-symbol-overlay');
+      if (_ov) _ov.remove();
+      if (_personalSymbolBlobUrl) {
+        try { URL.revokeObjectURL(_personalSymbolBlobUrl); } catch {}
+        _personalSymbolBlobUrl = null;
+      }
+    } catch {}
     // Clear lock-screen media session so it doesn't linger post-session
     setMediaSession(false);
     document.body.classList.remove('in-session'); document.body.classList.remove('controls-hidden'); clearTimeout(_controlsTimer);
@@ -28455,6 +28828,36 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     if (history.length === 0) return;
     history[0].journal = text;
     await _writeHistoryCompact(history);
+    // Splice journal into the most recent memory digest entry so future
+    // semantic-retrieval surfaces the user's own reflection alongside the
+    // AI-generated digest. No extra AI call — we append in place. Idempotent
+    // by checking whether the journal text is already present.
+    // Pairs with journal-sentiment below for paid tiers; this part runs on
+    // every tier including Perchance (default).
+    try {
+      if (state.smartDirectorEnabled !== false) {
+        const memory = await getMemory();
+        const sid = history[0].id || history[0].date;
+        const entry = (memory.sessionDigests || []).find(
+          d => d && (d.sessionId === sid || d.date === history[0].date)
+        );
+        if (entry && entry.digest) {
+          const journalSnip = text.slice(0, 240);
+          const marker = ' · Reflection: ';
+          const existing = entry.digest.indexOf(marker);
+          // Replace any existing reflection slice; otherwise append.
+          entry.digest = (existing >= 0 ? entry.digest.slice(0, existing) : entry.digest)
+            + marker + journalSnip;
+          // Cap entry length so a long journal doesn't bloat the digest cache.
+          if (entry.digest.length > 540) entry.digest = entry.digest.slice(0, 540);
+          await saveMemory(memory);
+          // Re-embed the reflection-amended digest so semantic retrieval
+          // surfaces it for similar future intentions. Best-effort.
+          embedAndStoreDigest(entry.sessionId, entry.digest, history[0].intentionText).catch(() => {});
+          sdLog('journal spliced into digest', { sid, len: journalSnip.length });
+        }
+      }
+    } catch (e) { console.warn('[journal→digest] splice failed:', e); }
     // Sentiment pass — gated on tier + entry length. Short entries
     // ("good", "fine") don't reward the round-trip; long ones do.
     const tier = (typeof getAITier === 'function') ? getAITier() : 'perchance';
@@ -28819,6 +29222,34 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
         all[presetName] = slot;
         await idbSet('stillness_ab_results_v1', all);
       } catch (e) { console.warn('[ab] save failed:', e); }
+      // D3 — feed the rating into the adaptive weight maps so blinded A/B
+      // results actually shape future recommendations. Rating 4-5 = positive
+      // reward, 1-2 = negative, 3 = neutral. The preset's persona/method/
+      // length/soundscape ids each receive the same reward, then exponential
+      // decay applies on the next session like normal updateWeights() runs.
+      // Skipped when Smart Director is off (consistent with the rest of the
+      // adaptive pipeline). Best-effort — A/B saving always succeeds first.
+      if (state.smartDirectorEnabled !== false && rating !== 3) {
+        try {
+          const preset = (typeof PRESETS !== 'undefined') && PRESETS.find(p => p.name === presetName);
+          if (preset) {
+            const adaptive = await getAdaptive();
+            // Map 1-5 → reward in {-2, -1, 0, +1, +2}. Rating 3 already
+            // returned above. Magnitude matches updateWeights() per-session
+            // reward scale (mood-delta ±1-3 typical), so A/B has
+            // comparable but not dominant influence.
+            const reward = rating - 3;
+            const apply = (map, key) => { if (!key || !map) return; map[key] = (map[key] || 0) + reward; };
+            apply(adaptive.w?.p,  preset.persona);
+            apply(adaptive.w?.m,  preset.method);
+            apply(adaptive.w?.s,  preset.soundscape);
+            apply(adaptive.w?.ln, preset.length);
+            adaptive.ts = Date.now();
+            await idbSet(ADAPTIVE_KEY, adaptive);
+            sdLog('ab→adaptive', { preset: presetName, rating, reward });
+          }
+        } catch (e) { console.warn('[ab→adaptive] failed:', e); }
+      }
       // Disable buttons + show reveal
       document.querySelectorAll('#postAbRatingButtons button').forEach(b => b.disabled = true);
       btn.style.outline = '2px solid var(--neon-cyan)';
@@ -29034,7 +29465,8 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       Array.from(stage.children).forEach(c => {
         if (!c.classList.contains('fixation-dot') && !c.classList.contains('audio-indicator')
           && !c.classList.contains('persona-indicator') && !c.classList.contains('method-indicator')
-          && !c.classList.contains('session-progress-wrap') && !c.classList.contains('transcript-panel')) c.remove();
+          && !c.classList.contains('session-progress-wrap') && !c.classList.contains('transcript-panel')
+          && !c.classList.contains('personal-symbol-overlay')) c.remove();
       });
     } else if (viz === 'pulse' || viz === 'spiral') {
       stopVisuals(); setupVisual(viz);
@@ -30794,6 +31226,382 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     document.body.classList.toggle('cloud-signed-in', signedIn);
     document.body.classList.toggle('cloud-signed-out', !signedIn);
   }
+
+  // ====================================================================
+  // ONBOARDING QUIZ — first-run profile personalization
+  // ====================================================================
+  // 7 single-select questions that pre-fill the most-impactful profile
+  // fields in ~60 seconds. Lives behind a sidebar button (above cloud
+  // sign-in) and hides permanently after completion. Returning users
+  // who already filled profile fields manually also auto-hide so they
+  // don't see a stale prompt.
+  //
+  // Each question maps to a profile-form input id with a specific value.
+  // For Q1 (intent), the value is stored as a hint for the Director on
+  // first run rather than overwriting any existing setting — the wizard
+  // still drives final choice on Step 1.
+  //
+  // No AI calls. Pure local UX. Aligns with §0a Perchance-AI-first stance.
+  // ====================================================================
+  const ONBOARDING_QUIZ_DONE_KEY = 'hne_onboarding_quiz_done_v1';
+  const ONBOARDING_QUIZ_HINT_KEY = 'hne_onboarding_quiz_hint_v1';
+
+  const ONBOARDING_QUIZ_QUESTIONS = [
+    {
+      id: 'q_intent',
+      target: '_intent', // special — stored as hint, not a profile field
+      question: 'What brings you here today?',
+      options: [
+        { value: 'sleep',      label: '🌙 Better sleep' },
+        { value: 'calm',       label: '🍃 Calm anxiety' },
+        { value: 'focus',      label: '🎯 Sharper focus' },
+        { value: 'confidence', label: '🦁 Build confidence' },
+        { value: 'pain',       label: '💊 Relieve pain' },
+        { value: 'curious',    label: '🧠 Just curious — explore' },
+      ],
+    },
+    {
+      id: 'q_experience',
+      target: 'pfExperience',
+      question: 'Have you done hypnosis or trance work before?',
+      options: [
+        { value: 'beginner',     label: 'First time' },
+        { value: 'some',         label: 'A few times' },
+        { value: 'experienced',  label: 'Regular practice' },
+        { value: 'professional', label: 'Trained / professional' },
+      ],
+    },
+    {
+      id: 'q_time',
+      target: 'pfTypicalTime',
+      question: 'When do you usually have time to practice?',
+      options: [
+        { value: 'morning',    label: 'Morning' },
+        { value: 'afternoon',  label: 'Daytime' },
+        { value: 'evening',    label: 'Evening' },
+        { value: 'late-night', label: 'Late night' },
+        { value: 'varies',     label: 'Anytime / varies' },
+      ],
+    },
+    {
+      id: 'q_space',
+      target: 'pfPracticeSpace',
+      question: 'Where will you usually practice?',
+      // Each answer also implies a posture and co-presence, applied via
+      // the imply table below in applyOnboardingAnswers().
+      options: [
+        { value: 'bedroom',           label: '🛏 In bed' },
+        { value: 'quiet-room',        label: '🪑 Quiet room (seated)' },
+        { value: 'shared-space',      label: '🛋 Shared space' },
+        { value: 'public-headphones', label: '🎧 Public, headphones' },
+        { value: 'outdoors',          label: '🌳 Outdoors / on a walk' },
+      ],
+    },
+    {
+      id: 'q_imagery',
+      target: 'pfMetaphorDensity',
+      question: 'How do you imagine?',
+      options: [
+        { value: 'rich',     label: 'Vivid pictures, rich imagery' },
+        { value: 'balanced', label: 'Some imagery, mostly clear instructions' },
+        { value: 'minimal',  label: 'Direct guidance — skip the metaphors' },
+      ],
+    },
+    {
+      id: 'q_authority',
+      target: 'pfAuthorityStyle',
+      question: 'What style of guidance feels right?',
+      options: [
+        { value: 'directive',      label: 'Confident, clear instructions' },
+        { value: 'balanced',       label: 'Mix of direct and gentle' },
+        { value: 'permissive',     label: 'Soft invitations' },
+        { value: 'conversational', label: 'Warm, peer-like' },
+      ],
+    },
+    {
+      id: 'q_frame',
+      target: 'pfSpiritualFrame',
+      question: 'Spiritual framing?',
+      options: [
+        { value: 'secular',           label: 'Keep it secular' },
+        { value: 'nondenominational', label: 'Open to gentle spiritual elements' },
+        { value: '',                  label: 'Skip — let me decide later' },
+      ],
+    },
+  ];
+
+  // q_space → derived posture + co-presence. Saves the user from picking
+  // them separately in the longer profile form. Conservative defaults —
+  // they can always adjust manually via the profile.
+  const _ONBOARDING_SPACE_IMPLIES = {
+    'bedroom':           { posture: 'lying-supine',   coPresence: 'alone' },
+    'quiet-room':        { posture: 'seated-reclined', coPresence: 'alone' },
+    'shared-space':      { posture: 'seated-upright', coPresence: 'shared' },
+    'public-headphones': { posture: 'seated-upright', coPresence: 'public' },
+    'outdoors':          { posture: 'walking',        coPresence: 'public' },
+  };
+
+  /** Should the button be shown? Hide if (a) explicit completion flag set,
+   *  or (b) returning user with meaningful profile data already filled. */
+  function _shouldShowOnboardingQuiz() {
+    try {
+      if (localStorage.getItem(ONBOARDING_QUIZ_DONE_KEY) === '1') return false;
+      // Heuristic: a returning user has either set their name OR set
+      // experience to anything other than the default 'beginner'. Either
+      // suggests they've engaged with the profile form already.
+      const name = $('pfName')?.value?.trim();
+      const exp  = $('pfExperience')?.value;
+      if (name || (exp && exp !== 'beginner')) return false;
+    } catch {}
+    return true;
+  }
+
+  function _refreshOnboardingQuizVisibility() {
+    const btn = $('onboardingQuizBtn');
+    if (!btn) return;
+    const show = _shouldShowOnboardingQuiz();
+    btn.style.display = show ? '' : 'none';
+    document.body.classList.toggle('onboarding-quiz-done', !show);
+  }
+
+  let _onboardingModalEl = null;
+  function _ensureOnboardingModal() {
+    if (_onboardingModalEl) return _onboardingModalEl;
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'onboardingQuizModal';
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:560px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+          <h2 style="margin:0;font-size:1.05rem">Personalize HNE</h2>
+          <button class="btn secondary" id="oqCloseBtn" style="padding:4px 12px;font-size:0.74rem">close</button>
+        </div>
+        <div class="oq-intro">
+          A quick read on what you're here for. Nothing is sent anywhere — it's just used locally to shape the AI scripts and the Director's recommendations. You can change any answer later in your profile.
+        </div>
+        <div id="oqQuestions"></div>
+        <div class="modal-actions" style="margin-top:24px">
+          <button class="btn secondary" id="oqSkipBtn" style="flex:0 0 auto;padding:10px 18px">skip for now</button>
+          <button class="btn primary" id="oqSaveBtn" disabled>save &amp; continue</button>
+        </div>
+        <div class="oq-progress" id="oqProgress">0 of ${ONBOARDING_QUIZ_QUESTIONS.length} answered</div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _onboardingModalEl = wrap;
+
+    // Render questions
+    const host = wrap.querySelector('#oqQuestions');
+    const answers = {};
+    ONBOARDING_QUIZ_QUESTIONS.forEach((q, qi) => {
+      const block = document.createElement('div');
+      block.className = 'oq-question';
+      block.dataset.qid = q.id;
+      const opts = q.options.map(o =>
+        `<button type="button" class="oq-option" data-qid="${q.id}" data-value="${escapeHtml(String(o.value))}">${escapeHtml(o.label)}</button>`
+      ).join('');
+      block.innerHTML = `
+        <div class="oq-question-text">${qi + 1}. ${escapeHtml(q.question)}</div>
+        <div class="oq-options">${opts}</div>
+      `;
+      host.appendChild(block);
+    });
+
+    // Selection handler — track answers, enable save when all answered
+    host.addEventListener('click', (ev) => {
+      const opt = ev.target.closest('.oq-option');
+      if (!opt) return;
+      const qid = opt.dataset.qid;
+      const val = opt.dataset.value;
+      // Single-select per question — clear siblings.
+      host.querySelectorAll(`.oq-option[data-qid="${qid}"]`).forEach(el => el.classList.remove('selected'));
+      opt.classList.add('selected');
+      answers[qid] = val;
+      const answered = Object.keys(answers).length;
+      const total    = ONBOARDING_QUIZ_QUESTIONS.length;
+      $('oqProgress').textContent = `${answered} of ${total} answered`;
+      $('oqSaveBtn').disabled = answered < total;
+    });
+
+    // Wire actions
+    $('oqCloseBtn')?.addEventListener('click', () => wrap.classList.remove('visible'));
+    wrap.addEventListener('click', (e) => {
+      if (e.target === wrap) wrap.classList.remove('visible');
+    });
+    $('oqSkipBtn')?.addEventListener('click', () => wrap.classList.remove('visible'));
+    $('oqSaveBtn')?.addEventListener('click', () => {
+      applyOnboardingAnswers(answers);
+      try { localStorage.setItem(ONBOARDING_QUIZ_DONE_KEY, '1'); } catch {}
+      _refreshOnboardingQuizVisibility();
+      wrap.classList.remove('visible');
+      if (typeof notify !== 'undefined') notify.success('Profile personalized — settings applied.');
+    });
+
+    return wrap;
+  }
+
+  function applyOnboardingAnswers(answers) {
+    // Apply each answer to its target profile field, then trigger save.
+    const setSelect = (id, value) => {
+      const el = $(id);
+      if (!el || value == null) return;
+      // Only set if the option exists. Defensive against schema drift.
+      const opt = [...el.options].find(o => o.value === String(value));
+      if (opt) {
+        el.value = String(value);
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    };
+    for (const q of ONBOARDING_QUIZ_QUESTIONS) {
+      const v = answers[q.id];
+      if (v == null) continue;
+      if (q.target === '_intent') {
+        // Stash as a hint for first-run preset suggestion. Read by
+        // the wizard / Director on next session-start.
+        try { localStorage.setItem(ONBOARDING_QUIZ_HINT_KEY, String(v)); } catch {}
+      } else {
+        setSelect(q.target, v);
+      }
+    }
+    // q_space implies posture + co-presence — set those too.
+    const space = answers.q_space;
+    if (space && _ONBOARDING_SPACE_IMPLIES[space]) {
+      const imp = _ONBOARDING_SPACE_IMPLIES[space];
+      setSelect('pfPosture',    imp.posture);
+      setSelect('pfCoPresence', imp.coPresence);
+    }
+    // saveProfile() is debounced inside the input/change listeners; the
+    // dispatched 'change' events above will trigger it. Belt-and-braces:
+    // call it directly so we don't rely on listener ordering.
+    if (typeof saveProfile === 'function') saveProfile();
+  }
+
+  function openOnboardingQuiz() {
+    const modal = _ensureOnboardingModal();
+    modal.classList.add('visible');
+  }
+
+  // Wire the sidebar button. Visibility check runs after profile load so
+  // the heuristic for "user already filled profile" sees populated values.
+  $('onboardingQuizBtn')?.addEventListener('click', openOnboardingQuiz);
+
+  // ====================================================================
+  // GLOSSARY TOOLTIPS (UX1.4)
+  // ====================================================================
+  // Plain-language definitions for the technical hypnosis vocabulary that
+  // shows up across personas, methods, and the AI prompt context. Lifts
+  // the entry barrier for first-time users without bloating method copy.
+  //
+  // Usage: wrap a term in <span class="gloss-term" data-gloss="ericksonian">
+  // Ericksonian</span>. The script binds hover/touch handlers globally via
+  // event delegation; one shared popover is positioned near the target.
+  //
+  // Adding a term: append to GLOSSARY below. Keep definitions short
+  // (≤ 2 sentences). Don't include marketing — these are educational.
+  // ====================================================================
+  const GLOSSARY = {
+    'ericksonian': 'Permissive language patterns from Milton Erickson — indirect suggestion, embedded commands, "you might notice" phrasing. Most flexible style; works without compliance.',
+    'fractionation': 'Light trance → alert → re-induce, repeated. Each cycle goes deeper. Useful for skeptical users because the "alert" between cycles is verifiable.',
+    'ideomotor': 'Small involuntary muscle movements driven by suggestion (a finger twitch, a hand drift). Used as both convincer and depth indicator.',
+    'somnambulism': 'Deep hypnotic state in which post-hypnotic suggestions take strongly, sometimes with spontaneous amnesia. Roughly the level Stage hypnotists demonstrate at.',
+    'convincer': 'A demonstration during the session that proves something is happening (hand stuck to leg, arm levitation). Builds the user\'s confidence in the process.',
+    'pacing': 'Matching the user\'s present experience ("you can hear my voice... feel your weight on the chair...") before introducing change. Builds rapport before leading.',
+    'leading': 'Once pacing has established rapport, gently directing experience toward a new state ("...and as you breathe out, you can let your shoulders soften...").',
+    'embedded-command': 'A directive hidden inside a longer sentence ("when people start to feel CALM AND CENTERED, they often..."). Bypasses analytical resistance.',
+    'yes-set': 'Stringing together statements the user can\'t help agreeing with, building a momentum of "yes" responses that primes them to accept the next suggestion.',
+    'post-hypnotic': 'A suggestion installed during trance that fires after the session ends, when a specified cue occurs ("each time you tie your shoes, you\'ll feel grounded").',
+    'depth': 'How "far in" the user feels — surface (alert observer), light (relaxed but tracking), medium (drifting), deep (absorbed), profound (somnambulistic). Tracks loosely with depth scales like SHSS.',
+    'induction': 'The opening method that takes someone from waking awareness into trance. Anything from a 4-7-8 breath to a Dave Elman protocol.',
+    'deepener': 'Once trance has begun, a method that takes the user further in. Staircase descent, counting down, body-scan into stillness.',
+    'lightener': 'The opposite of deepener — gentle re-emergence partway, often used after work blocks before a final wake. Prevents abrupt transitions.',
+    'reintroduction': 'The closing phase that returns the user fully to waking awareness, oriented to time and place. Skipped for sleep sessions.',
+    'ear': 'Eye Aspect Ratio — geometric measure of how open the eyes are, computed from face-mesh landmarks. HNE uses it for the wakefulness signal during webcam-on sessions.',
+    'rppg': 'Remote photoplethysmography — heart rate inferred from subtle skin-color changes in the face video. Local processing only; no wearable required.',
+    'binaural': 'Two slightly-different frequencies played to each ear (e.g., 200Hz left, 206Hz right). The brain perceives a "beat" at the difference (6Hz here = theta). Requires stereo headphones.',
+    'isochronic': 'A single tone amplitude-modulated at the entrainment frequency. Works on any speaker (no stereo needed). Often more audible than binaural.',
+    'gamma-flicker': '40Hz visual flicker, in the gamma frequency band. Some research links 40Hz stimulation to attention and (controversially) neuroprotective effects. Implemented conservatively here.',
+    'dave-elman': 'The clinical-standard rapid induction (1-3 minutes): eye-closure test → relaxation doubling → arm drop → number block. Each step verifies depth before going deeper.',
+    'spiegel': 'Eye-roll induction (Herbert Spiegel) — look up as high as possible, slowly close eyelids while keeping eyes rolled up. Physical strain triggers a state shift in seconds.',
+    'conditioning': 'Pavlovian-style pairing of a stimulus and a response, repeated during the session so the response fires automatically when the stimulus occurs in waking life.',
+    'glove-anesthesia': 'Numbness suggested into one hand, then "transferred" by touch to wherever it\'s needed. Clinical pain-management technique.',
+    'pain-dial': 'A visualization technique: imagine a numbered dial controlling sensation, then turn it down. Reframes pain as adjustable rather than fixed.',
+    'recovery-mode': 'Director state triggered when sessions trend poorly (low completion, mood-decline, frequent emergency exits). Defaults to shorter, gentler sessions until the pattern clears.',
+    'director': 'HNE\'s adaptive recommendation engine. Reads your history + analytics + profile and shapes future scripts. Per-user, on-device, never uploaded.',
+    'recoverymode': 'See recovery-mode.',
+  };
+  // Lowercase normalization — accept either case in data-gloss values.
+  const _GLOSS_LC = Object.fromEntries(Object.entries(GLOSSARY).map(([k, v]) => [k.toLowerCase(), v]));
+
+  let _glossPopoverEl = null;
+  let _glossDismissTimer = null;
+  function _ensureGlossPopover() {
+    if (_glossPopoverEl) return _glossPopoverEl;
+    const el = document.createElement('div');
+    el.className = 'gloss-popover';
+    el.id = 'glossPopover';
+    el.setAttribute('role', 'tooltip');
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+    _glossPopoverEl = el;
+    return el;
+  }
+  function _showGlossPopover(target, key) {
+    const def = _GLOSS_LC[String(key || '').toLowerCase()];
+    if (!def) return;
+    clearTimeout(_glossDismissTimer);
+    const pop = _ensureGlossPopover();
+    const termLabel = target.textContent?.trim().slice(0, 60) || key;
+    pop.innerHTML = `
+      <div class="gloss-term-title">${escapeHtml(termLabel)}</div>
+      <div class="gloss-defn">${escapeHtml(def)}</div>
+    `;
+    // Position above the term, fall back to below if it would overflow.
+    const r = target.getBoundingClientRect();
+    pop.style.visibility = 'hidden';
+    pop.classList.add('visible');
+    const pw = pop.offsetWidth, ph = pop.offsetHeight;
+    let left = r.left + r.width / 2 - pw / 2;
+    let top = r.top - ph - 8;
+    if (top < 8) top = r.bottom + 8;
+    if (left < 8) left = 8;
+    if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+    pop.style.visibility = '';
+  }
+  function _hideGlossPopover() {
+    if (!_glossPopoverEl) return;
+    _glossPopoverEl.classList.remove('visible');
+  }
+  // Event delegation — works for static AND dynamically-rendered .gloss-term
+  // spans (e.g., method detail panels populated after first render).
+  document.addEventListener('mouseover', (e) => {
+    const t = e.target.closest?.('.gloss-term');
+    if (t) _showGlossPopover(t, t.dataset.gloss);
+  });
+  document.addEventListener('mouseout', (e) => {
+    const t = e.target.closest?.('.gloss-term');
+    if (t) _glossDismissTimer = setTimeout(_hideGlossPopover, 200);
+  });
+  // Touch / tap support — toggle on tap, dismiss on outside-tap.
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest?.('.gloss-term');
+    if (t) {
+      e.preventDefault();
+      const pop = _ensureGlossPopover();
+      const same = pop.classList.contains('visible') && pop.dataset.activeKey === t.dataset.gloss;
+      if (same) { _hideGlossPopover(); pop.dataset.activeKey = ''; return; }
+      pop.dataset.activeKey = t.dataset.gloss;
+      _showGlossPopover(t, t.dataset.gloss);
+    } else if (_glossPopoverEl?.classList.contains('visible')
+               && !e.target.closest?.('.gloss-popover')) {
+      _hideGlossPopover();
+    }
+  });
+  // Esc closes popover (a11y).
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && _glossPopoverEl?.classList.contains('visible')) _hideGlossPopover();
+  });
 
   // Validate a username — matches the community-gallery convention so
   // users with accounts there can recreate them here without surprise.
@@ -32894,20 +33702,6 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     _ensureTimelineFullModal().classList.add('visible');
     _renderFullTimeline('all');
   });
-  // Session daily cap — max 3 sessions per day to prevent compulsive use
-  async function checkDailyCap() {
-    const history = (await idbGet('stillness_history_v1')) || [];
-    const today = new Date(); today.setHours(0,0,0,0);
-    const todayCount = history.filter(s => {
-      const d = new Date(s.date); d.setHours(0,0,0,0);
-      return d.getTime() === today.getTime();
-    }).length;
-    if (todayCount >= 3) {
-      notify.info('You\'ve completed 3 sessions today — that\'s plenty. Rest and let the suggestions integrate. Come back tomorrow.');
-      return false;
-    }
-    return true;
-  }
 
   // Monthly safety re-check — re-display contraindication screen every 30 days
 
@@ -33239,6 +34033,11 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     refreshPersonas();
     const hadSavedSettings = await loadUserSettings();
     await loadProfile();
+    // Onboarding-quiz visibility — runs after profile load so the
+    // "user already filled profile" heuristic sees populated values.
+    if (typeof _refreshOnboardingQuizVisibility === 'function') {
+      _refreshOnboardingQuizVisibility();
+    }
     // Default-enable adaptive playback dynamics for engaged users (profile
     // age set). Skipped when the user already had explicit saved settings —
     // their persisted choice wins in that case. Anonymous users keep the
