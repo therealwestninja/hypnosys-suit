@@ -2254,6 +2254,160 @@ padding: 14px 16px;
   .checkin-feedback-echo.visible { display: block; }
   .checkin-feedback-echo strong { color: var(--neon-cyan); font-weight: 500; }
 
+  /* ═══ CHAT-STYLE CHECK-IN — Perchance-default grey palette ═══
+     Opt-in via the .chat-style modifier on the wrapping section. Restyles
+     the existing check-in DOM (avatar/question/textarea/send button) into
+     a proper conversational interface — message-bubble for the assistant
+     question, chat-input row with autogrow textarea + integrated send
+     button. Background and borders use Perchance's neutral grey palette
+     so it visually reads as a different surface than the rest of the
+     app (which uses our cyan/amber accent palette).
+
+     Drop-in: add `chat-style` class to .pre-checkin or .post-checkin.
+     All the original IDs and event wiring continue to work — no JS
+     restructuring needed beyond the Enter-to-send keydown handler. */
+  .pre-checkin.chat-style,
+  .post-checkin.chat-style {
+    background: #2b2b2b;
+    border: 1px solid #444;
+    border-left-width: 1px;       /* override .post-checkin-elevated cyan stripe */
+    border-radius: 6px;
+    padding: 14px 14px 12px;
+    color: #ddd;
+  }
+  /* Header reads as a conversation transcript line: "Assistant: <question>"
+     rather than a form prompt. The existing avatar becomes a small inline
+     glyph; the question becomes a chat bubble. */
+  .chat-style .checkin-header {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .chat-style .checkin-avatar {
+    width: 32px; height: 32px;
+    background: #3a3a3a;
+    border: 1px solid #555;
+    border-radius: 50%;
+    color: #ccc;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+  }
+  .chat-style .checkin-avatar-lg { width: 36px; height: 36px; font-size: 1.05rem; }
+  .chat-style .checkin-question {
+    background: #3a3a3a;
+    border: 1px solid #4a4a4a;
+    border-radius: 14px;
+    border-top-left-radius: 4px;  /* "tail" toward the avatar */
+    padding: 9px 14px;
+    color: #eee;
+    font-weight: 400;
+    line-height: 1.4;
+    font-size: 0.88rem;
+    /* Intentionally NOT flex:1 — let the bubble shrink to its content
+       so it actually reads as a bubble, not a banner. */
+    flex: 0 1 auto;
+    max-width: calc(100% - 100px);
+  }
+  .chat-style .checkin-question-lg { font-size: 0.96rem; padding: 11px 16px; }
+  .chat-style .checkin-mode-toggle {
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid #555;
+    color: #aaa;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.66rem;
+    align-self: center;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .chat-style .checkin-mode-toggle:hover {
+    color: #fff; border-color: #888; background: #333;
+  }
+  /* Chat input row — textarea + integrated send button, like a real
+     messenger. Border wraps both so they read as a single composed
+     control, not two separate fields. */
+  .chat-style .checkin-text-wrap {
+    background: #1f1f1f;
+    border: 1px solid #4a4a4a;
+    border-radius: 18px;
+    padding: 4px 4px 4px 14px;
+    display: flex; align-items: flex-end; gap: 8px;
+    transition: border-color 0.15s;
+  }
+  .chat-style .checkin-text-wrap:focus-within {
+    border-color: #888;
+  }
+  .chat-style .checkin-text-wrap textarea {
+    flex: 1; min-width: 0;
+    background: transparent;
+    border: none;
+    padding: 8px 0;
+    color: #eee;
+    font-size: 0.86rem; line-height: 1.45;
+    resize: none;
+    /* Constrained autogrow — JS bumps `rows` 1..6 based on content;
+       overflow-y:auto kicks in past 6 rows for very long inputs. */
+    min-height: 36px; max-height: 140px;
+    overflow-y: auto;
+  }
+  .chat-style .checkin-text-wrap textarea:focus { outline: none; border: none; }
+  .chat-style .checkin-text-wrap textarea::placeholder { color: #777; line-height: 1.45; }
+  /* Round send button — disabled state when textarea is empty so users
+     get clear visual feedback that the input is ready (or not). The
+     enabled-when-non-empty state is toggled by the keydown handler in JS. */
+  .chat-style .checkin-text-wrap .checkin-send-btn {
+    flex-shrink: 0;
+    background: #4a4a4a; color: #fff; border: none;
+    border-radius: 50%;
+    width: 36px; height: 36px;
+    padding: 0; font-size: 1rem; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.12s, transform 0.08s;
+  }
+  .chat-style .checkin-text-wrap .checkin-send-btn:hover:not(:disabled) {
+    background: #5a5a5a;
+  }
+  .chat-style .checkin-text-wrap .checkin-send-btn:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+  .chat-style .checkin-text-wrap .checkin-send-btn:disabled {
+    background: #333; color: #666; cursor: default;
+  }
+  /* Hint sits BELOW the input row (not inside it like the old layout) so
+     it doesn't crowd the chat composer. Also styled as a subtle helper
+     line rather than a label-action pair. */
+  .chat-style .checkin-text-actions {
+    margin-top: 6px;
+    padding: 0 4px;
+    justify-content: flex-start;
+  }
+  .chat-style .checkin-text-actions .checkin-send-btn {
+    /* Old send-button placement (inside .checkin-text-actions) is hidden
+       under chat-style — the round button inside the input wrap replaces it. */
+    display: none;
+  }
+  .chat-style .checkin-hint {
+    color: #888;
+    font-size: 0.66rem;
+    line-height: 1.4;
+  }
+  /* Echo "you said" bubble — styled as a user reply, mirrored from the
+     question bubble (right-aligned, different background). */
+  .chat-style .checkin-feedback-echo {
+    background: #3a4d4d;
+    border: 1px solid #4a6a6a;
+    border-left: 1px solid #4a6a6a;     /* override existing left-only accent */
+    border-radius: 14px;
+    border-top-right-radius: 4px;
+    color: #ddeaea;
+    padding: 9px 14px;
+    margin: 12px 0 0 auto;              /* right-align the bubble */
+    max-width: 90%;
+    font-size: 0.78rem;
+    width: max-content;                 /* shrink-to-fit so the bubble shape reads */
+  }
+  .chat-style .checkin-feedback-echo strong { color: #b8e8e8; }
+
   .post-journal { margin-bottom: 16px; }
   .journal-area {
     width: 100%; min-height: 60px; max-height: 120px; resize: vertical;
@@ -4810,7 +4964,7 @@ I return to myself easily"></textarea>
         </div>
       </div>
 
-      <div class="pre-checkin" id="preMoodSection">
+      <div class="pre-checkin chat-style" id="preMoodSection">
         <div class="checkin-header">
           <div class="checkin-avatar">💬</div>
           <div class="checkin-question">how are you arriving?</div>
@@ -4819,13 +4973,17 @@ I return to myself easily"></textarea>
         <!-- Conversational input — the default. Free text parsed via
              keyword lexicon (no AI call) into mood/tension/energy. Auto-
              applies on blur so users who skip the send button still get
-             their signal captured. -->
+             their signal captured. The round in-wrap send button is the
+             chat-style version; the old #preCheckinTextApply below it
+             stays in the DOM for non-chat-style fallback (hidden via CSS).
+             Both call _applyPreCheckinText() through their click wires. -->
         <div id="preCheckinTextWrap" class="checkin-text-wrap">
-          <textarea id="preCheckinText" rows="2" maxlength="200" placeholder="say a few words — e.g. tired but mind is racing, feeling tense after a long day, calm but a little foggy"></textarea>
-          <div class="checkin-text-actions">
-            <span id="preCheckinTextHint" class="checkin-hint">we'll read mood, tension, and energy from what you write</span>
-            <button type="button" id="preCheckinTextApply" class="checkin-send-btn">send →</button>
-          </div>
+          <textarea id="preCheckinText" rows="1" maxlength="200" placeholder="say a few words — e.g. tired but mind is racing, feeling tense after a long day, calm but a little foggy"></textarea>
+          <button type="button" id="preCheckinTextSendCircle" class="checkin-send-btn" disabled aria-label="send" title="send (Enter)">↑</button>
+        </div>
+        <div class="checkin-text-actions">
+          <span id="preCheckinTextHint" class="checkin-hint">we'll read mood, tension, and energy from what you write</span>
+          <button type="button" id="preCheckinTextApply" class="checkin-send-btn">send →</button>
         </div>
         <!-- Sliders — hidden by default, revealed via toggle. The
              textarea parser pushes values here so they always reflect
@@ -4939,21 +5097,23 @@ I return to myself easily"></textarea>
       </div>
 
       <!-- Post-session check-in. Conversational text is the default;
-           sliders are the alternative behind a toggle. Visually elevated
-           with cyan accent border to anchor user attention here above
-           the journal. Mirrors the Step-5 pre-session pattern. -->
-      <div class="post-checkin post-checkin-elevated">
+           sliders are the alternative behind a toggle. Uses chat-style
+           Perchance-grey palette so it visually anchors as a "moment of
+           dialogue" after the session, distinct from the surrounding
+           journal/save UI which uses our cyan palette. -->
+      <div class="post-checkin chat-style">
         <div class="checkin-header checkin-header-prominent">
           <div class="checkin-avatar checkin-avatar-lg">💬</div>
           <div class="checkin-question checkin-question-lg">how did that land?</div>
           <button type="button" id="postCheckinTextToggle" class="checkin-mode-toggle">use sliders instead</button>
         </div>
         <div id="postCheckinTextWrap" class="checkin-text-wrap checkin-text-wrap-lg">
-          <textarea id="postCheckinText" rows="3" maxlength="240" placeholder="say a few words — e.g. feeling much better and calmer, a bit drowsy but clear, went pretty deep, mind is quieter than before"></textarea>
-          <div class="checkin-text-actions">
-            <span id="postCheckinTextHint" class="checkin-hint">we'll read mood, alertness, and depth from what you write</span>
-            <button type="button" id="postCheckinTextApply" class="checkin-send-btn">send →</button>
-          </div>
+          <textarea id="postCheckinText" rows="1" maxlength="240" placeholder="say a few words — e.g. feeling much better and calmer, a bit drowsy but clear, went pretty deep, mind is quieter than before"></textarea>
+          <button type="button" id="postCheckinTextSendCircle" class="checkin-send-btn" disabled aria-label="send" title="send (Enter)">↑</button>
+        </div>
+        <div class="checkin-text-actions">
+          <span id="postCheckinTextHint" class="checkin-hint">we'll read mood, alertness, and depth from what you write</span>
+          <button type="button" id="postCheckinTextApply" class="checkin-send-btn">send →</button>
         </div>
         <div id="postCheckinSliders" class="post-checkin-grid" style="display:none">
           <div class="post-checkin-item">
@@ -6022,19 +6182,35 @@ I return to myself easily"></textarea>
     { id: 'anesthesia-full', name: 'Full-Body Anesthesia', tagline: 'Total numbness. Clinical depth.', tags: ['advanced', 'pain', 'clinical'], category: 'advanced', detail: 'Extension of glove anesthesia to the entire body. Progressive numbness spreading from extremities inward. Historically used for surgery before chemical anesthesia existed. Requires deep somnambulism. The body becomes a distant object — present but unfelt. Profound dissociation from physical sensation.', visual: 'colorwash', drone: true, pacing: 'body-scan' },
   ];
 
+  // PACING_RULES — describes phrase length, repetition, and cadence per
+  // method. Earlier versions of this file taught the AI about the
+  // bracket-syntax pause markers (`[PAUSE n]`) directly; that backfired
+  // because the AI began treating `[…]` as a stage-direction template
+  // and producing strings like `[pause to take a deep breath]` or
+  // `[pause for 2 minutes]` — which the runtime sanitizer either
+  // stripped (no pause) or misread (digits inside the bracket get
+  // interpreted as seconds, so `[pause for 2 minutes]` becomes 2
+  // seconds, not 120).
+  //
+  // Fix: never mention the bracket syntax in any prompt. Describe pause
+  // intensity in prose ("long pauses", "brief breaths between phrases",
+  // "let phrases breathe") and let the post-processor in
+  // _inferPauseMarkers() convert the AI's natural cadence cues
+  // (ellipses, sentence boundaries, paragraph breaks) into the actual
+  // `[PAUSE n]` markers — adjusted by these per-method intensities.
   const PACING_RULES = {
-    monotony: `3-6 word phrases. Repeat a small set of core phrases. No storytelling. \x5BPAUSE 4-8\x5D between phrases. Boring is the mechanism.`,
-    structured: `Follow method structure exactly. \x5BPAUSE 8\x5D after each instruction. Longer phrases (8-15 words) for clarity.`,
-    narrative: `Vivid sensory imagery. Phrases 8-15 words. \x5BPAUSE 3-5\x5D between sentences.`,
-    focused: `All phrases reference the focal sensation. Build slowly. \x5BPAUSE 4-6\x5D. For demonstration methods: direct suggestions ("your hand IS", "you CANNOT") once state is established.`,
-    confusion: `Long sentences with embedded clauses, paradoxes. Occasional brief clarity. \x5BPAUSE 3-6\x5D.`,
-    fractionation: `Match cycle pattern. Mark transitions: "And opening!" / "And closing again..." Each induction deeper.`,
-    'eye-roll': `Precise Spiegel sequence. \x5BPAUSE n\x5D for each step. After eye closure: breath/floating language.`,
-    breath: `Voice IS metronome. Count clearly. Real timing 4 in, 7 hold, 8 out.`,
-    'body-scan': `Head-to-toe order. Name, notice, release each part. Phrases 5-10 words. \x5BPAUSE 4-6\x5D.`,
-    permissive: `"Perhaps", "you might notice", "in your own time". Phrases 5-12 words. \x5BPAUSE 2-6\x5D.`,
-    rapid: `Short, commanding phrases. 2-5 words. No hesitation. \x5BPAUSE 1-2\x5D between commands. Speed IS the mechanism. Build speed, then sudden "SLEEP" / "DROP" / "NOW" followed by \x5BPAUSE 6-10\x5D silence.`,
-    elman: `Step-by-step clinical protocol. Test each step before proceeding. "Close your eyes. Now relax them so completely that they just won't work. Test them. Good." \x5BPAUSE 3-5\x5D between steps. Confident, professional, never rushing but never lingering.`,
+    monotony:       `3-6 word phrases. Repeat a small set of core phrases. No storytelling. Leave a long, deliberate pause after each phrase — write each one on its own short line. Boring is the mechanism.`,
+    structured:     `Follow method structure exactly. Each instruction stands alone on its own line — let it breathe before the next. Longer phrases (8-15 words) for clarity.`,
+    narrative:      `Vivid sensory imagery. Phrases 8-15 words. Let sentences breathe — short paragraphs separated by line breaks. Use ellipses (...) when an image needs a moment to land.`,
+    focused:        `All phrases reference the focal sensation. Build slowly with deliberate pauses between observations. For demonstration methods: direct suggestions ("your hand IS", "you CANNOT") once state is established.`,
+    confusion:      `Long sentences with embedded clauses, paradoxes. Occasional brief clarity. Pauses come naturally from sentence weight — let complex sentences end fully before the next begins.`,
+    fractionation:  `Match cycle pattern. Mark transitions: "And opening!" / "And closing again..." Each induction deeper.`,
+    'eye-roll':     `Precise Spiegel sequence. Each step on its own short line so it has time to land. After eye closure: breath/floating language.`,
+    breath:         `Voice IS metronome. Count clearly. Real timing 4 in, 7 hold, 8 out.`,
+    'body-scan':    `Head-to-toe order. Name, notice, release each part. Phrases 5-10 words. Each body part gets its own line; let attention move slowly between them.`,
+    permissive:     `"Perhaps", "you might notice", "in your own time". Phrases 5-12 words. Use "..." within sentences to mark gentle micro-pauses; paragraph breaks for longer settling.`,
+    rapid:          `Short, commanding phrases. 2-5 words. No hesitation. Speed IS the mechanism. Build speed, then sudden "SLEEP" / "DROP" / "NOW" followed by a long deliberate silence — write a paragraph break and a single ellipsis (…) on its own line to mark it.`,
+    elman:          `Step-by-step clinical protocol. Test each step before proceeding. "Close your eyes. Now relax them so completely that they just won't work. Test them. Good." One step per line, each fully complete before the next. Confident, professional, never rushing but never lingering.`,
   };
 
   const INTENTION_TYPES = {
@@ -11246,9 +11422,9 @@ I return to myself easily"></textarea>
     }
     if (p.vocalPace) {
       const paceHint = {
-        slow:   'Long pauses, very deliberate phrasing, plenty of [PAUSE 4-6] markers between thoughts.',
-        medium: 'Balanced pacing, normal pause distribution.',
-        fast:   'Tighter phrasing, fewer dead-air pauses, keeps momentum.',
+        slow:   'Long pauses, very deliberate phrasing — write each thought on its own line with a paragraph break between, ellipses (…) within sentences for held moments.',
+        medium: 'Balanced pacing — short paragraphs with normal sentence spacing.',
+        fast:   'Tighter phrasing, fewer pauses, keeps momentum — sentences can run together inside a paragraph.',
       }[p.vocalPace];
       if (paceHint) parts.push(`Pacing preference: ${p.vocalPace}. ${paceHint}`);
     }
@@ -20392,10 +20568,10 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
     const totalDepth = deepenerPhases.length;
 
     const phaseInstructions = {
-      settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user with three or four undeniable present-moment observations (e.g. "you're sitting / lying here", "you can hear my voice", "your breath is moving"). Don't say "hello". Use \x5BPAUSE n\x5D markers between observations to let each one land. Output ONLY the script text.`,
-      induction: `Write the INDUCTION phase (~${targetWords.induction} words) using ${method.name}. Apply YES-SET / PACE-AND-LEAD: open with TWO or THREE pace statements (observable truths the user cannot deny — body position, breath, sounds, sensations), then transition with "and" or "as" into ONE lead suggestion that rides the agreement. Repeat this 2–3 times across the phase, deepening with each cycle. Embed depth language ("going deeper", "settling further", "drifting down") inside longer sentences rather than as direct commands. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
-      wake: `Write the WAKE phase (~${targetWords.wake} words). Bring the user fully awake and alert. Use a distinct upward count or direct waking sequence. Re-alert clearly. Eyes open. Fully awake. This is the actual wake-up phase and must not be replaced by reintroduction. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
-      reintroduction: `Write the REINTRODUCTION phase (~${targetWords.reintroduction} words). This phase happens AFTER wake. The user is already awake. Include a warm welcome-back, a suggestion to slowly get up only when ready, stretch, shake it off, and continue the day. If this is a demonstration method, the test can be mentioned after wake and before the final welcome-back, but the ending must fully reintroduce the user. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
+      settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user with three or four undeniable present-moment observations (e.g. "you're sitting / lying here", "you can hear my voice", "your breath is moving"). Don't say "hello". Place each observation on its own line so each one has time to land. Output ONLY the script text — no stage directions, no square-bracket notes.`,
+      induction: `Write the INDUCTION phase (~${targetWords.induction} words) using ${method.name}. Apply YES-SET / PACE-AND-LEAD: open with TWO or THREE pace statements (observable truths the user cannot deny — body position, breath, sounds, sensations), then transition with "and" or "as" into ONE lead suggestion that rides the agreement. Repeat this 2–3 times across the phase, deepening with each cycle. Embed depth language ("going deeper", "settling further", "drifting down") inside longer sentences rather than as direct commands. Use ellipses (...) within sentences for short pauses, and paragraph breaks for longer settling. Output ONLY script text — no stage directions, no square-bracket notes.`,
+      wake: `Write the WAKE phase (~${targetWords.wake} words). Bring the user fully awake and alert. Use a distinct upward count or direct waking sequence. Re-alert clearly. Eyes open. Fully awake. This is the actual wake-up phase and must not be replaced by reintroduction. Each count or instruction stands on its own line so it lands. Output ONLY script text — no stage directions, no square-bracket notes.`,
+      reintroduction: `Write the REINTRODUCTION phase (~${targetWords.reintroduction} words). This phase happens AFTER wake. The user is already awake. Include a warm welcome-back, a suggestion to slowly get up only when ready, stretch, shake it off, and continue the day. If this is a demonstration method, the test can be mentioned after wake and before the final welcome-back, but the ending must fully reintroduce the user. Output ONLY script text — no stage directions, no square-bracket notes.`,
     };
 
     const deepenerWordsEach = totalDepth > 0 ? Math.round(targetWords.deepener / totalDepth) : targetWords.deepener;
@@ -20406,7 +20582,7 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       else if (depth === 1) intensity = 'light trance (first layer)';
       else if (depth === totalDepth) intensity = 'deep trance (innermost layer)';
       else intensity = `medium trance (layer ${depth} of ${totalDepth})`;
-      phaseInstructions[p] = `Write DEEPENER phase ${depth} of ${totalDepth} (~${deepenerWordsEach} words). Target state: ${intensity}. ${depth === 1 ? 'Move from post-induction awareness into the first layer of trance.' : `The user is already at layer ${depth - 1}; take them ONE LEVEL deeper, not all the way from waking.`}${state.craftedSuggestion && depth === totalDepth ? ' Foreshadow the crafted suggestion at this innermost layer.' : ''}${affirmLines.length && depth === totalDepth ? ' Begin weaving affirmations.' : ''} Use \x5BPAUSE n\x5D. Output ONLY script text.`;
+      phaseInstructions[p] = `Write DEEPENER phase ${depth} of ${totalDepth} (~${deepenerWordsEach} words). Target state: ${intensity}. ${depth === 1 ? 'Move from post-induction awareness into the first layer of trance.' : `The user is already at layer ${depth - 1}; take them ONE LEVEL deeper, not all the way from waking.`}${state.craftedSuggestion && depth === totalDepth ? ' Foreshadow the crafted suggestion at this innermost layer.' : ''}${affirmLines.length && depth === totalDepth ? ' Begin weaving affirmations.' : ''} Let phrases breathe — short paragraphs, ellipses where an image needs to land. Output ONLY script text — no stage directions, no square-bracket notes.`;
     });
 
     // LEVEL phase — sustained-depth tonic between two deepeners. The user is
@@ -20419,7 +20595,7 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       // The level-N phase holds the user at depth N (between deepener-N and deepener-(N+1))
       const heldDepth = i + 1;
       const totalLevels = levelPhases.length;
-      phaseInstructions[p] = `Write a LEVEL phase (~${levelWordsEach} words). The user is currently at depth ${heldDepth} of ${totalDepth}. DO NOT take them deeper — HOLD them here. Reinforce the present state with quiet observations: breath continuing on its own, body weight settled, the depth they've already reached. Ratify the trance ("notice how easily you went there", "this state is yours now"). This is a tonic, sustaining period BEFORE the next deepener takes them further down. Use long pauses — \x5BPAUSE 5-8\x5D between phrases. Phrases short, paced, almost still. Do not introduce new imagery or scenes. Just rest the user in what they've already found. Output ONLY script text.`;
+      phaseInstructions[p] = `Write a LEVEL phase (~${levelWordsEach} words). The user is currently at depth ${heldDepth} of ${totalDepth}. DO NOT take them deeper — HOLD them here. Reinforce the present state with quiet observations: breath continuing on its own, body weight settled, the depth they've already reached. Ratify the trance ("notice how easily you went there", "this state is yours now"). This is a tonic, sustaining period BEFORE the next deepener takes them further down. Long pauses between phrases — write each observation on its own short line so it has room to land. Phrases short, paced, almost still. Do not introduce new imagery or scenes. Just rest the user in what they've already found. Output ONLY script text — no stage directions, no square-bracket notes.`;
     });
 
     const lightenerWordsEach = lightenerPhases.length > 0 ? Math.round(targetWords.lightener / lightenerPhases.length) : targetWords.lightener;
@@ -20428,8 +20604,8 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       const fromDepth = closesDepth;
       const toDepth = closesDepth - 1;
       phaseInstructions[p] = fromDepth === 1
-        ? `Write the LIGHTENER phase (~${lightenerWordsEach} words). Ease intensity down gradually from light trance toward waking awareness. Keep the same narrator voice and continuity — this phase works with the narrator rather than stopping them. Use gentle return language, body awareness, orientation, breath, movement, and upward pacing. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`
-        : `Write LIGHTENER phase for level ${fromDepth} → ${toDepth} (~${lightenerWordsEach} words). The user is currently at depth ${fromDepth}; bring them up ONE LEVEL toward depth ${toDepth}, not all the way. Subsequent lighteners will continue the ascent. Gentle upward language, breath, light. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`;
+        ? `Write the LIGHTENER phase (~${lightenerWordsEach} words). Ease intensity down gradually from light trance toward waking awareness. Keep the same narrator voice and continuity — this phase works with the narrator rather than stopping them. Use gentle return language, body awareness, orientation, breath, movement, and upward pacing. Let phrases breathe — short paragraphs, not rushed. Output ONLY script text — no stage directions, no square-bracket notes.`
+        : `Write LIGHTENER phase for level ${fromDepth} → ${toDepth} (~${lightenerWordsEach} words). The user is currently at depth ${fromDepth}; bring them up ONE LEVEL toward depth ${toDepth}, not all the way. Subsequent lighteners will continue the ascent. Gentle upward language, breath, light. Let phrases breathe. Output ONLY script text — no stage directions, no square-bracket notes.`;
     });
 
     const workCount = phases.filter(p => phaseBase(p) === 'work').length;
@@ -20437,7 +20613,7 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
     phases.forEach(p => {
       const base = phaseBase(p);
       if (base === 'affirm') {
-        phaseInstructions[p] = `Write a brief affirmation interlude (~40-60 words). Deliver these affirmations in ${persona.name}'s voice, woven into flowing, hypnotic language:\n${affirmLines.map(l => `"${l}"`).join('\n')}\nUse the user's exact words. Add \x5BPAUSE 3\x5D between each. Poetic, rhythmic, repetitive. Output ONLY script text.`;
+        phaseInstructions[p] = `Write a brief affirmation interlude (~40-60 words). Deliver these affirmations in ${persona.name}'s voice, woven into flowing, hypnotic language:\n${affirmLines.map(l => `"${l}"`).join('\n')}\nUse the user's exact words. Place each affirmation on its own line so each one has time to settle. Poetic, rhythmic, repetitive. Output ONLY script text — no stage directions, no square-bracket notes.`;
       } else if (base === 'sounding') {
         // Sounding (a.k.a. depth check / witness moment) — a meta-awareness
         // pause where the narrator invites the user to register their CURRENT
@@ -20455,7 +20631,7 @@ Touch on (pick 2-3, in ${persona.name}'s voice):
   • the awareness itself — wide or narrow, sharp or soft, near or far
   • emotional weather — what's present, without naming it as good or bad
 
-End with a brief acknowledgment that you're now continuing — bridging back to the surrounding phase. Use \x5BPAUSE 4-7\x5D between observations to give the user time to actually look. Output ONLY script text.`;
+End with a brief acknowledgment that you're now continuing — bridging back to the surrounding phase. Long pauses between observations to give the user time to actually look — write each observation on its own short line, ellipses (...) for the breath-pauses within. Output ONLY script text — no stage directions, no square-bracket notes.`;
       } else if (base === 'custom') {
         // Custom blocks are user-authored — they pass through generation
         // verbatim. We DO NOT issue a prompt for these. The Reimagine button
@@ -20487,7 +20663,7 @@ In ${persona.name}'s voice:
   • Reassure agency: the user remains in control, can think, can stop at any time.
   • If relevant, name the technique by category (e.g. "breath-anchoring", "progressive relaxation").
 
-Avoid: jargon ("alpha state", "subconscious"), mystical language, performance pressure. Use \x5BPAUSE n\x5D markers between thoughts. Output ONLY script text.`;
+Avoid: jargon ("alpha state", "subconscious"), mystical language, performance pressure. Let thoughts breathe — short paragraphs, not run-on sentences. Output ONLY script text — no stage directions, no square-bracket notes.`;
       } else if (base === 'training') {
         // Skill rehearsal in trance. The narrator leads the user through
         // 3-5 repetitions of a specific mental, sensory, or somatic
@@ -20510,10 +20686,10 @@ Pick ONE skill grounded in the user's intention. Examples: noticing without nami
 
 Structure each rep:
   • Setup: brief instruction.
-  • Execution: \x5BPAUSE 4-6\x5D for the user to actually do it.
+  • Execution: leave a paragraph break (and one short ellipsis line on its own — like "…") for the user to actually do it.
   • Ratification: a quiet observation that it's working ("good", "yes, like that", "even easier this time").
 
-End with the user holding the skill briefly. Do NOT introduce a new skill at the end — close on the practice they just trained. Use \x5BPAUSE n\x5D liberally. Output ONLY script text.`;
+End with the user holding the skill briefly. Do NOT introduce a new skill at the end — close on the practice they just trained. Long pauses are essential — write each instruction on its own line, plenty of paragraph breaks. Output ONLY script text — no stage directions, no square-bracket notes.`;
       } else if (base === 'mission') {
         // Posthypnotic homework assignment. Concrete, doable, tied to
         // waking life. Quinn ERP and outcome-oriented protocols include a
@@ -20531,7 +20707,7 @@ The mission must be:
 
 Delivered in ${persona.name}'s voice as a quiet promise to themselves, not a command. Open with a phrase like "and here is your mission" or "one thing to carry with you" or whatever fits your voice. End with a phrase that lets the assignment settle ("that is enough", "small things, kept", "you'll know when").
 
-Avoid: lists of tasks, ambitious goals, anything that requires willpower to remember. The mission should feel like something the user could not help but do once cued. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`;
+Avoid: lists of tasks, ambitious goals, anything that requires willpower to remember. The mission should feel like something the user could not help but do once cued. Let phrases breathe — short paragraphs, ellipses where an idea needs to land. Output ONLY script text — no stage directions, no square-bracket notes.`;
       } else if (base === 'goal') {
         // Outcome anchor / future-pacing. NOT a goal-setting exercise
         // (cognitive). A sensory rehearsal of what success FEELS like
@@ -20552,7 +20728,7 @@ In ${persona.name}'s voice:
   • Open by inviting the user to see/feel/notice themselves AT the time the change has happened. Not before. Not in transit. There.
   • Pick 3-4 sensory details only the user would notice — small ones. The way they hold their shoulders. The first breath of the morning. The thing they don't do anymore. The thing they do without thinking.
   • Stay in present tense. The future is happening now.
-  • Linger. Use \x5BPAUSE 5-8\x5D between details so the user's nervous system has time to learn the shape of the outcome.
+  • Linger. Place each detail on its own line so the user's nervous system has time to learn the shape of the outcome — slow, paragraph-spaced, almost still.
 
 Avoid: abstractions ("you will be confident"), goal-setting language ("your goal is to..."), commands. The user is OBSERVING themselves succeeded, not striving. End with one quiet phrase that lets the picture settle. Output ONLY script text.`;
       } else if (base === 'work') {
@@ -20566,7 +20742,7 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
           const midRoles = ['DEVELOP: expand with a fresh metaphor you have not yet used.', 'INTENSIFY: deliver the suggestion at higher conviction and specificity.', 'REINFORCE: a different angle on the same core effect.'];
           role = midRoles[(workIdx - 2) % midRoles.length];
         }
-        phaseInstructions[p] = `Write WORK phase ${workIdx} of ${workCount} (~${workWordsEach} words). ROLE: ${role}${state.craftedSuggestion ? '' : ' Therapeutic deepening tied to the intention.'} Do not repeat imagery or phrasing from earlier work blocks. Use \x5BPAUSE n\x5D. Output ONLY script text.`;
+        phaseInstructions[p] = `Write WORK phase ${workIdx} of ${workCount} (~${workWordsEach} words). ROLE: ${role}${state.craftedSuggestion ? '' : ' Therapeutic deepening tied to the intention.'} Do not repeat imagery or phrasing from earlier work blocks. Let phrases breathe — short paragraphs, ellipses for held moments. Output ONLY script text — no stage directions, no square-bracket notes.`;
       }
     });
 
@@ -21130,6 +21306,135 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  // Pause-marker inference — convert AI's natural cadence → [PAUSE n]
+  // ══════════════════════════════════════════════════════════════════════
+  // The AI no longer writes [PAUSE n] markers directly. Instead it writes
+  // natural prose with cadence cues (paragraph breaks, ellipses, sentence
+  // boundaries), and we convert those into actual pause markers here.
+  //
+  // Why we changed it: the bracket syntax was tempting the AI to use the
+  // bracket form as a generic "stage direction" template — emitting things
+  // like `[Pause to take a deep breath]` or `[Pause for 2 minutes]`. The
+  // first kind got silently stripped (no pause). The second got
+  // mis-interpreted as 2 SECONDS by the digit-extracting sanitizer
+  // because there was no way to distinguish the user-meant unit.
+  //
+  // What we do instead: the AI writes natural-flow prose. We detect three
+  // pause magnitudes:
+  //   • Paragraph break (`\n\n+`)         → long pause   (long_sec)
+  //   • Solo ellipsis line (`…` / `...`)  → long pause   (long_sec)
+  //   • In-text ellipsis (`…` / `...`)    → medium pause (med_sec)
+  //   • Sentence end (`. ! ?`)            → short pause  (short_sec)
+  //
+  // Each pacing profile (from PACING_RULES) gets its own (short, med, long)
+  // tuple so a `monotony` script gets longer beats than a `rapid` one.
+  //
+  // The function is idempotent — if the input already contains [PAUSE n]
+  // markers (e.g. from a custom block or hand-edited script), they're
+  // preserved untouched and not double-counted.
+  const PAUSE_PROFILES = {
+    monotony:       { short: 4, med: 6, long: 8 },
+    structured:     { short: 3, med: 5, long: 8 },
+    narrative:      { short: 2, med: 4, long: 6 },
+    focused:        { short: 3, med: 5, long: 6 },
+    confusion:      { short: 2, med: 4, long: 6 },
+    fractionation:  { short: 2, med: 3, long: 5 },
+    'eye-roll':     { short: 3, med: 5, long: 7 },
+    breath:         { short: 1, med: 2, long: 4 },  // breath has its own counted timing — keep light
+    'body-scan':    { short: 3, med: 5, long: 7 },
+    permissive:     { short: 2, med: 4, long: 6 },
+    rapid:          { short: 1, med: 2, long: 8 },  // mostly fast, but long after stop-words
+    elman:          { short: 2, med: 4, long: 5 },
+  };
+  const _DEFAULT_PAUSE_PROFILE = { short: 2, med: 4, long: 6 };
+
+  /** Convert AI-written natural cadence into [PAUSE n] markers.
+   *
+   *  text:        the AI output for one phase
+   *  pacingKey:   one of PACING_RULES keys, e.g. 'monotony'. Falls back
+   *               to a sensible default if missing/unknown.
+   *
+   *  Returns the same text with cadence markers inserted, suitable for
+   *  feeding directly into the speakScript() pipeline. */
+  function _inferPauseMarkers(text, pacingKey) {
+    if (!text || typeof text !== 'string') return text || '';
+    const profile = PAUSE_PROFILES[pacingKey] || _DEFAULT_PAUSE_PROFILE;
+
+    // Step 1 — protect existing [PAUSE n] markers from being touched.
+    // We replace each one with a sentinel before processing, then swap
+    // them back at the end. This makes the function idempotent: running
+    // it twice on the same text doesn't double up.
+    const existingMarkers = [];
+    let working = text.replace(/\x5BPAUSE\s+\d+\]/gi, (m) => {
+      existingMarkers.push(m);
+      return `\u0003${existingMarkers.length - 1}\u0003`;
+    });
+
+    // Step 2 — solo-ellipsis lines (just `…` or `...` on a line of their
+    // own) become long pauses. Done BEFORE paragraph normalization so we
+    // can detect them as standalone tokens.
+    working = working.replace(/^[\t ]*[…\.]{3,}[\t ]*$/gm, `\x5BPAUSE ${profile.long}\x5D`);
+    working = working.replace(/^[\t ]*…[\t ]*$/gm, `\x5BPAUSE ${profile.long}\x5D`);
+
+    // Step 3 — paragraph breaks (one or more blank lines) → long pause.
+    // We collapse every run of 2+ newlines to a single long-pause marker.
+    working = working.replace(/\n{2,}/g, ` \x5BPAUSE ${profile.long}\x5D `);
+
+    // Step 4 — single newlines (the AI wrote each phrase on its own line)
+    // → medium pause. Many of our new phase prompts ask for this layout.
+    working = working.replace(/\n/g, ` \x5BPAUSE ${profile.med}\x5D `);
+
+    // Step 5 — in-text ellipses → medium pause. Ellipses are reading-rest
+    // marks, longer than commas, shorter than full breaks. Match either
+    // unicode `…` or three+ ASCII dots.
+    working = working.replace(/\s*(?:…|\.{3,})\s*/g, ` \x5BPAUSE ${profile.med}\x5D `);
+
+    // Step 6 — sentence boundaries (end-of-sentence punctuation followed
+    // by whitespace + a capital/quote/dash) → short pause. We use a
+    // lookahead so the punctuation is preserved. Skipped after `Mr.`,
+    // `Dr.`, `vs.`, `e.g.`, `i.e.`, single-letter initials, and decimal
+    // numbers — anywhere a period doesn't actually end a sentence.
+    working = working.replace(
+      /([.!?])\s+(?=["'“‘\-—]?[A-Z])/g,
+      (match, punct, offset, full) => {
+        // Walk back to grab the word before the punctuation
+        const before = full.slice(Math.max(0, offset - 8), offset).toLowerCase();
+        if (/\b(?:mr|mrs|ms|dr|st|jr|sr|vs|etc|e\.g|i\.e)$/.test(before)) return match;
+        // Single uppercase letter + period (initial in a name)
+        if (/\b[a-z]$/.test(before)) return match;
+        // Decimal number (e.g., "1.5") — digit before the period
+        if (/\d$/.test(before)) return match;
+        return `${punct} \x5BPAUSE ${profile.short}\x5D `;
+      }
+    );
+
+    // Step 7 — restore original markers from sentinels.
+    working = working.replace(/\u0003(\d+)\u0003/g, (_, idx) => existingMarkers[Number(idx)] || '');
+
+    // Step 8 — merge adjacent markers into one (e.g. "[PAUSE 4][PAUSE 6]"
+    // can happen when an ellipsis sits at end of a paragraph). Sum them
+    // but cap the total at 12s so a triple-stack doesn't produce an
+    // unintended 18-second hole.
+    working = working.replace(
+      /\x5BPAUSE\s+(\d+)\]\s*\x5BPAUSE\s+(\d+)\]/gi,
+      (_, a, b) => `\x5BPAUSE ${Math.min(12, parseInt(a, 10) + parseInt(b, 10))}\x5D`
+    );
+    // Run the merge once more to catch triple-stacks that became
+    // double-stacks after the first pass.
+    working = working.replace(
+      /\x5BPAUSE\s+(\d+)\]\s*\x5BPAUSE\s+(\d+)\]/gi,
+      (_, a, b) => `\x5BPAUSE ${Math.min(12, parseInt(a, 10) + parseInt(b, 10))}\x5D`
+    );
+
+    // Step 9 — cosmetic cleanup. Collapse repeated whitespace; strip
+    // leading/trailing whitespace around markers so script statistics
+    // and phase preview text don't look weirdly spaced.
+    working = working.replace(/[\t ]{2,}/g, ' ').trim();
+
+    return working;
+  }
+
   /** Generate a single phase via aiTextPlugin */
   async function generateSinglePhase(gs, idx, opts = {}) {
     const phase = gs.phases[idx];
@@ -21216,6 +21521,19 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
     }
     setStreamingPreview(idx, text, { done: true });
     if (!text || text.length < 15) throw new Error('Phase returned too little text');
+    // Convert AI's natural cadence (paragraph breaks, ellipses, sentence
+    // boundaries) into [PAUSE n] markers using the pacing profile from
+    // the chosen method. The AI itself is no longer instructed about
+    // bracket syntax — see _inferPauseMarkers() comment header for why.
+    // Errors here must NEVER fail the whole phase: if inference throws,
+    // we fall back to the raw text unchanged. The TTS layer can still
+    // play prose without explicit markers (sentences just won't have
+    // the per-method pause-magnitude tuning).
+    try {
+      text = _inferPauseMarkers(text, gs.method && gs.method.pacing);
+    } catch (e) {
+      console.warn('[pause-infer] failed for', phase, '— keeping raw text:', e);
+    }
     return text;
   }
 
@@ -22395,7 +22713,7 @@ Their draft:
 ${userText}
 """
 
-Rewrite it as ${persona.name} — preserve their INTENT and meaning, but use YOUR vocabulary, cadence, and signature phrasing. Keep similar overall length (within ±30%). Add or adjust \x5BPAUSE n\x5D markers where natural for your pacing. Output ONLY the rewritten text — no preamble, no commentary, no markers like ===CUSTOM===.
+Rewrite it as ${persona.name} — preserve their INTENT and meaning, but use YOUR vocabulary, cadence, and signature phrasing. Keep similar overall length (within ±30%). Use natural pacing — paragraph breaks for longer pauses, ellipses (…) for held moments. Output ONLY the rewritten text — no preamble, no commentary, no stage directions, no square-bracket notes, no markers like ===CUSTOM===.
 
 Start immediately:`;
 
@@ -22420,6 +22738,15 @@ Start immediately:`;
         .replace(/\s*["'""'']\s*$/, '')
         .trim();
       if (!newText || newText.length < 8) throw new Error('AI returned too little text');
+      // Convert AI's natural cadence into [PAUSE n] markers using the
+      // same per-method profile as full-script generation. Same defensive
+      // try/catch as generateSinglePhase — never let a parser issue
+      // discard the AI's output.
+      try {
+        newText = _inferPauseMarkers(newText, method && method.pacing);
+      } catch (e) {
+        console.warn('[pause-infer] failed for reimagine — keeping raw text:', e);
+      }
 
       // Show diff modal so the user can pick — same UX as phase retry
       let chosen = newText;
@@ -24663,11 +24990,38 @@ Start immediately:`;
     // speech. Runs BEFORE sanitization so any expanded content (e.g. a
     // pasted affirmation with punctuation) is normalized by the passes below.
     let canonical = resolveTokens(text);
-    // Sanitize: strip phase markers and malformed pause markers
+    // Sanitize: strip phase markers and malformed pause-bracket forms.
     canonical = canonical.replace(PHASE_MARKER_STRIP_RX, '');
-    canonical = canonical.replace(/\[\s*pause[^\]]*\]/gi, (m) => {
-      const num = m.match(/\d+/);
-      return num ? `\x5BPAUSE ${num[0]}\x5D` : '';
+    // Pause-marker policy: ONLY the canonical form `[PAUSE <int>]` is honored.
+    //
+    // Earlier versions of this regex tried to be helpful and extracted any
+    // digit out of a malformed bracket — turning `[Pause for 2 minutes]`
+    // into `[PAUSE 2]` (i.e. 2 SECONDS of silence instead of 120). That
+    // failure mode appeared because the AI was previously instructed
+    // about the `[PAUSE n]` syntax and started using `[…]` as a generic
+    // stage-direction template. We now defang that path two ways:
+    //
+    //   1. The AI is no longer instructed about [PAUSE n] (see PACING_RULES
+    //      and the phase-instruction strings — they reference natural
+    //      cadence cues like ellipses and paragraph breaks instead).
+    //      Pause markers are inserted by _inferPauseMarkers() AFTER the
+    //      AI has produced its text, in the canonical form.
+    //
+    //   2. This sanitizer no longer rescues digits out of malformed
+    //      brackets. Any `[Pause whatever]` that ISN'T canonical is
+    //      stripped silently — better to drop a misformed marker than
+    //      to honor it as a wrong-magnitude pause that breaks the
+    //      session's rhythm.
+    //
+    // We log a console warning if we see anything close to canonical but
+    // not matching, so we'd notice if a model started slipping malformed
+    // markers through.
+    canonical = canonical.replace(/\[\s*pause\b[^\]]*\]/gi, (m) => {
+      // Already canonical? Pass through unchanged.
+      if (/^\x5BPAUSE\s+\d+\x5D$/i.test(m)) return m;
+      // Looks pause-ish but isn't canonical — strip and warn.
+      console.warn('[speakScript] dropping malformed pause marker:', JSON.stringify(m));
+      return '';
     });
     // Embedded-command markup [[text]] — Ericksonian technique where the
     // hypnotist drops voice on the command word inside a sentence. Convert
@@ -27702,10 +28056,67 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     _updateReadinessScore();
     return applied.length > 0;
   }
+  /** Wire chat-style behaviors onto a check-in textarea. Idempotent —
+   *  safe to call once per textarea on init. Provides:
+   *    • Enter (without Shift)  → calls applyFn() and prevents the
+   *      newline insert. Shift+Enter still produces a newline so users
+   *      who want multi-line input aren't blocked.
+   *    • Autogrow               — bumps `rows` 1..6 based on \n count,
+   *      then lets `max-height` + `overflow-y:auto` handle anything
+   *      longer. Falls back gracefully on browsers that mis-honor
+   *      scrollHeight (sets a floor of 1 row).
+   *    • Round-button enable    — disables the in-wrap circle send
+   *      button when the textarea is empty (ignoring whitespace), so
+   *      users see clear visual feedback that input is ready.
+   *
+   *  Applied to BOTH pre-session and post-session check-ins so they
+   *  behave identically. */
+  function _wireChatStyleCheckin(textareaId, sendBtnId, applyFn) {
+    const ta = $(textareaId);
+    const btn = $(sendBtnId);
+    if (!ta) return;
+    // Enter without Shift sends — same convention as Slack, Discord, ChatGPT.
+    // Shift+Enter still inserts a newline (default behavior, we don't preventDefault).
+    // We also guard on IME composition so users typing CJK input methods don't
+    // submit mid-composition (the Enter that confirms a kanji choice would
+    // otherwise fire applyFn).
+    ta.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      if (e.shiftKey) return;            // Shift+Enter → newline
+      if (e.isComposing || e.keyCode === 229) return; // IME mid-composition
+      e.preventDefault();
+      // Trim check — don't fire on a textarea full of only whitespace.
+      if (!(ta.value || '').trim()) return;
+      try { applyFn(); } catch (err) { console.warn('[chat-style] apply failed:', err); }
+    });
+    // Autogrow + button enable on input
+    const updateState = () => {
+      const hasContent = !!(ta.value || '').trim();
+      if (btn) btn.disabled = !hasContent;
+      // Autogrow — count linebreaks + soft-wrap proxy via scrollHeight.
+      // We set rows directly rather than height-via-px because the parent
+      // CSS ties min/max-height to the textarea, and rows is a less
+      // fragile knob across browsers.
+      const lines = (ta.value || '').split('\n').length;
+      const wantRows = Math.min(6, Math.max(1, lines));
+      if (Number(ta.rows) !== wantRows) ta.rows = wantRows;
+    };
+    ta.addEventListener('input', updateState);
+    updateState();
+    // Round button click — same handler as the (now-hidden) text "send →"
+    // button. Both paths funnel to applyFn for consistency.
+    if (btn) btn.addEventListener('click', () => {
+      if (!(ta.value || '').trim()) return;
+      try { applyFn(); } catch (err) { console.warn('[chat-style] btn click failed:', err); }
+    });
+  }
+
   $('preCheckinTextApply')?.addEventListener('click', () => _applyPreCheckinText());
   // Auto-apply on blur — users who type then click "next →" shouldn't lose
   // their signal because they forgot to send.
   $('preCheckinText')?.addEventListener('blur', () => _applyPreCheckinText({ silent: true }));
+  // Chat-style behaviors — Enter sends, autogrow, round-button enable.
+  _wireChatStyleCheckin('preCheckinText', 'preCheckinTextSendCircle', () => _applyPreCheckinText());
 
   /** Compute & render the pre-session readiness score from the three pre-checkin
    *  signals. Mood + energy contribute positively; tension inverts (high tension
@@ -27939,6 +28350,8 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   // Auto-apply on blur — users who type then click another button (back to
   // setup, restart) shouldn't lose their signal because they forgot to send.
   $('postCheckinText')?.addEventListener('blur', () => _applyPostCheckinText({ silent: true }));
+  // Chat-style behaviors — Enter sends, autogrow, round-button enable.
+  _wireChatStyleCheckin('postCheckinText', 'postCheckinTextSendCircle', () => _applyPostCheckinText());
 
   // Journal save + tier-aware sentiment classification. The basic save runs
   // on every blur. Sentiment is a paid-tier-only enhancement: when user is
