@@ -7318,6 +7318,18 @@ I return to myself easily"></textarea>
           <span class="hint">Play a single soft tone (bell / bowl / chime / drop) at the deepest phase, echoing the session's motif.</span>
         </span>
       </label>
+      <!-- Visual side of the motif loop: the motif's preferred visualizer
+           is biased into 'auto' selection, and a small phase-weighted tint
+           from the motif palette tints the visualizer color. Explicit user
+           viz choices and an explicit vizColor pick both override this — it
+           only acts when the user is on auto/default. -->
+      <label class="toggle-row" for="motifVisualsEnabled" style="align-items:flex-start;margin-top:8px">
+        <input type="checkbox" id="motifVisualsEnabled">
+        <span>
+          Motif visual influence
+          <span class="hint">When the visualizer is on auto, let the session's motif pick a matching visualizer and tint its color.</span>
+        </span>
+      </label>
       <!-- Director calibration — shifts every rule threshold + AI tone directive. -->
       <div id="directorBiasRow" style="margin-top:12px;padding:10px 12px;background:var(--glass);border:1px solid var(--glass-border)">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
@@ -8263,6 +8275,7 @@ I return to myself easily"></textarea>
     // Default on with Smart Director; the cue layer is opt-in.
     motifEngineEnabled: true,
     motifCuesEnabled: false,
+    motifVisualsEnabled: true,
     motifCueVolume: 0.7,
     directorBias: 0,
 
@@ -11573,6 +11586,7 @@ I return to myself easily"></textarea>
       aiSceneDirectivesEnabled: state.aiSceneDirectivesEnabled !== false,
       motifEngineEnabled: state.motifEngineEnabled !== false,
       motifCuesEnabled:   state.motifCuesEnabled === true,
+      motifVisualsEnabled: state.motifVisualsEnabled !== false,
       motifCueVolume:     Number.isFinite(state.motifCueVolume) ? state.motifCueVolume : 0.7,
       directorBias: Number($('directorBiasSlider')?.value ?? state.directorBias ?? 0),
       directorPace: Number($('directorPaceSlider')?.value ?? state.directorPace ?? 0),
@@ -12029,6 +12043,8 @@ I return to myself easily"></textarea>
       const mecb = $('motifEngineEnabled'); if (mecb) mecb.checked = state.motifEngineEnabled;
       state.motifCuesEnabled = s.motifCuesEnabled === true;
       const mccb = $('motifCuesEnabled'); if (mccb) mccb.checked = state.motifCuesEnabled;
+      state.motifVisualsEnabled = s.motifVisualsEnabled !== false;
+      const mvcb = $('motifVisualsEnabled'); if (mvcb) mvcb.checked = state.motifVisualsEnabled;
       if (Number.isFinite(s.motifCueVolume)) state.motifCueVolume = s.motifCueVolume;
       state.directorBias = s.directorBias ?? 0;
       const dbSlider = $('directorBiasSlider'); if (dbSlider) dbSlider.value = state.directorBias;
@@ -13437,6 +13453,97 @@ I return to myself easily"></textarea>
       osc.start(t);
       osc.stop(t + cfg.dur + 0.05);
     } catch (e) { console.warn('[motif cue]', e); }
+  }
+
+  // ───────────── Motif → visuals hand-off (A1) ─────────────
+  // The motif corpus declares `palette: {a:[r,g,b], b:[r,g,b]}` (0..1 floats)
+  // and `viz: [string,...]` (preferred visualizers). This block turns those
+  // into actual rendered influence: a phase-weighted tint over the active
+  // viz color, and a viz-choice bias when the user is on auto.
+  //
+  // Design rules:
+  //   1. NEVER override explicit user choices. If state.vizColor is set
+  //      (color picker used), respect it — return it unchanged.
+  //   2. NEVER override an explicit vizOverride. Only bias when user is
+  //      on 'auto' — the auto-pick is where motif influence belongs.
+  //   3. Intensity is phase-weighted. The motif gets quiet during settling
+  //      / induction (faint hint), peaks in the work / deepener phases
+  //      (the deepest moment), and fades on lightener / wake.
+  //   4. Honors state.motifVisualsEnabled — separate toggle from the
+  //      narrative/cue layers so users can keep the prompt-side motif
+  //      while disabling the visual side.
+
+  // Per-phase motif visual intensity. Higher = more motif palette in the
+  // mix. Values chosen so the deepest phases get noticeable but not
+  // overwhelming influence (peak ~0.45 = mostly accent, ~half motif).
+  const MOTIF_VIZ_INTENSITY = {
+    settling: 0.08, induction: 0.18, deepener: 0.42,
+    level: 0.45,    work: 0.45,     affirm: 0.42,
+    lightener: 0.30, wake: 0.10,    reintroduction: 0.10,
+  };
+  const MOTIF_VIZ_DEFAULT_INTENSITY = 0.30;
+
+  function _motifPaletteRgbHex(rgbTriple) {
+    if (!Array.isArray(rgbTriple) || rgbTriple.length < 3) return null;
+    const clamp01 = (x) => Math.max(0, Math.min(1, Number(x) || 0));
+    const toHex2  = (n) => Math.round(clamp01(n) * 255).toString(16).padStart(2, '0');
+    return '#' + toHex2(rgbTriple[0]) + toHex2(rgbTriple[1]) + toHex2(rgbTriple[2]);
+  }
+
+  function _hexToRgb(hex) {
+    if (typeof hex !== 'string') return null;
+    const h = hex.trim().replace(/^#/, '');
+    if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+  }
+  function _rgbToHex(r, g, b) {
+    const c = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+    return '#' + c(r) + c(g) + c(b);
+  }
+  function _mixHex(a, b, t) {
+    const ra = _hexToRgb(a); const rb = _hexToRgb(b);
+    if (!ra || !rb) return a || b || '#000000';
+    const k = Math.max(0, Math.min(1, t));
+    return _rgbToHex(ra[0]*(1-k)+rb[0]*k, ra[1]*(1-k)+rb[1]*k, ra[2]*(1-k)+rb[2]*k);
+  }
+
+  // Resolves the final visualizer color, applying motif tint when active
+  // and the user hasn't picked an explicit color. Drop-in replacement for
+  // the previous `state.vizColor || accentFallback` pattern — call sites
+  // pass the same fallback they used to.
+  function _resolveVizColor(accentFallback) {
+    // User picked a color → respect it absolutely.
+    if (state.vizColor) return state.vizColor;
+    // Motif layer disabled, or no active motif → standard accent.
+    if (state.motifVisualsEnabled === false) return accentFallback;
+    const motif = state._activeMotif;
+    if (!motif || !motif.palette || !motif.palette.b) return accentFallback;
+    const motifHex = _motifPaletteRgbHex(motif.palette.b);
+    if (!motifHex) return accentFallback;
+    // Phase-weighted tint amount. Out-of-band phases (e.g. odd custom
+    // names) get the default mid intensity.
+    const baseKind = (typeof phaseBase === 'function' && state._currentPhase)
+      ? phaseBase(state._currentPhase)
+      : null;
+    const intensity = MOTIF_VIZ_INTENSITY[baseKind] ?? MOTIF_VIZ_DEFAULT_INTENSITY;
+    return _mixHex(accentFallback, motifHex, intensity);
+  }
+
+  // Pick one of the motif's preferred visualizers, filtered to those the
+  // app actually supports. Returns null when no motif is active, motif
+  // viz list is empty, or no overlap with the valid set. Caller is
+  // responsible for honoring state.motifVisualsEnabled and only calling
+  // when the user is on 'auto'.
+  function _pickMotifViz() {
+    if (state.motifVisualsEnabled === false) return null;
+    const motif = state._activeMotif;
+    if (!motif || !Array.isArray(motif.viz) || !motif.viz.length) return null;
+    if (typeof _VALID_VIZ_SENTINELS === 'undefined') return null;
+    const usable = motif.viz.filter(v => _VALID_VIZ_SENTINELS.has(v));
+    if (!usable.length) return null;
+    // Random choice from the (typically 3-element) preferred list so
+    // re-running the same motif doesn't produce identical visuals.
+    return usable[Math.floor(Math.random() * usable.length)];
   }
 
   async function buildLivingProfile() {
@@ -16209,7 +16316,24 @@ ${messages}
       state.audioReactive._fftBuffer = new Uint8Array(this.analyser.frequencyBinCount);
 
       this.master = this.ctx.createGain(); this.master.gain.value = 0;
-      this.master.connect(this.analyser);
+      // Master chain inserts (A2): a transparent tone-shaping lowpass and
+      // a slow-modulated "breath" gain sit between master and analyser, so
+      // every soundscape gains slow temporal life and (optional) motif
+      // warmth without per-soundscape edits.
+      //
+      //   sources → master → toneFilter → breathGain → analyser → duck → compressor → destination
+      //
+      // toneFilter starts transparent (cutoff 20kHz). breathGain stays at
+      // 1.0 baseline, modulated ±10% by a 1/240 Hz LFO further below.
+      this._toneFilter = this.ctx.createBiquadFilter();
+      this._toneFilter.type = 'lowpass';
+      this._toneFilter.frequency.value = 20000;
+      this._toneFilter.Q.value = 0.7;
+      this._breathGain = this.ctx.createGain();
+      this._breathGain.gain.value = 1.0;
+      this.master.connect(this._toneFilter);
+      this._toneFilter.connect(this._breathGain);
+      this._breathGain.connect(this.analyser);
       this.analyser.connect(this._duckGain);
 
       const c = this.ctx, m = this.master, ns = this.nodes;
@@ -16631,6 +16755,58 @@ ${messages}
         setTimeout(() => hoot(Math.random() < 0.5), 4000 + Math.random() * 6000);
       }
 
+      // Session breath LFO (A2). 1/240 Hz means one cycle every ~4 minutes
+      // — far below conscious detection but above session length, so the
+      // listener feels the soundscape gently swelling and receding rather
+      // than reaching a static steady state. Always on; no toggle (the
+      // amplitude is small enough to be transparent if undesired).
+      {
+        const breathLfo   = c.createOscillator();
+        breathLfo.type    = 'sine';
+        breathLfo.frequency.value = 1 / 240;
+        const breathDepth = c.createGain();
+        breathDepth.gain.value = 0.10;  // ±10% modulation of unity gain
+        breathLfo.connect(breathDepth);
+        breathDepth.connect(this._breathGain.gain);
+        // Push the LFO into ns so startAll() starts it and stop()
+        // disconnects it. The depth gain rides through the same stop
+        // cleanup further down.
+        ns.push(breathLfo, breathDepth);
+      }
+
+      // Motif warmth tilt (A2). When a motif is active and the engine is
+      // on, derive a warmth value from the motif's secondary palette tone
+      // and gently darken the tone filter toward warmer cutoffs for warm
+      // palettes. Cool palettes leave the filter transparent — the intent
+      // is "warm motifs make the soundscape feel warmer", not "tilt the
+      // tone arbitrarily". Gated by motifEngineEnabled (same master
+      // switch as the narrative side).
+      const _motifNow = state._activeMotif;
+      if (_motifNow && _motifNow.palette && state.motifEngineEnabled !== false) {
+        const p = _motifNow.palette.b;
+        if (Array.isArray(p) && p.length >= 3) {
+          const r = Number(p[0]) || 0;
+          const g = Number(p[1]) || 0;
+          const b = Number(p[2]) || 0;
+          // warmth ∈ roughly [-1, +1] — positive for warm (R+G > B),
+          // negative for cool. We only act on positive (warm) values.
+          const warmth = (r + g) / 2 - b;
+          const warmK  = Math.max(0, Math.min(1, warmth));
+          // Map warm motifs to cutoffs in the 4000-13000 Hz range. Stays
+          // transparent (~20kHz) for cool / neutral motifs.
+          const cutoff = warmK > 0.05
+            ? (13000 - 9000 * warmK)
+            : 20000;
+          try {
+            this._toneFilter.frequency.setTargetAtTime(cutoff, c.currentTime, 1.5);
+          } catch (e) { /* setTargetAtTime can throw on bad input — never fatal */ }
+        }
+      }
+      // Track the master-chain inserts so stop() disconnects them along
+      // with the rest. (They have no .stop method so the optional-chain
+      // .stop?.() in stop() is a no-op for them; only .disconnect runs.)
+      ns.push(this._toneFilter, this._breathGain);
+
       startAll();
       this.master.gain.linearRampToValueAtTime(volume, this.ctx.currentTime + 4);
       this.running = true;
@@ -16712,6 +16888,10 @@ ${messages}
       this.ctx = null; this.master = null; this._duckGain = null; this.compressor = null; this.nodes = []; this.running = false;
       this._binauralRefs = null;
       this._isochronicRefs = null;
+      // A2 — null the master-chain inserts so the next start() builds
+      // fresh nodes against a fresh AudioContext.
+      this._toneFilter = null;
+      this._breathGain = null;
 
       this._duckRequests.clear();
     }
@@ -20595,6 +20775,10 @@ ${messages}
   }
 
   function setupVisual(visualType) {
+    // Track the actually-applied visualizer so the live panel can show
+    // the truth even when the user is on 'auto' and a motif-suggested
+    // viz is running (rather than method.visual).
+    state._currentVizChoice = visualType;
 
     try {
       const prm = matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
@@ -20664,7 +20848,7 @@ ${messages}
 
         if (state.abortFlag || !canvas.isConnected) return;
         const speed = (PHASE_VIZ_SPEED[state._currentPhase] || 1.0) * (state.vizSettings.speed || 1.0);
-        const color = state.vizColor || accentFallback;
+        const color = _resolveVizColor(accentFallback);
         renderer(ctx, canvas.width, canvas.height, (ts/1000)*speed, color);
         vizRAF = requestAnimationFrame(draw);
       })(0);
@@ -20703,7 +20887,7 @@ ${messages}
       for (let t=0;t<30;t+=0.1) { const r=0.5*t; d += `L ${(50+r*Math.cos(t)).toFixed(2)} ${(50+r*Math.sin(t)).toFixed(2)} `; }
       const p = document.createElementNS('http://www.w3.org/2000/svg','path');
 
-      const spiralColor = state.vizColor || '#6b94b8';
+      const spiralColor = _resolveVizColor('#6b94b8');
       const sr = parseInt(spiralColor.slice(1,3),16) || 107;
       const sg = parseInt(spiralColor.slice(3,5),16) || 148;
       const sb = parseInt(spiralColor.slice(5,7),16) || 184;
@@ -26960,7 +27144,20 @@ Start immediately:`;
     $s('methodIndicator', h.labels);
     $s('audioIndicator', h.labels);
 
-    const vizChoice = state.vizOverride === 'auto' ? method.visual : state.vizOverride;
+    // Resolve the visualizer. Priority order:
+    //   1. Explicit user vizOverride (anything except 'auto') wins absolutely.
+    //   2. On 'auto', a motif-suggested viz wins next — the motif's `viz`
+    //      array lists 2-3 visualizers that match its sensory mode, so
+    //      "low-tide" picks ripples/colorwash/waveform rather than the
+    //      method's stock visual.
+    //   3. Fall back to method.visual (the prior behavior).
+    let vizChoice;
+    if (state.vizOverride !== 'auto') {
+      vizChoice = state.vizOverride;
+    } else {
+      const motifViz = _pickMotifViz();
+      vizChoice = motifViz || method.visual;
+    }
     if (vizChoice === 'none') {
 
       const stage = $('stage');
@@ -28483,6 +28680,13 @@ Start immediately:`;
       } catch {}
     }
     _anchorFiredThisSession = false;
+    // A1/Motif cleanup — clear per-session motif state so post-session
+    // UI surfaces (viz preview, settings panel) don't read stale motif
+    // data, and the next session's pickSessionMotif() starts from a
+    // clean slate.
+    state._activeMotif = null;
+    state._motifCueFiredThisSession = false;
+    state._currentVizChoice = null;
 
     try { if (typeof stopAudioLayers     === 'function') stopAudioLayers();     } catch {}
     try { if (typeof stopDepthIndicator  === 'function') stopDepthIndicator();  } catch {}
@@ -31610,7 +31814,13 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     if (!panel) return;
 
     const $v = (id, val) => { const el = $(id); if (el) el.value = val; };
-    $v('liveVizSelect', state.vizOverride === 'auto' ? (getMethod().visual) : state.vizOverride);
+    // Show what's actually running: if the user is on 'auto' and a viz
+    // is currently mounted (motif-influenced or method-default), reflect
+    // that; otherwise fall through to method.visual as before.
+    $v('liveVizSelect',
+      state.vizOverride !== 'auto'
+        ? state.vizOverride
+        : (state._currentVizChoice || getMethod().visual));
     $v('liveSoundscapeSelect', state.soundscape);
     $v('liveSoundVol', Math.round(state.droneVolume * 100));
     $v('liveVoiceSpeed', Math.round(state.speechRate * 100));
@@ -41831,6 +42041,10 @@ Begin:`;
   });
   $('motifCuesEnabled')?.addEventListener('change', e => {
     state.motifCuesEnabled = !!e.target.checked;
+    saveUserSettings();
+  });
+  $('motifVisualsEnabled')?.addEventListener('change', e => {
+    state.motifVisualsEnabled = !!e.target.checked;
     saveUserSettings();
   });
   $('generateAffirmationsBtn')?.addEventListener('click', generateAffirmationsFromProfile);
