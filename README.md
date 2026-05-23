@@ -12,23 +12,35 @@ No account required. No downloads.
 
 ## What's New
 
-* **Phase-locked entrainment** — binaural beats and isochronic tones now ramp their frequency per session phase across the α/θ/δ brain-wave map (settling alpha, induction theta, deepener theta-delta, work theta, wake alpha, reintroduction beta), with smooth 6-second crossfades at each phase boundary
+* **Motif Engine** — every session picks ONE concrete sensory image from a curated 24-motif corpus (a brass key warm from being held, a lighthouse beam passing and returning, a steady ember beneath grey ash, …) and threads it across the whole session as a deliberate through-line:
+  * **narration** — the AI is instructed to weave the motif image 2–4 times across the phases, lightly in early phases and with more weight at the deepest point
+  * **visuals** — when the visualizer is on auto, the motif's preferred visualizer (mandala / candle / ripples / starfield, depending on the motif) is used, and the visualizer's color is tinted toward the motif's palette with a phase-weighted intensity curve
+  * **audio cue** — an optional soft tone (bell / bowl / chime / drop, matched to the motif's sense) plays once at the deepest phase of the session
+  * three independent toggles in Smart Director options let you keep the narrative motif while disabling the cue or visual side
+  * rotation memory persists across sessions, so 12 consecutive sessions get 12 different motifs
+* **Soundscape coherence layer** — every procedural soundscape (rain, ocean, fire, forest, wind, bowls, …) now has:
+  * a **session breath** at 1/240 Hz (one ~4-minute cycle) gently modulating master gain by ±10% — soundscapes no longer hit a static steady state, they slowly swell and recede over a session's arc
+  * a **motif warmth tilt** — warm motifs (ember, brass key, banked fire) shift the soundscape's tone filter toward warmer cutoffs; cool / neutral motifs leave it transparent
+* **Public Perchance plugin exports** — other Perchance generators can now import HNE as a function library:
+  * `root.hne.freshSeeds(opts)` returns evocative sensory anchor phrases from a 60+ phrase corpus tagged across 12 categories
+  * `root.hne.freshMotifs(opts)` returns full motif objects (image, essence, sense, tags, palette, viz, cue) for use in meditation apps, tarot readers, dream journals, sleep aids, poetry generators
+  * both are tag-filtered and rotation-aware with a cold-start fallback
+* **Community language packs** — translations live in separate Perchance generators that fork the data pack and translate any subset of its keys (missing keys fall through to English). One-line entry in the `hneLanguagePacks` list registers a translation with HNE's language picker
+* **Community content packs** — third-party generators can publish persona / method / preset collections that HNE loads lazily on first use
+* **Phase-locked entrainment** — binaural beats and isochronic tones ramp frequency per session phase across the α/θ/δ brain-wave map, with 6-second crossfades at each boundary
 * **40 Hz gamma flicker visualizer** — alpha-grade entrainment surface with conservative implementation (5–15% alpha modulation, narrow centered pulse, blue palette, voice-coupled) and OS-aware reduced-motion fallback
-* **Drag-and-drop phase reordering** — grab the ≡ handle on any phase row to drag it anywhere, with live drop indicators
-* **Per-phase duration estimate + timeline view** — every phase shows its estimated duration inline; a proportional timeline above the list visualizes the full session shape, click any block to jump to that phase
-* **2D Director calibration pad** — combined intensity × pace control on a drag-snap grid alongside the existing sliders
-* **A/B experiment mode** — pick two presets, run a blinded session with one of them randomly chosen, rate it 1–5 after the session, see per-preset rolling averages
-* **Conversational free-text check-in** — type how you feel ("tired but mind is racing") instead of moving sliders; lexicon-based parser maps to mood / tension / energy values
-* **Phase audition** — 🔊 button on every phase row plays it aloud using current voice settings before you commit to a full session
+* **Drag-and-drop phase reordering** — grab the ≡ handle on any phase row, with a live timeline view above the list showing proportional phase durations
+* **Per-phase duration estimate + timeline** — every row shows ⏱ Xm Ys inline; click any timeline block to jump to that phase
+* **2D Director calibration pad** — combined intensity × pace control on a drag-snap grid
+* **A/B experiment mode** — blinded sessions on two random presets, rate 1–5, rolling per-preset averages
+* **Conversational free-text check-in** — type how you feel ("tired but mind is racing") and a lexicon-based parser maps it to mood / tension / energy values
+* **Phase audition** — 🔊 button on any phase row plays it aloud using current voice settings before committing to a full session
 * **Annual review screen** — opens after 30+ days of practice; sessions, minutes, completion %, longest streak, mood arc, top guides / methods / contexts. Pure local aggregation, no AI
-* **API key call counter** — visible per-session count in Options for engaged users who bring their own Anthropic/OpenAI key, plus a one-click "clear & revert to Perchance" button
-* **Persona portrait grid hydration** — generated portraits appear as soft thumbnails on every persona card
-* **Audio/viz safety relaxation gate** — set your profile age range and the overcautious gates step back: gamma flicker confirmation modal skips, prefers-reduced-motion auto-degrade skips, speech rate caps widen, soundscape volume caps lift, soundscape labels soften. Casual users keep all original safeguards
-* **Shareable links** — post a persona or a full session config as a real URL, with tailored link previews in Discord / Slack / iMessage
-* **Streaming script generation** — watch each phase appear live as the AI writes it, instead of staring at a spinner
-* **Semantic memory** — the AI recalls past sessions that are *relevant* to your current intention, not just the most recent ones
+* **Audio/viz safety relaxation gate** — set your profile age range and the overcautious gates step back: gamma flicker confirmation skips, prefers-reduced-motion auto-degrade skips, speech rate caps widen, soundscape volume caps lift. Casual users keep all original safeguards
+* **Shareable links** — post a persona or a full session config as a real URL with tailored link previews in Discord / Slack / iMessage
+* **Streaming script generation** — each phase appears live as the AI writes it, instead of a spinner
+* **Semantic memory retrieval** — the AI recalls past sessions that are *relevant* to your current intention, not just the most recent ones
 * **Regeneration diffs** — retry a single phase and pick between the original and the new version side-by-side
-* **Community persona packs** — third-party persona collections load on demand without bloating the app
 * **Token-aware prompt assembly** — long profiles, memory, and affirmations never silently exceed the context window
 * **Multi-provider AI** — use the free built-in Perchance model, or bring your own Anthropic / OpenAI key
 
@@ -39,7 +51,7 @@ No account required. No downloads.
 ### 6-Step Guided Workflow
 
 1. **Choose a Guide**
-   25 built-in personas across four temperaments, each with distinct tone and delivery. Create unlimited custom personas. Import personas others have shared.
+   38 built-in personas across four temperaments, each with distinct tone and delivery. Create unlimited custom personas. Import personas others have shared.
 
 2. **Choose a Method**
    37 induction techniques across therapeutic, somatic, demonstration, rapid, and advanced categories.
@@ -48,15 +60,12 @@ No account required. No downloads.
    Define what you want to achieve. The AI converts this into structured hypnotic suggestions.
 
 4. **Affirmations**
-   Add your own affirmations.
-   These are no longer static — the AI:
-
+   Add your own affirmations. These are no longer static — the AI:
    * weaves them into sessions
    * structures them across phases
    * adapts delivery style (woven / pulses / light touch)
 
 5. **Configure & Review**
-
    * session length
    * narrator voice
    * soundscape + visuals
@@ -66,13 +75,28 @@ No account required. No downloads.
 6. **Generate & Begin**
    Run a fully narrated session with real-time controls.
 
+### Quick-Start Presets
+
+31 one-click curated presets — Sleep, Quick Calm, Deep Focus, Pain Relief, Micro Reset, Anxiety Relief, Confidence, Peak Flow, Habit Change, Creative Flow, Energy Boost, Nightcap, Train Journey, Temple Sit, Mission Brief, Goal Lock-in, …
+
+### Multi-Day Structured Programs
+
+9 progressive programs that sequence sessions across days/weeks with a coherent arc:
+* 7-Day Sleep
+* 14-Day Calm
+* 10-Day Confidence
+* 6-Week Pain
+* 7-Day Focus
+* 7-Day Depth
+* 5-Day Stress Reset
+* 7-Day Sensuality
+* 5-Day Surrender
+
 ---
 
 ## Session Model
 
-Sessions are no longer fixed to 5 phases.
-
-They now include:
+Sessions are dynamic, not fixed to 5 phases. The full arc includes:
 
 * settling
 * induction
@@ -82,36 +106,37 @@ They now include:
 * **lightener**
 * **reintroduction**
 
-This creates a full arc:
-**descent → work → recovery → return**
+**Shape:** descent → work → recovery → return.
+
+The Motif Engine quietly anchors all of these to a single sensory image, so the session reads as one continuous thing rather than a list of phases.
 
 ---
 
 ## AI Generation
 
-* **Streaming per-phase generation** — each phase renders live as it's written, with an inline preview you can read as it builds
+* **Streaming per-phase generation** — each phase renders live with an inline preview you can read as it builds
+* **Motif through-line injection** — the chosen session motif is part of the shared prompt context for every phase, alongside profile, persona, method, freshness anchors, and memory
+* **Fresh metaphor anchors** — 4 randomly-picked phrases per session from a 60+ phrase corpus, tag-matched to your profile, injected as "optional anchors" the AI may use to break mode-collapse
 * **Semantic memory retrieval** — the generator embeds your past session digests and pulls in the most relevant ones when writing a new script (not just the most recent)
-* **Token-aware prompt assembly** — profile, adaptive context, and memory are prioritized and trimmed as needed so long-term users don't silently blow past the context limit
+* **Token-aware prompt assembly** — profile, adaptive context, motif, freshness, and memory blocks are prioritized and trimmed against the context budget
 * **Adaptive intelligence** — learns what works for you (personas, methods, lengths, depth preferences) and shifts recommendations over time
 * **3-tier hierarchical memory** — per-session digests, rolling patterns (every 5 sessions), long-term profile (every 15)
 * **Per-phase regeneration with diff** — unhappy with one phase? Retry just that one and compare old vs. new side-by-side
-* **Multi-provider routing** — default free Perchance AI, or plug in your own Anthropic / OpenAI key (be aware your key lives in the browser)
+* **Multi-provider routing** — default free Perchance AI, or plug in your own Anthropic / OpenAI key (the key lives in the browser only)
+* **AI scene directives** — the AI can emit `[BG:rain]` / `[VIZ:mandala]` sentinels mid-script to shift the soundscape or visualizer when the language calls for it (opt-out toggle)
 
 ---
 
 ## Script Editing (Step 5)
 
-You can:
-
 * drag-and-drop phases via the ≡ grab handle (or ↑/↓ buttons)
-* see a proportional **timeline visualization** above the list — click any block to jump to that phase
+* see a proportional **timeline visualization** above the list — click any block to jump
 * see **estimated duration** (⏱ Xm Ys) on every phase row, plus session total
-* **audition** any phase aloud (🔊 button) before committing to a full session
+* **audition** any phase aloud (🔊 button) before committing
 * remove or add phases (induction, deepener, level, work, affirmation, lightener, wake, reintroduction, sounding, custom)
 * edit full script text
 * regenerate individual phases and compare outputs side-by-side
 * author custom blocks, then ✨ Reimagine them in your guide's voice
-* control session flow directly
 
 This is a core feature, not just a preview step.
 
@@ -119,23 +144,27 @@ This is a core feature, not just a preview step.
 
 ## Audio
 
-* Procedural soundscapes (no audio files shipped — everything synthesized)
-* phase-locked binaural beats and isochronic tones — entrainment frequency ramps per session phase across the α/θ/δ map
-* narration ducking during speech
-* voice selection with quality sorting
-* live adjustment during session (volume, pitch, rate, tempo)
-* mobile lock-screen media controls
+* **27 procedural soundscapes** — fully synthesized via Web Audio (no audio files shipped): rain, ocean, fire, forest, stream, wind, thunder, storm, drone, bowls, heartbeat, binaural, isochronic, chimes, pink/brown/white noise, fan, cave, crickets, temple, spaceship, underwater, clock, train, city, owls, whales
+* **Session breath layer** — slow 1/240 Hz modulation gives every soundscape gentle long-arc evolution instead of a static steady state
+* **Motif warmth tilt** — soundscape tone subtly tracks the active motif's color temperature
+* **Phase-locked entrainment** — binaural beats and isochronic tones ramp their frequency per session phase across the α/θ/δ map, with 6-second crossfades at each phase boundary
+* **Narration ducking** — soundscape gain dips automatically during speech
+* **Voice selection with quality sorting** — neural / premium voices ranked first
+* **Live adjustment during session** — volume, pitch, rate, tempo all editable mid-session
+* **Mobile lock-screen media controls** — pause / resume from the lock screen
 
 ---
 
 ## Visuals
 
-* multiple animated focus effects (spiral, tunnel, vortex, pendulum, mandala, candle, flow-field, aurora, and more)
-* 40 Hz gamma flicker (alpha-grade, conservative implementation, voice-coupled)
-* real-time tuning (speed, intensity, complexity)
-* phase-reactive pacing
-* reduced-motion support
-* background image generation (AI, static URL, or YouTube)
+* **30 animated focus effects** — spiral, tunnel, vortex, pendulum, mandala, candle, flowfield, plasma, aurora, lissajous, sacred-geo, kaleidoscope, waveform, fireflies, ripples, breathing, ink, smoke, starfield, colorwash, moire, highway, rain, pulse, pocket-watch, spinning-coin, hand-pendulum, canvas-pulse, gamma-flicker, and more
+* **Motif palette tint** — visualizer color blends toward the motif's secondary palette tone, weighted by phase intensity (faint during settling/induction, peak at deepener/work, fading on lightener)
+* **Motif viz biasing** — when the visualizer is on auto, the motif's preferred viz list is preferred over the method default
+* **40 Hz gamma flicker** — alpha-grade, conservative implementation, voice-coupled
+* **Real-time tuning** — speed, intensity, complexity all editable mid-session
+* **Phase-reactive pacing** — visual rate shifts per phase
+* **Reduced-motion support** — OS preference auto-degrades intense visualizers
+* **Background image generation** — AI text-to-image, static URL, or YouTube video
 
 ---
 
@@ -143,7 +172,7 @@ This is a core feature, not just a preview step.
 
 * dynamic phase playback (not fixed count)
 * progress tracking + transcript view
-* live settings panel
+* live settings panel (audio + voice + visualizer + tempo all editable mid-session)
 * emergency exit + grounding system
 * fullscreen + wake lock
 * optional ambient audio recording
@@ -159,6 +188,7 @@ This is a core feature, not just a preview step.
 * clear navigation (back buttons, step clarity)
 * onboarding tour for new users
 * toast notifications (non-blocking, non-interrupting)
+* command palette (Cmd/Ctrl-K)
 
 ---
 
@@ -167,26 +197,25 @@ This is a core feature, not just a preview step.
 ### History
 
 Stores per session:
-
 * full script
 * phase structure
 * affirmations + mode
 * profile snapshot
 * session metrics (depth, mood delta, completion state)
+* active motif id (so a session's through-line is searchable in history)
 
 ### Profiles
 
 User profile is injected into AI generation:
-
 * goals
 * preferences
 * traits
 * appearance (for personalized imagery)
+* category-scoped sharing controls (what the AI is allowed to see)
 
 ### Adaptive System
 
 Tracks and updates automatically:
-
 * completion rates
 * mood-delta variance
 * method/persona preferences by reward signal
@@ -197,7 +226,6 @@ Tracks and updates automatically:
 ### Tracking
 
 Expanded analytics:
-
 * session outcomes
 * usage patterns
 * feature interaction
@@ -227,8 +255,8 @@ Expanded analytics:
 
 ### Shareable Links
 
-* **session configs** — share the persona, method, length, soundscape, affirmations, and optionally the generated script as a single URL
-* **custom personas** — share a persona you've built; recipients can add it to their own library with one click
+* **session configs** — share persona, method, length, soundscape, affirmations, and optionally the generated script as a single URL
+* **custom personas** — share a persona you've built; recipients can add it to their library with one click
 * **rich link previews** — shared URLs produce tailored titles and descriptions when pasted in chat apps
 * **community persona packs** — opt-in third-party collections load lazily when selected
 
@@ -239,9 +267,57 @@ Expanded analytics:
 
 ---
 
+## Use HNE as a Perchance Plugin
+
+Other Perchance generators can import HNE's public functions:
+
+```
+hne = {import:advanced-hypnosis-narration-engine}
+```
+
+Then in the consuming generator:
+
+```js
+// Pull 3 evocative sensory anchors matching a profile tag set,
+// avoiding any recently-used ones.
+let anchors = root.hne.freshSeeds({
+  profileTags: ["sleep", "release"],
+  n: 3,
+  excludeSet: ["the slow pull of evening tide"],
+});
+
+// Pull ONE recurring session motif — a structured image object with
+// palette/viz/cue metadata for threading across narration, visuals, and audio.
+let [motif] = root.hne.freshMotifs({
+  profileTags: ["focus", "trance"],
+  n: 1,
+  excludeSet: previouslyUsedIds,
+});
+// motif = { id, image, essence, sense, tags, palette, viz, cue }
+```
+
+Useful for any project that needs evocative sensory imagery — meditation apps, tarot readers, dream journals, sleep aids, poetry generators.
+
+To embed the whole HNE UI in another page, use a standard iframe — session links and shared configurations work via URL hash params.
+
+---
+
+## Translation / Language Packs
+
+The English data pack lives in a separate Perchance generator (`advanced-hypnosis-narration-engine-data`). To translate HNE:
+
+1. Fork the data generator
+2. Translate any subset of keys (BUILTIN_PERSONAS, METHODS, PRESETS, TOUR_STEPS, GLOSSARY, PROFILE_FIELD_SCHEMA, …); missing keys fall back to the English baseline
+3. Keep the shape identical
+4. Submit a one-line entry to `hneLanguagePacks` and your translation appears in HNE's language picker for everyone
+
+AI prompt strings (systemPrompt, guidance, methodInstructions) determine how the model narrates — translate them carefully and test the output.
+
+---
+
 ## Privacy
 
-* runs locally in browser
+* runs locally in the browser
 * no default data collection
 * no telemetry
 
@@ -282,14 +358,15 @@ Users may enable:
 
 ## Technical Stack
 
-* Perchance (single-file app)
+* Perchance (split across three generators: main app, data pack, optional community/language packs)
 * `ai-text-plugin` for streaming generation
 * `text-to-image-plugin` for backgrounds
 * `upload-plugin` for shareable content
-* `dynamic-import-plugin` for community packs
-* Web Audio API (procedural synthesis)
+* `dynamic-import-plugin` for community / language packs
+* `favicon-plugin`, `bug-report-plugin`, `comments-plugin`
+* Web Audio API (procedural synthesis throughout — no audio files shipped)
 * Canvas 2D rendering
-* IndexedDB storage (persisted)
+* IndexedDB storage (persisted via `navigator.storage.persist()`)
 * Web Speech API (TTS)
 * Wake Lock, Media Session, Vibration, Clipboard APIs
 
@@ -308,6 +385,7 @@ Features that gracefully degrade when unavailable:
 * streaming falls back to full-phase render
 * share links fall back to hash-URL encoding if upload service is unreachable
 * haptics silently skip on desktop
+* motif audio cue silently skips when WebAudio is blocked
 
 ---
 
