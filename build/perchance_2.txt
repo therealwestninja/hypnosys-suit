@@ -8949,7 +8949,13 @@ I return to myself easily"></textarea>
   }
 
   const loadCustomPersonas = () => _personaCache || [];
-  const saveCustomPersonas = arr => { _personaCache = arr; idbSet(PERSONA_KEY, arr); return true; };
+  const saveCustomPersonas = arr => {
+    _personaCache = arr;
+    // Fire-and-forget IDB write — must catch its own rejection so a
+    // disk error doesn't surface as an unhandled-promise console noise.
+    idbSet(PERSONA_KEY, arr).catch(e => console.warn('[saveCustomPersonas]', e));
+    return true;
+  };
 
   const GAIN_FOR_MODE = { off: 0, subtle: 0.3, dramatic: 1.0 };
   function setAudioReactiveMode(mode) {
@@ -13445,7 +13451,19 @@ I return to myself easily"></textarea>
       const gain = _motifCueCtx.createGain();
       osc.type = cfg.type;
       osc.frequency.value = cfg.freq;
-      const volScale = Math.max(0, Math.min(1, state.motifCueVolume ?? 0.7));
+      // Compound volume: the cue's own slider × the higher of voice/drone
+      // master sliders. If the user muted both, the cue mutes too — it
+      // shouldn't ring through silence. Voice volume is the better proxy
+      // (the cue serves the narration) but droneVolume catches the case
+      // where someone runs narrator-off, soundscape-only sessions.
+      const ownVol     = Math.max(0, Math.min(1, state.motifCueVolume ?? 0.7));
+      const masterRef  = Math.max(state.voiceVolume ?? 1, state.droneVolume ?? 0);
+      const masterClmp = Math.max(0, Math.min(1, masterRef));
+      const volScale   = ownVol * masterClmp;
+      // Effective silence — skip the cue entirely. exponentialRamp from
+      // zero is undefined behavior in WebAudio and would produce a NaN
+      // or a stuck node in some implementations.
+      if (volScale <= 0.0001) return;
       gain.gain.setValueAtTime(0, t);
       gain.gain.linearRampToValueAtTime(cfg.peakGain * volScale, t + cfg.attack);
       gain.gain.exponentialRampToValueAtTime(0.0001, t + cfg.dur);
@@ -13538,7 +13556,13 @@ I return to myself easily"></textarea>
     if (state.motifVisualsEnabled === false) return null;
     const motif = state._activeMotif;
     if (!motif || !Array.isArray(motif.viz) || !motif.viz.length) return null;
-    if (typeof _VALID_VIZ_SENTINELS === 'undefined') return null;
+    // _VALID_VIZ_SENTINELS is defined later in this IIFE but in the same
+    // scope. By the time _pickMotifViz is *called* (session start, well
+    // after init), the const is initialized. The instanceof check below
+    // is purely defensive against future code re-orderings or hot-reload
+    // scenarios — a `typeof` check on a const in TDZ throws rather than
+    // returning 'undefined', so it would NOT have helped.
+    if (!(_VALID_VIZ_SENTINELS instanceof Set)) return null;
     const usable = motif.viz.filter(v => _VALID_VIZ_SENTINELS.has(v));
     if (!usable.length) return null;
     // Random choice from the (typically 3-element) preferred list so
@@ -15366,7 +15390,7 @@ Practitioner profile (full, natural sentences):`;
 
           card.querySelectorAll('.card-category-label, .card-name, .card-tagline, .card-actions, .card-usage-badge, .card-unlock-ribbon')
             .forEach(el => { el.style.position = el.style.position || 'relative'; el.style.zIndex = '1'; });
-        }).catch(() => {});
+        }).catch(e => console.warn('[persona portrait]', e));
       }
     });
     const addCard = document.createElement('div');
@@ -15918,7 +15942,12 @@ ${messages}
     if (!_GLOSS_MARKUP_RE_CACHE) return html;
     return html.replace(_GLOSS_MARKUP_RE_CACHE, (m) => {
       const key = m.toLowerCase();
-      if (typeof _GLOSS_LC === 'undefined' || !_GLOSS_LC[key]) return m;
+      // _GLOSS_LC is declared later in this IIFE but in the same scope.
+      // A typeof check on a const in TDZ throws rather than returning
+      // 'undefined' — by the time this replace callback fires (UI render
+      // time), the const is initialized. Defensive check kept as an
+      // existence test rather than a typeof.
+      if (!_GLOSS_LC || !_GLOSS_LC[key]) return m;
       return `<span class="gloss-term" data-gloss="${key}">${m}</span>`;
     });
   }
@@ -29214,7 +29243,11 @@ Start immediately:`;
     const persona = getPersona();
     const reAlert = PERSONA_REALERTS[persona.id] ||
       "And now... \x5BPAUSE 2\x5D bringing your awareness back. \x5BPAUSE 3\x5D Wiggling fingers and toes. \x5BPAUSE 3\x5D Taking a deeper breath. \x5BPAUSE 3\x5D Opening your eyes. Fully alert.";
-    speakScript(reAlert,  true).then(() => finishSession(true));
+    // Always run finishSession(true) — even if the re-alert speech fails,
+    // we still need to clean up session state. .finally() guarantees that.
+    speakScript(reAlert, true)
+      .catch(e => console.warn('[rescue re-alert speech]', e))
+      .finally(() => finishSession(true));
   }
   function togglePause() {
     state.paused = !state.paused;
@@ -35021,8 +35054,10 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
             };
             const arr = Array.isArray(h) ? h : [];
             arr.push(rec);
-            idbSet('stillness_history_v1', arr);
-          });
+            // Inner idbSet must catch its own rejection — the outer .catch
+            // below only sees the idbGet path.
+            idbSet('stillness_history_v1', arr).catch(e => console.warn('[hypnagogic save]', e));
+          }).catch(e => console.warn('[hypnagogic load]', e));
         }
       } catch (e) { console.warn('[hypnagogic record]', e); }
     };
@@ -43358,7 +43393,9 @@ Begin:`;
     renderSidebarStats();
     updateIntentionHint();
 
-    bgCacheGetManifest().then(m => { const el = $('bgCacheCount'); if (el) el.textContent = m.length; });
+    bgCacheGetManifest()
+      .then(m => { const el = $('bgCacheCount'); if (el) el.textContent = m.length; })
+      .catch(e => console.warn('[bgCacheCount init]', e));
 
     if (!hadSavedSettings) {
       const defaultMethod = getMethod();
