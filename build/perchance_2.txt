@@ -7780,6 +7780,46 @@ I return to myself easily"></textarea>
     }
   }
 
+  // Deduplicate concurrent async work keyed by some identifier. Two callers
+  // asking for the same key while a first call is in flight share the same
+  // promise. Entries auto-clear when work settles, so the next call after
+  // settlement re-runs the work. Replaces the hand-rolled
+  // "_*Inflight = new Map()" / has / set / finally-delete pattern that lived
+  // at multiple call sites with subtle cleanup-ordering differences.
+  function createInflightCache() {
+    const map = new Map();
+    return {
+      has:    (key) => map.has(key),
+      get:    (key) => map.get(key),
+      delete: (key) => map.delete(key),
+      clear:  () => map.clear(),
+      // Run `work()` once per key. Returns the in-flight promise for repeat
+      // callers; clears the entry in a `finally` so settled work doesn't get
+      // memoized (callers expect a fresh attempt on retry).
+      getOrRun(key, work) {
+        if (map.has(key)) return map.get(key);
+        const p = (async () => {
+          try { return await work(); }
+          finally { map.delete(key); }
+        })();
+        map.set(key, p);
+        return p;
+      },
+    };
+  }
+
+  // Strip a single pair of surrounding straight or double quotes — a recurring
+  // need when extracting field values out of AI responses that occasionally
+  // wrap them in quotes despite the prompt.
+  const _stripQuotes = s => String(s || '').replace(/^["']|["']$/g, '');
+
+  // textToImagePlugin returns a boxed String with a `.dataUrl` own property
+  // (preferred) — but in some platform versions only `String(result)` carries
+  // the data URL via the boxed primitive value. Try the property first, fall
+  // through to String() coercion. Null-safe (the plugin can also return null
+  // on certain backend failures).
+  const _extractDataUrl = result => result?.dataUrl || String(result || '');
+
   const TOAST_ICONS    = { info: 'ℹ', success: '✓', warn: '⚠', error: '✕' };
   const TOAST_DURATION = { info: 3500, success: 3000, warn: 5000, error: 0 };
 
@@ -14413,6 +14453,95 @@ I return to myself easily"></textarea>
 
   _loadAuditLog().catch(() => {});
 
+  // External AI provider configs, used when the user has set up their own
+  // API key in the Step-5 AI-provider settings. Each entry describes how to
+  // build a request and parse a response for that provider, so adding a new
+  // provider is a config entry rather than another copy of the same branch.
+  //
+  // stopReason vocabulary used internally: 'stop' (natural finish), 'max_tokens'
+  // (hit output cap), 'error' (asResult coerces empty text into this).
+  const EXTERNAL_AI_PROVIDERS = {
+    anthropic: {
+      url: 'https://api.anthropic.com/v1/messages',
+      defaultModel: 'claude-sonnet-4-20250514',
+      buildRequest: (instruction, opts, apiKey) => ({
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: {
+          model: opts.model || EXTERNAL_AI_PROVIDERS.anthropic.defaultModel,
+          max_tokens: opts.maxTokens || 2048,
+          messages: [{ role: 'user', content: instruction }],
+        },
+      }),
+      parseResponse: (data) => ({
+        text: data.content?.[0]?.text || '',
+        // Anthropic's stop_reason vocabulary: 'end_turn' / 'stop_sequence' /
+        // 'max_tokens' / 'tool_use' / 'pause_turn' / 'refusal'. Only
+        // 'max_tokens' maps to our 'max_tokens'; everything else is a normal
+        // finish from the caller's point of view.
+        stopReason: data.stop_reason === 'max_tokens' ? 'max_tokens' : 'stop',
+      }),
+    },
+    openai: {
+      url: 'https://api.openai.com/v1/chat/completions',
+      defaultModel: 'gpt-4o-mini',
+      buildRequest: (instruction, opts, apiKey) => ({
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: {
+          model: opts.model || EXTERNAL_AI_PROVIDERS.openai.defaultModel,
+          messages: [{ role: 'user', content: instruction }],
+          max_tokens: opts.maxTokens || 2048,
+        },
+      }),
+      parseResponse: (data) => {
+        const finish = data.choices?.[0]?.finish_reason;
+        return {
+          text: data.choices?.[0]?.message?.content || '',
+          stopReason: finish === 'length' ? 'max_tokens' : 'stop',
+        };
+      },
+    },
+  };
+
+  // Try one external provider. Returns the boxed asResult on success, or null
+  // on any failure (HTTP error, network error, API-level error, empty text),
+  // letting the caller fall through to the next provider / Perchance.
+  async function _tryExternalAiProvider(providerName, instruction, opts, apiKey, asResult) {
+    const cfg = EXTERNAL_AI_PROVIDERS[providerName];
+    if (!cfg) return null;
+    const tag = providerName.charAt(0).toUpperCase() + providerName.slice(1);
+    try {
+      const req = cfg.buildRequest(instruction, opts, apiKey);
+      const res = await fetch(cfg.url, {
+        method: 'POST',
+        headers: req.headers,
+        body: JSON.stringify(req.body),
+      });
+      if (!res.ok) {
+        console.warn(`${tag} API HTTP ${res.status}, falling back to Perchance`);
+        return null;
+      }
+      const data = await res.json();
+      if (data.error) {
+        console.warn(`${tag} API returned error:`, data.error);
+        return null;
+      }
+      const { text, stopReason } = cfg.parseResponse(data);
+      const result = asResult(text, stopReason, `${providerName} empty`);
+      return result.stopReason === 'error' ? null : result;
+    } catch (e) {
+      console.warn(`${tag} API failed, falling back to Perchance:`, e);
+      return null;
+    }
+  }
+
   async function aiGenerate(instruction, opts = {}) {
     const provider = state.extAiProvider || 'perchance';
 
@@ -14423,52 +14552,10 @@ I return to myself easily"></textarea>
       if (!t || stopReason === 'error') return { generatedText: '', stopReason: 'error', _note: note || 'empty or errored' };
       return { generatedText: t, stopReason: stopReason || 'stop' };
     };
-    if (provider === 'anthropic' && state._extAiKey) {
-      try {
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': state._extAiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-          body: JSON.stringify({ model: opts.model || 'claude-sonnet-4-20250514', max_tokens: opts.maxTokens || 2048, messages: [{ role: 'user', content: instruction }] }),
-        });
-        if (!res.ok) {
-          console.warn(`Anthropic API HTTP ${res.status}, falling back to Perchance`);
 
-        } else {
-          const data = await res.json();
-          if (data.error) {
-            console.warn('Anthropic API returned error:', data.error);
-          } else {
-            const text = data.content?.[0]?.text || '';
-            const stop = data.stop_reason === 'end_turn' || data.stop_reason === 'stop_sequence' ? 'stop'
-              : data.stop_reason === 'max_tokens' ? 'max_tokens' : 'stop';
-            const result = asResult(text, stop, 'anthropic empty');
-            if (result.stopReason !== 'error') return result;
-          }
-        }
-      } catch (e) { console.warn('Anthropic API failed, falling back to Perchance:', e); }
-    }
-    if (provider === 'openai' && state._extAiKey) {
-      try {
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state._extAiKey}` },
-          body: JSON.stringify({ model: opts.model || 'gpt-4o-mini', messages: [{ role: 'user', content: instruction }], max_tokens: opts.maxTokens || 2048 }),
-        });
-        if (!res.ok) {
-          console.warn(`OpenAI API HTTP ${res.status}, falling back to Perchance`);
-        } else {
-          const data = await res.json();
-          if (data.error) {
-            console.warn('OpenAI API returned error:', data.error);
-          } else {
-            const text = data.choices?.[0]?.message?.content || '';
-            const finish = data.choices?.[0]?.finish_reason;
-            const stop = finish === 'stop' ? 'stop' : finish === 'length' ? 'max_tokens' : 'stop';
-            const result = asResult(text, stop, 'openai empty');
-            if (result.stopReason !== 'error') return result;
-          }
-        }
-      } catch (e) { console.warn('OpenAI API failed, falling back to Perchance:', e); }
+    if (provider !== 'perchance' && state._extAiKey && EXTERNAL_AI_PROVIDERS[provider]) {
+      const ext = await _tryExternalAiProvider(provider, instruction, opts, state._extAiKey, asResult);
+      if (ext) return ext;
     }
 
     if (typeof root !== 'undefined' && root.aiTextPlugin) {
@@ -17467,7 +17554,7 @@ ${messages}
           if (params.resolution) call.resolution = params.resolution;
         }
         const result = await root.textToImagePlugin(call);
-        const dataUrl = result.dataUrl || String(result);
+        const dataUrl = _extractDataUrl(result);
         if (dataUrl && dataUrl.startsWith('data:')) {
 
           await bgCacheStore(dataUrl, params.prompt, params.seed);
@@ -17940,12 +18027,9 @@ ${messages}
     await idbDel(PORTRAIT_KEY(personaId));
   }
 
-  const _portraitInflight = new Map();
+  const _portraitInflight = createInflightCache();
   async function generatePersonaPortrait(persona) {
     if (!persona || !persona.id) return null;
-
-    if (_portraitInflight.has(persona.id)) return _portraitInflight.get(persona.id);
-
     if (typeof root === 'undefined' || !root.textToImagePlugin) {
       notify.warn('Image plugin unavailable — portraits require Perchance hosting.');
       return null;
@@ -17954,16 +18038,14 @@ ${messages}
       notify.warn('Portraits require remote processing opt-in (in Options).');
       return null;
     }
-
-    const promise = (async () => {
+    return _portraitInflight.getOrRun(persona.id, async () => {
       try {
         const prompt = _buildPortraitPrompt(persona);
-
         const result = await root.textToImagePlugin({
           prompt,
           negativePrompt: PORTRAIT_NEGATIVE,
         });
-        const dataUrl = result?.dataUrl || String(result || '');
+        const dataUrl = _extractDataUrl(result);
         if (!dataUrl || !dataUrl.startsWith('data:')) {
           notify.warn(`Portrait generation returned no image for ${persona.name}.`);
           return null;
@@ -17976,12 +18058,8 @@ ${messages}
         console.warn('[persona portrait] generation failed:', e);
         notify.error('Portrait generation failed — see console.');
         return null;
-      } finally {
-        _portraitInflight.delete(persona.id);
       }
-    })();
-    _portraitInflight.set(persona.id, promise);
-    return promise;
+    });
   }
 
   function _suggestionHash(suggestion) {
@@ -18021,11 +18099,9 @@ ${messages}
     await idbDel(SYMBOL_KEY(hash));
   }
 
-  const _symbolInflight = new Map();
+  const _symbolInflight = createInflightCache();
   async function generateSuggestionSymbol(suggestion) {
     if (!suggestion) return null;
-    const hash = _suggestionHash(suggestion);
-    if (_symbolInflight.has(hash)) return _symbolInflight.get(hash);
     if (typeof root === 'undefined' || !root.textToImagePlugin) {
       notify.warn('Image plugin unavailable — symbols require Perchance hosting.');
       return null;
@@ -18034,15 +18110,15 @@ ${messages}
       notify.warn('Symbols require remote processing opt-in (in Options).');
       return null;
     }
-    const promise = (async () => {
+    const hash = _suggestionHash(suggestion);
+    return _symbolInflight.getOrRun(hash, async () => {
       try {
         const prompt = _buildSymbolPrompt(suggestion);
-
         const result = await root.textToImagePlugin({
           prompt,
           negativePrompt: SYMBOL_NEGATIVE,
         });
-        const dataUrl = result?.dataUrl || String(result || '');
+        const dataUrl = _extractDataUrl(result);
         if (!dataUrl || !dataUrl.startsWith('data:')) {
           notify.warn('Symbol generation returned no image.');
           return null;
@@ -18055,12 +18131,8 @@ ${messages}
         console.warn('[suggestion symbol] generation failed:', e);
         notify.error('Symbol generation failed — see console.');
         return null;
-      } finally {
-        _symbolInflight.delete(hash);
       }
-    })();
-    _symbolInflight.set(hash, promise);
-    return promise;
+    });
   }
 
   let _galleryRenderGen = 0;
@@ -20831,145 +20903,128 @@ OUTPUT FORMAT — exactly these section markers:
     btn.title = ready ? 'Save this guide and select it' : 'Identity and Voice must complete before saving';
   }
 
-  async function gbStepIdentity(idea, categoryPref) {
-    gbSetStepStatus('identity', 'running');
-    const tokenAtStart = _gbToken;
-    let acc = '';
-    try {
-      const result = await aiGenerate(buildIdentityInstruction(idea, categoryPref), {
-        source: 'guide-builder-identity',
-        maxTokens: 200,
-        onChunk: (data) => {
-          if (tokenAtStart !== _gbToken) throw new Error('cancelled');
-          acc += data.textChunk || '';
-          gbRenderStepContent('identity', acc);
-        },
-      });
-      if (tokenAtStart !== _gbToken) return false;
-      const text = (acc || result?.generatedText || '').trim();
-      const parsed = gbParseSections(text);
-      if (!parsed.NAME) {
-        gbSetStepStatus('identity', 'failed', 'no NAME in response');
+  // Factory for the streaming "AI fills in one part of the guide spec" steps.
+  // Every gbStep<X> had the same ~14-line scaffold (status flips, cancellation
+  // via _gbToken, onChunk → live preview, error coalescing) wrapped around ~3
+  // lines of step-specific work (build instruction, validate, write to spec).
+  // Each call site now just declares its config; the scaffold lives in one
+  // place.
+  //
+  // Spec fields:
+  //   name             — step id ('identity' | 'voice' | 'reminder' | 'imageAccents')
+  //   source           — telemetry/audit tag passed to aiGenerate
+  //   maxTokens        — number, OR (...args) => number for arg-derived limits
+  //   precondition     — optional () => string|null returning the failure
+  //                       message when a previous step hasn't completed
+  //   buildInstruction — (...args) => instructionText
+  //   apply            — (text, ...args) => undefined on success, or
+  //                       { error: '...' } when the AI's response can't be
+  //                       parsed. Only mutates _gbCurrentSpec on success.
+  //
+  // The factory adds an empty-text guard that all four steps were missing —
+  // see the per-step bug-fix notes below.
+  function makeGbStreamingStep(spec) {
+    const { name, source, maxTokens, precondition, buildInstruction, apply } = spec;
+    return async function gbStreamingStep(...args) {
+      if (precondition) {
+        const failMsg = precondition(...args);
+        if (failMsg) { gbSetStepStatus(name, 'failed', failMsg); return false; }
+      }
+      gbSetStepStatus(name, 'running');
+      const tokenAtStart = _gbToken;
+      let acc = '';
+      try {
+        const tokenBudget = typeof maxTokens === 'function' ? maxTokens(...args) : maxTokens;
+        const result = await aiGenerate(buildInstruction(...args), {
+          source,
+          maxTokens: tokenBudget,
+          onChunk: (data) => {
+            if (tokenAtStart !== _gbToken) throw new Error('cancelled');
+            acc += data.textChunk || '';
+            gbRenderStepContent(name, acc);
+          },
+        });
+        if (tokenAtStart !== _gbToken) return false;
+        const text = (acc || result?.generatedText || '').trim();
+        if (!text) { gbSetStepStatus(name, 'failed', 'empty response — try again'); return false; }
+        const outcome = apply(text, ...args);
+        if (outcome && outcome.error) {
+          gbSetStepStatus(name, 'failed', outcome.error);
+          return false;
+        }
+        gbSetStepStatus(name, 'done');
+        gbRenderStepContent(name);
+        return true;
+      } catch (e) {
+        if (e?.message === 'cancelled' || tokenAtStart !== _gbToken) return false;
+        gbSetStepStatus(name, 'failed', e?.message || 'failed');
         return false;
       }
-      _gbCurrentSpec.name = parsed.NAME.replace(/^["']|["']$/g, '').slice(0, 60);
+    };
+  }
+
+  const gbStepIdentity = makeGbStreamingStep({
+    name: 'identity',
+    source: 'guide-builder-identity',
+    maxTokens: 200,
+    buildInstruction: (idea, categoryPref) => buildIdentityInstruction(idea, categoryPref),
+    apply: (text, _idea, categoryPref) => {
+      const parsed = gbParseSections(text);
+      if (!parsed.NAME) return { error: 'no NAME in response' };
+      _gbCurrentSpec.name = _stripQuotes(parsed.NAME).slice(0, 60);
       _gbCurrentSpec.category = gbValidateCategory(parsed.CATEGORY)
         || (categoryPref !== 'auto' ? categoryPref : 'contemplative');
-      _gbCurrentSpec.tagline = (parsed.TAGLINE || '').replace(/^["']|["']$/g, '').slice(0, 100);
-      gbSetStepStatus('identity', 'done');
-      gbRenderStepContent('identity');
-      return true;
-    } catch (e) {
-      if (e?.message === 'cancelled' || tokenAtStart !== _gbToken) return false;
-      gbSetStepStatus('identity', 'failed', e?.message || 'failed');
-      return false;
-    }
-  }
+      _gbCurrentSpec.tagline = _stripQuotes(parsed.TAGLINE || '').slice(0, 100);
+    },
+  });
 
-  async function gbStepVoice(idea, depth) {
-    if (!_gbCurrentSpec.name) {
-      gbSetStepStatus('voice', 'failed', 'identity step must complete first');
-      return false;
-    }
-    gbSetStepStatus('voice', 'running');
-    const tokenAtStart = _gbToken;
-    let acc = '';
-    try {
-      const result = await aiGenerate(buildVoiceInstruction(idea, _gbCurrentSpec.name, _gbCurrentSpec.category, _gbCurrentSpec.tagline, depth), {
-        source: 'guide-builder-voice',
-        maxTokens: depth === 'rich' ? 800 : depth === 'minimal' ? 250 : 500,
-        onChunk: (data) => {
-          if (tokenAtStart !== _gbToken) throw new Error('cancelled');
-          acc += data.textChunk || '';
-          gbRenderStepContent('voice', acc);
-        },
-      });
-      if (tokenAtStart !== _gbToken) return false;
-      const text = (acc || result?.generatedText || '').trim();
-      if (!text || text.length < 30) {
-        gbSetStepStatus('voice', 'failed', 'response too short — retry');
-        return false;
-      }
+  const gbStepVoice = makeGbStreamingStep({
+    name: 'voice',
+    source: 'guide-builder-voice',
+    maxTokens: (_idea, depth) => depth === 'rich' ? 800 : depth === 'minimal' ? 250 : 500,
+    precondition: () => _gbCurrentSpec.name ? null : 'identity step must complete first',
+    buildInstruction: (idea, depth) => buildVoiceInstruction(idea,
+      _gbCurrentSpec.name, _gbCurrentSpec.category, _gbCurrentSpec.tagline, depth),
+    apply: (text) => {
+      if (text.length < 30) return { error: 'response too short — retry' };
+      _gbCurrentSpec.voice = _stripQuotes(text);
+    },
+  });
 
-      const cleaned = text.replace(/^["']|["']$/g, '');
-      _gbCurrentSpec.voice = cleaned;
-      gbSetStepStatus('voice', 'done');
-      gbRenderStepContent('voice');
-      return true;
-    } catch (e) {
-      if (e?.message === 'cancelled' || tokenAtStart !== _gbToken) return false;
-      gbSetStepStatus('voice', 'failed', e?.message || 'failed');
-      return false;
-    }
-  }
+  const gbStepReminder = makeGbStreamingStep({
+    name: 'reminder',
+    source: 'guide-builder-reminder',
+    maxTokens: 200,
+    precondition: () => _gbCurrentSpec.voice ? null : 'voice step must complete first',
+    buildInstruction: () => buildReminderInstruction(_gbCurrentSpec.voice),
+    // Legacy bug — an empty/errored AI response used to silently succeed
+    // here (the old code did `text.slice(0, 500)` on the empty string and
+    // marked the step done with reminder=''). The factory's empty-text guard
+    // now catches that case before apply() runs.
+    apply: (text) => { _gbCurrentSpec.reminder = _stripQuotes(text).slice(0, 500); },
+  });
 
-  async function gbStepReminder() {
-    if (!_gbCurrentSpec.voice) {
-      gbSetStepStatus('reminder', 'failed', 'voice step must complete first');
-      return false;
-    }
-    gbSetStepStatus('reminder', 'running');
-    const tokenAtStart = _gbToken;
-    let acc = '';
-    try {
-      const result = await aiGenerate(buildReminderInstruction(_gbCurrentSpec.voice), {
-        source: 'guide-builder-reminder',
-        maxTokens: 200,
-        onChunk: (data) => {
-          if (tokenAtStart !== _gbToken) throw new Error('cancelled');
-          acc += data.textChunk || '';
-          gbRenderStepContent('reminder', acc);
-        },
-      });
-      if (tokenAtStart !== _gbToken) return false;
-      const text = (acc || result?.generatedText || '').trim().replace(/^["']|["']$/g, '');
-      _gbCurrentSpec.reminder = text.slice(0, 500);
-      gbSetStepStatus('reminder', 'done');
-      gbRenderStepContent('reminder');
-      return true;
-    } catch (e) {
-      if (e?.message === 'cancelled' || tokenAtStart !== _gbToken) return false;
-      gbSetStepStatus('reminder', 'failed', e?.message || 'failed');
-      return false;
-    }
-  }
-
-  async function gbStepImageAccents() {
-    if (!_gbCurrentSpec.name || !_gbCurrentSpec.voice) {
-      gbSetStepStatus('imageAccents', 'failed', 'identity + voice must complete first');
-      return false;
-    }
-    gbSetStepStatus('imageAccents', 'running');
-    const tokenAtStart = _gbToken;
-    let acc = '';
-    try {
-      const result = await aiGenerate(buildImageAccentsInstruction(_gbCurrentSpec.name, _gbCurrentSpec.category, _gbCurrentSpec.voice), {
-        source: 'guide-builder-image-accents',
-        maxTokens: 250,
-        onChunk: (data) => {
-          if (tokenAtStart !== _gbToken) throw new Error('cancelled');
-          acc += data.textChunk || '';
-          gbRenderStepContent('imageAccents', acc);
-        },
-      });
-      if (tokenAtStart !== _gbToken) return false;
-      const text = (acc || result?.generatedText || '').trim();
+  const gbStepImageAccents = makeGbStreamingStep({
+    name: 'imageAccents',
+    source: 'guide-builder-image-accents',
+    maxTokens: 250,
+    precondition: () => (_gbCurrentSpec.name && _gbCurrentSpec.voice)
+      ? null : 'identity + voice must complete first',
+    buildInstruction: () => buildImageAccentsInstruction(
+      _gbCurrentSpec.name, _gbCurrentSpec.category, _gbCurrentSpec.voice),
+    apply: (text) => {
       const parsed = gbParseSections(text);
-      _gbCurrentSpec.imagePrefix = (parsed.IMAGE_PREFIX || '').slice(0, 200);
-      _gbCurrentSpec.imageSuffix = (parsed.IMAGE_SUFFIX || '').slice(0, 200);
-      if (!_gbCurrentSpec.imagePrefix && !_gbCurrentSpec.imageSuffix) {
-        gbSetStepStatus('imageAccents', 'failed', 'no parseable accents in response');
-        return false;
-      }
-      gbSetStepStatus('imageAccents', 'done');
-      gbRenderStepContent('imageAccents');
-      return true;
-    } catch (e) {
-      if (e?.message === 'cancelled' || tokenAtStart !== _gbToken) return false;
-      gbSetStepStatus('imageAccents', 'failed', e?.message || 'failed');
-      return false;
-    }
-  }
+      const prefix = (parsed.IMAGE_PREFIX || '').slice(0, 200);
+      const suffix = (parsed.IMAGE_SUFFIX || '').slice(0, 200);
+      // Legacy bug — the old code assigned prefix/suffix to _gbCurrentSpec
+      // BEFORE the "neither parseable" check, so a failed parse would clobber
+      // any previously-set accents with empty strings even though the step
+      // reported failure. Validate first, mutate second.
+      if (!prefix && !suffix) return { error: 'no parseable accents in response' };
+      _gbCurrentSpec.imagePrefix = prefix;
+      _gbCurrentSpec.imageSuffix = suffix;
+    },
+  });
 
   async function gbRunStep(step, isRegen) {
     if (!_gbInputContext) return;
