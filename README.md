@@ -24,7 +24,8 @@ No account required. No downloads.
 * **Public Perchance plugin exports** — other Perchance generators can now import HNE as a function library:
   * `root.hne.freshSeeds(opts)` returns evocative sensory anchor phrases from a 60+ phrase corpus tagged across 12 categories
   * `root.hne.freshMotifs(opts)` returns full motif objects (image, essence, sense, tags, palette, viz, cue) for use in meditation apps, tarot readers, dream journals, sleep aids, poetry generators
-  * both are tag-filtered and rotation-aware with a cold-start fallback
+  * `root.hne.pickFromBank(opts)` — generic rotation utility that applies HNE's tag-filter + exclude-set + cold-start fallback + Fisher-Yates shuffle to **caller-provided** banks. Use when HNE's bundled meditation-register corpus doesn't fit your project's voice (carnival-mystic fortune teller, noir detective, clinical sleep app, …)
+  * all three are tag-filtered and rotation-aware with a cold-start fallback
 * **Community language packs** — translations live in separate Perchance generators that fork the data pack and translate any subset of its keys (missing keys fall through to English). One-line entry in the `hneLanguagePacks` list registers a translation with HNE's language picker
 * **Community content packs** — third-party generators can publish persona / method / preset collections that HNE loads lazily on first use
 * **Phase-locked entrainment** — binaural beats and isochronic tones ramp frequency per session phase across the α/θ/δ brain-wave map, with 6-second crossfades at each boundary
@@ -296,7 +297,31 @@ let [motif] = root.hne.freshMotifs({
 // motif = { id, image, essence, sense, tags, palette, viz, cue }
 ```
 
-Useful for any project that needs evocative sensory imagery — meditation apps, tarot readers, dream journals, sleep aids, poetry generators.
+**Register caveat:** HNE's bundled corpus is meditation/hypnosis-coded — grounding, somatic, kinesthetic (*"a held shoulder finally dropping"*, *"a lighthouse beam, passing and returning"*). If your project's voice is different — carnival-mystic, clinical, noir, playful — using the curated phrases as primary content will dilute your tone.
+
+For different voices, use `pickFromBank` instead: it exposes HNE's rotation machinery (tag-filter, exclude-set, cold-start fallback, Fisher-Yates shuffle) operating on **your own** data:
+
+```js
+const fortuneMotifs = [
+  { card: "Queen of Cups", tags: "love|intuition",
+    image: "tea leaves settling into the shape of a bird" },
+  { card: "Ace of Cups",   tags: "love|beginning",
+    image: "a chalice brimming, water trembling at the rim" },
+  // …
+];
+const [draw] = root.hne.pickFromBank({
+  bank:         fortuneMotifs,
+  profileTags:  ["love"],
+  n:            1,
+  excludeSet:   recentlyDrawn,   // array of card names
+  excludeField: "card",          // dedupe key on each item
+});
+// → { card: "Queen of Cups", tags: "love|intuition", image: "..." }
+```
+
+`pickFromBank` accepts plain string banks too — useful when you just want HNE's anti-repetition shuffle without object plumbing. See the top-editor docs block for the full signature.
+
+Useful for any project that needs sensory imagery with rotation — meditation apps, tarot readers, dream journals, sleep aids, poetry generators, noir adventure games, anywhere you want variety-with-memory but with your own voice.
 
 To embed the whole HNE UI in another page, use a standard iframe — session links and shared configurations work via URL hash params.
 

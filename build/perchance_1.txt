@@ -182,6 +182,13 @@ commentOptions
 //   emotional. Use these to break AI-prompt mode-collapse — feed the
 //   returned phrases into your own AI prompt as optional imagery.
 //
+//   REGISTER: HNE's seed corpus is meditation/hypnosis-coded — grounding,
+//   somatic, kinesthetic ("a held shoulder finally dropping", "the slow
+//   pull of evening tide"). If your project's voice is different (occult,
+//   playful, clinical, etc.), the curated phrases may dilute your tone.
+//   See `pickFromBank` below for using HNE's rotation machinery against
+//   your own corpus.
+//
 //   opts: {
 //     profileTags: string[]   // category filter (any-match); empty = all tags
 //     n:           number     // how many phrases to return (default 5)
@@ -214,6 +221,10 @@ commentOptions
 //   deliberately: the spine the Motif Engine threads across narration,
 //   visuals, and a soft audio cue.
 //
+//   REGISTER: same caveat as freshSeeds — the motif corpus is meditation-
+//   coded (lighthouse beam, brass key, banked ember, steady candle). For
+//   different voices, supply your own bank via `pickFromBank`.
+//
 //   opts: {
 //     profileTags: string[]   // category filter (any-match); empty = all tags
 //     n:           number     // how many motifs to return (default 1)
@@ -222,6 +233,54 @@ commentOptions
 //   }
 //   returns: motif[]          // each { id, image, essence, sense, tags,
 //                             //         palette, viz, cue }
+//
+// • root.hne.pickFromBank(opts) → item[]
+//
+//   GENERIC rotation utility — applies HNE's tag-filter + exclude-set +
+//   cold-start fallback + Fisher-Yates shuffle to YOUR OWN bank of items.
+//   Use this when freshSeeds / freshMotifs' meditation register doesn't
+//   match your project's voice (a carnival-mystic fortune teller, a
+//   clinical sleep app, a playful poetry generator, a noir detective game
+//   — anywhere the bundled corpus would dilute your tone).
+//
+//   Items can be plain strings or objects. With objects, the function
+//   filters on `tagField` (pipe-separated tags, any-match) and dedupes /
+//   excludes on `excludeField`. With strings, items are matched against
+//   excludeSet by value equality; no tag filtering is possible.
+//
+//   opts: {
+//     bank:         any[]     // YOUR bank of items (required)
+//     profileTags:  string[]  // category filter (any-match); empty = all
+//     n:            number    // how many to return (default 1)
+//     excludeSet:   any[]     // items to skip, matched by excludeField
+//     tagField:     string    // object field with pipe-separated tags ('tags')
+//     excludeField: string    // object field to match against excludeSet ('id')
+//   }
+//   returns: item[]           // shallow copies (cannot mutate the source)
+//
+//   Example — fortune-teller picks one tarot motif tagged for "love",
+//   avoiding the last three drawn:
+//
+//     const fortuneMotifs = [
+//       {card:"Queen of Cups", tags:"love|intuition",
+//        image:"tea leaves settling into the shape of a bird"},
+//       {card:"Ace of Cups",   tags:"love|beginning",
+//        image:"a chalice brimming, water trembling at the rim"},
+//       {card:"Two of Cups",   tags:"love|union", image:"…"},
+//       // …
+//     ];
+//     const [draw] = root.hne.pickFromBank({
+//       bank:         fortuneMotifs,
+//       profileTags:  ["love"],
+//       n:            1,
+//       excludeSet:   recentlyDrawn,   // array of card names
+//       excludeField: "card",          // dedupe by card name, not id
+//     });
+//     // → {card:"Queen of Cups", tags:"love|intuition", image:"..."}
+//
+//   The function honours the same contract as freshMotifs — empty profile
+//   tags fall through to ANY non-excluded entry, and you always get back
+//   at least min(n, bank.length - excludeSet.length) items.
 //
 // ─── EMBEDDING THE FULL TOOL ───────────────────────────────────────────────
 //
@@ -432,6 +491,78 @@ freshMotifs(opts) =>
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr.slice(0, n).map(m => ({ ...m }));
+
+// PUBLIC PLUGIN EXPORT — generic rotation utility for caller-provided banks.
+// See the "IMPORTING HNE AS A PERCHANCE PLUGIN" block above for usage and the
+// fortune-teller example. This function deliberately has no curated content —
+// it operates entirely on the caller's data. Use this when the meditation
+// register of freshSeeds / freshMotifs would dilute your project's voice.
+//
+// Signature:
+//   pickFromBank({ bank, profileTags, n, excludeSet, tagField, excludeField }) → item[]
+//
+// Items may be plain strings (matched by value equality, no tag filtering)
+// or objects (matched by `excludeField`, filtered by `tagField`). Falls back
+// to ANY non-excluded item when the tag-filtered set is too thin.
+pickFromBank(opts) =>
+  let { bank, profileTags, n, excludeSet, tagField, excludeField } = opts || {};
+  if(!Array.isArray(bank)) return [];
+  if(!Array.isArray(profileTags)) profileTags = [];
+  if(!Number.isFinite(n) || n < 1) n = 1;
+  if(!excludeSet || !Array.isArray(excludeSet)) excludeSet = [];
+  if(typeof tagField !== 'string' || !tagField) tagField = 'tags';
+  if(typeof excludeField !== 'string' || !excludeField) excludeField = 'id';
+  let exclude = new Set(excludeSet);
+  // Detect bank shape from the first non-null entry — strings vs objects.
+  let probe = bank.find(x => x != null);
+  let isStringBank = (typeof probe === 'string');
+  let tagSet = new Set(profileTags.map(t => String(t).toLowerCase()));
+  // Filter by tag overlap + exclude. String banks skip tag filtering entirely
+  // (no place to attach tags) and use value-equality for excludeSet match.
+  let filtered = bank.filter(item => {
+    if(item == null) return false;
+    if(isStringBank) return !exclude.has(item);
+    let key = item[excludeField];
+    if(key !== undefined && exclude.has(key)) return false;
+    let raw = item[tagField];
+    if(!raw) return true; // untagged items are universal
+    let itemTags = String(raw).split('|').map(t => t.trim().toLowerCase());
+    return itemTags.some(t => tagSet.has(t));
+  });
+  // Cold-start fallback — broaden to ANY non-excluded entry when the
+  // tag-filtered set is too thin to satisfy n. Mirrors freshSeeds/freshMotifs.
+  if(filtered.length < n) {
+    let seen = new Set();
+    if(isStringBank) {
+      for(let item of filtered) seen.add(item);
+      for(let item of bank) {
+        if(item != null && !exclude.has(item) && !seen.has(item)) {
+          filtered.push(item); seen.add(item);
+        }
+      }
+    } else {
+      for(let item of filtered) {
+        let k = item[excludeField];
+        if(k !== undefined) seen.add(k);
+      }
+      for(let item of bank) {
+        if(item == null) continue;
+        let k = item[excludeField];
+        if(k !== undefined && (exclude.has(k) || seen.has(k))) continue;
+        filtered.push(item);
+        if(k !== undefined) seen.add(k);
+      }
+    }
+  }
+  // Fisher-Yates shuffle, then take first n. Return shallow copies of
+  // objects so the caller cannot mutate the source bank by reference.
+  let arr = filtered.slice();
+  for(let i = arr.length - 1; i > 0; i--) {
+    let j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  let out = arr.slice(0, n);
+  return isStringBank ? out : out.map(item => ({ ...item }));
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Community content packs (item #3 — dynamicImport lane)
