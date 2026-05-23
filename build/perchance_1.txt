@@ -14,46 +14,8 @@ $meta
       let params = inputs.urlParams || {};
       let hash = (inputs.urlHash || "").replace(/^#/, "");
       // Inline label map — CANNOT reference root.METHODS or root.BUILTIN_PERSONAS from here.
-      let methodLabel = {
-        // Therapeutic
-        "highway":"Highway Induction","spiral":"Spiral Fixation","betty-erickson":"Betty Erickson 3-2-1",
-        "staircase":"Staircase Descent","hand-heaviness":"Hand Heaviness","confusion":"Confusion Method",
-        "fractionation":"Fractionation","eye-roll":"Eye-Roll (Spiegel)","breath-478":"4-7-8 Breath",
-        "progressive":"Progressive Relaxation","ericksonian":"Ericksonian Conversational",
-        // Demonstration
-        "magnetic-hands":"Magnetic Hands","arm-catalepsy":"Arm Catalepsy","tipsy":"Tipsy Without Drinking",
-        "laughter-trigger":"Laughter Trigger","number-amnesia":"Number Amnesia",
-        "thermal-hand":"Hot/Cold Hand","stuck-to-seat":"Stuck to Your Seat",
-        // Somatic
-        "body-awareness":"Body Awareness Scan","floating-body":"Floating Body","glove-anesthesia":"Glove Anesthesia",
-        "heartbeat-sync":"Heartbeat Synchronization","automatic-writing":"Automatic Writing","pain-dial":"Pain Dial",
-        // Rapid
-        "handshake-interrupt":"Handshake Interrupt","arm-drop":"Arm Drop","magnetic-gaze":"Magnetic Gaze",
-        "dave-elman":"Dave Elman Induction","shock-induction":"Shock Induction",
-        // Advanced
-        "time-distortion":"Time Distortion","regression":"Age Regression",
-        "hallucination-pos":"Positive Hallucination","hallucination-neg":"Negative Hallucination",
-        "somnambulism":"Eyes-Open Somnambulism","double-induction":"Double Induction",
-        "anesthesia-full":"Full-Body Anesthesia",
-        // Stage classics also referenced via legacy share links
-        "pendulum":"Chevreul's Pendulum"
-      };
-      let intentionLabel = {
-        // Foundation
-        "emotional":"Emotional state shift","trigger":"Post-hypnotic trigger","behavior":"Behavior change",
-        "release":"Release / let go","perception":"Perception shift","anchor":"Install an anchor","trance":"Pure trance",
-        // Performance
-        "performance":"Peak performance","focus":"Deep focus","creativity":"Creative flow",
-        // Body
-        "pain":"Pain management","sleep":"Sleep induction","energy":"Energy boost",
-        // Demonstration
-        "convincer":"Convincer demo","novelty":"Novelty effect",
-        // Advanced
-        "time":"Time distortion","amnesia":"Suggested amnesia","identity":"Identity exploration",
-        "surrender":"Surrender","conditioning":"Behavioral conditioning",
-        // Legacy values retained for older share links
-        "reframe":"Belief reframe","habit":"Habit change"
-      };
+      let methodLabel = {"highway":"Highway Induction","spiral":"Spiral Fixation","betty-erickson":"Betty Erickson 3-2-1","staircase":"Staircase Descent","hand-heaviness":"Hand Heaviness","confusion":"Confusion Method","fractionation":"Fractionation","eye-roll":"Eye-Roll (Spiegel)","breath-478":"4-7-8 Breath","progressive":"Progressive Relaxation","ericksonian":"Ericksonian Conversational","magnetic-hands":"Magnetic Hands","arm-catalepsy":"Arm Catalepsy","tipsy":"Tipsy Without Drinking","laughter-trigger":"Laughter Trigger","number-amnesia":"Number Amnesia","thermal-hand":"Hot/Cold Hand","stuck-to-seat":"Stuck to Your Seat","body-awareness":"Body Awareness Scan","floating-body":"Floating Body","glove-anesthesia":"Glove Anesthesia","heartbeat-sync":"Heartbeat Synchronization","automatic-writing":"Automatic Writing","pain-dial":"Pain Dial","handshake-interrupt":"Handshake Interrupt","arm-drop":"Arm Drop","magnetic-gaze":"Magnetic Gaze","dave-elman":"Dave Elman Induction","shock-induction":"Shock Induction","time-distortion":"Time Distortion","regression":"Age Regression","hallucination-pos":"Positive Hallucination","hallucination-neg":"Negative Hallucination","somnambulism":"Eyes-Open Somnambulism","double-induction":"Double Induction","anesthesia-full":"Full-Body Anesthesia","pendulum":"Chevreul's Pendulum"};
+      let intentionLabel = {"emotional":"Emotional state shift","trigger":"Post-hypnotic trigger","behavior":"Behavior change","release":"Release / let go","perception":"Perception shift","anchor":"Install an anchor","trance":"Pure trance","performance":"Peak performance","focus":"Deep focus","creativity":"Creative flow","pain":"Pain management","sleep":"Sleep induction","energy":"Energy boost","convincer":"Convincer demo","novelty":"Novelty effect","time":"Time distortion","amnesia":"Suggested amnesia","identity":"Identity exploration","surrender":"Surrender","conditioning":"Behavioral conditioning","reframe":"Belief reframe","habit":"Habit change"};
       // Config-share URL: /?#cfg=p=...&m=...&i=...&l=...&t=... (URL-encoded intention text)
       if (hash.indexOf("cfg=") === 0) {
         let qs = new URLSearchParams(hash.slice(4));
@@ -63,11 +25,7 @@ $meta
         let intent = (qs.get("t") || "").trim();
         if (intent) try { intent = decodeURIComponent(intent); } catch(e){}
         let parts = [m, lenLabel && lenLabel + " session", i].filter(Boolean);
-        return {
-          title: "Shared Hypnosis Session · " + parts.slice(0,2).join(" · "),
-          description: (intent ? "Intention: " + intent.slice(0,140) + (intent.length>140?"…":"") : parts.join(" · ")) + " — Click to open in the Hypnosis Narration Engine.",
-          image: defaultImage,
-        };
+        return { title: "Shared Hypnosis Session · " + parts.slice(0,2).join(" · "), description: (intent ? "Intention: " + intent.slice(0,140) + (intent.length>140?"…":"") : parts.join(" · ")) + " — Click to open in the Hypnosis Narration Engine.", image: defaultImage };
       }
       // Round 24 follow-up — Persona hash-share: /?#persona=<base64-gzipped-json>
       // The encoded persona payload is opaque from $meta.dynamic (no
@@ -75,58 +33,27 @@ $meta
       // client render details on load. Same shape as the uploaded
       // payload case below — the link still works either way.
       if (hash.indexOf("persona=") === 0) {
-        return {
-          title: "Shared Custom Guide (Persona)",
-          description: "Someone shared a custom hypnosis guide with you. Open to review the voice instruction and add it to your library.",
-          image: defaultImage,
-        };
+        return { title: "Shared Custom Guide (Persona)", description: "Someone shared a custom hypnosis guide with you. Open to review the voice instruction and add it to your library.", image: defaultImage };
       }
       // Uploaded-payload share: /?data=<fileId>.gz (handles both full configs and custom personas).
       // Can't fetch the payload from $meta.dynamic (no network in this context), so show a generic
       // "shared content" preview and let the client render details on load.
       if (params.data) {
-        return {
-          title: "Shared Hypnosis Content",
-          description: "Someone shared a custom session, persona, or program with you. Open to review and add it to your library.",
-          image: defaultImage,
-        };
+        return { title: "Shared Hypnosis Content", description: "Someone shared a custom session, persona, or program with you. Open to review and add it to your library.", image: defaultImage };
       }
       // Named-character or named-preset URL: /?char=<name> or /?preset=<name>
       // Preset ids match the PRESETS array in perchance_2.txt; legacy ids
       // (quick-stress-reset, deep-sleep, focus-boost, creative-flow) are
       // kept so older share links don't lose their preview.
-      let presetLabel = {
-        // Current preset ids (match PRESETS in perchance_2.txt)
-        "sleep":"Sleep","calm":"Quick Calm","focus":"Deep Focus","demo":"Demo Night",
-        "pain":"Pain Relief","micro":"Micro Reset","anxiety":"Anxiety Relief",
-        "confidence":"Confidence","flow":"Peak Flow","habits":"Habit Change",
-        "creativity":"Creative Flow","energy":"Energy Boost","deep-dive":"Deep Dive",
-        "nightcap":"Nightcap","journey":"Train Journey","temple":"Temple Sit",
-        "method-intro":"Method Intro","skill-build":"Skill Builder",
-        "mission-brief":"Mission Brief","goal-lock":"Goal Lock-in",
-        // Legacy preset ids retained for older share links
-        "quick-stress-reset":"Quick Stress Reset","deep-sleep":"Deep Sleep Induction",
-        "focus-boost":"Focus Boost","creative-flow":"Creative Flow"
-      };
+      let presetLabel = {"sleep":"Sleep","calm":"Quick Calm","focus":"Deep Focus","demo":"Demo Night","pain":"Pain Relief","micro":"Micro Reset","anxiety":"Anxiety Relief","confidence":"Confidence","flow":"Peak Flow","habits":"Habit Change","creativity":"Creative Flow","energy":"Energy Boost","deep-dive":"Deep Dive","nightcap":"Nightcap","journey":"Train Journey","temple":"Temple Sit","method-intro":"Method Intro","skill-build":"Skill Builder","mission-brief":"Mission Brief","goal-lock":"Goal Lock-in","quick-stress-reset":"Quick Stress Reset","deep-sleep":"Deep Sleep Induction","focus-boost":"Focus Boost","creative-flow":"Creative Flow"};
       // Multi-day program ids — same lookup pattern, separate URL key.
-      let programLabel = {
-        "sleep-7":"7-Day Sleep","anxiety-14":"14-Day Calm",
-        "confidence-10":"10-Day Confidence"
-      };
+      let programLabel = {"sleep-7":"7-Day Sleep","anxiety-14":"14-Day Calm","confidence-10":"10-Day Confidence"};
       if (params.preset && presetLabel[params.preset]) {
-        return {
-          title: presetLabel[params.preset] + " · Hypnosis Narration Engine",
-          description: "A curated one-click hypnosis preset. " + defaultDesc,
-          image: defaultImage,
-        };
+        return { title: presetLabel[params.preset] + " · Hypnosis Narration Engine", description: "A curated one-click hypnosis preset. " + defaultDesc, image: defaultImage };
       }
       // Multi-day structured-program share link: /?program=<id>
       if (params.program && programLabel[params.program]) {
-        return {
-          title: programLabel[params.program] + " · Hypnosis Narration Engine",
-          description: "A multi-day structured program — daily sessions with progressive arc. " + defaultDesc,
-          image: defaultImage,
-        };
+        return { title: programLabel[params.program] + " · Hypnosis Narration Engine", description: "A multi-day structured program — daily sessions with progressive arc. " + defaultDesc, image: defaultImage };
       }
     } catch(e) {}
     return { title: defaultTitle, description: defaultDesc, image: defaultImage };
@@ -456,102 +383,30 @@ freshMotifs(opts) =>
   // through `root` inside this file's function bodies. One source of truth, in
   // the function that owns it.
   let bank = [
-    {id:"brass-key", sense:"tactile", tags:"trance|behavior|confidence",
-     image:"a small brass key, warm from being held",
-     essence:"something that opens, already in your hand",
-     palette:{a:[0.42,0.32,0.14], b:[0.78,0.6,0.26]}, viz:["candle","mandala","colorwash"], cue:"bell"},
-    {id:"far-window", sense:"visual", tags:"focus|trance|sleep",
-     image:"a single lit window, far down a darkening street",
-     essence:"one warm point that holds steady while the rest dims",
-     palette:{a:[0.08,0.1,0.24], b:[0.8,0.58,0.24]}, viz:["starfield","aurora","candle"], cue:"drop"},
-    {id:"low-tide", sense:"kinesthetic", tags:"sleep|release|anxiety",
-     image:"the slow pull of water leaving the shore",
-     essence:"the long, unhurried outbreath of the world",
-     palette:{a:[0.1,0.24,0.32], b:[0.16,0.18,0.4]}, viz:["ripples","colorwash","waveform"], cue:"drop"},
-    {id:"ember", sense:"visual", tags:"emotional|confidence|grounding",
-     image:"a single ember holding its heat beneath grey ash",
-     essence:"warmth that was never in danger of going out",
-     palette:{a:[0.32,0.1,0.08], b:[0.8,0.46,0.18]}, viz:["candle","smoke","colorwash"], cue:"bowl"},
-    {id:"distant-bell", sense:"auditory", tags:"trance|grounding|focus",
-     image:"a bell sounding once, three valleys away",
-     essence:"a signal that reaches you without asking anything of you",
-     palette:{a:[0.22,0.16,0.38], b:[0.52,0.42,0.72]}, viz:["mandala","sacred-geo","ripples"], cue:"bell"},
-    {id:"smooth-stone", sense:"tactile", tags:"anxiety|release|grounding",
-     image:"a river stone, cool and perfectly smooth in the palm",
-     essence:"something the water has already finished worrying",
-     palette:{a:[0.22,0.3,0.28], b:[0.4,0.5,0.46]}, viz:["ink","ripples","breathing"], cue:"drop"},
-    {id:"open-door", sense:"visual", tags:"creativity|behavior|trance",
-     image:"a door standing slightly open onto warm light",
-     essence:"the threshold is already crossed",
-     palette:{a:[0.2,0.16,0.1], b:[0.86,0.72,0.4]}, viz:["tunnel","colorwash","aurora"], cue:"chime"},
-    {id:"held-note", sense:"auditory", tags:"focus|trance|performance",
-     image:"a single low note, held longer than seems possible",
-     essence:"one steady tone underneath all the others",
-     palette:{a:[0.06,0.2,0.26], b:[0.1,0.42,0.52]}, viz:["waveform","lissajous","pulse"], cue:"bowl"},
-    {id:"loosening-knot", sense:"kinesthetic", tags:"anxiety|release|pain",
-     image:"a knot underwater, slowly coming undone",
-     essence:"the grip releasing one strand at a time, on its own",
-     palette:{a:[0.1,0.26,0.3], b:[0.2,0.46,0.44]}, viz:["ink","ripples","smoke"], cue:"drop"},
-    {id:"clean-line", sense:"visual", tags:"focus|performance|creativity",
-     image:"a single clean line drawn in one unbroken stroke",
-     essence:"the path narrows to one thing, and the one thing is enough",
-     palette:{a:[0.2,0.22,0.26], b:[0.82,0.86,0.92]}, viz:["lissajous","waveform","pulse"], cue:"chime"},
-    {id:"settling-dust", sense:"visual", tags:"sleep|trance|grounding",
-     image:"dust settling slowly through a shaft of afternoon light",
-     essence:"everything finding its own level without effort",
-     palette:{a:[0.26,0.2,0.1], b:[0.74,0.6,0.32]}, viz:["fireflies","smoke","colorwash"], cue:"none"},
-    {id:"banked-fire", sense:"kinesthetic", tags:"emotional|confidence|grounding",
-     image:"a steady warmth low in the chest, like a banked fire",
-     essence:"the part of you that was always lit",
-     palette:{a:[0.3,0.1,0.12], b:[0.74,0.34,0.34]}, viz:["pulse","breathing","candle"], cue:"bowl"},
-    {id:"still-candle", sense:"visual", tags:"focus|trance|grounding",
-     image:"a candle flame standing perfectly still in windless air",
-     essence:"attention with nothing left pulling at it",
-     palette:{a:[0.06,0.05,0.04], b:[0.86,0.66,0.3]}, viz:["candle","mandala","pulse"], cue:"bell"},
-    {id:"wide-field", sense:"kinesthetic", tags:"release|emotional|sleep",
-     image:"a wide field of grass moving all at once in slow wind",
-     essence:"many small things moving as one calm thing",
-     palette:{a:[0.2,0.28,0.14], b:[0.56,0.62,0.34]}, viz:["colorwash","aurora","ripples"], cue:"drop"},
-    {id:"returning-tide", sense:"kinesthetic", tags:"confidence|emotional|behavior",
-     image:"the tide coming back in, patient and certain",
-     essence:"what left is already on its way back",
-     palette:{a:[0.08,0.24,0.28], b:[0.7,0.58,0.3]}, viz:["ripples","waveform","colorwash"], cue:"drop"},
-    {id:"lighthouse-sweep", sense:"visual", tags:"anxiety|grounding|focus",
-     image:"a slow lighthouse beam, passing and returning",
-     essence:"a rhythm you can trust to come around again",
-     palette:{a:[0.1,0.12,0.3], b:[0.84,0.86,0.9]}, viz:["aurora","spiral","starfield"], cue:"bell"},
-    {id:"unclenching-hand", sense:"tactile", tags:"release|pain|anxiety",
-     image:"a hand slowly opening from a fist, finger by finger",
-     essence:"letting go made simple, made physical",
-     palette:{a:[0.24,0.2,0.16], b:[0.62,0.54,0.44]}, viz:["breathing","ink","ripples"], cue:"drop"},
-    {id:"first-light", sense:"visual", tags:"energy|confidence|creativity",
-     image:"the first grey light at the edge of a window",
-     essence:"something arriving gently, exactly on time",
-     palette:{a:[0.16,0.2,0.32], b:[0.92,0.74,0.58]}, viz:["aurora","colorwash","starfield"], cue:"chime"},
-    {id:"deep-room", sense:"visual", tags:"trance|sleep|grounding",
-     image:"a quiet room far inside a large, sleeping house",
-     essence:"a place that was always there, its door unlocked",
-     palette:{a:[0.08,0.08,0.2], b:[0.22,0.18,0.36]}, viz:["tunnel","smoke","starfield"], cue:"bowl"},
-    {id:"steady-pulse", sense:"kinesthetic", tags:"grounding|sleep|anxiety",
-     image:"a slow, even pulse felt in the wrist",
-     essence:"the body keeping its own time, without you",
-     palette:{a:[0.26,0.1,0.14], b:[0.66,0.3,0.34]}, viz:["pulse","breathing","waveform"], cue:"none"},
-    {id:"clearing-fog", sense:"visual", tags:"focus|behavior|creativity",
-     image:"fog thinning to show a path already underfoot",
-     essence:"the way forward was never actually gone",
-     palette:{a:[0.28,0.32,0.38], b:[0.8,0.68,0.4]}, viz:["smoke","colorwash","aurora"], cue:"chime"},
-    {id:"coin-of-warmth", sense:"tactile", tags:"pain|emotional|release",
-     image:"warmth spreading from one point, like a coin held to the skin",
-     essence:"comfort with a clear, locatable centre",
-     palette:{a:[0.3,0.18,0.08], b:[0.84,0.62,0.3]}, viz:["pulse","colorwash","candle"], cue:"bowl"},
-    {id:"settled-spine", sense:"kinesthetic", tags:"confidence|performance|grounding",
-     image:"the long, easy line of a spine that has stopped bracing",
-     essence:"holding yourself up turning out to be effortless",
-     palette:{a:[0.24,0.18,0.08], b:[0.72,0.56,0.26]}, viz:["pulse","waveform","lissajous"], cue:"bell"},
-    {id:"last-train", sense:"auditory", tags:"sleep|release|emotional",
-     image:"the last train, far off and going further away",
-     essence:"the day's last errand leaving without you — and that being fine",
-     palette:{a:[0.1,0.1,0.24], b:[0.34,0.3,0.52]}, viz:["starfield","aurora","smoke"], cue:"drop"},
+    {id:"brass-key", sense:"tactile", tags:"trance|behavior|confidence", image:"a small brass key, warm from being held", essence:"something that opens, already in your hand", palette:{a:[0.42,0.32,0.14], b:[0.78,0.6,0.26]}, viz:["candle","mandala","colorwash"], cue:"bell"},
+    {id:"far-window", sense:"visual", tags:"focus|trance|sleep", image:"a single lit window, far down a darkening street", essence:"one warm point that holds steady while the rest dims", palette:{a:[0.08,0.1,0.24], b:[0.8,0.58,0.24]}, viz:["starfield","aurora","candle"], cue:"drop"},
+    {id:"low-tide", sense:"kinesthetic", tags:"sleep|release|anxiety", image:"the slow pull of water leaving the shore", essence:"the long, unhurried outbreath of the world", palette:{a:[0.1,0.24,0.32], b:[0.16,0.18,0.4]}, viz:["ripples","colorwash","waveform"], cue:"drop"},
+    {id:"ember", sense:"visual", tags:"emotional|confidence|grounding", image:"a single ember holding its heat beneath grey ash", essence:"warmth that was never in danger of going out", palette:{a:[0.32,0.1,0.08], b:[0.8,0.46,0.18]}, viz:["candle","smoke","colorwash"], cue:"bowl"},
+    {id:"distant-bell", sense:"auditory", tags:"trance|grounding|focus", image:"a bell sounding once, three valleys away", essence:"a signal that reaches you without asking anything of you", palette:{a:[0.22,0.16,0.38], b:[0.52,0.42,0.72]}, viz:["mandala","sacred-geo","ripples"], cue:"bell"},
+    {id:"smooth-stone", sense:"tactile", tags:"anxiety|release|grounding", image:"a river stone, cool and perfectly smooth in the palm", essence:"something the water has already finished worrying", palette:{a:[0.22,0.3,0.28], b:[0.4,0.5,0.46]}, viz:["ink","ripples","breathing"], cue:"drop"},
+    {id:"open-door", sense:"visual", tags:"creativity|behavior|trance", image:"a door standing slightly open onto warm light", essence:"the threshold is already crossed", palette:{a:[0.2,0.16,0.1], b:[0.86,0.72,0.4]}, viz:["tunnel","colorwash","aurora"], cue:"chime"},
+    {id:"held-note", sense:"auditory", tags:"focus|trance|performance", image:"a single low note, held longer than seems possible", essence:"one steady tone underneath all the others", palette:{a:[0.06,0.2,0.26], b:[0.1,0.42,0.52]}, viz:["waveform","lissajous","pulse"], cue:"bowl"},
+    {id:"loosening-knot", sense:"kinesthetic", tags:"anxiety|release|pain", image:"a knot underwater, slowly coming undone", essence:"the grip releasing one strand at a time, on its own", palette:{a:[0.1,0.26,0.3], b:[0.2,0.46,0.44]}, viz:["ink","ripples","smoke"], cue:"drop"},
+    {id:"clean-line", sense:"visual", tags:"focus|performance|creativity", image:"a single clean line drawn in one unbroken stroke", essence:"the path narrows to one thing, and the one thing is enough", palette:{a:[0.2,0.22,0.26], b:[0.82,0.86,0.92]}, viz:["lissajous","waveform","pulse"], cue:"chime"},
+    {id:"settling-dust", sense:"visual", tags:"sleep|trance|grounding", image:"dust settling slowly through a shaft of afternoon light", essence:"everything finding its own level without effort", palette:{a:[0.26,0.2,0.1], b:[0.74,0.6,0.32]}, viz:["fireflies","smoke","colorwash"], cue:"none"},
+    {id:"banked-fire", sense:"kinesthetic", tags:"emotional|confidence|grounding", image:"a steady warmth low in the chest, like a banked fire", essence:"the part of you that was always lit", palette:{a:[0.3,0.1,0.12], b:[0.74,0.34,0.34]}, viz:["pulse","breathing","candle"], cue:"bowl"},
+    {id:"still-candle", sense:"visual", tags:"focus|trance|grounding", image:"a candle flame standing perfectly still in windless air", essence:"attention with nothing left pulling at it", palette:{a:[0.06,0.05,0.04], b:[0.86,0.66,0.3]}, viz:["candle","mandala","pulse"], cue:"bell"},
+    {id:"wide-field", sense:"kinesthetic", tags:"release|emotional|sleep", image:"a wide field of grass moving all at once in slow wind", essence:"many small things moving as one calm thing", palette:{a:[0.2,0.28,0.14], b:[0.56,0.62,0.34]}, viz:["colorwash","aurora","ripples"], cue:"drop"},
+    {id:"returning-tide", sense:"kinesthetic", tags:"confidence|emotional|behavior", image:"the tide coming back in, patient and certain", essence:"what left is already on its way back", palette:{a:[0.08,0.24,0.28], b:[0.7,0.58,0.3]}, viz:["ripples","waveform","colorwash"], cue:"drop"},
+    {id:"lighthouse-sweep", sense:"visual", tags:"anxiety|grounding|focus", image:"a slow lighthouse beam, passing and returning", essence:"a rhythm you can trust to come around again", palette:{a:[0.1,0.12,0.3], b:[0.84,0.86,0.9]}, viz:["aurora","spiral","starfield"], cue:"bell"},
+    {id:"unclenching-hand", sense:"tactile", tags:"release|pain|anxiety", image:"a hand slowly opening from a fist, finger by finger", essence:"letting go made simple, made physical", palette:{a:[0.24,0.2,0.16], b:[0.62,0.54,0.44]}, viz:["breathing","ink","ripples"], cue:"drop"},
+    {id:"first-light", sense:"visual", tags:"energy|confidence|creativity", image:"the first grey light at the edge of a window", essence:"something arriving gently, exactly on time", palette:{a:[0.16,0.2,0.32], b:[0.92,0.74,0.58]}, viz:["aurora","colorwash","starfield"], cue:"chime"},
+    {id:"deep-room", sense:"visual", tags:"trance|sleep|grounding", image:"a quiet room far inside a large, sleeping house", essence:"a place that was always there, its door unlocked", palette:{a:[0.08,0.08,0.2], b:[0.22,0.18,0.36]}, viz:["tunnel","smoke","starfield"], cue:"bowl"},
+    {id:"steady-pulse", sense:"kinesthetic", tags:"grounding|sleep|anxiety", image:"a slow, even pulse felt in the wrist", essence:"the body keeping its own time, without you", palette:{a:[0.26,0.1,0.14], b:[0.66,0.3,0.34]}, viz:["pulse","breathing","waveform"], cue:"none"},
+    {id:"clearing-fog", sense:"visual", tags:"focus|behavior|creativity", image:"fog thinning to show a path already underfoot", essence:"the way forward was never actually gone", palette:{a:[0.28,0.32,0.38], b:[0.8,0.68,0.4]}, viz:["smoke","colorwash","aurora"], cue:"chime"},
+    {id:"coin-of-warmth", sense:"tactile", tags:"pain|emotional|release", image:"warmth spreading from one point, like a coin held to the skin", essence:"comfort with a clear, locatable centre", palette:{a:[0.3,0.18,0.08], b:[0.84,0.62,0.3]}, viz:["pulse","colorwash","candle"], cue:"bowl"},
+    {id:"settled-spine", sense:"kinesthetic", tags:"confidence|performance|grounding", image:"the long, easy line of a spine that has stopped bracing", essence:"holding yourself up turning out to be effortless", palette:{a:[0.24,0.18,0.08], b:[0.72,0.56,0.26]}, viz:["pulse","waveform","lissajous"], cue:"bell"},
+    {id:"last-train", sense:"auditory", tags:"sleep|release|emotional", image:"the last train, far off and going further away", essence:"the day's last errand leaving without you — and that being fine", palette:{a:[0.1,0.1,0.24], b:[0.34,0.3,0.52]}, viz:["starfield","aurora","smoke"], cue:"drop"},
   ];
   // Tag overlap filter — a motif passes if it shares >=1 tag with profileTags.
   let tagSet = new Set(profileTags.map(t => String(t).toLowerCase()));
