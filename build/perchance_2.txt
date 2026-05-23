@@ -7295,6 +7295,29 @@ I return to myself easily"></textarea>
         </span>
       </label>
       <div class="sublabel" style="font-size:0.62rem;line-height:1.4;margin-top:2px">Off: your manual scene choices are preserved across the whole session. On (default): when the AI writes about rain, the soundscape can become rain.</div>
+      <!-- Motif Engine — picks ONE concrete sensory image per session from a
+           curated 24-motif corpus and tells the AI to thread it across phases
+           as a quiet through-line. Counterpart to AI scene directives: that
+           lets the AI mid-flight; the motif is set at session start and
+           remains constant. -->
+      <label class="toggle-row" for="motifEngineEnabled" style="align-items:flex-start;margin-top:8px">
+        <input type="checkbox" id="motifEngineEnabled">
+        <span>
+          Motif Engine
+          <span class="hint">Pick one recurring image per session and have the AI weave it across phases as a deliberate spine.</span>
+        </span>
+      </label>
+      <div class="sublabel" style="font-size:0.62rem;line-height:1.4;margin-top:2px">On (default): one tag-matched image is selected and threaded across the script. Off: phases are independent, no through-line.</div>
+      <!-- Optional soft audio cue at the deepest phase, matched to the
+           motif's sense (bell / bowl / chime / drop). Opt-in because it's
+           an audible change. -->
+      <label class="toggle-row" for="motifCuesEnabled" style="align-items:flex-start;margin-top:8px">
+        <input type="checkbox" id="motifCuesEnabled">
+        <span>
+          Motif audio cue
+          <span class="hint">Play a single soft tone (bell / bowl / chime / drop) at the deepest phase, echoing the session's motif.</span>
+        </span>
+      </label>
       <!-- Director calibration — shifts every rule threshold + AI tone directive. -->
       <div id="directorBiasRow" style="margin-top:12px;padding:10px 12px;background:var(--glass);border:1px solid var(--glass-border)">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
@@ -8236,6 +8259,11 @@ I return to myself easily"></textarea>
     smartDirectorEnabled: true,
 
     aiSceneDirectivesEnabled: true,
+    // Motif Engine — through-line image injected into the AI prompt.
+    // Default on with Smart Director; the cue layer is opt-in.
+    motifEngineEnabled: true,
+    motifCuesEnabled: false,
+    motifCueVolume: 0.7,
     directorBias: 0,
 
     directorPace: 0,
@@ -11543,6 +11571,9 @@ I return to myself easily"></textarea>
       smartDirectorEnabled: !!$('smartDirectorEnabled')?.checked,
 
       aiSceneDirectivesEnabled: state.aiSceneDirectivesEnabled !== false,
+      motifEngineEnabled: state.motifEngineEnabled !== false,
+      motifCuesEnabled:   state.motifCuesEnabled === true,
+      motifCueVolume:     Number.isFinite(state.motifCueVolume) ? state.motifCueVolume : 0.7,
       directorBias: Number($('directorBiasSlider')?.value ?? state.directorBias ?? 0),
       directorPace: Number($('directorPaceSlider')?.value ?? state.directorPace ?? 0),
       directorBiasByDomain: { ...(state.directorBiasByDomain || {}) },
@@ -11992,6 +12023,13 @@ I return to myself easily"></textarea>
 
       state.aiSceneDirectivesEnabled = s.aiSceneDirectivesEnabled !== false;
       const ascd = $('aiSceneDirectivesEnabled'); if (ascd) ascd.checked = state.aiSceneDirectivesEnabled;
+      // Motif Engine — preserve previous user choices (default on for the
+      // narrative through-line, off for the audio cue layer).
+      state.motifEngineEnabled = s.motifEngineEnabled !== false;
+      const mecb = $('motifEngineEnabled'); if (mecb) mecb.checked = state.motifEngineEnabled;
+      state.motifCuesEnabled = s.motifCuesEnabled === true;
+      const mccb = $('motifCuesEnabled'); if (mccb) mccb.checked = state.motifCuesEnabled;
+      if (Number.isFinite(s.motifCueVolume)) state.motifCueVolume = s.motifCueVolume;
       state.directorBias = s.directorBias ?? 0;
       const dbSlider = $('directorBiasSlider'); if (dbSlider) dbSlider.value = state.directorBias;
 
@@ -13270,6 +13308,135 @@ I return to myself easily"></textarea>
       console.warn('[freshSeeds] pick failed:', e);
       return '';
     }
+  }
+
+  // ───────────────────────── Motif Engine ─────────────────────────
+  // A session "motif" is ONE recurring sensory through-line image — picked
+  // from the curated bank exposed by root.freshMotifs() — that the Motif
+  // Engine threads across narration (via AI prompt), and optionally across
+  // a soft audio cue at the first deepening phase.
+  //
+  // Where freshSeeds gives VARIETY (anti mode-collapse), the motif gives
+  // COHERENCE: every phase of the session quietly echoes the same image so
+  // the listener feels a deliberate return rather than scattered imagery.
+  //
+  // Rotation memory is persisted to IDB so the next 12 sessions across page
+  // reloads pick different motifs. Motif rotation differs from anchor
+  // rotation (in-memory only) because there are far fewer motifs (24) and
+  // each session uses ONE — re-picking the same motif across consecutive
+  // sessions would be very noticeable.
+  const MOTIF_ROTATION_CAP = 12;
+  const MOTIF_RECENT_KEY   = 'hne_recent_motif_ids_v1';
+  let _recentMotifIds = [];
+  let _recentMotifsLoaded = false;
+  (async () => {
+    try {
+      const saved = await idbGet(MOTIF_RECENT_KEY);
+      if (Array.isArray(saved)) {
+        // Merge with any pre-load picks (uncommon race: pickSessionMotif()
+        // fires before the IDB load resolves). Overwriting would silently
+        // drop the just-picked id from rotation memory. Dedup preserves
+        // membership; trailing slice caps to the rotation window.
+        _recentMotifIds = [...new Set([...saved, ..._recentMotifIds])].slice(-MOTIF_ROTATION_CAP);
+      }
+    } catch {}
+    _recentMotifsLoaded = true;
+  })();
+  function _saveRecentMotifs() {
+    // Fire-and-forget — the IDB helper logs its own errors. Skipping the
+    // await keeps the synchronous motif-pick path from blocking on disk.
+    try { idbSet(MOTIF_RECENT_KEY, _recentMotifIds).catch(() => {}); } catch {}
+  }
+
+  // Audio-cue presets. Each motif's `cue` field maps to one of these — a
+  // single short tone played once at the first work-phase entry as a soft
+  // sonic echo of the through-line. Volumes are intentionally low (peak ≤
+  // 0.14 linear gain) so the cue sits under the narrator and soundscape.
+  const MOTIF_CUE_PRESETS = {
+    bell:  { freq: 880,    type: 'sine',     dur: 1.4, attack: 0.010, peakGain: 0.10 },
+    bowl:  { freq: 261.63, type: 'sine',     dur: 2.4, attack: 0.020, peakGain: 0.14 },
+    chime: { freq: 1318.5, type: 'sine',     dur: 0.9, attack: 0.005, peakGain: 0.08 },
+    drop:  { freq: 196.0,  type: 'triangle', dur: 0.7, attack: 0.005, peakGain: 0.10 },
+  };
+
+  // Picks ONE motif for the about-to-be-generated session and stores it on
+  // state for the lifetime of the session. Returns the motif (or null when
+  // the engine is disabled / plugin missing / picker fails). Called by
+  // generateFullScript right before shared-context assembly so the chosen
+  // motif can be injected into the AI prompt.
+  function pickSessionMotif() {
+    if (state.motifEngineEnabled === false) { state._activeMotif = null; return null; }
+    if (state.smartDirectorEnabled === false) { state._activeMotif = null; return null; }
+    if (typeof root === 'undefined' || typeof root.freshMotifs !== 'function') {
+      state._activeMotif = null;
+      return null;
+    }
+    try {
+      const tags = deriveProfileTags();
+      const motifs = root.freshMotifs({
+        profileTags: tags,
+        n: 1,
+        excludeSet: _recentMotifIds,
+      });
+      const motif = motifs && motifs[0];
+      if (!motif) { state._activeMotif = null; return null; }
+      _recentMotifIds.push(motif.id);
+      if (_recentMotifIds.length > MOTIF_ROTATION_CAP) {
+        _recentMotifIds = _recentMotifIds.slice(-MOTIF_ROTATION_CAP);
+      }
+      if (_recentMotifsLoaded) _saveRecentMotifs();
+      state._activeMotif = motif;
+      try { sdLog('motif picked', { id: motif.id, sense: motif.sense, cue: motif.cue }); } catch {}
+      return motif;
+    } catch (e) {
+      console.warn('[freshMotifs] pick failed:', e);
+      state._activeMotif = null;
+      return null;
+    }
+  }
+
+  // Format the chosen motif as a prompt block. Instructs the AI to use the
+  // image as a deliberate through-line — 2-4 echoes across the session, not
+  // named directly. Returning an empty string when no motif is active is a
+  // no-op for the token-budget array.
+  function buildMotifBlock(motif) {
+    if (!motif || !motif.image) return '';
+    return `\nMOTIF (session through-line — a single recurring image to thread across phases, never named directly):\n  Image:   "${motif.image}"\n  Essence: ${motif.essence || ''}\nWeave it in 2-4 times across the session as a quiet, deliberate echo. Use it lightly in early phases and let it carry more weight at the deepest point. The reader should feel its return as familiar, not labeled. Treat it as the spine the session keeps coming back to.`;
+  }
+
+  // Play the motif's soft audio cue. Lazily-allocated AudioContext, reused
+  // across sessions. No-ops when cues are disabled, when the cue name is
+  // 'none' / unknown, or when WebAudio is unavailable.
+  let _motifCueCtx = null;
+  function _playMotifCue(cueName) {
+    if (!cueName || cueName === 'none') return;
+    if (state.motifCuesEnabled !== true) return;
+    const cfg = MOTIF_CUE_PRESETS[cueName];
+    if (!cfg) return;
+    try {
+      if (!_motifCueCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        _motifCueCtx = new Ctx();
+      }
+      if (_motifCueCtx.state === 'suspended') {
+        // Will succeed if the cue is triggered from within a user-gesture
+        // chain (begin session), otherwise the autoplay policy blocks it.
+        _motifCueCtx.resume().catch(() => {});
+      }
+      const t = _motifCueCtx.currentTime;
+      const osc  = _motifCueCtx.createOscillator();
+      const gain = _motifCueCtx.createGain();
+      osc.type = cfg.type;
+      osc.frequency.value = cfg.freq;
+      const volScale = Math.max(0, Math.min(1, state.motifCueVolume ?? 0.7));
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(cfg.peakGain * volScale, t + cfg.attack);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + cfg.dur);
+      osc.connect(gain).connect(_motifCueCtx.destination);
+      osc.start(t);
+      osc.stop(t + cfg.dur + 0.05);
+    } catch (e) { console.warn('[motif cue]', e); }
   }
 
   async function buildLivingProfile() {
@@ -22607,6 +22774,11 @@ End with a brief "and you carry that with you" beat. Output ONLY script text —
       ? `\nSCENE DIRECTIVES (optional, sparing): If the language of this phase clearly evokes a different audio/visual texture than the current setting, you may emit one or both of:\n  • [BG:type]   — switch soundscape. Valid types: rain, ocean, fire, forest, stream, wind, thunder, storm, drone, bowls, heartbeat, binaural, isochronic, chimes, pink, brown, white, fan, cave, crickets, temple, spaceship, underwater, clock, train, city, owls, whales, none.\n  • [VIZ:type]  — switch visualizer. Valid types: spiral, breathing, candle, moire, tunnel, starfield, colorwash, vortex, mandala, lissajous, aurora, rain, smoke, ink, sacred-geo, waveform, fireflies, ripples, pulse, none.\nUse at most ONE of each per phase, placed at the start of the phase before the first sentence. Skip entirely if the current scene already fits — defaulting to the user's choice is correct.`
       : '';
     const freshBlock = buildFreshnessBlock();
+    // Pick the session's through-line motif before assembling shared context
+    // so buildMotifBlock can read state._activeMotif. Reuses for every phase
+    // of this generation.
+    const motif      = pickSessionMotif();
+    const motifBlock = buildMotifBlock(motif);
     const sharedContext = trimToTokenBudget([
       { name: 'header',     text: headerBlock,       priority: 5 },
       { name: 'reminder',   text: reminderBlock,     priority: 4 },
@@ -22616,6 +22788,7 @@ End with a brief "and you carry that with you" beat. Output ONLY script text —
       { name: 'director',   text: directorBriefCtx,  priority: 3 },
       { name: 'profile',    text: profileCtx,        priority: 3 },
       { name: 'metrics',    text: metricsTrendCtx,   priority: 3 },
+      { name: 'motif',      text: motifBlock,        priority: 3 },
       { name: 'markup',     text: markupBlock,       priority: 2 },
       { name: 'scene',      text: sceneBlock,        priority: 2 },
       { name: 'freshSeeds', text: freshBlock,        priority: 2 },
@@ -26709,6 +26882,9 @@ Start immediately:`;
     state._inactiveTotalMs = 0;
     state._inactiveStartedAt = null;
     state._currentPhase = 'settling';
+    // Reset the once-per-session motif-cue latch — fires anew on the first
+    // work-phase entry of each new session, not once per page load.
+    state._motifCueFiredThisSession = false;
 
     resetAffirmRotation();
 
@@ -26953,6 +27129,20 @@ Start immediately:`;
           _fireSessionAnchor();
         }
       } catch (e) { console.warn('[anchor fire]', e); }
+
+      // Motif cue — single soft tone at the first work-phase entry, only
+      // when motif cues are enabled and a motif was picked for this
+      // session. The _motifCueFiredThisSession latch ensures multiple work
+      // phases in the same session don't re-fire it; the deepest moment
+      // gets it.
+      try {
+        if (typeof phaseBase === 'function' && phaseBase(phase) === 'work'
+            && !state._motifCueFiredThisSession
+            && state._activeMotif && state._activeMotif.cue) {
+          state._motifCueFiredThisSession = true;
+          _playMotifCue(state._activeMotif.cue);
+        }
+      } catch (e) { console.warn('[motif cue fire]', e); }
 
       try { _updatePersonalSymbolOverlay(phase); } catch (e) { console.warn('[symbol overlay]', e); }
 
@@ -41635,6 +41825,14 @@ Begin:`;
     saveUserSettings();
   });
 
+  $('motifEngineEnabled')?.addEventListener('change', e => {
+    state.motifEngineEnabled = !!e.target.checked;
+    saveUserSettings();
+  });
+  $('motifCuesEnabled')?.addEventListener('change', e => {
+    state.motifCuesEnabled = !!e.target.checked;
+    saveUserSettings();
+  });
   $('generateAffirmationsBtn')?.addEventListener('click', generateAffirmationsFromProfile);
   $('userAffirmations')?.addEventListener('input', _refreshAffirmationsBtnState);
   $('runtimeRulesEnabled')?.addEventListener('change', e => {
