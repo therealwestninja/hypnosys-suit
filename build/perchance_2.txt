@@ -4548,12 +4548,6 @@ padding: 6px 10px; font-size: 1.1rem;
             <label for="pfShareAll" class="pf-label" style="margin:0;cursor:pointer">Use profile details in script</label>
           </div>
           <div class="sublabel" style="font-size:0.58rem;margin-top:-4px;margin-bottom:4px">When off, age / appearance / goals stay on your device only — local recommendations still use them.</div>
-          <!-- Bug fix — three hidden mirror checkboxes removed
-               (pfShareAge, pfShareAppearance, pfShareGoals). They
-               existed only to give getProfile() per-field flags to
-               read; that read path is now centralized in getProfile()
-               itself, which derives all per-field share flags from the
-               single visible pfShareAll toggle. -->
           <div class="pf-row"><label class="pf-label">Pronouns</label>
             <select id="pfPronouns" class="pf-select"><option value="">prefer not to say</option><option value="he/him">he / him</option><option value="she/her">she / her</option><option value="they/them">they / them</option><option value="other">other</option></select>
           </div>
@@ -5392,10 +5386,6 @@ padding: 6px 10px; font-size: 1.1rem;
           <img id="craftedSymbolImg" alt="Suggestion symbol" style="max-width:240px;width:100%;border-radius:8px;border:1px solid var(--glass-border)">
           <div class="sublabel" style="font-size:0.66rem;margin-top:4px;color:var(--text-faint)">A visual anchor for post-hypnotic recall.</div>
         </div>
-        <!-- Through-line / Motif Engine chip — shows the recurring session
-             motif once it has been picked at generation time. Populated by
-             MotifEngine.renderChip(); stays empty when the engine is off. -->
-        <div id="motifChipWrap"></div>
         <div class="crafted-actions">
           <button class="btn secondary" id="recraftBtn">re-craft</button>
           <button class="btn secondary" id="editCraftedBtn">edit manually</button>
@@ -6417,14 +6407,6 @@ I return to myself easily"></textarea>
         <textarea class="script-text" id="scriptText" spellcheck="false"></textarea>
         <div class="script-actions">
           <button class="btn secondary" id="regenScriptBtn" title="Re-generate any phase that failed, or fill in phases you added via the editor below. Click ✨ on a single row to target just that phase.">regenerate</button>
-          <!-- Bug fix — "↻ regenerate fresh" button removed here. It was a
-               duplicate of "generate full script" (called generateFullScript()
-               internally after wiping state); the only unique behavior was
-               an inline Smart-Director on/off picker, which the user can get
-               persistently from Options ▸ Smart Director. The
-               generateFullScript() flow now also warns when timeline edits
-               (block reorder / add / remove) would be discarded, which was
-               the other thing the fresh path tried to safeguard. -->
           <button class="btn secondary" id="autoTempoBtn">⏱ auto-tempo</button>
           <button class="btn secondary icon" id="autoTempoOptsBtn" title="Auto-tempo cleanup options">⚙</button>
           <button class="btn secondary" id="saveScriptBtn" title="Save this script to your library for reuse">💾 save</button>
@@ -7030,10 +7012,6 @@ I return to myself easily"></textarea>
   </div>
 </div>
 
-<!-- (Gallery popup removed — content moved inline into Step 5's bgPreviewWrap.
-     See "INLINE GALLERY" comment there. Lightbox modal below still in use for
-     fullscreen image viewing.) -->
-
 <!-- IMAGE PREVIEW POPUP — opened from the inline gallery on image click.
      Compact (no fullscreen) since generated images are ≤ 512×512 px — no
      zoom/pan controls needed at this level. Five interactions: prev, next,
@@ -7317,14 +7295,6 @@ I return to myself easily"></textarea>
         </span>
       </label>
       <div class="sublabel" style="font-size:0.62rem;line-height:1.4;margin-top:2px">Off: your manual scene choices are preserved across the whole session. On (default): when the AI writes about rain, the soundscape can become rain.</div>
-      <label class="toggle-row" for="motifEngineEnabled" style="align-items:flex-start;margin-top:8px">
-        <input type="checkbox" id="motifEngineEnabled">
-        <span>
-          Session through-line
-          <span class="hint">Thread one recurring motif through the narration, visuals, and a soft cue — planted quietly, built into the work, handed back at the end.</span>
-        </span>
-      </label>
-      <div class="sublabel" style="font-size:0.62rem;line-height:1.4;margin-top:2px">On (default): one image recurs across the whole session and becomes the anchor you carry away. Off: each phase is generated independently.</div>
       <!-- Director calibration — shifts every rule threshold + AI tone directive. -->
       <div id="directorBiasRow" style="margin-top:12px;padding:10px 12px;background:var(--glass);border:1px solid var(--glass-border)">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
@@ -8226,8 +8196,6 @@ I return to myself easily"></textarea>
     smartDirectorEnabled: true,
 
     aiSceneDirectivesEnabled: true,
-    motifEngineEnabled: true,
-    sessionMotif: null,
     directorBias: 0,
 
     directorPace: 0,
@@ -10989,6 +10957,29 @@ I return to myself easily"></textarea>
     } catch (e) { console.warn('findRelevantDigests failed:', e); return []; }
   }
 
+  // Canonical base URL for share links. Inside the Perchance sandbox iframe,
+  // window.location is the per-generator hex subdomain
+  // (https://<32-hex>.perchance.org/<slug>) — share URLs pointing there are
+  // unusable as links other people can open, since the subdomain is internal
+  // to the iframe nesting. Real share URLs must point at
+  // https://perchance.org/<slug>. Detect the sandbox host shape and rewrite;
+  // otherwise (forked / preview / standalone deploys) keep the page's URL.
+  function _hneCanonicalBaseUrl() {
+    try {
+      const host = location.hostname || '';
+      const parts = host.split('.');
+      const isSandbox = parts.length >= 3
+        && parts[parts.length - 1] === 'org'
+        && parts[parts.length - 2] === 'perchance'
+        && /^[0-9a-f]{32}$/i.test(parts[0]);
+      if (isSandbox) {
+        const slug = (location.pathname || '/').split('/').filter(Boolean)[0] || '';
+        if (slug) return 'https://perchance.org/' + slug;
+      }
+    } catch {}
+    return location.origin + location.pathname;
+  }
+
   async function createShareUpload(payload, opts = {}) {
     if (typeof root === 'undefined' || !root.uploadPlugin) return null;
     try {
@@ -11015,12 +11006,17 @@ I return to myself easily"></textarea>
         throw new Error('Upload failed: ' + (uploaded?.error || 'no url returned'));
       }
 
+      // uploaded.url is a boxed String (uploadPlugin/textToImagePlugin/aiTextPlugin
+      // all return boxed Strings). Normalize to primitive at the storage boundary
+      // so anything that later does a strict comparison or JSON.stringify on the
+      // metadata behaves the way callers expect.
+      const uploadedUrlStr = String(uploaded.url);
       try {
         const meta = {
           kind: opts.fileName || 'share',
           name: payload?.persona?.name || payload?.config?.intentionInput?.slice(0, 60) || opts.label || '',
-          url: uploaded.url,
-          shareUrl: `${window.location.origin}${window.location.pathname}?data=${encodeURIComponent(uploaded.url.replace(/^https?:\/\/user\.uploads\.dev\/file\//, ''))}`,
+          url: uploadedUrlStr,
+          shareUrl: `${_hneCanonicalBaseUrl()}?data=${encodeURIComponent(uploadedUrlStr.replace(/^https?:\/\/user\.uploads\.dev\/file\//, ''))}`,
           deletionUrl: uploaded.deletionUrl || null,
           createdAt: Date.now(),
           expiresAt: uploadOpts.expires || null,
@@ -11033,9 +11029,8 @@ I return to myself easily"></textarea>
         }
       } catch (e) { console.warn('[share] failed to record metadata:', e); }
 
-      const uploadedFileName = uploaded.url.replace(/^https?:\/\/user\.uploads\.dev\/file\//, '');
-      const base = window.location.origin + window.location.pathname;
-      return `${base}?data=${encodeURIComponent(uploadedFileName)}`;
+      const uploadedFileName = uploadedUrlStr.replace(/^https?:\/\/user\.uploads\.dev\/file\//, '');
+      return `${_hneCanonicalBaseUrl()}?data=${encodeURIComponent(uploadedFileName)}`;
     } catch (e) {
       const msg = String(e?.message || e);
 
@@ -11144,7 +11139,6 @@ I return to myself easily"></textarea>
         bgActiveStylePresetIds: Array.isArray(state.bgActiveStylePresetIds) ? state.bgActiveStylePresetIds.slice() : [],
 
         craftedSuggestion: state.craftedSuggestion || null,
-        sessionMotif: state.sessionMotif || null,
 
         script: state.fullScript || null,
       },
@@ -11171,7 +11165,7 @@ I return to myself easily"></textarea>
         if (c.intentionInput) params.set('t', encodeURIComponent(c.intentionInput));
         if (c.userAffirmations) params.set('a', encodeURIComponent(c.userAffirmations));
         if (c.affirmationMode) params.set('am', c.affirmationMode);
-        const fallback = window.location.origin + window.location.pathname + '#cfg=' + params.toString();
+        const fallback = _hneCanonicalBaseUrl() + '#cfg=' + params.toString();
         await showShareLinkModal(fallback, 'Share session config (basic)');
       }
     } finally { setLoading('shareConfigBtn', false, '🔗 share link'); }
@@ -11189,7 +11183,7 @@ I return to myself easily"></textarea>
       let bin = '';
       for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
       const b64 = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-      const base = window.location.origin + window.location.pathname;
+      const base = _hneCanonicalBaseUrl();
       const url = `${base}#${kind}=${b64}`;
       if (url.length > HASH_SHARE_URL_BUDGET) {
         console.debug('[hash-share] payload too large for URL fragment:', url.length, 'chars');
@@ -11509,8 +11503,6 @@ I return to myself easily"></textarea>
       smartDirectorEnabled: !!$('smartDirectorEnabled')?.checked,
 
       aiSceneDirectivesEnabled: state.aiSceneDirectivesEnabled !== false,
-      motifEngineEnabled: !!$('motifEngineEnabled')?.checked,
-      sessionMotif: state.sessionMotif || null,
       directorBias: Number($('directorBiasSlider')?.value ?? state.directorBias ?? 0),
       directorPace: Number($('directorPaceSlider')?.value ?? state.directorPace ?? 0),
       directorBiasByDomain: { ...(state.directorBiasByDomain || {}) },
@@ -11565,7 +11557,6 @@ I return to myself easily"></textarea>
     if (s.intentionInput == null && s.intentionText) s.intentionInput = s.intentionText;
     if (s.remoteProcessingOptIn == null) s.remoteProcessingOptIn = !!(s.remoteBackupOptIn || s.cloudSyncOptIn || s.serverConsent);
     if (s.smartDirectorEnabled == null) s.smartDirectorEnabled = s.profileInjectionEnabled == null ? true : !!s.profileInjectionEnabled;
-    if (s.motifEngineEnabled == null) s.motifEngineEnabled = true;
     if (s.directorBias == null) s.directorBias = 0;
 
     s.directorBias = Math.max(-3, Math.min(3, Math.round(Number(s.directorBias) || 0)));
@@ -11961,9 +11952,6 @@ I return to myself easily"></textarea>
 
       state.aiSceneDirectivesEnabled = s.aiSceneDirectivesEnabled !== false;
       const ascd = $('aiSceneDirectivesEnabled'); if (ascd) ascd.checked = state.aiSceneDirectivesEnabled;
-      state.motifEngineEnabled = s.motifEngineEnabled !== false;
-      const mecb = $('motifEngineEnabled'); if (mecb) mecb.checked = state.motifEngineEnabled;
-      if (s.sessionMotif) state.sessionMotif = s.sessionMotif;
       state.directorBias = s.directorBias ?? 0;
       const dbSlider = $('directorBiasSlider'); if (dbSlider) dbSlider.value = state.directorBias;
 
@@ -13243,415 +13231,6 @@ I return to myself easily"></textarea>
       return '';
     }
   }
-
-  // ════════════════════════════════════════════════════════════════════════
-  // HNE THROUGH-LINE / MOTIF ENGINE  —  HTML-pane module
-  //
-  // Lives in the main inline script, directly after buildFreshnessBlock(),
-  // sharing its scope — reuses `state`, `idbGet` / `idbSet`, `phaseBase`,
-  // `deriveProfileTags`, `sdLog`, `$`, `notify`, `escapeHtml`.
-  //
-  // WHAT IT DOES
-  //   Picks ONE concrete sensory motif per session and threads it across all
-  //   three output channels with a deliberate amplification curve:
-  //
-  //     narration   a persistent prompt block + a per-phase directive that
-  //                 tells the AI how prominent the motif should be in each
-  //                 phase (plant → weave → amplify → anchor → callback).
-  //     visuals     nudges the WebGL background palette toward the motif's
-  //                 own colours as the session amplifies it.
-  //     audio       fires one soft one-shot cue when the motif reaches full
-  //                 presence (first work phase) and one when it returns
-  //                 (first closing phase).
-  //
-  // This is the hypnotic convincer/anchor mechanism made structural: the same
-  // image, recognised again and again, is what deepens trance and what the
-  // listener carries out of the session. It COMPLETES HNE's existing
-  // suggestion-symbol overlay rather than competing with it.
-  //
-  // Adapted from the "Pattern Amplification System" (UNME design doc §5.7).
-  // See HNE-Through-Line-Design.md for full rationale + every splice point.
-  // ════════════════════════════════════════════════════════════════════════
-
-  // ── The amplification curve ─────────────────────────────────────────────
-  // Maps a phase BASE id (post-phaseBase()) to a curve stage. Phases not
-  // listed get no motif directive — a deliberate gap is fine.
-  const MOTIF_CURVE = {
-    introduction: 'plant',  permission: 'plant',  settling: 'plant',  teaching: 'plant',
-    induction:    'weave-in',
-    deepener:     'weave',  level: 'weave',  sounding: 'weave',  pendulation: 'weave',
-    work:         'amplify', affirm: 'amplify', training: 'amplify', mission: 'amplify', goal: 'amplify',
-    praise:       'anchor', reward: 'anchor',
-    lightener:    'callback', wake: 'callback', reintroduction: 'callback', emergence: 'callback',
-  };
-
-  // How strongly each stage tints the visual palette toward the motif's colours.
-  const MOTIF_TINT_BY_STAGE = {
-    'plant': 0.00, 'weave-in': 0.10, 'weave': 0.18,
-    'amplify': 0.42, 'anchor': 0.50, 'callback': 0.30,
-  };
-
-  // Fallback palette/viz/cue when a motif has no structural metadata
-  // (e.g. an AI-tailored motif — see MotifEngine.aiSuggest).
-  const MOTIF_SENSE_DEFAULTS = {
-    visual:      { palette: { a: [0.10,0.12,0.30], b: [0.82,0.70,0.40] }, viz: ['colorwash','aurora','candle'],   cue: 'chime' },
-    auditory:    { palette: { a: [0.16,0.14,0.34], b: [0.50,0.44,0.70] }, viz: ['waveform','ripples','lissajous'], cue: 'bell'  },
-    tactile:     { palette: { a: [0.28,0.20,0.12], b: [0.78,0.58,0.30] }, viz: ['breathing','pulse','candle'],     cue: 'bowl'  },
-    kinesthetic: { palette: { a: [0.12,0.22,0.28] }, viz: ['ripples','colorwash','breathing'],                     cue: 'drop'  },
-  };
-  // kinesthetic default needs a `b` — patched here to keep the literal readable.
-  MOTIF_SENSE_DEFAULTS.kinesthetic.palette.b = [0.56,0.58,0.40];
-
-  // Tiny safety-net corpus — used ONLY if the data pack / freshMotifs export
-  // failed to load. Not a second source of truth; just enough to not break.
-  const MOTIF_FALLBACK = [
-    { id: 'far-window',  sense: 'visual',  image: 'a single lit window, far down a darkening street',
-      essence: 'one warm point that holds steady while the rest dims', tags: 'focus|trance|sleep' },
-    { id: 'smooth-stone', sense: 'tactile', image: 'a river stone, cool and perfectly smooth in the palm',
-      essence: 'something the water has already finished worrying', tags: 'anxiety|release|grounding' },
-    { id: 'ember', sense: 'visual', image: 'a single ember holding its heat beneath grey ash',
-      essence: 'warmth that was never in danger of going out', tags: 'emotional|confidence|grounding' },
-  ];
-
-  const MOTIF_HISTORY_KEY = 'stillness_motif_history_v1';
-  const MOTIF_HISTORY_CAP = 8;   // remember the last N motifs so repeat users get fresh ones
-
-  const MotifEngine = (() => {
-    let _cueCtx = null;          // lazily-created AudioContext for one-shot cues
-    let _cuedStages = new Set(); // stages whose cue has already fired this session
-
-    // ── enable / disable ──────────────────────────────────────────────────
-    // Defaults ON, matching aiSceneDirectivesEnabled. Honours the Smart
-    // Director master switch — when the Director is off, so is the through-line.
-    function enabled() {
-      return state.motifEngineEnabled !== false && state.smartDirectorEnabled !== false;
-    }
-
-    // ── rotation memory ───────────────────────────────────────────────────
-    async function _loadHistory() {
-      try {
-        const h = await idbGet(MOTIF_HISTORY_KEY);
-        return Array.isArray(h) ? h : [];
-      } catch { return []; }
-    }
-    async function _pushHistory(id) {
-      if (!id) return;
-      try {
-        let h = await _loadHistory();
-        h = h.filter(x => x !== id);
-        h.push(id);
-        if (h.length > MOTIF_HISTORY_CAP) h = h.slice(-MOTIF_HISTORY_CAP);
-        await idbSet(MOTIF_HISTORY_KEY, h);
-      } catch (e) { console.warn('[MotifEngine] history write failed:', e?.message || e); }
-    }
-
-    // Normalise any motif object so the rest of the engine can trust its shape.
-    function _normalise(m) {
-      if (!m || typeof m !== 'object') return null;
-      const sense = ['visual','auditory','tactile','kinesthetic'].includes(m.sense) ? m.sense : 'visual';
-      const dflt = MOTIF_SENSE_DEFAULTS[sense];
-      const pal = (m.palette && Array.isArray(m.palette.a) && Array.isArray(m.palette.b))
-        ? m.palette : dflt.palette;
-      return {
-        id:      m.id || ('motif-' + Math.random().toString(36).slice(2, 9)),
-        image:   String(m.image || '').trim(),
-        essence: String(m.essence || '').trim(),
-        sense,
-        tags:    m.tags || '',
-        palette: { a: pal.a.slice(), b: pal.b.slice() },
-        viz:     Array.isArray(m.viz) && m.viz.length ? m.viz.slice() : dflt.viz.slice(),
-        cue:     ['bell','bowl','chime','drop','none'].includes(m.cue) ? m.cue : dflt.cue,
-        tailored: !!m.tailored,
-      };
-    }
-
-    // ── pick a motif for the session ──────────────────────────────────────
-    // Rotation-aware: excludes recently-used motifs so a returning user gets a
-    // different through-line each session. Always resolves to SOMETHING.
-    async function pick(opts = {}) {
-      let tags = Array.isArray(opts.profileTags) ? opts.profileTags : null;
-      if (!tags && typeof deriveProfileTags === 'function') {
-        try { tags = deriveProfileTags(); } catch { tags = []; }
-      }
-      tags = tags || [];
-
-      const recent = await _loadHistory();
-      let chosen = null;
-
-      if (typeof root !== 'undefined' && typeof root.freshMotifs === 'function') {
-        try {
-          const got = root.freshMotifs({ profileTags: tags, n: 1, excludeSet: recent });
-          if (Array.isArray(got) && got[0]) chosen = got[0];
-        } catch (e) { console.warn('[MotifEngine] freshMotifs failed:', e); }
-      }
-      if (!chosen) {
-        // safety net — pick a fallback the user hasn't seen most recently
-        const pool = MOTIF_FALLBACK.filter(m => !recent.includes(m.id));
-        chosen = (pool.length ? pool : MOTIF_FALLBACK)[Math.floor(Math.random() * (pool.length || MOTIF_FALLBACK.length))];
-      }
-
-      const motif = _normalise(chosen);
-      setActive(motif);
-      await _pushHistory(motif.id);
-      sdLog('motif picked', { id: motif.id, sense: motif.sense, tags });
-      return motif;
-    }
-
-    // ── AI-tailored motif (optional — opt-in via the chip's "tailor" action) ─
-    // Asks the model for a bespoke image tied to THIS intention + suggestion.
-    // Structural metadata (palette/viz/cue) is filled from the sense, since
-    // models are unreliable at colour. Falls back to a corpus pick on failure.
-    async function aiSuggest({ intention, crafted } = {}) {
-      if (typeof root === 'undefined' || typeof root.aiTextPlugin !== 'function') {
-        return pick();
-      }
-      const goal = (crafted && crafted.coreResponse) ? crafted.coreResponse : (intention || 'a calm, settled state');
-      const instruction = [
-        'Choose ONE concrete sensory MOTIF for a hypnosis session — a single image, sound,',
-        'or physical sensation that can recur quietly throughout the session and become the',
-        'anchor the listener carries away.',
-        `SESSION INTENTION: "${(intention || '').slice(0, 200)}"`,
-        `INTENDED EFFECT: "${String(goal).slice(0, 120)}"`,
-        'Rules: the motif must be a small, ordinary, concrete thing (not abstract, not grand,',
-        'not a metaphor stack). It must hold the intended effect naturally.',
-        'Output EXACTLY this JSON, no other text, no markdown fences:',
-        '{"image":"4-10 words, one concrete object/sound/sensation",' +
-        '"essence":"6-12 words — the meaning it quietly carries",' +
-        '"sense":"visual|auditory|tactile|kinesthetic"}',
-      ].join('\n');
-      try {
-        const data = await root.aiTextPlugin({
-          instruction, startWith: '{', stopSequences: ['\n\n', '\n[['], hideStartWith: true,
-        });
-        if (!data || data.stopReason === 'error') throw new Error('AI error');
-        let text = (data.generatedText || '').trim();
-        if (!text.startsWith('{')) text = '{' + text;
-        const lb = text.lastIndexOf('}'); if (lb > -1) text = text.slice(0, lb + 1);
-        const parsed = JSON.parse(text);
-        if (!parsed.image) throw new Error('empty motif');
-        const motif = _normalise({ ...parsed, id: 'tailored-' + Date.now().toString(36), tailored: true });
-        setActive(motif);
-        sdLog('motif tailored by AI', { image: motif.image, sense: motif.sense });
-        return motif;
-      } catch (e) {
-        console.warn('[MotifEngine] aiSuggest failed, using corpus:', e?.message || e);
-        notify?.info?.('Could not tailor a motif — used a curated one instead.');
-        return pick();
-      }
-    }
-
-    // ── active-motif accessors ────────────────────────────────────────────
-    // The active motif lives on `state.sessionMotif` so it is saved with the
-    // session config and replays identically from a share link.
-    function setActive(m) { state.sessionMotif = m || null; _cuedStages = new Set(); }
-    function get()        { return state.sessionMotif || null; }
-    function clear()      { state.sessionMotif = null; _cuedStages = new Set(); }
-
-    function stageFor(phaseId) {
-      if (!enabled() || !get()) return null;
-      const base = (typeof phaseBase === 'function') ? phaseBase(phaseId) : String(phaseId || '').replace(/-\d+$/, '');
-      return MOTIF_CURVE[base] || null;
-    }
-
-    // ── prompt: the persistent shared block ───────────────────────────────
-    // Goes into the script-generation sharedContext array, alongside the
-    // freshSeeds block, at priority 3.
-    function sharedBlock() {
-      const m = get();
-      if (!enabled() || !m || !m.image) return '';
-      return [
-        '',
-        'THROUGH-LINE (one recurring motif for this ENTIRE session — deliberate repetition is the point;',
-        'this is the spine the session is built on):',
-        `  Motif:   ${m.image}`,
-        m.essence ? `  Carries: ${m.essence}` : '',
-        'Treat it as a SINGLE recurring image. Re-introduce it across phases — never re-explain it.',
-        'Each phase task says how prominent it should be: barely-noticed at the start, the centre of',
-        'the work in the middle, a final quiet callback at the end. Never call attention to the',
-        'repetition itself — the motif should feel discovered, not inserted. If it clashes with a',
-        'phase, a light touch always beats forcing it.',
-      ].filter(Boolean).join('\n');
-    }
-
-    // ── prompt: the per-phase directive ───────────────────────────────────
-    // Appended to each phase's instruction in buildPhaseInstructions().
-    function phaseDirective(phaseId, crafted) {
-      const m = get();
-      const stage = stageFor(phaseId);
-      if (!m || !stage) return '';
-      const img = `"${m.image}"`;
-      const ess = m.essence || 'the state this session is building';
-      let body;
-      switch (stage) {
-        case 'plant':
-          body = `THROUGH-LINE — PLANT: let the session motif — ${img} — appear exactly ONCE here, ` +
-            `incidental and unremarked, simply present in the scene. Do not develop it, explain it, ` +
-            `or return to it. The listener should barely register it.`;
-          break;
-        case 'weave-in':
-          body = `THROUGH-LINE — WEAVE IN: the motif — ${img} — may surface once or twice inside the ` +
-            `induction imagery, a little nearer now, its detail slightly more real. Let it belong to ` +
-            `the scene; do not announce its return.`;
-          break;
-        case 'weave':
-          body = `THROUGH-LINE — WEAVE: let the motif — ${img} — recur naturally, now familiar — a ` +
-            `touchstone the listener returns to as they go deeper. Re-introduce it, never re-explain ` +
-            `it. Once, gently, is enough for this phase.`;
-          break;
-        case 'amplify': {
-          const fuse = (crafted && crafted.coreResponse)
-            ? `to meet the motif again IS the moment of "${crafted.coreResponse}"`
-            : ess;
-          body = `THROUGH-LINE — AMPLIFY: the motif — ${img} — is now the carrier of the work. Let the ` +
-            `suggestion travel THROUGH it: ${fuse}. Fuse the image and the change until they are a ` +
-            `single thing in the listener's mind. Give the motif real room here — this is where it works.`;
-          break;
-        }
-        case 'anchor':
-          body = `THROUGH-LINE — ANCHOR: make the motif — ${img} — the take-home anchor. State plainly ` +
-            `that from now on, meeting it again — in the mind, or out in the world — brings this state ` +
-            `back. ${ess}. Keep it warm and certain.`;
-          break;
-        case 'callback':
-          body = `THROUGH-LINE — CALLBACK: give the motif — ${img} — one last clean recurrence the ` +
-            `listener carries out of the session and into the day. Close the loop: the same image they ` +
-            `barely noticed at the start is now theirs. One mention, unhurried — do not re-explain it.`;
-          break;
-        default:
-          return '';
-      }
-      return `\n\n${body} (Still: output script text only — no stage directions, no bracket notes.)`;
-    }
-
-    // ── visuals: palette tinting ──────────────────────────────────────────
-    // Wraps the phase palette lookup in the WebGL background's _updatePalette().
-    // `base` is the plain NB_PHASE_PALETTES entry; returns it lerped toward the
-    // motif's colours by the current stage's strength.
-    function tintPalette(base, phaseId) {
-      const m = get();
-      const stage = stageFor(phaseId);
-      if (!m || !stage || !base) return base;
-      const k = MOTIF_TINT_BY_STAGE[stage] || 0;
-      if (k <= 0 || !m.palette) return base;
-      const lerp3 = (x, y) => x.map((v, i) => v + ((y[i] ?? v) - v) * k);
-      return { a: lerp3(base.a, m.palette.a), b: lerp3(base.b, m.palette.b) };
-    }
-
-    // Recommended visualizer for the motif — the host may use this as the
-    // default scene when the user hasn't picked one explicitly.
-    function suggestViz() {
-      const m = get();
-      return (m && m.viz && m.viz[0]) || null;
-    }
-
-    // ── audio: one-shot motif cue ─────────────────────────────────────────
-    // A soft, short, low-gain tone. Synthesised inline so it never depends on
-    // soundscape internals. Fires at most twice a session (see onPhaseEnter).
-    function playCue(name) {
-      if (!name || name === 'none') return;
-      try {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return;
-        _cueCtx = _cueCtx || new AC();
-        if (_cueCtx.state === 'suspended') _cueCtx.resume().catch(() => {});
-        const ctx = _cueCtx, t0 = ctx.currentTime;
-
-        const voice = (freq, decay, type, gain) => {
-          const osc = ctx.createOscillator();
-          const amp = ctx.createGain();
-          osc.type = type || 'sine';
-          osc.frequency.setValueAtTime(freq, t0);
-          amp.gain.setValueAtTime(0.0001, t0);
-          amp.gain.exponentialRampToValueAtTime(gain, t0 + 0.04);
-          amp.gain.exponentialRampToValueAtTime(0.0001, t0 + decay);
-          osc.connect(amp); amp.connect(ctx.destination);
-          osc.start(t0); osc.stop(t0 + decay + 0.1);
-        };
-
-        switch (name) {
-          case 'bell':  voice(523.25, 3.2, 'sine', 0.12); voice(1046.5, 2.0, 'sine', 0.04); break;
-          case 'bowl':  voice(196.00, 6.0, 'sine', 0.13); voice(294.00, 4.5, 'sine', 0.05); break;
-          case 'chime': voice(784.00, 2.4, 'triangle', 0.09); voice(1174.7, 1.8, 'sine', 0.04); break;
-          case 'drop':  voice(330.00, 1.4, 'sine', 0.11);
-                        { const o = ctx.createOscillator(), g = ctx.createGain();
-                          o.type = 'sine'; o.frequency.setValueAtTime(330, t0);
-                          o.frequency.exponentialRampToValueAtTime(180, t0 + 0.5);
-                          g.gain.setValueAtTime(0.10, t0);
-                          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.3);
-                          o.connect(g); g.connect(ctx.destination);
-                          o.start(t0); o.stop(t0 + 1.5); }
-                        break;
-        }
-      } catch (e) { console.warn('[MotifEngine] cue failed:', e?.message || e); }
-    }
-
-    // Call from the session playback loop each time a phase begins.
-    // Fires the motif cue ONCE when the motif reaches full presence
-    // (first amplify phase) and ONCE when it returns (first callback phase).
-    function onPhaseEnter(phaseId) {
-      const m = get();
-      if (!m || !enabled()) return;
-      const stage = stageFor(phaseId);
-      if (stage !== 'amplify' && stage !== 'callback') return;
-      if (_cuedStages.has(stage)) return;
-      _cuedStages.add(stage);
-      playCue(m.cue);
-      sdLog('motif cue', { stage, cue: m.cue, phase: phaseId });
-    }
-
-    // ── optional: a small UI chip ─────────────────────────────────────────
-    // Renders the current motif with shuffle + tailor controls. Call after
-    // the crafted-suggestion preview. Entirely optional — the engine works
-    // headless without ever rendering this.
-    function renderChip(container) {
-      if (!container) return;
-      const m = get();
-      if (!enabled() || !m) { container.innerHTML = ''; return; }
-      container.innerHTML =
-        `<div class="motif-chip" style="display:flex;gap:10px;align-items:flex-start;` +
-          `padding:10px 12px;background:var(--glass);border:1px solid var(--glass-border);margin-top:8px">` +
-          `<span style="font-size:1.1rem;line-height:1.2" aria-hidden="true">🜂</span>` +
-          `<div style="flex:1;min-width:0">` +
-            `<div style="font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;` +
-              `color:var(--text-faint);margin-bottom:3px">Through-line${m.tailored ? ' · tailored' : ''}</div>` +
-            `<div style="font-size:0.84rem;color:var(--text)">${escapeHtml(m.image)}</div>` +
-            (m.essence ? `<div style="font-size:0.7rem;color:var(--text-dim);margin-top:2px">` +
-              `${escapeHtml(m.essence)}</div>` : '') +
-          `</div>` +
-          `<div style="display:flex;flex-direction:column;gap:4px">` +
-            `<button type="button" data-motif-act="shuffle" title="Different motif" ` +
-              `style="background:none;border:1px solid var(--glass-border);color:var(--text-dim);` +
-              `cursor:pointer;font-size:0.72rem;padding:3px 7px">⟳</button>` +
-            `<button type="button" data-motif-act="tailor" title="Tailor to this intention" ` +
-              `style="background:none;border:1px solid var(--glass-border);color:var(--text-dim);` +
-              `cursor:pointer;font-size:0.72rem;padding:3px 7px">✦</button>` +
-          `</div>` +
-        `</div>`;
-      const shuffleBtn = container.querySelector('[data-motif-act="shuffle"]');
-      const tailorBtn  = container.querySelector('[data-motif-act="tailor"]');
-      if (shuffleBtn) shuffleBtn.onclick = async () => {
-        shuffleBtn.disabled = true;
-        try { await pick(); renderChip(container); } finally { shuffleBtn.disabled = false; }
-      };
-      if (tailorBtn) tailorBtn.onclick = async () => {
-        tailorBtn.disabled = true; tailorBtn.textContent = '…';
-        try {
-          await aiSuggest({
-            intention: $('intentionInput')?.value || '',
-            crafted:   state.craftedSuggestion || null,
-          });
-          renderChip(container);
-        } finally { tailorBtn.disabled = false; tailorBtn.textContent = '✦'; }
-      };
-    }
-
-    return {
-      enabled, pick, aiSuggest, setActive, get, clear, stageFor,
-      sharedBlock, phaseDirective, tintPalette, suggestViz,
-      playCue, onPhaseEnter, renderChip,
-    };
-  })();
-
 
   async function buildLivingProfile() {
     if (state.smartDirectorEnabled === false) {
@@ -15174,7 +14753,6 @@ Practitioner profile (full, natural sentences):`;
     state.abortFlag = false;
     state.paused = false;
     state.craftedSuggestion = null;
-    MotifEngine.clear();   // THROUGH-LINE: each fresh wizard run gets a new motif
 
     state._preMood = 5;
     state._preTension = 5;
@@ -17875,9 +17453,12 @@ ${messages}
       try {
         const params = this._currentParams();
 
+        // textToImagePlugin's documented option key is `negativePrompt`, not
+        // `negative` — passing `negative` was silently a no-op, so negative
+        // prompts in bg generations were never being applied.
         const call = {
-          prompt:   params.prompt,
-          negative: params.negativePrompt,
+          prompt:         params.prompt,
+          negativePrompt: params.negativePrompt,
         };
         if (_isUsingUserApiKey()) {
           call.guidanceScale     = params.guidanceScale;
@@ -18380,7 +17961,7 @@ ${messages}
 
         const result = await root.textToImagePlugin({
           prompt,
-          negative: PORTRAIT_NEGATIVE,
+          negativePrompt: PORTRAIT_NEGATIVE,
         });
         const dataUrl = result?.dataUrl || String(result || '');
         if (!dataUrl || !dataUrl.startsWith('data:')) {
@@ -18459,7 +18040,7 @@ ${messages}
 
         const result = await root.textToImagePlugin({
           prompt,
-          negative: SYMBOL_NEGATIVE,
+          negativePrompt: SYMBOL_NEGATIVE,
         });
         const dataUrl = result?.dataUrl || String(result || '');
         if (!dataUrl || !dataUrl.startsWith('data:')) {
@@ -20458,11 +20039,7 @@ ${messages}
     },
 
     _updatePalette() {
-      // THROUGH-LINE: nudge the phase palette toward the session motif's
-      // colours. tintPalette() returns _base unchanged when the engine is
-      // off or the phase is not on the amplification curve.
-      const _base  = NB_PHASE_PALETTES[state._currentPhase] || NB_PHASE_PALETTES._default;
-      const target = MotifEngine.tintPalette(_base, state._currentPhase);
+      const target = NB_PHASE_PALETTES[state._currentPhase] || NB_PHASE_PALETTES._default;
       if (!this._targetColorA) {
         this._targetColorA = target.a.slice(); this._targetColorB = target.b.slice();
         this.colorA = target.a.slice(); this.colorB = target.b.slice();
@@ -22627,11 +22204,6 @@ End with a brief "and you carry that with you" beat. Output ONLY script text —
       }
     });
 
-    // THROUGH-LINE: append the per-phase motif directive to every phase.
-    // phaseDirective() returns '' for phases off the curve or when disabled.
-    Object.keys(phaseInstructions).forEach(p => {
-      phaseInstructions[p] += MotifEngine.phaseDirective(p, state.craftedSuggestion);
-    });
     return phaseInstructions;
   }
 
@@ -22979,13 +22551,6 @@ End with a brief "and you carry that with you" beat. Output ONLY script text —
     const sceneBlock = (state.aiSceneDirectivesEnabled !== false)
       ? `\nSCENE DIRECTIVES (optional, sparing): If the language of this phase clearly evokes a different audio/visual texture than the current setting, you may emit one or both of:\n  • [BG:type]   — switch soundscape. Valid types: rain, ocean, fire, forest, stream, wind, thunder, storm, drone, bowls, heartbeat, binaural, isochronic, chimes, pink, brown, white, fan, cave, crickets, temple, spaceship, underwater, clock, train, city, owls, whales, none.\n  • [VIZ:type]  — switch visualizer. Valid types: spiral, breathing, candle, moire, tunnel, starfield, colorwash, vortex, mandala, lissajous, aurora, rain, smoke, ink, sacred-geo, waveform, fireflies, ripples, pulse, none.\nUse at most ONE of each per phase, placed at the start of the phase before the first sentence. Skip entirely if the current scene already fits — defaulting to the user's choice is correct.`
       : '';
-    // THROUGH-LINE: choose the session motif once, before context is assembled.
-    // pick() is a no-op if a motif is already set (chip choice / restored share link).
-    if (MotifEngine.enabled() && !MotifEngine.get()) {
-      try { await MotifEngine.pick(); } catch (e) { console.warn('[motif] pick failed', e); }
-    }
-    // Surface the chosen motif in the crafted-suggestion panel (optional UI).
-    try { MotifEngine.renderChip($('motifChipWrap')); } catch (e) { console.warn('[motif] chip', e); }
     const freshBlock = buildFreshnessBlock();
     const sharedContext = trimToTokenBudget([
       { name: 'header',     text: headerBlock,       priority: 5 },
@@ -22999,7 +22564,6 @@ End with a brief "and you carry that with you" beat. Output ONLY script text —
       { name: 'markup',     text: markupBlock,       priority: 2 },
       { name: 'scene',      text: sceneBlock,        priority: 2 },
       { name: 'freshSeeds', text: freshBlock,        priority: 2 },
-      { name: 'motif',      text: MotifEngine.sharedBlock(), priority: 3 },
       { name: 'adaptive',   text: adaptiveCtx,       priority: 2 },
       { name: 'memory',     text: memoryCtx,         priority: 1 },
     ], 1200);
@@ -27327,10 +26891,6 @@ Start immediately:`;
       const phaseText = state.parsedScript[phase];
 
       state._currentPhase = phase;
-
-      // THROUGH-LINE: fire the soft motif cue at most twice a session —
-      // once when the motif reaches full presence, once when it returns.
-      try { MotifEngine.onPhaseEnter(phase); } catch (e) { console.warn('[motif] cue', e); }
 
       try {
         if (typeof phaseBase === 'function' && phaseBase(phase) === 'work'
